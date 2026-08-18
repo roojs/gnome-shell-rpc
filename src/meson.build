@@ -1,0 +1,21 @@
+gnome_shell_rpc = executable('gnome-shell-rpc',
+  files(
+    'namespace.vala',
+    'Main.vala',
+    'Plugin.vala',
+  ),
+  mutter_vapi_stamp,
+  dependencies: mutter_dep,
+  vala_args: [
+    '--pkg=libmutter-16',
+    '--pkg=mutter-clutter-16',
+    '--pkg=mutter-cogl-16',
+    '--pkg=mutter-mtk-16',
+    '--pkg=xfixes-4.0',
+    '--pkg=gdesktopenums-3.0',
+    '--vapidir', meson.project_build_root() / 'vapi',
+    '--vapidir', meson.project_source_root() / 'vapi',
+  ],
+  build_rpath: mutter_typelib_dir,
+  install: false,
+)

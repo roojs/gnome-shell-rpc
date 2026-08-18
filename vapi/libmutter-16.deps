@@ -1,0 +1,12 @@
+cairo
+gdesktopenums-3.0
+gdk-pixbuf-2.0
+x11
+xfixes-4.0
+graphene-gobject-1.0
+mutter-cogl-16
+mutter-clutter-16
+atk
+gio-2.0
+json-glib-1.0
+pango

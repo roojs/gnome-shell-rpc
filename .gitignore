@@ -1,0 +1,8 @@
+/build/
+/builddir/
+*.o
+*.vala.c
+*.vala.h
+.gdb_history
+.vscode/
+.specstory/
