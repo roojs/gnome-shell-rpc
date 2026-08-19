@@ -1,0 +1,105 @@
+namespace GnomeShellRpc.Rpc
+{
+	/**
+	 * Unix socket listener with a public connection list (per-client handle ids).
+	 */
+	public class Listen : OLLMrpc.Transport.Listen
+	{
+		public string socket_path { get; construct; }
+
+		public Gee.ArrayList<OLLMrpc.Transport.Connection> connections {
+			get;
+			private set;
+			default = new Gee.ArrayList<OLLMrpc.Transport.Connection>();
+		}
+
+		private GLib.SocketService service { get; set; default = new GLib.SocketService(); }
+		private bool listening = false;
+
+		public Listen(string socket_path)
+		{
+			GLib.Object(socket_path: socket_path);
+		}
+
+		public override bool start()
+		{
+			if (this.listening) {
+				return true;
+			}
+
+			var parent = GLib.File.new_for_path(this.socket_path).get_parent();
+			if (parent != null && !GLib.FileUtils.test(parent.get_path(), GLib.FileTest.EXISTS)) {
+				try {
+					parent.make_directory_with_parents(null);
+				} catch (GLib.Error e) {
+					GLib.warning("failed to create socket directory: %s", e.message);
+					return false;
+				}
+			}
+
+			if (GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)) {
+				try {
+					GLib.FileUtils.unlink(this.socket_path);
+				} catch (GLib.FileError e) {
+					GLib.warning("could not remove stale socket: %s", e.message);
+				}
+			}
+
+			this.service = new GLib.SocketService();
+			GLib.SocketAddress? effective;
+			try {
+				this.service.add_address(
+					new GLib.UnixSocketAddress(this.socket_path),
+					GLib.SocketType.STREAM,
+					GLib.SocketProtocol.DEFAULT,
+					null,
+					out effective
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("failed to bind socket %s: %s", this.socket_path, e.message);
+				return false;
+			}
+
+			this.service.incoming.connect((conn) => {
+				var connection = new OLLMrpc.Transport.Connection(conn) {
+					live_handles = this.live_handles,
+				};
+				connection.start();
+				this.connections.add(connection);
+				return true;
+			});
+			this.service.start();
+			this.listening = true;
+			return true;
+		}
+
+		public override void broadcast(GLib.Object gobject)
+		{
+			foreach (var connection in this.connections) {
+				connection.write(gobject);
+			}
+		}
+
+		public override void stop()
+		{
+			if (!this.listening) {
+				return;
+			}
+			this.listening = false;
+			this.service.stop();
+			this.service = new GLib.SocketService();
+			foreach (var connection in this.connections) {
+				connection.stop();
+			}
+			this.connections.clear();
+			if (!GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)) {
+				return;
+			}
+			try {
+				GLib.FileUtils.unlink(this.socket_path);
+			} catch (GLib.FileError e) {
+				GLib.warning("could not remove stale socket: %s", e.message);
+			}
+		}
+	}
+}

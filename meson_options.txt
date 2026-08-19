@@ -1,0 +1,6 @@
+option(
+  'ocrpc_libdir',
+  type: 'string',
+  value: '/home/alan/gitlive/OLLMchat/build/libocrpc',
+  description: 'Directory containing libocrpc.so and ocrpc.vapi from an OLLMchat build',
+)

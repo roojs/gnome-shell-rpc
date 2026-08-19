@@ -9,6 +9,7 @@ project('gnome-shell-rpc', 'vala', 'c',
 
 vala = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
+fs = import('fs')
 
 add_project_arguments([
   '--target-glib=2.78',
@@ -33,6 +34,32 @@ mutter_dep = [
 
 mutter_typelib_dir = libmutter_dep.get_variable('typelibdir')
 add_project_link_arguments(['-Wl,-rpath,@0@'.format(mutter_typelib_dir)], language: 'c')
+
+ocrpc_libdir = get_option('ocrpc_libdir')
+ocrpc_lib = ocrpc_libdir / 'libocrpc.so'
+ocrpc_vapi = ocrpc_libdir / 'ocrpc.vapi'
+if not fs.exists(ocrpc_lib) or not fs.exists(ocrpc_vapi)
+  warning('libocrpc not found at @0@ — build OLLMchat libocrpc first'.format(ocrpc_libdir))
+endif
+
+ocrpc_vala_args = [
+  '--pkg=ocrpc',
+  '--pkg=json-glib-1.0',
+  '--vapidir=' + ocrpc_libdir,
+]
+
+ocrpc_dep = declare_dependency(
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-unix-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+  ],
+  link_args: ['-L' + ocrpc_libdir, '-locrpc'],
+  compile_args: ['-I' + ocrpc_libdir],
+)
+
+ocrpc_rpath = ocrpc_libdir
 
 vapigen = find_program('vapigen', required: true)
 
