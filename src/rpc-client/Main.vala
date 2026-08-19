@@ -1,7 +1,12 @@
 namespace GnomeShellRpc.RpcClient
 {
+	private static OLLMrpc.Client rpc_client;
+
 	public static int main(string[] args)
 	{
+		GnomeShellRpc.Debug.parse_args(args);
+		GnomeShellRpc.Debug.install_log_handler("rpc-client");
+
 		GnomeShellRpc.Ui.Rectangle.rpc_register();
 		GnomeShellRpc.Ui.Window.rpc_register();
 		GnomeShellRpc.Ui.WindowParams.rpc_register();
@@ -33,13 +38,14 @@ namespace GnomeShellRpc.RpcClient
 				socket_path = "/tmp/mutter-rpc.sock";
 			}
 		}
+		GLib.debug("socket path %s", socket_path);
 
-		var client = new OLLMrpc.Client("", "", socket_path) {
+		RpcClient.rpc_client = new OLLMrpc.Client("", "", socket_path) {
 			live_handles = true,
 			debug = false,
 		};
 
-		client.notification.connect((notif) => {
+		RpcClient.rpc_client.notification.connect((notif) => {
 			switch (notif.method) {
 				case "Window.created":
 					GLib.print("Window.created id=%d object_type=%s\n",
@@ -65,19 +71,19 @@ namespace GnomeShellRpc.RpcClient
 			}
 		});
 
-		if (!yield client.connect(new OLLMrpc.Request() {
+		if (!yield RpcClient.rpc_client.connect(new OLLMrpc.Request() {
 			method = "RPC-Daemon.hello",
 			param = new GnomeShellRpc.Rpc.DaemonParams() {
 				protocol = 1,
 				client = "rpc-client",
 			},
 		})) {
-			throw new GLib.IOError.FAILED(client.connect_error);
+			throw new GLib.IOError.FAILED(RpcClient.rpc_client.connect_error);
 		}
 
 		GLib.print("connected to %s\n", socket_path);
 
-		var list_resp = yield client.call(new OLLMrpc.Request() {
+		var list_resp = yield RpcClient.rpc_client.call(new OLLMrpc.Request() {
 			method = "RPC-Display.list_windows",
 			param = new GnomeShellRpc.Ui.DisplayParams(),
 		});

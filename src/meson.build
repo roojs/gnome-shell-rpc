@@ -1,4 +1,5 @@
 compositor_sources = files(
+  'Debug.vala',
   'namespace.vala',
   'Main.vala',
   'Plugin.vala',
@@ -41,6 +42,7 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
 
 rpc_client = executable('rpc-client',
   files(
+    'Debug.vala',
     'rpc-client/namespace.vala',
     'rpc-client/Main.vala',
     'ui/namespace.vala',

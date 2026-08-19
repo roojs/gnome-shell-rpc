@@ -21,6 +21,8 @@ namespace GnomeShellRpc
 	 */
 	public class Plugin : Meta.Plugin
 	{
+		private Rpc.Server rpc_server;
+
 		public override void start()
 		{
 			var display = this.get_display();
@@ -48,7 +50,8 @@ namespace GnomeShellRpc
 			manager.monitors_changed();
 
 			backend.get_stage().show();
-			new Rpc.Server().start(display);
+			this.rpc_server = new Rpc.Server();
+			this.rpc_server.start(display);
 			GLib.debug("stage shown");
 		}
 	}

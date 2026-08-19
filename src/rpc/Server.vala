@@ -76,6 +76,7 @@ namespace GnomeShellRpc.Rpc
 			GLib.debug("listening on %s", socket_path);
 
 			display.window_created.connect((meta_window) => {
+				GLib.debug("window_created title=%s", meta_window.get_title());
 				this.track_window(meta_window);
 				if (this.listen == null) {
 					return;
