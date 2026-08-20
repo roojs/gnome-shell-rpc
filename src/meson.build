@@ -109,6 +109,19 @@ gi_stub_gen = executable('gi-stub-gen',
   install: false,
 )
 
+# Review artifact: full Meta-16 stub emit (not linked into any binary yet).
+meta_generated = custom_target('Meta_generated.vala',
+  output: 'Meta_generated.vala',
+  command: [
+    gi_stub_gen,
+    'emit', 'Meta', '16',
+    '--typelib-dir=' + mutter_typelib_dir,
+    '--out=@OUTPUT@',
+  ],
+  depends: gi_stub_gen,
+  build_by_default: true,
+)
+
 # Schema typelib from handwritten GIR (signatures only; no .so required yet).
 girpcsmoke_typelib_schema = custom_target('GiRpcSmoke-1.0-schema.typelib',
   input: files('gi-rpc-smoke/GiRpcSmoke-1.0.gir'),

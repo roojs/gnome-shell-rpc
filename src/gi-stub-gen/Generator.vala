@@ -76,10 +76,10 @@ namespace $(ns)
 						emitted += this.emit_object(stream, ns, (GI.ObjectInfo)info);
 						continue;
 					case GI.InfoType.ENUM:
-						emitted += this.emit_enum(stream, (GI.EnumInfo)info, false);
+						emitted += this.emit_enum(stream, (GI.EnumInfo)info);
 						continue;
 					case GI.InfoType.FLAGS:
-						emitted += this.emit_enum(stream, (GI.EnumInfo)info, true);
+						emitted += this.emit_flags(stream, (GI.EnumInfo)info);
 						continue;
 					case GI.InfoType.CONSTANT:
 						emitted += this.emit_constant(stream, (GI.ConstantInfo)info);
@@ -121,7 +121,7 @@ namespace $(ns)
 			if (!this.allow_hit(fi.get_name(), "")) {
 				return 0;
 			}
-			return this.emit_callable(stream, ns, "", fi, false);
+			return this.emit_callable(stream, ns, "", fi, "ns");
 		}
 
 		/**
@@ -158,21 +158,37 @@ namespace $(ns)
 ");
 			var methods = 0;
 			for (var m = 0; m < oi.get_n_methods(); m++) {
-				methods += this.emit_callable(stream, ns, oi.get_name(), oi.get_method(m), true);
+				methods += this.emit_callable(stream, ns, oi.get_name(), oi.get_method(m), "class");
 			}
 			stream.puts("	}\n");
 			return 1 + methods;
 		}
 
 		/**
-		 * Emit an enum or flags type.
+		 * Emit an enum type.
 		 *
 		 * @param stream output Vala file
 		 * @param ei enum info
-		 * @param is_flags true to emit {@code [Flags]}
 		 * @return 1 if written
 		 */
-		private int emit_enum(GLib.FileStream stream, GI.EnumInfo ei, bool is_flags)
+		private int emit_enum(GLib.FileStream stream, GI.EnumInfo ei)
+		{
+			return this.emit_enum_values(stream, ei, false);
+		}
+
+		/**
+		 * Emit a flags type.
+		 *
+		 * @param stream output Vala file
+		 * @param ei flags info (same GI shape as enum)
+		 * @return 1 if written
+		 */
+		private int emit_flags(GLib.FileStream stream, GI.EnumInfo ei)
+		{
+			return this.emit_enum_values(stream, ei, true);
+		}
+
+		private int emit_enum_values(GLib.FileStream stream, GI.EnumInfo ei, bool is_flags)
 		{
 			if (!this.allow_hit(ei.get_name(), "")) {
 				return 0;
@@ -341,7 +357,7 @@ namespace $(ns)
 ");
 			var methods = 0;
 			for (var m = 0; m < ii.get_n_methods(); m++) {
-				methods += this.emit_callable(stream, ns, ii.get_name(), ii.get_method(m), true);
+				methods += this.emit_callable(stream, ns, ii.get_name(), ii.get_method(m), "iface");
 			}
 			stream.puts("	}\n");
 			return 1 + methods;
@@ -388,7 +404,7 @@ namespace $(ns)
 		 * @param ns GI namespace
 		 * @param type_name owning type name, or empty for namespace functions
 		 * @param fi function info
-		 * @param indent_method indent as a class/interface member
+		 * @param kind {@code ns}, {@code class}, or {@code iface}
 		 * @return 1 if written
 		 */
 		private int emit_callable(
@@ -396,7 +412,7 @@ namespace $(ns)
 			string ns,
 			string type_name,
 			GI.FunctionInfo fi,
-			bool indent_method
+			string kind
 		)
 		{
 			if (type_name != "" && !this.allow_hit(fi.get_name(), type_name)
@@ -438,11 +454,24 @@ namespace $(ns)
 				all_utf8 = false;
 			}
 
-			var tab = indent_method ? "		" : "	";
+			var tab = kind == "ns" ? "	" : "		";
 			var arglist = string.joinv(", ", args);
 			var rpc = type_name == ""
 				? @"RPC-$(ns).$(fi.get_name())"
 				: @"RPC-$(ns).$(type_name).$(fi.get_name())";
+
+			if (kind == "iface") {
+				if (ret == "void") {
+					stream.puts(@"
+$(tab)public abstract void $(fi.get_name())($(arglist));
+");
+				} else {
+					stream.puts(@"
+$(tab)public abstract $(ret) $(fi.get_name())($(arglist));
+");
+				}
+				return 1;
+			}
 
 			if (all_utf8 && ret == "string" && type_name == "") {
 				var aname = fi.get_arg(0).get_name();
