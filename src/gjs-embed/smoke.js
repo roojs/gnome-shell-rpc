@@ -1,3 +1,3 @@
 print('gjs-embed ok');
-const GLib = imports.gi.GLib;
-print('GLib ' + GLib.get_user_name());
+const GiRpcSmoke = imports.gi.GiRpcSmoke;
+print(GiRpcSmoke.ping('hello'));

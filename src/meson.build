@@ -1,5 +1,5 @@
 compositor_sources = files(
-  'Debug.vala',
+  'ApplicationInterface.vala',
   'namespace.vala',
   'Main.vala',
   'Plugin.vala',
@@ -42,9 +42,9 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
 )
 
 rpc_client_sources = files(
-  'Debug.vala',
+  'ApplicationInterface.vala',
   'rpc-client/namespace.vala',
-  'rpc-client/Main.vala',
+  'rpc-client/Application.vala',
   'shared/namespace.vala',
   'shared/Rectangle.vala',
   'ui/namespace.vala',
@@ -63,19 +63,137 @@ rpc_client = executable('rpc-client',
 )
 
 gjs_dep = dependency('gjs-1.0')
+girepository_dep = dependency('gobject-introspection-1.0')
 
 gjs_embed = executable('gjs-embed',
   files(
-    'Debug.vala',
+    'ApplicationInterface.vala',
     'gjs-embed/namespace.vala',
-    'gjs-embed/Main.vala',
+    'gjs-embed/Application.vala',
   ),
-  dependencies: [gjs_dep, dependency('gee-0.8')],
+  dependencies: [
+    gjs_dep,
+    girepository_dep,
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+  ],
   vala_args: [
     '--pkg=gjs-1.0',
+    '--pkg=gobject-introspection-1.0',
     '--pkg=gee-0.8',
+    '--pkg=gio-2.0',
     '--vapidir', meson.project_source_root() / 'vapi',
   ],
+  install: false,
+)
+
+g_ir_compiler = find_program('g-ir-compiler')
+
+gi_stub_gen = executable('gi-stub-gen',
+  files(
+    'ApplicationInterface.vala',
+    'gi-stub-gen/namespace.vala',
+    'gi-stub-gen/Generator.vala',
+    'gi-stub-gen/Application.vala',
+  ),
+  dependencies: [
+    girepository_dep,
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+  ],
+  vala_args: [
+    '--pkg=gobject-introspection-1.0',
+    '--pkg=gee-0.8',
+    '--pkg=gio-2.0',
+  ],
+  install: false,
+)
+
+# Schema typelib from handwritten GIR (signatures only; no .so required yet).
+girpcsmoke_typelib_schema = custom_target('GiRpcSmoke-1.0-schema.typelib',
+  input: files('gi-rpc-smoke/GiRpcSmoke-1.0.gir'),
+  output: 'GiRpcSmoke-1.0-schema.typelib',
+  command: [
+    g_ir_compiler,
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libgirpcsmoke.so',
+    '@INPUT@',
+  ],
+)
+
+# Copy schema typelib to the name GI.Repository.require expects, in a private dir.
+girpcsmoke_schema_dir = meson.current_build_dir() / 'gi-rpc-smoke-schema'
+girpcsmoke_schema_named = custom_target('GiRpcSmoke-schema-named',
+  input: girpcsmoke_typelib_schema,
+  output: 'gi-rpc-smoke-schema.stamp',
+  command: [
+    'sh', '-c',
+    'mkdir -p "$1" && cp "$2" "$1/GiRpcSmoke-1.0.typelib" && touch "$3"',
+    'sh',
+    girpcsmoke_schema_dir,
+    '@INPUT@',
+    '@OUTPUT@',
+  ],
+)
+
+girpcsmoke_generated = custom_target('GiRpcSmoke_generated.vala',
+  output: 'GiRpcSmoke_generated.vala',
+  command: [
+    gi_stub_gen,
+    'emit', 'GiRpcSmoke', '1.0',
+    '--typelib-dir=' + girpcsmoke_schema_dir,
+    '--allow=ping',
+    '--out=@OUTPUT@',
+  ],
+  depends: [girpcsmoke_schema_named, gi_stub_gen],
+)
+
+girpcsmoke_lib = shared_library('girpcsmoke',
+  girpcsmoke_generated,
+  files(
+    'gi-rpc-smoke/namespace.vala',
+    'gi-rpc-smoke/PingParams.vala',
+    'gi-rpc-smoke/PingResult.vala',
+    'gi-stub/namespace.vala',
+    'gi-stub/Runtime.vala',
+    'rpc/namespace.vala',
+    'rpc/DaemonParams.vala',
+  ),
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+girpcsmoke_typelib = custom_target('GiRpcSmoke-1.0.typelib',
+  input: files('gi-rpc-smoke/GiRpcSmoke-1.0.gir'),
+  output: 'GiRpcSmoke-1.0.typelib',
+  command: [
+    g_ir_compiler,
+    '--output', '@OUTPUT@',
+    '--shared-library', girpcsmoke_lib.full_path(),
+    '@INPUT@',
+  ],
+  depends: girpcsmoke_lib,
+)
+
+gi_rpc_echo = executable('gi-rpc-echo',
+  files(
+    'ApplicationInterface.vala',
+    'rpc/namespace.vala',
+    'rpc/DaemonParams.vala',
+    'rpc/Daemon.vala',
+    'rpc/Listen.vala',
+    'gi-rpc-smoke/namespace.vala',
+    'gi-rpc-smoke/PingParams.vala',
+    'gi-rpc-smoke/PingResult.vala',
+    'gi-rpc-echo/namespace.vala',
+    'gi-rpc-echo/Echo.vala',
+    'gi-rpc-echo/Application.vala',
+  ),
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
   install: false,
 )
 
@@ -83,7 +201,7 @@ gtk4_dep = dependency('gtk4')
 
 fake_shell = executable('fake-shell',
   files(
-    'Debug.vala',
+    'ApplicationInterface.vala',
     'shared/namespace.vala',
     'shared/Rectangle.vala',
     'ui/namespace.vala',
@@ -96,7 +214,6 @@ fake_shell = executable('fake-shell',
     'remote/Display.vala',
     'remote/Window.vala',
     'fake-shell/namespace.vala',
-    'fake-shell/Main.vala',
     'fake-shell/Application.vala',
     'fake-shell/TopBar.vala',
   ),

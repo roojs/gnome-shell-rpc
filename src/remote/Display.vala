@@ -34,6 +34,7 @@ namespace GnomeShellRpc.Remote
 				seen.add(snap.id);
 				if (!this.windows.has_key(snap.id)) {
 					this.windows.set(snap.id, new Window(this.session, snap.id));
+					this.session.client.proxies.set(snap.id, this.windows.get(snap.id));
 				}
 				var win = this.windows.get(snap.id);
 				win.title = snap.title;
@@ -52,6 +53,7 @@ namespace GnomeShellRpc.Remote
 			foreach (var id in stale) {
 				var gone = this.windows.get(id);
 				this.windows.unset(id);
+				this.session.client.proxies.unset(id);
 				gone.closed();
 			}
 			yield this.update_focus();
@@ -78,6 +80,7 @@ namespace GnomeShellRpc.Remote
 			var snap = (Ui.Window)resp.result.get(0);
 			if (!this.windows.has_key(snap.id)) {
 				this.windows.set(snap.id, new Window(this.session, snap.id));
+				this.session.client.proxies.set(snap.id, this.windows.get(snap.id));
 			}
 			var win = this.windows.get(snap.id);
 			win.title = snap.title;

@@ -66,14 +66,6 @@ namespace GnomeShellRpc.Remote
 						break;
 
 					default:
-						if (notif.method.has_prefix("notify::")
-							&& this.display.windows.has_key(notif.id)) {
-							var win = this.display.windows.get(notif.id);
-							if (notif.method == "notify::title") {
-								win.title = notif.message;
-							}
-							break;
-						}
 						GLib.debug("notification method=%s id=%d",
 							notif.method, notif.id);
 						break;

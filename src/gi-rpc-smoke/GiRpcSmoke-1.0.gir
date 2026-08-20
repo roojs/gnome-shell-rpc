@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- Handwritten toy GIR for 0.5 smoke. shared-library overridden at compile. -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <namespace name="GiRpcSmoke"
+             version="1.0"
+             shared-library="libgirpcsmoke.so"
+             c:identifier-prefixes="GiRpcSmoke"
+             c:symbol-prefixes="gi_rpc_smoke">
+    <function name="ping" c:identifier="gi_rpc_smoke_ping">
+      <return-value transfer-ownership="full">
+        <type name="utf8" c:type="gchar*"/>
+      </return-value>
+      <parameters>
+        <parameter name="msg" transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </parameter>
+      </parameters>
+    </function>
+  </namespace>
+</repository>

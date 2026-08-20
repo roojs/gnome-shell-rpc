@@ -1,21 +1,22 @@
-namespace GnomeShellRpc.FakeShell
+namespace GnomeShellRpc.GjsEmbed
 {
 	/**
-	 * Gtk application that connects {@link Remote.Session} and shows
-	 * {@link TopBar}.
+	 * Embed {@link Gjs.Context} and eval a script file.
+	 *
+	 * Prepends {@code GI_RPC_SMOKE_TYPELIB_DIR} to the GI typelib search path
+	 * when set (toy stub for 0.5).
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * ./build/src/fake-shell --debug
+	 * GI_RPC_SMOKE_TYPELIB_DIR=./build/src \
+	 *   ./build/src/gjs-embed --debug src/gjs-embed/smoke.js
 	 * }}}
 	 */
-	public class Application : Gtk.Application, GnomeShellRpc.ApplicationInterface
+	public class Application : GLib.Application, GnomeShellRpc.ApplicationInterface
 	{
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
-
-		private Remote.Session session;
 
 		private const GLib.OptionEntry[] options = {
 			{ "debug", 'd', 0, GLib.OptionArg.NONE, ref opt_debug,
@@ -28,8 +29,9 @@ namespace GnomeShellRpc.FakeShell
 		public Application()
 		{
 			GLib.Object(
-				application_id: "org.gnome.ShellRpc.FakeShell",
+				application_id: "org.gnome.ShellRpc.GjsEmbed",
 				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
+					| GLib.ApplicationFlags.NON_UNIQUE
 			);
 
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
@@ -45,9 +47,7 @@ namespace GnomeShellRpc.FakeShell
 			Application.opt_debug_critical = false;
 
 			var args = command_line.get_arguments();
-			var opt_context = new GLib.OptionContext(
-				this.get_application_id()
-			);
+			var opt_context = new GLib.OptionContext("SCRIPT.js");
 			opt_context.set_help_enabled(true);
 			opt_context.add_main_entries(Application.options, null);
 
@@ -67,29 +67,38 @@ namespace GnomeShellRpc.FakeShell
 			GnomeShellRpc.debug_critical_enabled =
 				Application.opt_debug_critical;
 
-			this.hold();
-			this.activate();
-			this.release();
-			return 0;
-		}
+			if (remaining.length < 2) {
+				command_line.printerr("usage: gjs-embed [--debug] SCRIPT.js\n");
+				return 1;
+			}
 
-		public override void activate()
-		{
-			this.hold();
-			this.session = new Remote.Session();
-			this.session.connect.begin((obj, res) => {
-				try {
-					this.session.connect.end(res);
-				} catch (GLib.Error e) {
-					GLib.printerr("fake-shell: %s\n", e.message);
-					this.release();
-					this.quit();
-					return;
-				}
-				var bar = new TopBar(this, this.session);
-				bar.present();
-				this.release();
-			});
+			var typelib_dir = GLib.Environment.get_variable(
+				"GI_RPC_SMOKE_TYPELIB_DIR"
+			);
+			if (typelib_dir != null && typelib_dir.length > 0) {
+				GI.Repository.prepend_search_path(typelib_dir);
+				GLib.debug("typelib prepend %s", typelib_dir);
+			}
+
+			var script = remaining[1];
+			string[] search_path = {};
+			search_path += GLib.Path.get_dirname(script);
+			search_path += ".";
+			GLib.debug("script %s", script);
+
+			var ctx = new Gjs.Context.with_search_path(search_path);
+			var status = 0;
+			var ok = false;
+			try {
+				ok = ctx.eval_file(script, out status);
+			} catch (GLib.Error e) {
+				command_line.printerr("%s\n", e.message);
+				return 1;
+			}
+			if (!ok) {
+				return 1;
+			}
+			return status;
 		}
 	}
 
