@@ -21,7 +21,7 @@ namespace GnomeShellRpc.Rpc
 		public void start(Meta.Display display)
 		{
 			this.display = display;
-			Ui.Rectangle.rpc_register();
+			Shared.Rectangle.rpc_register();
 			Ui.Window.rpc_register();
 			Ui.WindowParams.rpc_register();
 			Ui.Workspace.rpc_register();

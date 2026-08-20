@@ -3,8 +3,9 @@ compositor_sources = files(
   'namespace.vala',
   'Main.vala',
   'Plugin.vala',
+  'shared/namespace.vala',
+  'shared/Rectangle.vala',
   'ui/namespace.vala',
-  'ui/Rectangle.vala',
   'ui/WindowParams.vala',
   'ui/Window.vala',
   'ui/WorkspaceParams.vala',
@@ -40,20 +41,69 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
   install: false,
 )
 
+rpc_client_sources = files(
+  'Debug.vala',
+  'rpc-client/namespace.vala',
+  'rpc-client/Main.vala',
+  'shared/namespace.vala',
+  'shared/Rectangle.vala',
+  'ui/namespace.vala',
+  'ui/WindowParams.vala',
+  'ui/Window.vala',
+  'ui/DisplayParams.vala',
+  'rpc/DaemonParams.vala',
+)
+
 rpc_client = executable('rpc-client',
+  rpc_client_sources,
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+gjs_dep = dependency('gjs-1.0')
+
+gjs_embed = executable('gjs-embed',
   files(
     'Debug.vala',
-    'rpc-client/namespace.vala',
-    'rpc-client/Main.vala',
+    'gjs-embed/namespace.vala',
+    'gjs-embed/Main.vala',
+  ),
+  dependencies: [gjs_dep, dependency('gee-0.8')],
+  vala_args: [
+    '--pkg=gjs-1.0',
+    '--pkg=gee-0.8',
+    '--vapidir', meson.project_source_root() / 'vapi',
+  ],
+  install: false,
+)
+
+gtk4_dep = dependency('gtk4')
+
+fake_shell = executable('fake-shell',
+  files(
+    'Debug.vala',
+    'shared/namespace.vala',
+    'shared/Rectangle.vala',
     'ui/namespace.vala',
-    'ui/Rectangle.vala',
     'ui/WindowParams.vala',
     'ui/Window.vala',
     'ui/DisplayParams.vala',
     'rpc/DaemonParams.vala',
+    'remote/namespace.vala',
+    'remote/Session.vala',
+    'remote/Display.vala',
+    'remote/Window.vala',
+    'fake-shell/namespace.vala',
+    'fake-shell/Main.vala',
+    'fake-shell/Application.vala',
+    'fake-shell/TopBar.vala',
   ),
-  dependencies: [ocrpc_dep],
-  vala_args: ocrpc_vala_args,
+  dependencies: [ocrpc_dep, gtk4_dep],
+  vala_args: ocrpc_vala_args + [
+    '--pkg=gtk4',
+  ],
   build_rpath: ocrpc_rpath,
   install: false,
 )

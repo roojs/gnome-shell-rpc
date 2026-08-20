@@ -33,12 +33,11 @@ namespace GnomeShellRpc.Rpc
 				if (p.protocol > 0) {
 					this.protocol = p.protocol;
 				}
-				var result = new Gee.ArrayList<GLib.Object>();
-				result.add(this);
-				request.reply(new OLLMrpc.Response() {
+				var response = new OLLMrpc.Response() {
 					id = request.id,
-					result = result,
-				});
+				};
+				response.result.add(this);
+				request.reply(response);
 			});
 		}
 	}

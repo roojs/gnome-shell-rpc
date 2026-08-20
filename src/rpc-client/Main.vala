@@ -7,7 +7,7 @@ namespace GnomeShellRpc.RpcClient
 		GnomeShellRpc.Debug.parse_args(args);
 		GnomeShellRpc.Debug.install_log_handler("rpc-client");
 
-		GnomeShellRpc.Ui.Rectangle.rpc_register();
+		GnomeShellRpc.Shared.Rectangle.rpc_register();
 		GnomeShellRpc.Ui.Window.rpc_register();
 		GnomeShellRpc.Ui.WindowParams.rpc_register();
 		GnomeShellRpc.Ui.DisplayParams.rpc_register();
