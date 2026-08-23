@@ -5,9 +5,7 @@ namespace Meta
 	 *
 	 * Callers assign {@link title} / {@link wm_class}, then
 	 * {@code set_data("gsr-lease-id", …)} for the plugin handle.
-	 * Vala property accessors are the GI {@code get_title} /
-	 * {@code get_wm_class} symbols. {@link minimize} sends
-	 * {@code Meta-Window.minimize} (typelib FFI on the plugin lease).
+	 * Mutators use typelib FFI ({@code Meta-Window.*} + lease_id).
 	 *
 	 * == Example ==
 	 *
@@ -18,6 +16,7 @@ namespace Meta
 	 * };
 	 * win.set_data("gsr-lease-id", snap.id.to_string());
 	 * win.minimize();
+	 * win.unminimize();
 	 * }}}
 	 */
 	public class Window : GLib.Object
@@ -25,18 +24,47 @@ namespace Meta
 		public string title { get; set; default = ""; }
 		public string wm_class { get; set; default = ""; }
 
-		/**
-		 * Minimize this window on the nested compositor.
-		 */
+		/** Minimize this window on the nested compositor. */
 		public void minimize()
 		{
-			var lease = this.get_data<string>("gsr-lease-id");
-			if (lease == null || lease.length == 0) {
-				GLib.error("Meta.Window.minimize: no gsr-lease-id");
-			}
-			GnomeShellRpc.GiStub.Runtime.call_void_values(
-				"Meta-Window.minimize",
-				uint64.parse(lease)
+			GnomeShellRpc.GiStub.Runtime.call_values("Meta-Window.minimize", this);
+		}
+
+		/** Unminimize this window on the nested compositor. */
+		public void unminimize()
+		{
+			GnomeShellRpc.GiStub.Runtime.call_values("Meta-Window.unminimize", this);
+		}
+
+		/**
+		 * Activate (raise/focus) this window.
+		 *
+		 * @param current_time mutter user-time ({@code 0} is fine on nested Wayland)
+		 */
+		public void activate(uint32 current_time = 0)
+		{
+			var current_time_val = GLib.Value(typeof(uint));
+			current_time_val.set_uint(current_time);
+			GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Window.activate",
+				this,
+				{ current_time_val }
+			);
+		}
+
+		/**
+		 * Request close (WM delete) for this window.
+		 *
+		 * @param timestamp event timestamp ({@code 0} is fine on nested Wayland)
+		 */
+		public void delete(uint32 timestamp = 0)
+		{
+			var timestamp_val = GLib.Value(typeof(uint));
+			timestamp_val.set_uint(timestamp);
+			GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Window.delete",
+				this,
+				{ timestamp_val }
 			);
 		}
 	}

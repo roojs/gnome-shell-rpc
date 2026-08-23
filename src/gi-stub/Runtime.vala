@@ -2,11 +2,12 @@
  * Sync RPC client for GI stubs (plan 0.5 Meta mini).
  *
  * {@link register} is idempotent (wire types + {@code MUTTER_RPC_SOCKET}).
- * {@link call} and {@link call_values} always start with {@link register}.
+ * {@link call_values}, {@link call_object}, and {@link call_list} always start
+ * with {@link register}.
  *
  * Positional args use {@link OLLMrpc.Request.values} (GIR order, no direction
- * on the wire). Leased instance methods set {@link OLLMrpc.Request.lease_id}.
- * Scalar returns land in {@link OLLMrpc.Response.values}; GObjects in
+ * on the wire). Instance stubs carry {@code gsr-lease-id} data →
+ * {@link OLLMrpc.Request.lease_id}. Scalar returns land in {@link OLLMrpc.Response.values}; GObjects in
  * {@link OLLMrpc.Response.result}.
  *
  * == Example ==
@@ -17,9 +18,7 @@
  *     "Meta-Display.list_windows",
  *     new GnomeShellRpc.Ui.DisplayParams(),
  *     typeof(GnomeShellRpc.Ui.Window));
- * GnomeShellRpc.GiStub.Runtime.call_void_values(
- *     "Meta-Window.minimize",
- *     3);
+ * GnomeShellRpc.GiStub.Runtime.call_values("Meta-Window.minimize", win);
  * }}}
  */
 namespace GnomeShellRpc.GiStub
@@ -90,28 +89,29 @@ namespace GnomeShellRpc.GiStub
 		}
 
 		/**
-		 * Sync call with a typed {@link OLLMrpc.CallParam} bag (legacy path).
-		 */
-		public static OLLMrpc.Response call(string method, OLLMrpc.CallParam param)
-		{
-			return Runtime.do_call(new OLLMrpc.Request() {
-				method = method,
-				param = param,
-			});
-		}
-
-		/**
-		 * Sync call with positional {@link GLib.Value}s and optional lease.
+		 * Sync call with positional {@link GLib.Value}s and optional instance.
 		 *
 		 * @param method wire method (e.g. {@code Meta-Window.minimize})
-		 * @param lease_id leased instance handle; {@code 0} for constructors / no instance
+		 * @param instance leased stub; {@code gsr-lease-id} data → {@link OLLMrpc.Request.lease_id}
 		 * @param values GIR-order IN / INOUT args (may be empty)
 		 */
 		public static OLLMrpc.Response call_values(
 			string method,
-			uint64 lease_id = 0,
+			GLib.Object? instance = null,
 			owned GLib.Value?[]? values = null
 		) {
+			uint64 lease_id = 0;
+			if (instance != null) {
+				var lease = instance.get_data<string>("gsr-lease-id");
+				if (lease == null || lease.length == 0) {
+					GLib.error(
+						"RPC %s: no gsr-lease-id on %s",
+						method,
+						instance.get_type().name()
+					);
+				}
+				lease_id = uint64.parse(lease);
+			}
 			var req = new OLLMrpc.Request() {
 				method = method,
 				lease_id = lease_id,
@@ -125,90 +125,18 @@ namespace GnomeShellRpc.GiStub
 		}
 
 		/**
-		 * Positional call with no return payload (void method).
-		 */
-		public static void call_void_values(
-			string method,
-			uint64 lease_id = 0,
-			owned GLib.Value?[]? values = null
-		) {
-			Runtime.call_values(method, lease_id, values);
-		}
-
-		/**
-		 * {@link call} then first {@link OLLMrpc.Response.result} row, or null.
+		 * Legacy {@link OLLMrpc.CallParam} call; first {@link OLLMrpc.Response.result}
+		 * row, or null.
 		 */
 		public static GLib.Object? call_object(
 			string method,
 			OLLMrpc.CallParam param,
 			GLib.Type expected
 		) {
-			return Runtime.first_object(Runtime.call(method, param), expected);
-		}
-
-		/**
-		 * {@link call_values} then first {@link OLLMrpc.Response.result} row, or null.
-		 */
-		public static GLib.Object? call_object_values(
-			string method,
-			uint64 lease_id,
-			GLib.Type expected,
-			owned GLib.Value?[]? values = null
-		) {
-			return Runtime.first_object(
-				Runtime.call_values(method, lease_id, values),
-				expected
-			);
-		}
-
-		/**
-		 * {@link call} then every {@link OLLMrpc.Response.result} row.
-		 */
-		public static GLib.List<GLib.Object> call_list(
-			string method,
-			OLLMrpc.CallParam param,
-			GLib.Type elem
-		) {
-			return Runtime.object_list(Runtime.call(method, param), elem);
-		}
-
-		/**
-		 * {@link call_values} then scalar int at {@code index} in {@link OLLMrpc.Response.values}.
-		 */
-		public static int call_int_values(
-			string method,
-			uint64 lease_id = 0,
-			int index = 0,
-			owned GLib.Value?[]? values = null
-		) {
-			return Runtime.scalar_int(
-				Runtime.call_values(method, lease_id, values),
-				index
-			);
-		}
-
-		/**
-		 * {@link call_values} then scalar string at {@code index}.
-		 */
-		public static string call_string_values(
-			string method,
-			uint64 lease_id = 0,
-			int index = 0,
-			owned GLib.Value?[]? values = null
-		) {
-			return Runtime.scalar_string(
-				Runtime.call_values(method, lease_id, values),
-				index
-			);
-		}
-
-		/**
-		 * First {@link OLLMrpc.Response.result} row cast to {@code expected}, or null.
-		 */
-		public static GLib.Object? first_object(
-			OLLMrpc.Response response,
-			GLib.Type expected
-		) {
+			var response = Runtime.do_call(new OLLMrpc.Request() {
+				method = method,
+				param = param,
+			});
 			if (response.result.size == 0) {
 				return null;
 			}
@@ -225,12 +153,18 @@ namespace GnomeShellRpc.GiStub
 		}
 
 		/**
-		 * Every {@link OLLMrpc.Response.result} row cast to {@code elem}.
+		 * Legacy {@link OLLMrpc.CallParam} call; every {@link OLLMrpc.Response.result}
+		 * row.
 		 */
-		public static GLib.List<GLib.Object> object_list(
-			OLLMrpc.Response response,
+		public static GLib.List<GLib.Object> call_list(
+			string method,
+			OLLMrpc.CallParam param,
 			GLib.Type elem
 		) {
+			var response = Runtime.do_call(new OLLMrpc.Request() {
+				method = method,
+				param = param,
+			});
 			var list = new GLib.List<GLib.Object>();
 			for (var i = 0; i < response.result.size; i++) {
 				var obj = response.result.get(i);
@@ -245,52 +179,6 @@ namespace GnomeShellRpc.GiStub
 				list.append(obj);
 			}
 			return list;
-		}
-
-		/**
-		 * Scalar int from {@link OLLMrpc.Response.values} at {@code index}.
-		 */
-		public static int scalar_int(OLLMrpc.Response response, int index = 0)
-		{
-			if (index < 0 || index >= response.values.size) {
-				GLib.error("RPC values[%d]: out of range (size %d)", index, response.values.size);
-			}
-			return response.values.get(index).get_int();
-		}
-
-		/**
-		 * Scalar string from {@link OLLMrpc.Response.values} at {@code index}.
-		 */
-		public static string scalar_string(OLLMrpc.Response response, int index = 0)
-		{
-			if (index < 0 || index >= response.values.size) {
-				GLib.error("RPC values[%d]: out of range (size %d)", index, response.values.size);
-			}
-			return response.values.get(index).get_string();
-		}
-
-		/** Box an int for {@link call_values}. */
-		public static GLib.Value value_int(int v)
-		{
-			var val = GLib.Value(typeof(int));
-			val.set_int(v);
-			return val;
-		}
-
-		/** Box a string for {@link call_values}. */
-		public static GLib.Value value_string(string s)
-		{
-			var val = GLib.Value(typeof(string));
-			val.set_string(s);
-			return val;
-		}
-
-		/** Box a bool for {@link call_values}. */
-		public static GLib.Value value_bool(bool v)
-		{
-			var val = GLib.Value(typeof(bool));
-			val.set_boolean(v);
-			return val;
 		}
 
 		private static OLLMrpc.Response do_call(OLLMrpc.Request request)

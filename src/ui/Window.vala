@@ -3,7 +3,8 @@ namespace GnomeShellRpc.Ui
 	/**
 	 * Window as the remote client sees it (snapshot fields only).
 	 *
-	 * Mutating methods live on {@link Display} (`minimize_window`, …).
+	 * Mutating methods live on {@link Display} (`minimize_window`, …) for
+	 * {@link GnomeShellRpc.FakeShell}; meta-mini uses {@code Meta-Window.*} FFI.
 	 *
 	 * == Example ==
 	 *

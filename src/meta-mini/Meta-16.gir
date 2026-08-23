@@ -110,6 +110,31 @@
           <type name="none" c:type="void"/>
         </return-value>
       </method>
+      <method name="unminimize" c:identifier="meta_window_unminimize">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </method>
+      <method name="activate" c:identifier="meta_window_activate">
+        <parameters>
+          <parameter name="current_time" transfer-ownership="none">
+            <type name="guint32" c:type="guint32"/>
+          </parameter>
+        </parameters>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </method>
+      <method name="delete" c:identifier="meta_window_delete">
+        <parameters>
+          <parameter name="timestamp" transfer-ownership="none">
+            <type name="guint32" c:type="guint32"/>
+          </parameter>
+        </parameters>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </method>
     </class>
     <record name="WindowClass"
              c:type="MetaWindowClass"

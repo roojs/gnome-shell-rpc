@@ -225,7 +225,8 @@ metamini_typelib = custom_target('Meta-16.typelib',
     '--shared-library', metamini_lib.full_path(),
     '@INPUT@',
   ],
-  depends: metamini_lib,
+  depends: [metamini_lib],
+  build_by_default: true,
 )
 
 gi_rpc_echo = executable('gi-rpc-echo',

@@ -4,11 +4,11 @@
  * LAUNCH via stock Meta launch path + Gio:
  *   display.get_startup_notification().create_launcher()
  *   Gio.AppInfo.launch([], launcher)
- * FETCH window; optional PUT minimize.
+ * FETCH window; optional minimize → hold → unminimize.
  *
  * Default app: gtk4-demo. Override: GI_META_SMOKE_CMD='gtk4-demo'
- * Minimize: GI_META_SMOKE_MINIMIZE=1
- * Hold before minimize (ms): GI_META_SMOKE_HOLD_MS (default 5000 when minimizing)
+ * Minimize + unminimize cycle: GI_META_SMOKE_MINIMIZE=1
+ * Hold (ms) before minimize and before unminimize: GI_META_SMOKE_HOLD_MS (default 5000)
  *
  * Progress uses GJS {@link log} (domain prefix meta-smoke) so gjs-embed --debug
  * writes to ~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.GjsEmbed.debug.log
@@ -125,7 +125,7 @@ function sleepMs(ms) {
 }
 
 function main() {
-	smokeLog('meta-smoke: launch -> fetch -> minimize');
+	smokeLog('meta-smoke: launch -> fetch -> minimize -> unminimize');
 
 	const display = getDisplay();
 	launchApp(display);
@@ -166,6 +166,10 @@ function main() {
 		sleepMs(holdMs);
 		win.minimize();
 		smokeLog('put: minimize() ok');
+		smokeLog('hold: ' + holdMs + 'ms before unminimize');
+		sleepMs(holdMs);
+		win.unminimize();
+		smokeLog('put: unminimize() ok');
 	} else {
 		smokeLog('put: skip minimize (set GI_META_SMOKE_MINIMIZE=1 to enable)');
 	}
