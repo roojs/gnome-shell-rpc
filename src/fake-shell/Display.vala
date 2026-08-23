@@ -1,7 +1,7 @@
-namespace GnomeShellRpc.Remote
+namespace GnomeShellRpc.FakeShell
 {
 	/**
-	 * Client-side display: window graph plus {@code RPC-Display} calls.
+	 * Client-side display: window graph plus {@code Display} calls.
 	 *
 	 * == Example ==
 	 *
@@ -25,7 +25,7 @@ namespace GnomeShellRpc.Remote
 		public async void list_windows() throws GLib.Error
 		{
 			var list_resp = yield this.session.call(new OLLMrpc.Request() {
-				method = "RPC-Display.list_windows",
+				method = "Meta-Display.list_windows",
 				param = new Ui.DisplayParams(),
 			});
 			var seen = new Gee.HashSet<int>();
@@ -60,7 +60,7 @@ namespace GnomeShellRpc.Remote
 		}
 
 		/**
-		 * Fetch the focused window snapshot ({@code RPC-Display.get_focused_window}).
+		 * Fetch the focused window snapshot ({@code Meta-Display.get_focused_window}).
 		 *
 		 * Named {@link update_focus} so it does not clash with the
 		 * {@link focused_window} property C getter.
@@ -68,7 +68,7 @@ namespace GnomeShellRpc.Remote
 		public async void update_focus() throws GLib.Error
 		{
 			var resp = yield this.session.call(new OLLMrpc.Request() {
-				method = "RPC-Display.get_focused_window",
+				method = "Meta-Display.get_focused_window",
 				param = new Ui.DisplayParams(),
 			});
 			if (resp.result.size == 0) {
@@ -94,7 +94,7 @@ namespace GnomeShellRpc.Remote
 		public async void minimize_window(int object_id) throws GLib.Error
 		{
 			yield this.session.call(new OLLMrpc.Request() {
-				method = "RPC-Display.minimize_window",
+				method = "Meta-Display.minimize_window",
 				param = new Ui.WindowParams() {
 					object_id = object_id,
 				},
@@ -104,7 +104,7 @@ namespace GnomeShellRpc.Remote
 		public async void unminimize_window(int object_id) throws GLib.Error
 		{
 			yield this.session.call(new OLLMrpc.Request() {
-				method = "RPC-Display.unminimize_window",
+				method = "Meta-Display.unminimize_window",
 				param = new Ui.WindowParams() {
 					object_id = object_id,
 				},
@@ -114,7 +114,7 @@ namespace GnomeShellRpc.Remote
 		public async void activate_window(int object_id) throws GLib.Error
 		{
 			yield this.session.call(new OLLMrpc.Request() {
-				method = "RPC-Display.activate_window",
+				method = "Meta-Display.activate_window",
 				param = new Ui.WindowParams() {
 					object_id = object_id,
 				},
@@ -124,7 +124,7 @@ namespace GnomeShellRpc.Remote
 		public async void close_window(int object_id) throws GLib.Error
 		{
 			yield this.session.call(new OLLMrpc.Request() {
-				method = "RPC-Display.close_window",
+				method = "Meta-Display.close_window",
 				param = new Ui.WindowParams() {
 					object_id = object_id,
 				},

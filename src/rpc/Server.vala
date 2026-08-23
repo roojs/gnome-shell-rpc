@@ -1,7 +1,9 @@
 namespace GnomeShellRpc.Rpc
 {
 	/**
-	 * RPC server boot — socket, registrations, display/window notifications.
+	 * RPC server boot — socket, registrations, display/window notifications,
+	 * then a lightweight spawn of {@code gjs-embed} + {@code meta-smoke.js}
+	 * (no pid watch).
 	 *
 	 * == Example ==
 	 *
@@ -17,6 +19,7 @@ namespace GnomeShellRpc.Rpc
 
 		private Gee.HashMap<Meta.Window, ulong> title_watch_ids =
 			new Gee.HashMap<Meta.Window, ulong>();
+		private Meta.WaylandClient? smoke_client = null;
 
 		public void start(Meta.Display display)
 		{
@@ -28,6 +31,7 @@ namespace GnomeShellRpc.Rpc
 			Ui.WorkspaceParams.rpc_register();
 			Ui.Display.rpc_register();
 			Rpc.Daemon.rpc_register();
+			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 			OLLMrpc.Request.rpc_register();
 			OLLMrpc.Response.rpc_register();
 			OLLMrpc.Notification.rpc_register();
@@ -52,10 +56,21 @@ namespace GnomeShellRpc.Rpc
 				typeof(DaemonParams)
 			);
 			OLLMrpc.Request.register(
-				"RPC-Display",
+				"Meta-Display",
 				this.ui_display,
 				typeof(Ui.DisplayParams)
 			);
+
+			try {
+				GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
+				OLLMrpc.Gi.register("Meta", "16");
+				GLib.debug(
+					"Gi.register Meta-16 ok (%u types)",
+					OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("Gi.register(Meta, 16) failed: %s", e.message);
+			}
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {
@@ -74,9 +89,16 @@ namespace GnomeShellRpc.Rpc
 				GLib.error("failed to start RPC listener on %s", socket_path);
 			}
 			GLib.debug("listening on %s", socket_path);
+			this.spawn_client();
 
 			display.window_created.connect((meta_window) => {
-				GLib.debug("window_created title=%s", meta_window.get_title());
+				var frame = meta_window.get_frame_rect();
+				GLib.debug(
+					"window_created title=%s frame=%d,%d %dx%d minimized=%s",
+					meta_window.get_title(),
+					frame.x, frame.y, frame.width, frame.height,
+					meta_window.minimized.to_string()
+				);
 				this.track_window(meta_window);
 				if (this.listen == null) {
 					return;
@@ -99,6 +121,75 @@ namespace GnomeShellRpc.Rpc
 			}
 		}
 
+		/**
+		 * Spawn {@code gjs-embed} + {@code meta-smoke.js} via
+		 * {@link Meta.WaylandClient}. Smoke launches apps with stock
+		 * {@code get_startup_notification().create_launcher()} + Gio.
+		 */
+		private void spawn_client()
+		{
+			string self_exe;
+			try {
+				self_exe = GLib.FileUtils.read_link("/proc/self/exe");
+			} catch (GLib.Error e) {
+				GLib.warning("client spawn: %s", e.message);
+				return;
+			}
+			var bindir = GLib.Path.get_dirname(self_exe);
+			var gjs_embed = GLib.Path.build_filename(bindir, "gjs-embed");
+			var script = GLib.Path.build_filename(
+				bindir, "..", "..", "src", "gjs-embed", "meta-smoke.js"
+			);
+			if (!GLib.FileUtils.test(gjs_embed, GLib.FileTest.IS_EXECUTABLE)) {
+				GLib.warning("gjs-embed missing at %s — skip client spawn", gjs_embed);
+				return;
+			}
+			if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
+				GLib.warning("meta-smoke.js missing at %s — skip client spawn", script);
+				return;
+			}
+
+			var tip = GLib.Environment.get_variable("GI_TYPELIB_PATH");
+			if (tip != null && tip.length > 0) {
+				tip = bindir + ":" + tip;
+			} else {
+				tip = bindir;
+			}
+
+			string[] argv = { gjs_embed, "--debug", script };
+			var launcher = new GLib.SubprocessLauncher(GLib.SubprocessFlags.NONE);
+			launcher.setenv("GI_TYPELIB_PATH", tip, true);
+			try {
+				this.smoke_client = new Meta.WaylandClient(
+					this.display.get_context(),
+					launcher
+				);
+				this.smoke_client.spawnv(this.display, argv);
+			} catch (GLib.Error e) {
+				GLib.warning("client spawn failed: %s", e.message);
+				this.smoke_client = null;
+				return;
+			}
+			GLib.debug("spawned %s %s via Meta.WaylandClient", gjs_embed, script);
+		}
+
+		private uint64? lease_handle_for(
+			OLLMrpc.Transport.Connection connection,
+			Meta.Window meta_window
+		) {
+			var ptr = (uint64) (void*) meta_window;
+			var hi = (int) (ptr >> 32);
+			var lo = (int) ptr;
+			if (!connection.lease_ids.has_key(hi)) {
+				return null;
+			}
+			var inner = connection.lease_ids.get(hi);
+			if (!inner.has_key(lo)) {
+				return null;
+			}
+			return (uint64) inner.get(lo);
+		}
+
 		private void track_window(Meta.Window meta_window)
 		{
 			meta_window.unmanaged.connect(() => {
@@ -106,17 +197,14 @@ namespace GnomeShellRpc.Rpc
 					return;
 				}
 				foreach (var connection in this.listen.connections) {
-					var key = ((uint64)(void*)meta_window).to_string(
-						"%" + uint64.FORMAT_MODIFIER + "x"
-					);
-					if (!connection.lease_ids.has_key(key)) {
+					var handle = this.lease_handle_for(connection, meta_window);
+					if (handle == null) {
 						continue;
 					}
-					var handle = connection.lease_ids.get(key);
 					connection.write(new OLLMrpc.Notification() {
 						method = "Window.closed",
 						object_type = "Window",
-						id = handle,
+						id = (int) handle,
 					});
 				}
 				if (this.title_watch_ids.has_key(meta_window)) {
@@ -134,16 +222,14 @@ namespace GnomeShellRpc.Rpc
 					return;
 				}
 				foreach (var connection in this.listen.connections) {
-					var key = ((uint64)(void*)meta_window).to_string(
-						"%" + uint64.FORMAT_MODIFIER + "x"
-					);
-					if (!connection.lease_ids.has_key(key)) {
+					var handle = this.lease_handle_for(connection, meta_window);
+					if (handle == null) {
 						continue;
 					}
 					connection.write(new OLLMrpc.Notification() {
 						method = "notify::title",
 						object_type = "Window",
-						id = connection.lease_ids.get(key),
+						id = (int) handle,
 						message = meta_window.title,
 					});
 				}

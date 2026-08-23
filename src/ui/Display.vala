@@ -8,7 +8,7 @@ namespace GnomeShellRpc.Ui
 	 *
 	 * {{{
 	 * OLLMrpc.Request.register(
-	 *     "RPC-Display",
+	 *     "Meta-Display",
 	 *     new GnomeShellRpc.Ui.Display(meta_display),
 	 *     typeof(GnomeShellRpc.Ui.DisplayParams));
 	 * }}}

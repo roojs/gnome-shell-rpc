@@ -4,7 +4,7 @@ namespace GnomeShellRpc.Shared
 	 * Serializable frame rectangle ({@link Mtk.Rectangle} shape on the RPC).
 	 *
 	 * Used by both {@link GnomeShellRpc.Ui.Window} snapshots and
-	 * {@link GnomeShellRpc.Remote.Window} proxies.
+	 * {@link GnomeShellRpc.FakeShell.Window} proxies.
 	 *
 	 * == Example ==
 	 *

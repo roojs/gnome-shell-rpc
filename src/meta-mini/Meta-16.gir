@@ -1,0 +1,127 @@
+<?xml version="1.0"?>
+<!-- Hand Meta mini for meta-smoke.js. shared-library set at g-ir-compiler.
+     Only real Meta symbols (plus meta_get_display bootstrap). -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <include name="Gio" version="2.0"/>
+  <namespace name="Meta"
+             version="16"
+             shared-library="libmetamini.so"
+             c:identifier-prefixes="Meta"
+             c:symbol-prefixes="meta">
+    <class name="Display"
+           c:type="MetaDisplay"
+           glib:type-name="MetaDisplay"
+           glib:get-type="meta_display_get_type"
+           parent="GObject.Object"
+           glib:type-struct="DisplayClass">
+      <method name="list_all_windows" c:identifier="meta_display_list_all_windows">
+        <return-value transfer-ownership="container">
+          <type name="GLib.List" c:type="GList*">
+            <type name="Window" c:type="MetaWindow*"/>
+          </type>
+        </return-value>
+      </method>
+      <method name="get_focus_window" c:identifier="meta_display_get_focus_window">
+        <return-value transfer-ownership="full" nullable="1">
+          <type name="Window" c:type="MetaWindow*"/>
+        </return-value>
+      </method>
+      <method name="get_startup_notification"
+              c:identifier="meta_display_get_startup_notification">
+        <return-value transfer-ownership="none">
+          <type name="StartupNotification" c:type="MetaStartupNotification*"/>
+        </return-value>
+      </method>
+    </class>
+    <record name="DisplayClass"
+             c:type="MetaDisplayClass"
+             glib:is-gtype-struct-for="Display">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="StartupNotification"
+           c:type="MetaStartupNotification"
+           glib:type-name="MetaStartupNotification"
+           glib:get-type="meta_startup_notification_get_type"
+           parent="GObject.Object"
+           glib:type-struct="StartupNotificationClass">
+      <method name="create_launcher"
+              c:identifier="meta_startup_notification_create_launcher">
+        <return-value transfer-ownership="full">
+          <type name="LaunchContext" c:type="MetaLaunchContext*"/>
+        </return-value>
+      </method>
+    </class>
+    <record name="StartupNotificationClass"
+             c:type="MetaStartupNotificationClass"
+             glib:is-gtype-struct-for="StartupNotification">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="LaunchContext"
+           c:type="MetaLaunchContext"
+           glib:type-name="MetaLaunchContext"
+           glib:get-type="meta_launch_context_get_type"
+           parent="Gio.AppLaunchContext"
+           glib:type-struct="LaunchContextClass">
+      <method name="set_timestamp"
+              c:identifier="meta_launch_context_set_timestamp">
+        <parameters>
+          <parameter name="timestamp" transfer-ownership="none">
+            <type name="guint32" c:type="guint32"/>
+          </parameter>
+        </parameters>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </method>
+    </class>
+    <record name="LaunchContextClass"
+             c:type="MetaLaunchContextClass"
+             glib:is-gtype-struct-for="LaunchContext">
+      <field name="parent_class">
+        <type name="Gio.AppLaunchContextClass" c:type="GAppLaunchContextClass"/>
+      </field>
+    </record>
+    <class name="Window"
+           c:type="MetaWindow"
+           glib:type-name="MetaWindow"
+           glib:get-type="meta_window_get_type"
+           parent="GObject.Object"
+           glib:type-struct="WindowClass">
+      <method name="get_title" c:identifier="meta_window_get_title">
+        <return-value transfer-ownership="full">
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+      </method>
+      <method name="get_wm_class" c:identifier="meta_window_get_wm_class">
+        <return-value transfer-ownership="full">
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+      </method>
+      <method name="minimize" c:identifier="meta_window_minimize">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </method>
+    </class>
+    <record name="WindowClass"
+             c:type="MetaWindowClass"
+             glib:is-gtype-struct-for="Window">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <function name="get_display" c:identifier="meta_get_display">
+      <return-value transfer-ownership="full">
+        <type name="Display" c:type="MetaDisplay*"/>
+      </return-value>
+    </function>
+  </namespace>
+</repository>

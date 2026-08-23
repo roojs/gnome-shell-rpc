@@ -14,7 +14,7 @@ namespace GnomeShellRpc.FakeShell
 	 */
 	public class TopBar : Gtk.ApplicationWindow
 	{
-		public TopBar(Gtk.Application app, Remote.Session session)
+		public TopBar(Gtk.Application app, Session session)
 		{
 			GLib.Object(application: app, title: "fake-shell");
 			this.set_default_size(640, 40);

@@ -1,7 +1,7 @@
 namespace GnomeShellRpc.FakeShell
 {
 	/**
-	 * Gtk application that connects {@link Remote.Session} and shows
+	 * Gtk application that connects {@link Session} and shows
 	 * {@link TopBar}.
 	 *
 	 * == Example ==
@@ -15,7 +15,7 @@ namespace GnomeShellRpc.FakeShell
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
 
-		private Remote.Session session;
+		private Session session;
 
 		private const GLib.OptionEntry[] options = {
 			{ "debug", 'd', 0, GLib.OptionArg.NONE, ref opt_debug,
@@ -76,7 +76,7 @@ namespace GnomeShellRpc.FakeShell
 		public override void activate()
 		{
 			this.hold();
-			this.session = new Remote.Session();
+			this.session = new Session();
 			this.session.connect.begin((obj, res) => {
 				try {
 					this.session.connect.end(res);

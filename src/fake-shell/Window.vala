@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Remote
+namespace GnomeShellRpc.FakeShell
 {
 	/**
 	 * Proxy for one leased compositor window handle.

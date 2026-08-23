@@ -1,6 +1,6 @@
 namespace GiRpcSmoke
 {
-	/** Params for {@code RPC-GiRpcSmoke.ping}. */
+	/** Params for {@code GiRpcSmoke.ping}. */
 	public class PingParams : OLLMrpc.CallParam
 	{
 		public static void rpc_register()

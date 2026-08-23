@@ -1,0 +1,13 @@
+---
+description: Never invent methods on stock GI classes (Meta, Shell, …)
+alwaysApply: true
+---
+
+# No invented GI methods
+
+**🚫** Do not add methods, properties, or signals to client stubs for stock libraries (`Meta`, `Shell`, `St`, …) that do not exist on the real typelib/GIR.
+
+- Stubs may only implement **real** symbols (same name, role, and rough signature as mutter/gnome-shell).
+- Out-of-process bootstrap that has **no** stock equivalent (e.g. `Meta.get_display()` standing in for `global.display`) must be documented as such in the stub — still do not invent extra APIs on `Meta.Display` / `Meta.Window` / etc.
+- App launch uses real APIs: `Meta.Display.get_startup_notification()` → `Meta.StartupNotification.create_launcher()` → `Gio.AppInfo.launch` / `DesktopAppInfo.launch`, not a made-up `Meta.Display.launch`.
+- Our own types (`GnomeShellRpc.Ui.*`, RPC wire handlers) may have whatever we need — they are not pretending to be Meta.

@@ -1,13 +1,15 @@
 namespace GnomeShellRpc
 {
 	/**
-	 * Mutter compositor plugin: opaque stage plus mutter's own effects.
+	 * Mutter compositor plugin: opaque stage plus local effect completion.
 	 *
 	 * start() paints a solid {@link Meta.BackgroundActor} per monitor
 	 * (same slot as mutter's libdefault). Without that, nested mode
 	 * never clears the framebuffer and the software cursor trails.
-	 * Map / minimize / destroy vfuncs stay unset so mutter completes
-	 * those itself.
+	 *
+	 * map / minimize / unminimize / destroy complete immediately (no
+	 * animation). Leaving those vfuncs unset does **not** fall through
+	 * to libdefault — this process replaced that plugin type.
 	 *
 	 * == Example ==
 	 *
@@ -53,6 +55,29 @@ namespace GnomeShellRpc
 			this.rpc_server = new Rpc.Server();
 			this.rpc_server.start(display);
 			GLib.debug("stage shown");
+		}
+
+		public override void map(Meta.WindowActor actor)
+		{
+			actor.show();
+			this.map_completed(actor);
+		}
+
+		public override void minimize(Meta.WindowActor actor)
+		{
+			actor.hide();
+			this.minimize_completed(actor);
+		}
+
+		public override void unminimize(Meta.WindowActor actor)
+		{
+			actor.show();
+			this.unminimize_completed(actor);
+		}
+
+		public override void destroy(Meta.WindowActor actor)
+		{
+			this.destroy_completed(actor);
 		}
 	}
 }

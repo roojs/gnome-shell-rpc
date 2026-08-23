@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Remote
+namespace GnomeShellRpc.FakeShell
 {
 	/**
 	 * Owns the RPC {@link OLLMrpc.Client} for a compositor connection.
@@ -9,7 +9,7 @@ namespace GnomeShellRpc.Remote
 	 * == Example ==
 	 *
 	 * {{{
-	 * var session = new GnomeShellRpc.Remote.Session();
+	 * var session = new GnomeShellRpc.FakeShell.Session();
 	 * yield session.connect();
 	 * }}}
 	 */

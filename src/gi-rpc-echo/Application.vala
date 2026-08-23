@@ -79,7 +79,7 @@ namespace GnomeShellRpc.GiRpcEcho
 				typeof(GnomeShellRpc.Rpc.DaemonParams)
 			);
 			OLLMrpc.Request.register(
-				"RPC-GiRpcSmoke",
+				"GiRpcSmoke",
 				new Echo(),
 				typeof(GiRpcSmoke.PingParams)
 			);

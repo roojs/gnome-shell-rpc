@@ -1,6 +1,6 @@
 namespace GiRpcSmoke
 {
-	/** Result row for {@code RPC-GiRpcSmoke.ping}. */
+	/** Result row for {@code GiRpcSmoke.ping}. */
 	public class PingResult : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public static void rpc_register()

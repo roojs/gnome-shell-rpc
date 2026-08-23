@@ -152,7 +152,7 @@ namespace GnomeShellRpc.RpcClient
 
 			var list_resp = yield Application.rpc_client.call(
 				new OLLMrpc.Request() {
-					method = "RPC-Display.list_windows",
+					method = "Meta-Display.list_windows",
 					param = new GnomeShellRpc.Ui.DisplayParams(),
 				}
 			);

@@ -1,13 +1,13 @@
 namespace GnomeShellRpc.GiRpcEcho
 {
 	/**
-	 * Server handler for {@code RPC-GiRpcSmoke.ping}.
+	 * Server handler for {@code GiRpcSmoke.ping}.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
 	 * OLLMrpc.Request.register(
-	 *     "RPC-GiRpcSmoke",
+	 *     "GiRpcSmoke",
 	 *     new GnomeShellRpc.GiRpcEcho.Echo(),
 	 *     typeof(GiRpcSmoke.PingParams));
 	 * }}}

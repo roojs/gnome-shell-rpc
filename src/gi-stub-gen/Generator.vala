@@ -433,7 +433,6 @@ namespace $(ns)
 			}
 
 			string[] args = {};
-			var all_utf8 = ret == "string" || ret == "void";
 			for (var a = 0; a < fi.get_n_args(); a++) {
 				var arg = fi.get_arg(a);
 				var at = this.type_vala(ns, arg.get_type());
@@ -442,23 +441,19 @@ namespace $(ns)
 						type_name, fi.get_name(), arg.get_name());
 					return 0;
 				}
-				if (at != "string" || arg.get_direction() != GI.Direction.IN) {
-					all_utf8 = false;
-				}
 				args += this.arg_decl(arg, at);
-			}
-			if (ret != "string" && ret != "void") {
-				all_utf8 = false;
-			}
-			if (args.length != 1) {
-				all_utf8 = false;
 			}
 
 			var tab = kind == "ns" ? "	" : "		";
 			var arglist = string.joinv(", ", args);
+			/*
+			 * Domain wire names: no RPC- prefix (Daemon / Live-* only).
+			 * Nested type → hyphen object prefix (Meta-Window.minimize),
+			 * same idea as RPC-Live-Remote.ref.
+			 */
 			var rpc = type_name == ""
-				? @"RPC-$(ns).$(fi.get_name())"
-				: @"RPC-$(ns).$(type_name).$(fi.get_name())";
+				? @"$(ns).$(fi.get_name())"
+				: @"$(ns)-$(type_name).$(fi.get_name())";
 
 			if (kind == "iface") {
 				if (ret == "void") {
@@ -470,17 +465,6 @@ $(tab)public abstract void $(fi.get_name())($(arglist));
 $(tab)public abstract $(ret) $(fi.get_name())($(arglist));
 ");
 				}
-				return 1;
-			}
-
-			if (all_utf8 && ret == "string" && type_name == "") {
-				var aname = fi.get_arg(0).get_name();
-				stream.puts(@"
-$(tab)public string $(fi.get_name())(string $(aname))
-$(tab){
-$(tab)	return GnomeShellRpc.GiStub.Runtime.call_utf8(\"$(rpc)\", $(aname));
-$(tab)}
-");
 				return 1;
 			}
 
