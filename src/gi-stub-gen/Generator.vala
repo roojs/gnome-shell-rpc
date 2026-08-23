@@ -537,8 +537,20 @@ $(tab)}
 				var val_name = arg_name + "_val";
 				stream.puts(indent + @"var $(val_name) = GLib.Value(typeof($(at)));
 ");
-				stream.puts(indent + @"$(val_name).set_$(suffix)($(arg_name));
+				if (suffix == "enum") {
+					stream.puts(
+						indent + @"$(val_name).set_enum((int) $(arg_name));
+"
+					);
+				} else if (suffix == "flags") {
+					stream.puts(
+						indent + @"$(val_name).set_flags((uint) $(arg_name));
+"
+					);
+				} else {
+					stream.puts(indent + @"$(val_name).set_$(suffix)($(arg_name));
 ");
+				}
 				value_names += val_name;
 			}
 
@@ -572,12 +584,14 @@ $(tab)}
 				} else {
 					var ret_suffix = this.value_suffix(fi.get_return_type());
 					if (!has_outs) {
-						stream.puts(indent + @"return response.values.get(0).get_$(ret_suffix)();
-");
+						this.emit_value_get(
+							stream, indent, ret_vala, ret_suffix, 0, true
+						);
 						return;
 					}
-					stream.puts(indent + @"var __ret = response.values.get(0).get_$(ret_suffix)();
-");
+					this.emit_value_get(
+						stream, indent, ret_vala, ret_suffix, 0, false
+					);
 					value_idx = 1;
 				}
 			}
@@ -589,15 +603,55 @@ $(tab)}
 					continue;
 				}
 				var arg_name = arg.get_name();
+				var at = this.type_vala(ns, arg.get_type());
 				var suffix = this.value_suffix(arg.get_type());
-				stream.puts(indent + @"$(arg_name) = response.values.get($(value_idx)).get_$(suffix)();
-");
+				this.emit_value_get(
+					stream, indent, at, suffix, value_idx, false, arg_name
+				);
 				value_idx++;
 			}
 
 			if (has_return && has_outs) {
 				stream.puts(indent + "return __ret;\n");
 			}
+		}
+
+		private void emit_value_get(
+			GLib.FileStream stream,
+			string indent,
+			string vala_type,
+			string suffix,
+			int value_idx,
+			bool is_return,
+			string assign_name = ""
+		)
+		{
+			var idx = value_idx.to_string();
+			string expr;
+			switch (suffix) {
+				case "enum":
+					expr = @"($(vala_type)) response.values.get($(idx)).get_enum()";
+					break;
+				case "flags":
+					expr = @"($(vala_type)) response.values.get($(idx)).get_flags()";
+					break;
+				default:
+					expr = @"response.values.get($(idx)).get_$(suffix)()";
+					break;
+			}
+
+			if (is_return) {
+				stream.puts(indent + @"return $(expr);
+");
+				return;
+			}
+			if (assign_name != "") {
+				stream.puts(indent + @"$(assign_name) = $(expr);
+");
+				return;
+			}
+			stream.puts(indent + @"var __ret = $(expr);
+");
 		}
 
 		private bool has_out_values(GI.FunctionInfo fi)
@@ -664,8 +718,28 @@ $(tab)}
 				case GI.TypeTag.DOUBLE: return "double";
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME: return "string";
+				case GI.TypeTag.INTERFACE:
+					return this.enum_value_suffix(ti);
 				default: return "";
 			}
+		}
+
+		private string enum_value_suffix(GI.TypeInfo ti)
+		{
+			if (ti.get_tag() != GI.TypeTag.INTERFACE) {
+				return "";
+			}
+			var info = ti.get_interface();
+			if (info == null) {
+				return "";
+			}
+			if (info.get_type() == GI.InfoType.FLAGS) {
+				return "flags";
+			}
+			if (info.get_type() == GI.InfoType.ENUM) {
+				return "enum";
+			}
+			return "";
 		}
 
 		private string arg_decl(GI.ArgInfo arg, string type_name)
