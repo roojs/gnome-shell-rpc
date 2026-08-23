@@ -119,19 +119,6 @@ gi_stub_gen = executable('gi-stub-gen',
   install: false,
 )
 
-# Review artifact: full Meta-16 stub emit (not linked into any binary yet).
-meta_generated = custom_target('Meta_generated.vala',
-  output: 'Meta_generated.vala',
-  command: [
-    gi_stub_gen,
-    'emit', 'Meta', '16',
-    '--typelib-dir=' + mutter_typelib_dir,
-    '--out=@OUTPUT@',
-  ],
-  depends: gi_stub_gen,
-  build_by_default: true,
-)
-
 # Schema typelib from handwritten GIR (signatures only; no .so required yet).
 girpcsmoke_typelib_schema = custom_target('GiRpcSmoke-1.0-schema.typelib',
   input: files('gi-rpc-smoke/GiRpcSmoke-1.0.gir'),
@@ -163,10 +150,9 @@ girpcsmoke_generated = custom_target('GiRpcSmoke_generated.vala',
   output: 'GiRpcSmoke_generated.vala',
   command: [
     gi_stub_gen,
-    'emit', 'GiRpcSmoke', '1.0',
-    '--typelib-dir=' + girpcsmoke_schema_dir,
-    '--allow=ping',
     '--out=@OUTPUT@',
+    '--typelib-dir=' + girpcsmoke_schema_dir,
+    'emit', 'GiRpcSmoke', '1.0',
   ],
   depends: [girpcsmoke_schema_named, gi_stub_gen],
 )
@@ -175,8 +161,20 @@ girpcsmoke_lib = shared_library('girpcsmoke',
   girpcsmoke_generated,
   files(
     'gi-rpc-smoke/namespace.vala',
+    'gi-stub/namespace.vala',
+    'gi-stub/Runtime.vala',
+    'shared/namespace.vala',
+    'shared/Rectangle.vala',
+    'ui/namespace.vala',
+    'ui/WindowParams.vala',
+    'ui/Window.vala',
+    'ui/DisplayParams.vala',
+    'rpc/namespace.vala',
+    'rpc/DaemonParams.vala',
   ),
-  dependencies: [dependency('gobject-2.0'), dependency('glib-2.0')],
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
   install: false,
 )
 
@@ -226,6 +224,20 @@ metamini_typelib = custom_target('Meta-16.typelib',
     '@INPUT@',
   ],
   depends: [metamini_lib],
+  build_by_default: true,
+)
+
+# Review artifact: client stubs from stock mutter Meta-16 typelib (not linked yet).
+meta_window_generated = custom_target('meta_window_generated',
+  output: ['Meta_window_generated.vala', 'Meta_window_generated.missing.md'],
+  command: [
+    gi_stub_gen,
+    '--out=@OUTPUT0@',
+    '--missing-out=@OUTPUT1@',
+    '--typelib-dir=' + mutter_typelib_dir,
+    'emit', 'Meta', '16',
+  ],
+  depends: [gi_stub_gen],
   build_by_default: true,
 )
 

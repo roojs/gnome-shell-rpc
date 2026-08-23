@@ -9,7 +9,7 @@
  *
  * {{{
  * ./build/src/gi-stub-gen --debug emit GiRpcSmoke 1.0 \
- *   --typelib-dir=./build/src --allow=ping --out=/tmp/out.vala
+ *   --typelib-dir=./build/src --out=/tmp/out.vala
  * }}}
  */
 namespace GnomeShellRpc.GiStubGen

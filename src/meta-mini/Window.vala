@@ -43,7 +43,7 @@ namespace Meta
 		 */
 		public void activate(uint32 current_time = 0)
 		{
-			var current_time_val = GLib.Value(typeof(uint));
+			var current_time_val = GLib.Value(GLib.Type.UINT);
 			current_time_val.set_uint(current_time);
 			GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Window.activate",
@@ -59,7 +59,7 @@ namespace Meta
 		 */
 		public void delete(uint32 timestamp = 0)
 		{
-			var timestamp_val = GLib.Value(typeof(uint));
+			var timestamp_val = GLib.Value(GLib.Type.UINT);
 			timestamp_val.set_uint(timestamp);
 			GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Window.delete",

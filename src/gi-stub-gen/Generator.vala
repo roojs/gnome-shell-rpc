@@ -9,44 +9,32 @@ namespace GnomeShellRpc.GiStubGen
 	 * == Example ==
 	 *
 	 * {{{
-	 * var gen = new Generator() { allow = allow };
-	 * gen.require("GiRpcSmoke", "1.0");
+	 * GI.Repository.get_default().require("GiRpcSmoke", "1.0", 0);
+	 * var gen = new Generator() { deny = deny };
 	 * gen.emit("GiRpcSmoke", "GiRpcSmoke_generated.vala");
 	 * }}}
 	 */
 	public class Generator : GLib.Object
 	{
-		/**
-		 * Optional allowlist of function names or {@code Type.method}.
-		 * Empty means all matching infos.
-		 */
-		public string[] allow { get; set; default = {}; }
+		/** Denylisted symbols skipped on emit; {@code Type.method} or bare name. */
+		public string[] deny = {};
 
-		/**
-		 * Prepend a typelib search path (same as {@link GI.Repository.prepend_search_path}).
-		 *
-		 * @param dir directory containing typelibs
-		 */
-		public void prepend_typelib_dir(string dir)
-		{
-			GI.Repository.prepend_search_path(dir);
-			GLib.debug("typelib prepend %s", dir);
+		/** When set, write a gap summary markdown file after emit. */
+		public string missing_out_path = "";
+
+		private const string RUNTIME = "GnomeShellRpc.GiStub.Runtime";
+
+		private struct Gap {
+			public string symbol;
+			public string reason;
+			public string detail;
 		}
 
-		/**
-		 * Load a namespace/version into the default repository.
-		 *
-		 * @param ns GI namespace (e.g. Meta)
-		 * @param version typelib version (e.g. 16)
-		 * @throws GLib.Error if the typelib cannot be required
-		 */
-		public void require(string ns, string version) throws GLib.Error
-		{
-			GI.Repository.get_default().require(ns, version, 0);
-		}
+		private Gap[] gaps = {};
+		private int wired_callables = 0;
 
 		/**
-		 * Write Vala stubs for allowlisted infos in {@code ns}.
+		 * Write Vala stubs for {@code ns}, skipping {@link deny} symbols.
 		 *
 		 * @param ns GI namespace
 		 * @param out_path path for the generated {@code .vala} file
@@ -54,6 +42,9 @@ namespace GnomeShellRpc.GiStubGen
 		 */
 		public void emit(string ns, string out_path) throws GLib.Error
 		{
+			this.gaps = {};
+			this.wired_callables = 0;
+
 			var stream = GLib.FileStream.open(out_path, "w");
 			if (stream == null) {
 				throw new GLib.IOError.FAILED("cannot write " + out_path);
@@ -94,7 +85,11 @@ namespace $(ns)
 						emitted += this.emit_callback(stream, ns, (GI.CallbackInfo)info);
 						continue;
 					default:
-						GLib.debug("unhandled %s %s", info.get_type().to_string(), info.get_name());
+						this.gap(
+							info.get_name(),
+							"unhandled_info",
+							info.get_type().to_string()
+						);
 						continue;
 				}
 			}
@@ -105,6 +100,7 @@ namespace $(ns)
 				GLib.FileUtils.unlink(out_path);
 				throw new GLib.IOError.FAILED("emit: no matching stubs");
 			}
+			this.write_missing_summary(ns);
 			GLib.print("emitted %d stub(s) → %s\n", emitted, out_path);
 		}
 
@@ -118,7 +114,9 @@ namespace $(ns)
 		 */
 		private int emit_function(GLib.FileStream stream, string ns, GI.FunctionInfo fi)
 		{
-			if (!this.allow_hit(fi.get_name(), "")) {
+			var name = fi.get_name();
+			if (name in this.deny) {
+				this.gap(this.wire_symbol(ns, "", name), "denied");
 				return 0;
 			}
 			return this.emit_callable(stream, ns, "", fi, "ns");
@@ -134,17 +132,10 @@ namespace $(ns)
 		 */
 		private int emit_object(GLib.FileStream stream, string ns, GI.ObjectInfo oi)
 		{
-			if (this.allow.length > 0 && !this.allow_hit(oi.get_name(), "")) {
-				var any = false;
-				for (var m = 0; m < oi.get_n_methods(); m++) {
-					if (this.allow_hit(oi.get_method(m).get_name(), oi.get_name())) {
-						any = true;
-						break;
-					}
-				}
-				if (!any) {
-					return 0;
-				}
+			var class_name = oi.get_name();
+			if (class_name in this.deny) {
+				this.gap(this.wire_symbol(ns, class_name, ""), "denied", "class");
+				return 0;
 			}
 
 			var parent = "GLib.Object";
@@ -153,12 +144,12 @@ namespace $(ns)
 			}
 
 			stream.puts(@"
-	public class $(oi.get_name()) : $(parent)
+	public class $(class_name) : $(parent)
 	{
 ");
 			var methods = 0;
 			for (var m = 0; m < oi.get_n_methods(); m++) {
-				methods += this.emit_callable(stream, ns, oi.get_name(), oi.get_method(m), "class");
+				methods += this.emit_callable(stream, ns, class_name, oi.get_method(m), "class");
 			}
 			stream.puts("	}\n");
 			return 1 + methods;
@@ -190,7 +181,8 @@ namespace $(ns)
 
 		private int emit_enum_values(GLib.FileStream stream, GI.EnumInfo ei, bool is_flags)
 		{
-			if (!this.allow_hit(ei.get_name(), "")) {
+			if (ei.get_name() in this.deny) {
+				this.gap(ei.get_name(), "denied", "enum");
 				return 0;
 			}
 			if (is_flags) {
@@ -219,7 +211,8 @@ namespace $(ns)
 		 */
 		private int emit_constant(GLib.FileStream stream, GI.ConstantInfo ci)
 		{
-			if (!this.allow_hit(ci.get_name(), "")) {
+			if (ci.get_name() in this.deny) {
+				this.gap(ci.get_name(), "denied", "constant");
 				return 0;
 			}
 			GI.Argument value;
@@ -287,8 +280,11 @@ namespace $(ns)
 ");
 					return 1;
 				default:
-					GLib.debug("unhandled CONSTANT %s tag=%s",
-						ci.get_name(), ci.get_type().get_tag().to_string());
+					this.gap(
+						ci.get_name(),
+						"unhandled_constant",
+						ci.get_type().get_tag().to_string()
+					);
 					return 0;
 			}
 		}
@@ -304,10 +300,10 @@ namespace $(ns)
 		private int emit_struct(GLib.FileStream stream, string ns, GI.StructInfo si)
 		{
 			if (si.is_gtype_struct()) {
-				GLib.debug("skip STRUCT %s (gtype class struct)", si.get_name());
 				return 0;
 			}
-			if (!this.allow_hit(si.get_name(), "")) {
+			if (si.get_name() in this.deny) {
+				this.gap(si.get_name(), "denied", "struct");
 				return 0;
 			}
 			stream.puts(@"
@@ -318,7 +314,11 @@ namespace $(ns)
 				var field = si.get_field(f);
 				var ft = this.type_vala(ns, field.get_type());
 				if (ft == "") {
-					GLib.debug("unhandled FIELD %s.%s", si.get_name(), field.get_name());
+					this.gap(
+						@"$(si.get_name()).$(field.get_name())",
+						"unmapped_field",
+						field.get_type().get_tag().to_string()
+					);
 					continue;
 				}
 				stream.puts(@"		public $(ft) $(field.get_name());
@@ -338,26 +338,19 @@ namespace $(ns)
 		 */
 		private int emit_interface(GLib.FileStream stream, string ns, GI.InterfaceInfo ii)
 		{
-			if (this.allow.length > 0 && !this.allow_hit(ii.get_name(), "")) {
-				var any = false;
-				for (var m = 0; m < ii.get_n_methods(); m++) {
-					if (this.allow_hit(ii.get_method(m).get_name(), ii.get_name())) {
-						any = true;
-						break;
-					}
-				}
-				if (!any) {
-					return 0;
-				}
+			var iface_name = ii.get_name();
+			if (iface_name in this.deny) {
+				this.gap(iface_name, "denied", "interface");
+				return 0;
 			}
 
 			stream.puts(@"
-	public interface $(ii.get_name()) : GLib.Object
+	public interface $(iface_name) : GLib.Object
 	{
 ");
 			var methods = 0;
 			for (var m = 0; m < ii.get_n_methods(); m++) {
-				methods += this.emit_callable(stream, ns, ii.get_name(), ii.get_method(m), "iface");
+				methods += this.emit_callable(stream, ns, iface_name, ii.get_method(m), "iface");
 			}
 			stream.puts("	}\n");
 			return 1 + methods;
@@ -373,12 +366,17 @@ namespace $(ns)
 		 */
 		private int emit_callback(GLib.FileStream stream, string ns, GI.CallbackInfo ci)
 		{
-			if (!this.allow_hit(ci.get_name(), "")) {
+			if (ci.get_name() in this.deny) {
+				this.gap(ci.get_name(), "denied", "callback");
 				return 0;
 			}
 			var ret = this.type_vala(ns, ci.get_return_type());
 			if (ret == "") {
-				GLib.debug("unhandled CALLBACK %s (return type)", ci.get_name());
+				this.gap(
+					ci.get_name(),
+					"unhandled_callback",
+					"return " + ci.get_return_type().get_tag().to_string()
+				);
 				return 0;
 			}
 			string[] args = {};
@@ -386,7 +384,11 @@ namespace $(ns)
 				var arg = ci.get_arg(a);
 				var at = this.type_vala(ns, arg.get_type());
 				if (at == "") {
-					GLib.debug("unhandled CALLBACK %s arg %s", ci.get_name(), arg.get_name());
+					this.gap(
+						ci.get_name(),
+						"unhandled_callback",
+						@"arg $(arg.get_name()) $(arg.get_type().get_tag().to_string())"
+					);
 					return 0;
 				}
 				args += this.arg_decl(arg, at);
@@ -415,20 +417,31 @@ namespace $(ns)
 			string kind
 		)
 		{
-			if (type_name != "" && !this.allow_hit(fi.get_name(), type_name)
-				&& !this.allow_hit(type_name, "")) {
+			var name = fi.get_name();
+			var symbol = this.wire_symbol(ns, type_name, name);
+			if (name in this.deny) {
+				this.gap(symbol, "denied");
+				return 0;
+			}
+			if (type_name != ""
+				&& ((type_name + "." + name) in this.deny || type_name in this.deny)) {
+				this.gap(symbol, "denied");
 				return 0;
 			}
 
 			var flags = fi.get_flags();
 			if ((flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0) {
-				GLib.debug("unhandled constructor %s.%s", type_name, fi.get_name());
+				this.gap(symbol, "constructor");
 				return 0;
 			}
 
 			var ret = this.type_vala(ns, fi.get_return_type());
 			if (ret == "") {
-				GLib.debug("unhandled callable %s.%s (return)", type_name, fi.get_name());
+				this.gap(
+					symbol,
+					"unmapped_return",
+					fi.get_return_type().get_tag().to_string()
+				);
 				return 0;
 			}
 
@@ -437,8 +450,11 @@ namespace $(ns)
 				var arg = fi.get_arg(a);
 				var at = this.type_vala(ns, arg.get_type());
 				if (at == "") {
-					GLib.debug("unhandled callable %s.%s arg %s",
-						type_name, fi.get_name(), arg.get_name());
+					this.gap(
+						symbol,
+						"unmapped_arg",
+						@"$(arg.get_name()) $(arg.get_type().get_tag().to_string())"
+					);
 					return 0;
 				}
 				args += this.arg_decl(arg, at);
@@ -451,39 +467,205 @@ namespace $(ns)
 			 * Nested type → hyphen object prefix (Meta-Window.minimize),
 			 * same idea as RPC-Live-Remote.ref.
 			 */
-			var rpc = type_name == ""
-				? @"$(ns).$(fi.get_name())"
-				: @"$(ns)-$(type_name).$(fi.get_name())";
+			string rpc;
+			if (type_name == "") {
+				rpc = @"$(ns).$(name)";
+			} else {
+				rpc = @"$(ns)-$(type_name).$(name)";
+			}
 
 			if (kind == "iface") {
 				if (ret == "void") {
 					stream.puts(@"
-$(tab)public abstract void $(fi.get_name())($(arglist));
+$(tab)public abstract void $(name)($(arglist));
 ");
 				} else {
 					stream.puts(@"
-$(tab)public abstract $(ret) $(fi.get_name())($(arglist));
+$(tab)public abstract $(ret) $(name)($(arglist));
 ");
 				}
 				return 1;
 			}
 
+			var instance = kind == "class" ? "this" : "null";
+			var indent = tab + "\t";
+			if (this.callable_wireable(fi)) {
+				stream.puts(tab + @"public $(ret) $(name)($(arglist)) {
+");
+				this.emit_call_values_body(stream, ns, indent, rpc, instance, fi, ret);
+				stream.puts(tab + "}\n");
+				this.wired_callables++;
+				return 1;
+			}
+
+			this.gap(symbol, "not_wired");
+
 			if (ret == "void") {
-				stream.puts(@"
-$(tab)public void $(fi.get_name())($(arglist))
-$(tab){
-$(tab)	GLib.error(\"gi-stub: $(rpc) not wired\");
+				stream.puts(tab + @"public void $(name)($(arglist)) {
+$(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");
 			} else {
-				stream.puts(@"
-$(tab)public $(ret) $(fi.get_name())($(arglist))
-$(tab){
-$(tab)	GLib.error(\"gi-stub: $(rpc) not wired\");
+				stream.puts(tab + @"public $(ret) $(name)($(arglist)) {
+$(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");
 			}
 			return 1;
+		}
+
+		private void emit_call_values_body(
+			GLib.FileStream stream,
+			string ns,
+			string indent,
+			string rpc,
+			string instance,
+			GI.FunctionInfo fi,
+			string ret_vala
+		)
+		{
+			string[] value_names = {};
+			for (var a = 0; a < fi.get_n_args(); a++) {
+				var arg = fi.get_arg(a);
+				var dir = arg.get_direction();
+				if (dir != GI.Direction.IN && dir != GI.Direction.INOUT) {
+					continue;
+				}
+				var arg_name = arg.get_name();
+				var at = this.type_vala(ns, arg.get_type());
+				var suffix = this.value_suffix(arg.get_type());
+				var val_name = arg_name + "_val";
+				stream.puts(indent + @"var $(val_name) = GLib.Value(typeof($(at)));
+");
+				stream.puts(indent + @"$(val_name).set_$(suffix)($(arg_name));
+");
+				value_names += val_name;
+			}
+
+			var values_arg = "";
+			if (value_names.length > 0) {
+				values_arg = ", { " + string.joinv(", ", value_names) + " }";
+			}
+			var call = @"$(RUNTIME).call_values(\"$(rpc)\", $(instance)$(values_arg))";
+
+			var need_response = ret_vala != "void"
+				|| this.has_out_values(fi);
+			if (!need_response) {
+				stream.puts(indent + call + ";\n");
+				return;
+			}
+
+			stream.puts(indent + "var response = " + call + ";\n");
+
+			var value_idx = 0;
+			var has_return = ret_vala != "void";
+			var has_outs = this.has_out_values(fi);
+			if (has_return) {
+				if (this.type_is_gobject(fi.get_return_type())) {
+					if (!has_outs) {
+						stream.puts(indent + @"return ($(ret_vala)) response.result.get(0);
+");
+						return;
+					}
+					stream.puts(indent + @"var __ret = ($(ret_vala)) response.result.get(0);
+");
+				} else {
+					var ret_suffix = this.value_suffix(fi.get_return_type());
+					if (!has_outs) {
+						stream.puts(indent + @"return response.values.get(0).get_$(ret_suffix)();
+");
+						return;
+					}
+					stream.puts(indent + @"var __ret = response.values.get(0).get_$(ret_suffix)();
+");
+					value_idx = 1;
+				}
+			}
+
+			for (var a = 0; a < fi.get_n_args(); a++) {
+				var arg = fi.get_arg(a);
+				var dir = arg.get_direction();
+				if (dir != GI.Direction.OUT && dir != GI.Direction.INOUT) {
+					continue;
+				}
+				var arg_name = arg.get_name();
+				var suffix = this.value_suffix(arg.get_type());
+				stream.puts(indent + @"$(arg_name) = response.values.get($(value_idx)).get_$(suffix)();
+");
+				value_idx++;
+			}
+
+			if (has_return && has_outs) {
+				stream.puts(indent + "return __ret;\n");
+			}
+		}
+
+		private bool has_out_values(GI.FunctionInfo fi)
+		{
+			for (var a = 0; a < fi.get_n_args(); a++) {
+				var dir = fi.get_arg(a).get_direction();
+				if (dir == GI.Direction.OUT || dir == GI.Direction.INOUT) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		private bool callable_wireable(GI.FunctionInfo fi)
+		{
+			for (var a = 0; a < fi.get_n_args(); a++) {
+				var arg = fi.get_arg(a);
+				switch (arg.get_direction()) {
+					case GI.Direction.IN:
+					case GI.Direction.INOUT:
+					case GI.Direction.OUT:
+						if (this.value_suffix(arg.get_type()) == "") {
+							return false;
+						}
+						continue;
+					default:
+						continue;
+				}
+			}
+
+			if (fi.get_return_type().get_tag() == GI.TypeTag.VOID) {
+				return true;
+			}
+			if (this.type_is_gobject(fi.get_return_type())) {
+				return true;
+			}
+			return this.value_suffix(fi.get_return_type()) != "";
+		}
+
+		private bool type_is_gobject(GI.TypeInfo ti)
+		{
+			if (ti.get_tag() != GI.TypeTag.INTERFACE) {
+				return false;
+			}
+			var info = ti.get_interface();
+			return info != null && info.get_type() == GI.InfoType.OBJECT;
+		}
+
+		/** GI scalar tag → {@code set_*} / {@code get_*} suffix, or {@code ""}. */
+		private string value_suffix(GI.TypeInfo ti)
+		{
+			switch (ti.get_tag()) {
+				case GI.TypeTag.BOOLEAN: return "boolean";
+				case GI.TypeTag.INT8:
+				case GI.TypeTag.INT16:
+				case GI.TypeTag.INT32: return "int";
+				case GI.TypeTag.UINT8: return "uchar";
+				case GI.TypeTag.UINT16:
+				case GI.TypeTag.UINT32:
+				case GI.TypeTag.UNICHAR: return "uint";
+				case GI.TypeTag.INT64: return "int64";
+				case GI.TypeTag.UINT64: return "uint64";
+				case GI.TypeTag.FLOAT: return "float";
+				case GI.TypeTag.DOUBLE: return "double";
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME: return "string";
+				default: return "";
+			}
 		}
 
 		private string arg_decl(GI.ArgInfo arg, string type_name)
@@ -519,64 +701,183 @@ $(tab)}
 		private string type_vala(string ns, GI.TypeInfo ti)
 		{
 			switch (ti.get_tag()) {
-				case GI.TypeTag.VOID:
-					return "void";
-				case GI.TypeTag.BOOLEAN:
-					return "bool";
-				case GI.TypeTag.INT8:
-					return "int8";
-				case GI.TypeTag.UINT8:
-					return "uint8";
-				case GI.TypeTag.INT16:
-					return "int16";
-				case GI.TypeTag.UINT16:
-					return "uint16";
-				case GI.TypeTag.INT32:
-					return "int32";
-				case GI.TypeTag.UINT32:
-					return "uint32";
-				case GI.TypeTag.INT64:
-					return "int64";
-				case GI.TypeTag.UINT64:
-					return "uint64";
-				case GI.TypeTag.FLOAT:
-					return "float";
-				case GI.TypeTag.DOUBLE:
-					return "double";
-				case GI.TypeTag.GTYPE:
-					return "GLib.Type";
+				case GI.TypeTag.VOID: return "void";
+				case GI.TypeTag.BOOLEAN: return "bool";
+				case GI.TypeTag.INT8: return "int8";
+				case GI.TypeTag.UINT8: return "uint8";
+				case GI.TypeTag.INT16: return "int16";
+				case GI.TypeTag.UINT16: return "uint16";
+				case GI.TypeTag.INT32: return "int32";
+				case GI.TypeTag.UINT32: return "uint32";
+				case GI.TypeTag.INT64: return "int64";
+				case GI.TypeTag.UINT64: return "uint64";
+				case GI.TypeTag.FLOAT: return "float";
+				case GI.TypeTag.DOUBLE: return "double";
+				case GI.TypeTag.GTYPE: return "GLib.Type";
 				case GI.TypeTag.UTF8:
-				case GI.TypeTag.FILENAME:
-					return "string";
-				case GI.TypeTag.UNICHAR:
-					return "unichar";
-				case GI.TypeTag.ERROR:
-					return "GLib.Error";
+				case GI.TypeTag.FILENAME: return "string";
+				case GI.TypeTag.UNICHAR: return "unichar";
+				case GI.TypeTag.ERROR: return "GLib.Error";
 				case GI.TypeTag.INTERFACE:
 					var iface = ti.get_interface();
 					if (iface == null) {
 						return "";
 					}
 					return this.info_name(ns, iface);
-				default:
-					return "";
+				default: return "";
 			}
 		}
 
-		private bool allow_hit(string name, string type_name)
+		private void gap(string symbol, string reason, string detail = "")
 		{
-			if (this.allow.length == 0) {
-				return true;
+			this.gaps += Gap() {
+				symbol = symbol,
+				reason = reason,
+				detail = detail,
+			};
+		}
+
+		private string wire_symbol(string ns, string type_name, string name)
+		{
+			if (type_name == "") {
+				return @"$(ns).$(name)";
 			}
-			foreach (var allow in this.allow) {
-				if (allow == name) {
-					return true;
+			if (name == "") {
+				return @"$(ns)-$(type_name)";
+			}
+			return @"$(ns)-$(type_name).$(name)";
+		}
+
+		private void write_missing_summary(string ns) throws GLib.Error
+		{
+			if (this.missing_out_path == "") {
+				return;
+			}
+
+			var stream = GLib.FileStream.open(this.missing_out_path, "w");
+			if (stream == null) {
+				throw new GLib.IOError.FAILED(
+					"cannot write " + this.missing_out_path
+				);
+			}
+
+			int denied = 0;
+			int not_wired = 0;
+			int skipped = 0;
+			var reason_counts = new Gee.HashMap<string, int>();
+			foreach (var entry in this.gaps) {
+				if (entry.reason == "denied") {
+					denied++;
+					continue;
 				}
-				if (type_name != "" && allow == type_name + "." + name) {
-					return true;
+				if (entry.reason == "not_wired") {
+					not_wired++;
+				} else {
+					skipped++;
+				}
+				if (!reason_counts.has_key(entry.reason)) {
+					reason_counts[entry.reason] = 0;
+				}
+				reason_counts[entry.reason] = reason_counts[entry.reason] + 1;
+			}
+			var gap_total = not_wired + skipped;
+
+			stream.puts(@"# $(ns) — gi-stub-gen gaps
+
+Auto-generated. **Goal: zero gaps** (every callable either wires
+`call_values` or is intentionally denied).
+
+");
+			stream.puts("| | Count |\n");
+			stream.puts("|---|---:|\n");
+			stream.puts(@"| Wired callables | $(this.wired_callables) |
+");
+			stream.puts(@"| Not wired (placeholder stub) | $(not_wired) |
+");
+			stream.puts(@"| Skipped (no stub) | $(skipped) |
+");
+			stream.puts(@"| Denied | $(denied) |
+");
+			stream.puts(@"| **Gaps** | **$(gap_total)** |
+
+");
+
+			if (gap_total == 0) {
+				stream.puts("No gaps.\n");
+				stream = null;
+				GLib.print(
+					"gaps 0 → %s\n", this.missing_out_path
+				);
+				return;
+			}
+
+			stream.puts("## Gaps by reason\n\n");
+			stream.puts("| Reason | Count |\n");
+			stream.puts("|---|---:|\n");
+			string[] reason_order = {
+				"not_wired",
+				"unmapped_return",
+				"unmapped_arg",
+				"constructor",
+				"unhandled_callback",
+				"unhandled_constant",
+				"unhandled_info",
+				"unmapped_field",
+			};
+			string[] reasons = {};
+			foreach (var reason in reason_order) {
+				if (!reason_counts.has_key(reason)) {
+					continue;
+				}
+				reasons += reason;
+				stream.puts(@"| $(reason) | $(reason_counts[reason]) |
+");
+			}
+
+			stream.puts("\n## Gap list\n\n");
+			foreach (var reason in reasons) {
+				stream.puts(@"### $(reason)
+
+");
+				foreach (var entry in this.gaps) {
+					if (entry.reason != reason) {
+						continue;
+					}
+					if (entry.detail != "") {
+						stream.puts(
+							@"- `$(entry.symbol)` — $(entry.detail)
+"
+						);
+					} else {
+						stream.puts(@"- `$(entry.symbol)`
+");
+					}
+				}
+				stream.puts("\n");
+			}
+
+			if (denied > 0) {
+				stream.puts("## Denied\n\n");
+				foreach (var entry in this.gaps) {
+					if (entry.reason != "denied") {
+						continue;
+					}
+					if (entry.detail != "") {
+						stream.puts(
+							@"- `$(entry.symbol)` — $(entry.detail)
+"
+						);
+					} else {
+						stream.puts(@"- `$(entry.symbol)`
+");
+					}
 				}
 			}
-			return false;
+
+			stream = null;
+			GLib.print(
+				"gaps %d → %s\n", gap_total, this.missing_out_path
+			);
 		}
 	}
 }

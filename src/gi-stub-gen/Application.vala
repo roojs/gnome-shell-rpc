@@ -17,7 +17,8 @@ namespace GnomeShellRpc.GiStubGen
 		private static bool opt_debug_critical = false;
 		private static string opt_typelib_dir = "";
 		private static string opt_out = "";
-		private static string[]? opt_allow = null;
+		private static string opt_missing_out = "";
+		private static string[]? opt_deny = null;
 
 		/**
 		 * Custom help text ({ARG} = program name).
@@ -28,8 +29,8 @@ Usage: {ARG} [OPTION…] emit NAMESPACE VERSION
 Emit Vala stubs from a typelib (libgirepository).
 
 Examples:
-  {ARG} emit GiRpcSmoke 1.0 --typelib-dir=./build/src \
-    --allow=ping --out=./build/src/GiRpcSmoke_generated.vala
+  {ARG} --out=./build/src/GiRpcSmoke_generated.vala \
+    --typelib-dir=./build/src emit GiRpcSmoke 1.0
 """; }
 
 		private const GLib.OptionEntry[] options = {
@@ -39,10 +40,12 @@ Examples:
 				"Treat critical warnings as errors", null },
 			{ "typelib-dir", 0, 0, GLib.OptionArg.FILENAME, ref opt_typelib_dir,
 				"Prepend typelib search path", "DIR" },
-			{ "allow", 0, 0, GLib.OptionArg.STRING_ARRAY, ref opt_allow,
-				"Allowlisted function or Type.method name", "NAME" },
+			{ "deny", 0, 0, GLib.OptionArg.STRING_ARRAY, ref opt_deny,
+				"Skip symbol or Type.method", "NAME" },
 			{ "out", 0, 0, GLib.OptionArg.FILENAME, ref opt_out,
 				"Output Vala path", "FILE" },
+			{ "missing-out", 0, 0, GLib.OptionArg.FILENAME, ref opt_missing_out,
+				"Write gap summary markdown", "FILE" },
 			{ null }
 		};
 
@@ -67,7 +70,8 @@ Examples:
 			Application.opt_debug_critical = false;
 			Application.opt_typelib_dir = "";
 			Application.opt_out = "";
-			Application.opt_allow = null;
+			Application.opt_missing_out = "";
+			Application.opt_deny = null;
 
 			var args = command_line.get_arguments();
 			if (this.check_help_arg(args)) {
@@ -126,21 +130,24 @@ Examples:
 				return 1;
 			}
 
-			string[] allow = {};
-			if (Application.opt_allow != null) {
-				foreach (var name in Application.opt_allow) {
-					allow += name;
+			// TODO: load deny list from a file once we know the full set of symbols to skip
+			string[] deny = {};
+			if (Application.opt_deny != null) {
+				foreach (unowned var name in Application.opt_deny) {
+					deny += name;
 				}
 			}
-			var gen = new Generator() {
-				allow = allow,
-			};
+
+			var gen = new Generator();
+			gen.deny = deny;
+			gen.missing_out_path = Application.opt_missing_out;
 			if (Application.opt_typelib_dir != "") {
-				gen.prepend_typelib_dir(Application.opt_typelib_dir);
+				GI.Repository.prepend_search_path(Application.opt_typelib_dir);
+				GLib.debug("typelib prepend %s", Application.opt_typelib_dir);
 			}
 
 			try {
-				gen.require(ns, version);
+				GI.Repository.get_default().require(ns, version, 0);
 				gen.emit(ns, Application.opt_out);
 			} catch (GLib.Error e) {
 				command_line.printerr("%s\n", e.message);
