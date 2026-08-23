@@ -18,7 +18,7 @@ namespace GnomeShellRpc.GiStubGen
 		private static string opt_typelib_dir = "";
 		private static string opt_out = "";
 		private static string opt_missing_out = "";
-		private static string[]? opt_deny = null;
+		private static string opt_deny_file = "";
 
 		/**
 		 * Custom help text ({ARG} = program name).
@@ -40,8 +40,8 @@ Examples:
 				"Treat critical warnings as errors", null },
 			{ "typelib-dir", 0, 0, GLib.OptionArg.FILENAME, ref opt_typelib_dir,
 				"Prepend typelib search path", "DIR" },
-			{ "deny", 0, 0, GLib.OptionArg.STRING_ARRAY, ref opt_deny,
-				"Skip symbol or Type.method", "NAME" },
+			{ "deny-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_deny_file,
+				"Deny list file (one symbol per line, # comments)", "FILE" },
 			{ "out", 0, 0, GLib.OptionArg.FILENAME, ref opt_out,
 				"Output Vala path", "FILE" },
 			{ "missing-out", 0, 0, GLib.OptionArg.FILENAME, ref opt_missing_out,
@@ -71,7 +71,7 @@ Examples:
 			Application.opt_typelib_dir = "";
 			Application.opt_out = "";
 			Application.opt_missing_out = "";
-			Application.opt_deny = null;
+			Application.opt_deny_file = "";
 
 			var args = command_line.get_arguments();
 			if (this.check_help_arg(args)) {
@@ -130,11 +130,28 @@ Examples:
 				return 1;
 			}
 
-			// TODO: load deny list from a file once we know the full set of symbols to skip
 			string[] deny = {};
-			if (Application.opt_deny != null) {
-				foreach (unowned var name in Application.opt_deny) {
-					deny += name;
+			if (Application.opt_deny_file != "") {
+				try {
+					string contents;
+					size_t len;
+					GLib.FileUtils.get_contents(
+						Application.opt_deny_file, out contents, out len
+					);
+					foreach (var line in contents.split("\n")) {
+						var name = line.strip();
+						if (name == "" || name.has_prefix("#")) {
+							continue;
+						}
+						deny += name;
+					}
+				} catch (GLib.Error e) {
+					command_line.printerr(
+						"cannot read deny file %s: %s\n",
+						Application.opt_deny_file,
+						e.message
+					);
+					return 1;
 				}
 			}
 

@@ -430,12 +430,15 @@ namespace $(ns)
 			}
 
 			var flags = fi.get_flags();
-			if ((flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0) {
-				this.gap(symbol, "constructor");
+			var is_constructor = (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0;
+			if (is_constructor && kind != "class") {
+				this.gap(symbol, "constructor", "not on class");
 				return 0;
 			}
 
-			var ret = this.type_vala(ns, fi.get_return_type());
+			var ret = is_constructor
+				? type_name
+				: this.type_vala(ns, fi.get_return_type());
 			if (ret == "") {
 				this.gap(
 					symbol,
@@ -487,12 +490,24 @@ $(tab)public abstract $(ret) $(name)($(arglist));
 				return 1;
 			}
 
-			var instance = kind == "class" ? "this" : "null";
+			var instance = "null";
+			if (!is_constructor && kind == "class") {
+				instance = "this";
+			}
 			var indent = tab + "\t";
-			if (this.callable_wireable(fi)) {
-				stream.puts(tab + @"public $(ret) $(name)($(arglist)) {
+			if (this.callable_wireable(fi, ns)) {
+				if (is_constructor) {
+					stream.puts(
+						tab + @"public $(type_name)($(arglist)) {
+"
+					);
+				} else {
+					stream.puts(tab + @"public $(ret) $(name)($(arglist)) {
 ");
-				this.emit_call_values_body(stream, ns, indent, rpc, instance, fi, ret);
+				}
+				this.emit_call_values_body(
+					stream, ns, indent, rpc, instance, fi, ret, is_constructor
+				);
 				stream.puts(tab + "}\n");
 				this.wired_callables++;
 				return 1;
@@ -500,7 +515,14 @@ $(tab)public abstract $(ret) $(name)($(arglist));
 
 			this.gap(symbol, "not_wired");
 
-			if (ret == "void") {
+			if (is_constructor) {
+				stream.puts(
+					tab + @"public $(type_name)($(arglist)) {
+$(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
+$(tab)}
+"
+				);
+			} else if (ret == "void") {
 				stream.puts(tab + @"public void $(name)($(arglist)) {
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
@@ -521,9 +543,13 @@ $(tab)}
 			string rpc,
 			string instance,
 			GI.FunctionInfo fi,
-			string ret_vala
+			string ret_vala,
+			bool is_constructor = false
 		)
 		{
+			if (is_constructor) {
+				stream.puts(indent + "Object();\n");
+			}
 			string[] value_names = {};
 			for (var a = 0; a < fi.get_n_args(); a++) {
 				var arg = fi.get_arg(a);
@@ -533,24 +559,10 @@ $(tab)}
 				}
 				var arg_name = arg.get_name();
 				var at = this.type_vala(ns, arg.get_type());
-				var suffix = this.value_suffix(arg.get_type());
-				var val_name = arg_name + "_val";
-				stream.puts(indent + @"var $(val_name) = GLib.Value(typeof($(at)));
-");
-				if (suffix == "enum") {
-					stream.puts(
-						indent + @"$(val_name).set_enum((int) $(arg_name));
-"
-					);
-				} else if (suffix == "flags") {
-					stream.puts(
-						indent + @"$(val_name).set_flags((uint) $(arg_name));
-"
-					);
-				} else {
-					stream.puts(indent + @"$(val_name).set_$(suffix)($(arg_name));
-");
-				}
+				var suffix = this.value_suffix(ns, arg.get_type());
+				var val_name = this.emit_value_set(
+					stream, indent, arg_name, at, suffix
+				);
 				value_names += val_name;
 			}
 
@@ -573,7 +585,22 @@ $(tab)}
 			var has_return = ret_vala != "void";
 			var has_outs = this.has_out_values(fi);
 			if (has_return) {
+				if (this.return_is_object_list(ns, fi.get_return_type())) {
+					this.emit_list_return(
+						stream, indent, ns, fi.get_return_type()
+					);
+					return;
+				}
 				if (this.type_is_gobject(fi.get_return_type())) {
+					if (is_constructor) {
+						stream.puts(indent + @"var _stub = ($(ret_vala)) response.result.get(0);
+");
+						stream.puts(
+							indent + @"this.set_data(\"gsr-lease-id\", _stub.get_data<string>(\"gsr-lease-id\"));
+"
+						);
+						return;
+					}
 					if (!has_outs) {
 						stream.puts(indent + @"return ($(ret_vala)) response.result.get(0);
 ");
@@ -582,7 +609,7 @@ $(tab)}
 					stream.puts(indent + @"var __ret = ($(ret_vala)) response.result.get(0);
 ");
 				} else {
-					var ret_suffix = this.value_suffix(fi.get_return_type());
+					var ret_suffix = this.value_suffix(ns, fi.get_return_type());
 					if (!has_outs) {
 						this.emit_value_get(
 							stream, indent, ret_vala, ret_suffix, 0, true
@@ -604,7 +631,7 @@ $(tab)}
 				}
 				var arg_name = arg.get_name();
 				var at = this.type_vala(ns, arg.get_type());
-				var suffix = this.value_suffix(arg.get_type());
+				var suffix = this.value_suffix(ns, arg.get_type());
 				this.emit_value_get(
 					stream, indent, at, suffix, value_idx, false, arg_name
 				);
@@ -626,6 +653,13 @@ $(tab)}
 			string assign_name = ""
 		)
 		{
+			if (suffix == "boxed") {
+				this.emit_value_get_boxed(
+					stream, indent, vala_type, value_idx, is_return, assign_name
+				);
+				return;
+			}
+
 			var idx = value_idx.to_string();
 			string expr;
 			switch (suffix) {
@@ -654,6 +688,122 @@ $(tab)}
 ");
 		}
 
+		private string emit_value_set(
+			GLib.FileStream stream,
+			string indent,
+			string arg_name,
+			string vala_type,
+			string suffix
+		)
+		{
+			var val_name = arg_name + "_val";
+			switch (suffix) {
+				case "boxed":
+					stream.puts(
+						indent + @"var $(val_name) = GLib.Value(typeof(GLib.Bytes));
+"
+					);
+					stream.puts(indent + @"unsafe {
+");
+					stream.puts(
+						indent + @"	uint8[] _$(arg_name)_data = new uint8[sizeof($(vala_type))];
+"
+					);
+					stream.puts(
+						indent + @"	*(($(vala_type))*) _$(arg_name)_data = $(arg_name);
+"
+					);
+					stream.puts(
+						indent + @"	$(val_name).set_boxed(new GLib.Bytes(_$(arg_name)_data));
+"
+					);
+					stream.puts(indent + @"}
+");
+					break;
+				case "object":
+					stream.puts(
+						indent + @"var $(val_name) = GLib.Value(typeof($(vala_type)));
+"
+					);
+					stream.puts(
+						indent + @"$(val_name).set_object($(arg_name));
+"
+					);
+					break;
+				default:
+					stream.puts(
+						indent + @"var $(val_name) = GLib.Value(typeof($(vala_type)));
+"
+					);
+					switch (suffix) {
+						case "enum":
+							stream.puts(
+								indent + @"$(val_name).set_enum((int) $(arg_name));
+"
+							);
+							break;
+						case "flags":
+							stream.puts(
+								indent + @"$(val_name).set_flags((uint) $(arg_name));
+"
+							);
+							break;
+						default:
+							stream.puts(
+								indent + @"$(val_name).set_$(suffix)($(arg_name));
+"
+							);
+							break;
+					}
+					break;
+			}
+			return val_name;
+		}
+
+		private void emit_value_get_boxed(
+			GLib.FileStream stream,
+			string indent,
+			string vala_type,
+			int value_idx,
+			bool is_return,
+			string assign_name
+		)
+		{
+			var idx = value_idx.to_string();
+			stream.puts(indent + @"unsafe {
+");
+			stream.puts(
+				indent + @"	var _blob = (GLib.Bytes) response.values.get($(idx)).get_boxed();
+"
+			);
+			if (is_return) {
+				stream.puts(
+					indent + @"	return *(($(vala_type))*) _blob.get_data();
+"
+				);
+				stream.puts(indent + @"}
+");
+				return;
+			}
+			if (assign_name != "") {
+				stream.puts(
+					indent + @"	$(assign_name) = *(($(vala_type))*) _blob.get_data();
+"
+				);
+				stream.puts(indent + @"}
+");
+				return;
+			}
+			stream.puts(indent + @"$(vala_type) __ret;
+");
+			stream.puts(
+				indent + @"	__ret = *(($(vala_type))*) _blob.get_data();
+"
+			);
+			stream.puts(indent + @"}
+");
+		}
+
 		private bool has_out_values(GI.FunctionInfo fi)
 		{
 			for (var a = 0; a < fi.get_n_args(); a++) {
@@ -665,30 +815,100 @@ $(tab)}
 			return false;
 		}
 
-		private bool callable_wireable(GI.FunctionInfo fi)
+		private bool callable_wireable(GI.FunctionInfo fi, string ns)
 		{
 			for (var a = 0; a < fi.get_n_args(); a++) {
 				var arg = fi.get_arg(a);
-				switch (arg.get_direction()) {
-					case GI.Direction.IN:
-					case GI.Direction.INOUT:
-					case GI.Direction.OUT:
-						if (this.value_suffix(arg.get_type()) == "") {
-							return false;
-						}
-						continue;
-					default:
-						continue;
+				var dir = arg.get_direction();
+				if (dir != GI.Direction.IN
+					&& dir != GI.Direction.INOUT
+					&& dir != GI.Direction.OUT) {
+					continue;
+				}
+				var at = arg.get_type();
+				if (dir == GI.Direction.INOUT
+					&& (this.type_is_boxed_blob(at)
+						|| this.type_is_gobject(at))) {
+					return false;
+				}
+				if (this.type_is_gobject(at)) {
+					var info = at.get_interface();
+					if (info == null || info.get_namespace() != ns) {
+						return false;
+					}
+					if (dir != GI.Direction.IN) {
+						return false;
+					}
+					continue;
+				}
+				if (this.value_suffix(ns, at) == "") {
+					return false;
 				}
 			}
 
 			if (fi.get_return_type().get_tag() == GI.TypeTag.VOID) {
 				return true;
 			}
+			if (this.return_is_object_list(ns, fi.get_return_type())) {
+				return true;
+			}
 			if (this.type_is_gobject(fi.get_return_type())) {
 				return true;
 			}
-			return this.value_suffix(fi.get_return_type()) != "";
+			return this.value_suffix(ns, fi.get_return_type()) != "";
+		}
+
+		private bool return_is_object_list(string ns, GI.TypeInfo ti)
+		{
+			if (ti.get_tag() != GI.TypeTag.GLIST
+				&& ti.get_tag() != GI.TypeTag.GSLIST) {
+				return false;
+			}
+			var elem = ti.get_param_type(0);
+			if (!this.type_is_gobject(elem)) {
+				return false;
+			}
+			var info = elem.get_interface();
+			return info != null && info.get_namespace() == ns;
+		}
+
+		private string list_return_vala(string ns, GI.TypeInfo ti)
+		{
+			var elem = ti.get_param_type(0);
+			var elem_vala = this.type_vala(ns, elem);
+			if (elem_vala == "") {
+				return "";
+			}
+			if (ti.get_tag() == GI.TypeTag.GLIST) {
+				return @"GLib.List<$(elem_vala)>";
+			}
+			if (ti.get_tag() == GI.TypeTag.GSLIST) {
+				return @"GLib.SList<$(elem_vala)>";
+			}
+			return "";
+		}
+
+		private void emit_list_return(
+			GLib.FileStream stream,
+			string indent,
+			string ns,
+			GI.TypeInfo ret_type
+		)
+		{
+			var ret_vala = this.list_return_vala(ns, ret_type);
+			var elem_vala = this.type_vala(ns, ret_type.get_param_type(0));
+			stream.puts(indent + @"var _list = new $(ret_vala)();
+");
+			stream.puts(indent + @"for (var _i = 0; _i < response.result.size; _i++) {
+");
+			stream.puts(
+				indent + @"	_list.append(($(elem_vala)) response.result.get(_i));
+"
+			);
+			stream.puts(indent + @"}
+");
+			stream.puts(indent + @"return _list;
+");
 		}
 
 		private bool type_is_gobject(GI.TypeInfo ti)
@@ -701,7 +921,7 @@ $(tab)}
 		}
 
 		/** GI scalar tag → {@code set_*} / {@code get_*} suffix, or {@code ""}. */
-		private string value_suffix(GI.TypeInfo ti)
+		private string value_suffix(string ns, GI.TypeInfo ti)
 		{
 			switch (ti.get_tag()) {
 				case GI.TypeTag.BOOLEAN: return "boolean";
@@ -719,9 +939,41 @@ $(tab)}
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME: return "string";
 				case GI.TypeTag.INTERFACE:
-					return this.enum_value_suffix(ti);
+					var es = this.enum_value_suffix(ti);
+					if (es != "") {
+						return es;
+					}
+					if (this.type_is_gobject(ti)) {
+						var info = ti.get_interface();
+						if (info != null && info.get_namespace() == ns) {
+							return "object";
+						}
+					}
+					if (this.type_is_boxed_blob(ti)) {
+						return "boxed";
+					}
+					return "";
 				default: return "";
 			}
+		}
+
+		private bool type_is_boxed_blob(GI.TypeInfo ti)
+		{
+			if (ti.get_tag() != GI.TypeTag.INTERFACE) {
+				return false;
+			}
+			var info = ti.get_interface();
+			if (info == null) {
+				return false;
+			}
+			if (info.get_type() == GI.InfoType.UNION) {
+				return true;
+			}
+			if (info.get_type() != GI.InfoType.STRUCT
+				&& info.get_type() != GI.InfoType.BOXED) {
+				return false;
+			}
+			return !((GI.StructInfo) info).is_gtype_struct();
 		}
 
 		private string enum_value_suffix(GI.TypeInfo ti)
@@ -792,6 +1044,12 @@ $(tab)}
 				case GI.TypeTag.FILENAME: return "string";
 				case GI.TypeTag.UNICHAR: return "unichar";
 				case GI.TypeTag.ERROR: return "GLib.Error";
+				case GI.TypeTag.GLIST:
+				case GI.TypeTag.GSLIST:
+					if (!this.return_is_object_list(ns, ti)) {
+						return "";
+					}
+					return this.list_return_vala(ns, ti);
 				case GI.TypeTag.INTERFACE:
 					var iface = ti.get_interface();
 					if (iface == null) {

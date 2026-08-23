@@ -228,6 +228,8 @@ metamini_typelib = custom_target('Meta-16.typelib',
 )
 
 # Review artifact: client stubs from stock mutter Meta-16 typelib (not linked yet).
+meta_deny_file = files('gi-stub-gen/Meta.deny')
+
 meta_window_generated = custom_target('meta_window_generated',
   output: ['Meta_window_generated.vala', 'Meta_window_generated.missing.md'],
   command: [
@@ -235,8 +237,10 @@ meta_window_generated = custom_target('meta_window_generated',
     '--out=@OUTPUT0@',
     '--missing-out=@OUTPUT1@',
     '--typelib-dir=' + mutter_typelib_dir,
+    '--deny-file=@INPUT@',
     'emit', 'Meta', '16',
   ],
+  input: meta_deny_file,
   depends: [gi_stub_gen],
   build_by_default: true,
 )

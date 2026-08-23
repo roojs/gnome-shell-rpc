@@ -116,10 +116,32 @@ namespace GnomeShellRpc.GiStub
 				method = method,
 				lease_id = lease_id,
 			};
-			if (values != null) {
-				foreach (unowned var val in values) {
+			if (values == null) {
+				return Runtime.do_call(req);
+			}
+			foreach (unowned var val in values) {
+				if (!val.type().is_a(GLib.Type.OBJECT)) {
 					req.values.add(val);
+					continue;
 				}
+				var obj = val.get_object();
+				if (obj == null) {
+					var zero = GLib.Value(GLib.Type.UINT64);
+					zero.set_uint64(0);
+					req.values.add(zero);
+					continue;
+				}
+				var lease = obj.get_data<string>("gsr-lease-id");
+				if (lease == null || lease.length == 0) {
+					GLib.error(
+						"RPC %s: cannot serialize %s (not a leased stub)",
+						method,
+						val.type().name()
+					);
+				}
+				var wire = GLib.Value(GLib.Type.UINT64);
+				wire.set_uint64(uint64.parse(lease));
+				req.values.add(wire);
 			}
 			return Runtime.do_call(req);
 		}
