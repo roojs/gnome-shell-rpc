@@ -7,6 +7,7 @@
             xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
   <include name="GObject" version="2.0"/>
   <include name="Gio" version="2.0"/>
+  <include name="Clutter" version="16"/>
   <namespace name="Meta"
              version="16"
              shared-library="libmetamini.so"
@@ -36,12 +37,52 @@
           <type name="StartupNotification" c:type="MetaStartupNotification*"/>
         </return-value>
       </method>
+      <method name="get_compositor" c:identifier="meta_display_get_compositor">
+        <return-value transfer-ownership="full">
+          <type name="Compositor" c:type="MetaCompositor*"/>
+        </return-value>
+      </method>
     </class>
     <record name="DisplayClass"
              c:type="MetaDisplayClass"
              glib:is-gtype-struct-for="Display">
       <field name="parent_class">
         <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="Compositor"
+           c:type="MetaCompositor"
+           glib:type-name="MetaCompositor"
+           glib:get-type="meta_compositor_get_type"
+           parent="GObject.Object"
+           glib:type-struct="CompositorClass">
+      <method name="get_window_actors" c:identifier="meta_compositor_get_window_actors">
+        <return-value transfer-ownership="container">
+          <type name="GLib.List" c:type="GList*">
+            <type name="WindowActor" c:type="MetaWindowActor*"/>
+          </type>
+        </return-value>
+      </method>
+    </class>
+    <record name="CompositorClass"
+             c:type="MetaCompositorClass"
+             glib:is-gtype-struct-for="Compositor">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="WindowActor"
+           c:type="MetaWindowActor"
+           glib:type-name="MetaWindowActor"
+           glib:get-type="meta_window_actor_get_type"
+           parent="Clutter.Actor"
+           glib:type-struct="WindowActorClass">
+    </class>
+    <record name="WindowActorClass"
+             c:type="MetaWindowActorClass"
+             glib:is-gtype-struct-for="WindowActor">
+      <field name="parent_class">
+        <type name="Clutter.ActorClass" c:type="ClutterActorClass"/>
       </field>
     </record>
     <class name="StartupNotification"

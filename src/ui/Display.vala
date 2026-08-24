@@ -34,6 +34,7 @@ namespace GnomeShellRpc.Ui
 		public signal void call_list_windows(OLLMrpc.Request request);
 		public signal void call_get_window(OLLMrpc.Request request);
 		public signal void call_get_focused_window(OLLMrpc.Request request);
+		public signal void call_get_compositor(OLLMrpc.Request request);
 		public signal void call_minimize_window(OLLMrpc.Request request);
 		public signal void call_unminimize_window(OLLMrpc.Request request);
 		public signal void call_activate_window(OLLMrpc.Request request);
@@ -153,6 +154,18 @@ namespace GnomeShellRpc.Ui
 						height = frame.height,
 					},
 				});
+				request.reply(response);
+			});
+
+			this.call_get_compositor.connect((request) => {
+				var compositor = this.meta_display.get_compositor();
+				var handle = (uint64) request.connection.export(compositor);
+				var lease_val = GLib.Value(GLib.Type.UINT64);
+				lease_val.set_uint64(handle);
+				var response = new OLLMrpc.Response() {
+					id = request.id,
+				};
+				response.values.add(lease_val);
 				request.reply(response);
 			});
 

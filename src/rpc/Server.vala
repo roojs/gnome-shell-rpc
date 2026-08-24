@@ -31,6 +31,7 @@ namespace GnomeShellRpc.Rpc
 			Ui.WorkspaceParams.rpc_register();
 			Ui.Display.rpc_register();
 			Rpc.Daemon.rpc_register();
+			Rpc.Bootstrap.rpc_register();
 			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 			OLLMrpc.Request.rpc_register();
 			OLLMrpc.Response.rpc_register();
@@ -64,13 +65,21 @@ namespace GnomeShellRpc.Rpc
 			try {
 				GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 				OLLMrpc.Gi.register("Meta", "16");
+				OLLMrpc.Gi.register("Clutter", "16");
 				GLib.debug(
 					"Gi.register Meta-16 ok (%u types)",
 					OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0
 				);
 			} catch (GLib.Error e) {
-				GLib.warning("Gi.register(Meta, 16) failed: %s", e.message);
+				GLib.warning("Gi.register(Meta/Clutter) failed: %s", e.message);
 			}
+
+			var bootstrap = Bootstrap.bind(this.display);
+			OLLMrpc.Request.register(
+				"RPC-Bootstrap",
+				bootstrap,
+				typeof(BootstrapParams)
+			);
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {
@@ -137,23 +146,27 @@ namespace GnomeShellRpc.Rpc
 			}
 			var bindir = GLib.Path.get_dirname(self_exe);
 			var gjs_embed = GLib.Path.build_filename(bindir, "gjs-embed");
+			var smoke_name = "meta-smoke.js";
+			if (GLib.Environment.get_variable("GI_META_SMOKE_CLUTTER") == "1") {
+				smoke_name = "clutter-smoke.js";
+			}
 			var script = GLib.Path.build_filename(
-				bindir, "..", "..", "src", "gjs-embed", "meta-smoke.js"
+				bindir, "..", "..", "src", "gjs-embed", smoke_name
 			);
 			if (!GLib.FileUtils.test(gjs_embed, GLib.FileTest.IS_EXECUTABLE)) {
 				GLib.warning("gjs-embed missing at %s — skip client spawn", gjs_embed);
 				return;
 			}
 			if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
-				GLib.warning("meta-smoke.js missing at %s — skip client spawn", script);
+				GLib.warning("%s missing at %s — skip client spawn", smoke_name, script);
 				return;
 			}
 
 			var tip = GLib.Environment.get_variable("GI_TYPELIB_PATH");
 			if (tip != null && tip.length > 0) {
-				tip = bindir + ":" + tip;
+				tip = bindir + ":" + MUTTER_TYPELIB_DIR + ":" + tip;
 			} else {
-				tip = bindir;
+				tip = bindir + ":" + MUTTER_TYPELIB_DIR;
 			}
 
 			string[] argv = { gjs_embed, "--debug", script };

@@ -19,6 +19,13 @@ namespace GnomeShellRpc.GiStubGen
 		/** Denylisted symbols skipped on emit; {@code Type.method} or bare name. */
 		public string[] deny = {};
 
+		/** {@code Type.method} → override keys (e.g. {@code list_elem=WindowActor}). */
+		public Gee.HashMap<string, Gee.HashMap<string, string>> overrides =
+			new Gee.HashMap<string, Gee.HashMap<string, string>>();
+
+		/** Current {@code Type.method} while emitting (for {@link overrides}). */
+		private string emit_symbol = "";
+
 		/** When set, write a gap summary markdown file after emit. */
 		public string missing_out_path = "";
 
@@ -436,9 +443,16 @@ namespace $(ns)
 				return 0;
 			}
 
-			var ret = is_constructor
-				? type_name
-				: this.type_vala(ns, fi.get_return_type());
+			this.emit_symbol = "";
+			if (type_name != "") {
+				this.emit_symbol = @"$(type_name).$(name)";
+			}
+			string ret;
+			if (is_constructor) {
+				ret = type_name;
+			} else {
+				ret = this.type_vala(ns, fi.get_return_type());
+			}
 			if (ret == "") {
 				this.gap(
 					symbol,
@@ -586,9 +600,7 @@ $(tab)}
 			var has_outs = this.has_out_values(fi);
 			if (has_return) {
 				if (this.return_is_object_list(ns, fi.get_return_type())) {
-					this.emit_list_return(
-						stream, indent, ns, fi.get_return_type()
-					);
+					this.emit_list_return(stream, indent, ns, fi.get_return_type());
 					return;
 				}
 				if (this.type_is_gobject(fi.get_return_type())) {
@@ -864,6 +876,11 @@ $(tab)}
 				&& ti.get_tag() != GI.TypeTag.GSLIST) {
 				return false;
 			}
+			if (this.emit_symbol != ""
+				&& this.overrides.has_key(this.emit_symbol)
+				&& this.overrides.get(this.emit_symbol).has_key("list_elem")) {
+				return true;
+			}
 			var elem = ti.get_param_type(0);
 			if (!this.type_is_gobject(elem)) {
 				return false;
@@ -874,8 +891,15 @@ $(tab)}
 
 		private string list_return_vala(string ns, GI.TypeInfo ti)
 		{
-			var elem = ti.get_param_type(0);
-			var elem_vala = this.type_vala(ns, elem);
+			var elem_vala = "";
+			if (this.emit_symbol != ""
+				&& this.overrides.has_key(this.emit_symbol)
+				&& this.overrides.get(this.emit_symbol).has_key("list_elem")) {
+				elem_vala = this.overrides.get(this.emit_symbol).get("list_elem");
+			}
+			if (elem_vala == "") {
+				elem_vala = this.type_vala(ns, ti.get_param_type(0));
+			}
 			if (elem_vala == "") {
 				return "";
 			}
@@ -897,6 +921,11 @@ $(tab)}
 		{
 			var ret_vala = this.list_return_vala(ns, ret_type);
 			var elem_vala = this.type_vala(ns, ret_type.get_param_type(0));
+			if (this.emit_symbol != ""
+				&& this.overrides.has_key(this.emit_symbol)
+				&& this.overrides.get(this.emit_symbol).has_key("list_elem")) {
+				elem_vala = this.overrides.get(this.emit_symbol).get("list_elem");
+			}
 			stream.puts(indent + @"var _list = new $(ret_vala)();
 ");
 			stream.puts(indent + @"for (var _i = 0; _i < response.result.size; _i++) {

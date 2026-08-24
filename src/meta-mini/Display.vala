@@ -73,7 +73,24 @@ namespace Meta
 		{
 			return this.startup_notification;
 		}
+
+		/**
+		 * Compositor for this display (requires bootstrap display lease).
+		 */
+		public Compositor get_compositor()
+		{
+			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Display.get_compositor", this);
+			var compositor = new Compositor();
+			compositor.set_data(
+				"gsr-lease-id",
+				response.values.get(0).get_uint64().to_string()
+			);
+			return compositor;
+		}
 	}
+
+	private static Display? display_singleton = null;
 
 	/**
 	 * Bootstrap: return a display stub (RPC connects on first call).
@@ -84,6 +101,22 @@ namespace Meta
 	 */
 	public Display get_display()
 	{
-		return new Display();
+		if (display_singleton == null) {
+			display_singleton = new Display();
+			OLLMrpc.CallParam bootstrap = new GnomeShellRpc.Rpc.BootstrapParams();
+			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+				"RPC-Bootstrap.get_display",
+				null,
+				null,
+				bootstrap
+			);
+			if (response.values.size > 0) {
+				display_singleton.set_data(
+					"gsr-lease-id",
+					response.values.get(0).get_uint64().to_string()
+				);
+			}
+		}
+		return display_singleton;
 	}
 }

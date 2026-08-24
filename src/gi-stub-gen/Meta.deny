@@ -1,0 +1,5 @@
+# gi-stub-gen deny list for Meta-16 (Type.method or bare name).
+# Denied symbols are omitted from generated stubs and do not count as gaps.
+
+# Internal factory: BackgroundActor creates content; clients use actor.content.
+BackgroundContent.new

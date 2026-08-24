@@ -19,6 +19,7 @@ namespace GnomeShellRpc.GiStubGen
 		private static string opt_out = "";
 		private static string opt_missing_out = "";
 		private static string opt_deny_file = "";
+		private static string opt_overrides_file = "";
 
 		/**
 		 * Custom help text ({ARG} = program name).
@@ -42,6 +43,8 @@ Examples:
 				"Prepend typelib search path", "DIR" },
 			{ "deny-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_deny_file,
 				"Deny list file (one symbol per line, # comments)", "FILE" },
+			{ "overrides-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_overrides_file,
+				"Overrides file (Type.method key=value)", "FILE" },
 			{ "out", 0, 0, GLib.OptionArg.FILENAME, ref opt_out,
 				"Output Vala path", "FILE" },
 			{ "missing-out", 0, 0, GLib.OptionArg.FILENAME, ref opt_missing_out,
@@ -72,6 +75,7 @@ Examples:
 			Application.opt_out = "";
 			Application.opt_missing_out = "";
 			Application.opt_deny_file = "";
+			Application.opt_overrides_file = "";
 
 			var args = command_line.get_arguments();
 			if (this.check_help_arg(args)) {
@@ -132,19 +136,12 @@ Examples:
 
 			string[] deny = {};
 			if (Application.opt_deny_file != "") {
+				string contents;
+				size_t len;
 				try {
-					string contents;
-					size_t len;
 					GLib.FileUtils.get_contents(
 						Application.opt_deny_file, out contents, out len
 					);
-					foreach (var line in contents.split("\n")) {
-						var name = line.strip();
-						if (name == "" || name.has_prefix("#")) {
-							continue;
-						}
-						deny += name;
-					}
 				} catch (GLib.Error e) {
 					command_line.printerr(
 						"cannot read deny file %s: %s\n",
@@ -153,11 +150,60 @@ Examples:
 					);
 					return 1;
 				}
+				foreach (var line in contents.split("\n")) {
+					var name = line.strip();
+					if (name == "" || name.has_prefix("#")) {
+						continue;
+					}
+					deny += name;
+				}
 			}
 
-			var gen = new Generator();
-			gen.deny = deny;
-			gen.missing_out_path = Application.opt_missing_out;
+			var overrides = new Gee.HashMap<string, Gee.HashMap<string, string>>();
+			if (Application.opt_overrides_file != "") {
+				string contents;
+				size_t len;
+				try {
+					GLib.FileUtils.get_contents(
+						Application.opt_overrides_file, out contents, out len
+					);
+				} catch (GLib.Error e) {
+					command_line.printerr(
+						"cannot read overrides file %s: %s\n",
+						Application.opt_overrides_file,
+						e.message
+					);
+					return 1;
+				}
+				foreach (var line in contents.split("\n")) {
+					var stripped = line.strip();
+					if (stripped == "" || stripped.has_prefix("#")) {
+						continue;
+					}
+					var space = stripped.index_of(" ");
+					if (space < 0) {
+						continue;
+					}
+					var symbol = stripped.substring(0, space);
+					var rest = stripped.substring(space + 1).strip();
+					var eq = rest.index_of("=");
+					if (eq < 0) {
+						continue;
+					}
+					var key = rest.substring(0, eq).strip();
+					var val = rest.substring(eq + 1).strip();
+					if (!overrides.has_key(symbol)) {
+						overrides.set(symbol, new Gee.HashMap<string, string>());
+					}
+					overrides.get(symbol).set(key, val);
+				}
+			}
+
+			var gen = new Generator() {
+				deny = deny,
+				overrides = overrides,
+				missing_out_path = Application.opt_missing_out,
+			};
 			if (Application.opt_typelib_dir != "") {
 				GI.Repository.prepend_search_path(Application.opt_typelib_dir);
 				GLib.debug("typelib prepend %s", Application.opt_typelib_dir);

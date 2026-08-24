@@ -1,0 +1,5 @@
+# gi-stub-gen overrides for Meta-16 (Type.method key=value).
+# Mirrors vapi/Meta-16.metadata fixes the generator cannot infer from GIR.
+
+# GIR returns GList<Clutter.Actor>; runtime elements are Meta.WindowActor.
+Compositor.get_window_actors list_elem=WindowActor

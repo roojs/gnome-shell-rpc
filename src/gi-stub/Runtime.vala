@@ -44,6 +44,7 @@ namespace GnomeShellRpc.GiStub
 			GnomeShellRpc.Ui.WindowParams.rpc_register();
 			GnomeShellRpc.Ui.DisplayParams.rpc_register();
 			GnomeShellRpc.Rpc.DaemonParams.rpc_register();
+			GnomeShellRpc.Rpc.BootstrapParams.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
 			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 
@@ -98,7 +99,8 @@ namespace GnomeShellRpc.GiStub
 		public static OLLMrpc.Response call_values(
 			string method,
 			GLib.Object? instance = null,
-			owned GLib.Value?[]? values = null
+			owned GLib.Value?[]? values = null,
+			OLLMrpc.CallParam? param = null
 		) {
 			uint64 lease_id = 0;
 			if (instance != null) {
@@ -116,6 +118,9 @@ namespace GnomeShellRpc.GiStub
 				method = method,
 				lease_id = lease_id,
 			};
+			if (param != null) {
+				req.param = param;
+			}
 			if (values == null) {
 				return Runtime.do_call(req);
 			}
@@ -224,6 +229,19 @@ namespace GnomeShellRpc.GiStub
 			}
 			if (response.error != null) {
 				GLib.error("%s", response.error.message);
+			}
+			for (var i = 0; i < response.result.size; i++) {
+				var obj = response.result.get(i);
+				var lease = obj.get_data<string>("gsr-lease-id");
+				if (lease != null && lease.length > 0) {
+					continue;
+				}
+				foreach (var entry in Runtime.client.proxies) {
+					if (entry.value == obj) {
+						obj.set_data("gsr-lease-id", entry.key.to_string());
+						break;
+					}
+				}
 			}
 			return response;
 		}
