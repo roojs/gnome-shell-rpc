@@ -10,7 +10,9 @@ namespace GnomeShellRpc.GiStubGen
 	 *
 	 * {{{
 	 * GI.Repository.get_default().require("GiRpcSmoke", "1.0", 0);
-	 * var gen = new Generator() { deny = deny };
+	 * var gen = new Generator() {
+	 * 	deny = deny,
+	 * };
 	 * gen.emit("GiRpcSmoke", "GiRpcSmoke_generated.vala");
 	 * }}}
 	 */
@@ -31,13 +33,14 @@ namespace GnomeShellRpc.GiStubGen
 
 		private const string RUNTIME = "GnomeShellRpc.GiStub.Runtime";
 
-		private struct Gap {
-			public string symbol;
-			public string reason;
-			public string detail;
+		private class Gap : GLib.Object
+		{
+			public string symbol { get; set; }
+			public string reason { get; set; }
+			public string detail { get; set; default = ""; }
 		}
 
-		private Gap[] gaps = {};
+		private Gee.ArrayList<Gap> gaps = new Gee.ArrayList<Gap>();
 		private int wired_callables = 0;
 
 		/**
@@ -49,7 +52,7 @@ namespace GnomeShellRpc.GiStubGen
 		 */
 		public void emit(string ns, string out_path) throws GLib.Error
 		{
-			this.gaps = {};
+			this.gaps.clear();
 			this.wired_callables = 0;
 
 			var stream = GLib.FileStream.open(out_path, "w");
@@ -92,11 +95,11 @@ namespace $(ns)
 						emitted += this.emit_callback(stream, ns, (GI.CallbackInfo)info);
 						continue;
 					default:
-						this.gap(
-							info.get_name(),
-							"unhandled_info",
-							info.get_type().to_string()
-						);
+						this.gaps.add(new Gap() {
+							symbol = info.get_name(),
+							reason = "unhandled_info",
+							detail = info.get_type().to_string(),
+						});
 						continue;
 				}
 			}
@@ -123,7 +126,10 @@ namespace $(ns)
 		{
 			var name = fi.get_name();
 			if (name in this.deny) {
-				this.gap(this.wire_symbol(ns, "", name), "denied");
+				this.gaps.add(new Gap() {
+					symbol = this.wire_symbol(ns, "", name),
+					reason = "denied",
+				});
 				return 0;
 			}
 			return this.emit_callable(stream, ns, "", fi, "ns");
@@ -141,7 +147,11 @@ namespace $(ns)
 		{
 			var class_name = oi.get_name();
 			if (class_name in this.deny) {
-				this.gap(this.wire_symbol(ns, class_name, ""), "denied", "class");
+				this.gaps.add(new Gap() {
+					symbol = this.wire_symbol(ns, class_name, ""),
+					reason = "denied",
+					detail = "class",
+				});
 				return 0;
 			}
 
@@ -189,7 +199,11 @@ namespace $(ns)
 		private int emit_enum_values(GLib.FileStream stream, GI.EnumInfo ei, bool is_flags)
 		{
 			if (ei.get_name() in this.deny) {
-				this.gap(ei.get_name(), "denied", "enum");
+				this.gaps.add(new Gap() {
+					symbol = ei.get_name(),
+					reason = "denied",
+					detail = "enum",
+				});
 				return 0;
 			}
 			if (is_flags) {
@@ -219,7 +233,11 @@ namespace $(ns)
 		private int emit_constant(GLib.FileStream stream, GI.ConstantInfo ci)
 		{
 			if (ci.get_name() in this.deny) {
-				this.gap(ci.get_name(), "denied", "constant");
+				this.gaps.add(new Gap() {
+					symbol = ci.get_name(),
+					reason = "denied",
+					detail = "constant",
+				});
 				return 0;
 			}
 			GI.Argument value;
@@ -287,11 +305,11 @@ namespace $(ns)
 ");
 					return 1;
 				default:
-					this.gap(
-						ci.get_name(),
-						"unhandled_constant",
-						ci.get_type().get_tag().to_string()
-					);
+					this.gaps.add(new Gap() {
+						symbol = ci.get_name(),
+						reason = "unhandled_constant",
+						detail = ci.get_type().get_tag().to_string(),
+					});
 					return 0;
 			}
 		}
@@ -310,7 +328,11 @@ namespace $(ns)
 				return 0;
 			}
 			if (si.get_name() in this.deny) {
-				this.gap(si.get_name(), "denied", "struct");
+				this.gaps.add(new Gap() {
+					symbol = si.get_name(),
+					reason = "denied",
+					detail = "struct",
+				});
 				return 0;
 			}
 			stream.puts(@"
@@ -321,11 +343,11 @@ namespace $(ns)
 				var field = si.get_field(f);
 				var ft = this.type_vala(ns, field.get_type());
 				if (ft == "") {
-					this.gap(
-						@"$(si.get_name()).$(field.get_name())",
-						"unmapped_field",
-						field.get_type().get_tag().to_string()
-					);
+					this.gaps.add(new Gap() {
+						symbol = @"$(si.get_name()).$(field.get_name())",
+						reason = "unmapped_field",
+						detail = field.get_type().get_tag().to_string(),
+					});
 					continue;
 				}
 				stream.puts(@"		public $(ft) $(field.get_name());
@@ -347,7 +369,11 @@ namespace $(ns)
 		{
 			var iface_name = ii.get_name();
 			if (iface_name in this.deny) {
-				this.gap(iface_name, "denied", "interface");
+				this.gaps.add(new Gap() {
+					symbol = iface_name,
+					reason = "denied",
+					detail = "interface",
+				});
 				return 0;
 			}
 
@@ -374,28 +400,35 @@ namespace $(ns)
 		private int emit_callback(GLib.FileStream stream, string ns, GI.CallbackInfo ci)
 		{
 			if (ci.get_name() in this.deny) {
-				this.gap(ci.get_name(), "denied", "callback");
+				this.gaps.add(new Gap() {
+					symbol = ci.get_name(),
+					reason = "denied",
+					detail = "callback",
+				});
 				return 0;
 			}
 			var ret = this.type_vala(ns, ci.get_return_type());
 			if (ret == "") {
-				this.gap(
-					ci.get_name(),
-					"unhandled_callback",
-					"return " + ci.get_return_type().get_tag().to_string()
-				);
+				this.gaps.add(new Gap() {
+					symbol = ci.get_name(),
+					reason = "unhandled_callback",
+					detail = "return " + ci.get_return_type().get_tag().to_string(),
+				});
 				return 0;
 			}
 			string[] args = {};
 			for (var a = 0; a < ci.get_n_args(); a++) {
 				var arg = ci.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
 				var at = this.type_vala(ns, arg.get_type());
 				if (at == "") {
-					this.gap(
-						ci.get_name(),
-						"unhandled_callback",
-						@"arg $(arg.get_name()) $(arg.get_type().get_tag().to_string())"
-					);
+					this.gaps.add(new Gap() {
+						symbol = ci.get_name(),
+						reason = "unhandled_callback",
+						detail = @"arg $(arg.get_name()) $(arg.get_type().get_tag().to_string())",
+					});
 					return 0;
 				}
 				args += this.arg_decl(arg, at);
@@ -427,19 +460,29 @@ namespace $(ns)
 			var name = fi.get_name();
 			var symbol = this.wire_symbol(ns, type_name, name);
 			if (name in this.deny) {
-				this.gap(symbol, "denied");
+				this.gaps.add(new Gap() {
+					symbol = symbol,
+					reason = "denied",
+				});
 				return 0;
 			}
 			if (type_name != ""
 				&& ((type_name + "." + name) in this.deny || type_name in this.deny)) {
-				this.gap(symbol, "denied");
+				this.gaps.add(new Gap() {
+					symbol = symbol,
+					reason = "denied",
+				});
 				return 0;
 			}
 
 			var flags = fi.get_flags();
 			var is_constructor = (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0;
 			if (is_constructor && kind != "class") {
-				this.gap(symbol, "constructor", "not on class");
+				this.gaps.add(new Gap() {
+					symbol = symbol,
+					reason = "constructor",
+					detail = "not on class",
+				});
 				return 0;
 			}
 
@@ -454,24 +497,27 @@ namespace $(ns)
 				ret = this.type_vala(ns, fi.get_return_type());
 			}
 			if (ret == "") {
-				this.gap(
-					symbol,
-					"unmapped_return",
-					fi.get_return_type().get_tag().to_string()
-				);
+				this.gaps.add(new Gap() {
+					symbol = symbol,
+					reason = "unmapped_return",
+					detail = fi.get_return_type().get_tag().to_string(),
+				});
 				return 0;
 			}
 
 			string[] args = {};
 			for (var a = 0; a < fi.get_n_args(); a++) {
 				var arg = fi.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
 				var at = this.type_vala(ns, arg.get_type());
 				if (at == "") {
-					this.gap(
-						symbol,
-						"unmapped_arg",
-						@"$(arg.get_name()) $(arg.get_type().get_tag().to_string())"
-					);
+					this.gaps.add(new Gap() {
+						symbol = symbol,
+						reason = "unmapped_arg",
+						detail = @"$(arg.get_name()) $(arg.get_type().get_tag().to_string())",
+					});
 					return 0;
 				}
 				args += this.arg_decl(arg, at);
@@ -527,7 +573,10 @@ $(tab)public abstract $(ret) $(name)($(arglist));
 				return 1;
 			}
 
-			this.gap(symbol, "not_wired");
+			this.gaps.add(new Gap() {
+				symbol = symbol,
+				reason = "not_wired",
+			});
 
 			if (is_constructor) {
 				stream.puts(
@@ -564,27 +613,45 @@ $(tab)}
 			if (is_constructor) {
 				stream.puts(indent + "Object();\n");
 			}
-			string[] value_names = {};
+
+			var sig = "";
+			var packed = "";
 			for (var a = 0; a < fi.get_n_args(); a++) {
 				var arg = fi.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
 				var dir = arg.get_direction();
 				if (dir != GI.Direction.IN && dir != GI.Direction.INOUT) {
 					continue;
 				}
-				var arg_name = arg.get_name();
-				var at = this.type_vala(ns, arg.get_type());
-				var suffix = this.value_suffix(ns, arg.get_type());
-				var val_name = this.emit_value_set(
-					stream, indent, arg_name, at, suffix
-				);
-				value_names += val_name;
+				var at = arg.get_type();
+				var letter = this.dbus_letter(ns, at);
+				if (letter == "ay") {
+					this.emit_boxed_bytes(
+						stream, indent, arg.get_name(),
+						this.type_vala(ns, at)
+					);
+				}
+				sig += letter;
+				if (packed != "") {
+					packed += ", ";
+				}
+				var expr = arg.get_name();
+				switch (letter) {
+					case "ay": expr = arg.get_name() + "_bytes"; break;
+					case "i":
+					case "y": expr = @"(int) $(arg.get_name())"; break;
+					case "u": expr = @"(uint) $(arg.get_name())"; break;
+					case "f": expr = @"(double) $(arg.get_name())"; break;
+				}
+				packed += expr;
 			}
-
-			var values_arg = "";
-			if (value_names.length > 0) {
-				values_arg = ", { " + string.joinv(", ", value_names) + " }";
+			var args_arg = "";
+			if (packed != "") {
+				args_arg = @", OLLMrpc.args(\"$(sig)\", $(packed))";
 			}
-			var call = @"$(RUNTIME).call_values(\"$(rpc)\", $(instance)$(values_arg))";
+			var call = @"$(RUNTIME).call_values(\"$(rpc)\", $(instance)$(args_arg))";
 
 			var need_response = ret_vala != "void"
 				|| this.has_out_values(fi);
@@ -603,7 +670,9 @@ $(tab)}
 					this.emit_list_return(stream, indent, ns, fi.get_return_type());
 					return;
 				}
-				if (this.type_is_gobject(fi.get_return_type())) {
+				var ret_iface = fi.get_return_type().get_interface();
+				if (ret_iface != null
+					&& ret_iface.get_type() == GI.InfoType.OBJECT) {
 					if (is_constructor) {
 						stream.puts(indent + @"var _stub = ($(ret_vala)) response.result.get(0);
 ");
@@ -621,15 +690,15 @@ $(tab)}
 					stream.puts(indent + @"var __ret = ($(ret_vala)) response.result.get(0);
 ");
 				} else {
-					var ret_suffix = this.value_suffix(ns, fi.get_return_type());
+					var ret_letter = this.dbus_letter(ns, fi.get_return_type());
 					if (!has_outs) {
 						this.emit_value_get(
-							stream, indent, ret_vala, ret_suffix, 0, true
+							stream, indent, ret_vala, ret_letter, 0, true
 						);
 						return;
 					}
 					this.emit_value_get(
-						stream, indent, ret_vala, ret_suffix, 0, false
+						stream, indent, ret_vala, ret_letter, 0, false
 					);
 					value_idx = 1;
 				}
@@ -637,15 +706,18 @@ $(tab)}
 
 			for (var a = 0; a < fi.get_n_args(); a++) {
 				var arg = fi.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
 				var dir = arg.get_direction();
 				if (dir != GI.Direction.OUT && dir != GI.Direction.INOUT) {
 					continue;
 				}
 				var arg_name = arg.get_name();
 				var at = this.type_vala(ns, arg.get_type());
-				var suffix = this.value_suffix(ns, arg.get_type());
 				this.emit_value_get(
-					stream, indent, at, suffix, value_idx, false, arg_name
+					stream, indent, at, this.dbus_letter(ns, arg.get_type()),
+					value_idx, false, arg_name
 				);
 				value_idx++;
 			}
@@ -659,32 +731,34 @@ $(tab)}
 			GLib.FileStream stream,
 			string indent,
 			string vala_type,
-			string suffix,
+			string letter,
 			int value_idx,
 			bool is_return,
 			string assign_name = ""
 		)
 		{
-			if (suffix == "boxed") {
+			if (letter == "ay") {
 				this.emit_value_get_boxed(
 					stream, indent, vala_type, value_idx, is_return, assign_name
 				);
 				return;
 			}
 
-			var idx = value_idx.to_string();
-			string expr;
-			switch (suffix) {
-				case "enum":
-					expr = @"($(vala_type)) response.values.get($(idx)).get_enum()";
-					break;
-				case "flags":
-					expr = @"($(vala_type)) response.values.get($(idx)).get_flags()";
-					break;
-				default:
-					expr = @"response.values.get($(idx)).get_$(suffix)()";
-					break;
+			var get = "";
+			switch (letter) {
+				case "b": get = "boolean"; break;
+				case "i": get = "int"; break;
+				case "y": get = "uchar"; break;
+				case "u": get = "uint"; break;
+				case "x": get = "int64"; break;
+				case "t": get = "uint64"; break;
+				case "f": get = "float"; break;
+				case "d": get = "double"; break;
+				case "s": get = "string"; break;
+				case "as": get = "boxed"; break;
 			}
+			var idx = value_idx.to_string();
+			var expr = @"($(vala_type)) response.args.get($(idx)).get_$(get)()";
 
 			if (is_return) {
 				stream.puts(indent + @"return $(expr);
@@ -700,76 +774,32 @@ $(tab)}
 ");
 		}
 
-		private string emit_value_set(
+		private void emit_boxed_bytes(
 			GLib.FileStream stream,
 			string indent,
 			string arg_name,
-			string vala_type,
-			string suffix
+			string vala_type
 		)
 		{
-			var val_name = arg_name + "_val";
-			switch (suffix) {
-				case "boxed":
-					stream.puts(
-						indent + @"var $(val_name) = GLib.Value(typeof(GLib.Bytes));
-"
-					);
-					stream.puts(indent + @"unsafe {
+			var bytes_name = arg_name + "_bytes";
+			stream.puts(indent + @"GLib.Bytes $(bytes_name);
 ");
-					stream.puts(
-						indent + @"	uint8[] _$(arg_name)_data = new uint8[sizeof($(vala_type))];
-"
-					);
-					stream.puts(
-						indent + @"	*(($(vala_type))*) _$(arg_name)_data = $(arg_name);
-"
-					);
-					stream.puts(
-						indent + @"	$(val_name).set_boxed(new GLib.Bytes(_$(arg_name)_data));
-"
-					);
-					stream.puts(indent + @"}
+			stream.puts(indent + @"unsafe {
 ");
-					break;
-				case "object":
-					stream.puts(
-						indent + @"var $(val_name) = GLib.Value(typeof($(vala_type)));
+			stream.puts(
+				indent + @"	uint8[] _$(arg_name)_data = new uint8[sizeof($(vala_type))];
 "
-					);
-					stream.puts(
-						indent + @"$(val_name).set_object($(arg_name));
+			);
+			stream.puts(
+				indent + @"	*(($(vala_type))*) _$(arg_name)_data = $(arg_name);
 "
-					);
-					break;
-				default:
-					stream.puts(
-						indent + @"var $(val_name) = GLib.Value(typeof($(vala_type)));
+			);
+			stream.puts(
+				indent + @"	$(bytes_name) = new GLib.Bytes(_$(arg_name)_data);
 "
-					);
-					switch (suffix) {
-						case "enum":
-							stream.puts(
-								indent + @"$(val_name).set_enum((int) $(arg_name));
-"
-							);
-							break;
-						case "flags":
-							stream.puts(
-								indent + @"$(val_name).set_flags((uint) $(arg_name));
-"
-							);
-							break;
-						default:
-							stream.puts(
-								indent + @"$(val_name).set_$(suffix)($(arg_name));
-"
-							);
-							break;
-					}
-					break;
-			}
-			return val_name;
+			);
+			stream.puts(indent + @"}
+");
 		}
 
 		private void emit_value_get_boxed(
@@ -785,7 +815,7 @@ $(tab)}
 			stream.puts(indent + @"unsafe {
 ");
 			stream.puts(
-				indent + @"	var _blob = (GLib.Bytes) response.values.get($(idx)).get_boxed();
+				indent + @"	var _blob = (GLib.Bytes) response.args.get($(idx)).get_boxed();
 "
 			);
 			if (is_return) {
@@ -819,7 +849,11 @@ $(tab)}
 		private bool has_out_values(GI.FunctionInfo fi)
 		{
 			for (var a = 0; a < fi.get_n_args(); a++) {
-				var dir = fi.get_arg(a).get_direction();
+				var arg = fi.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
+				var dir = arg.get_direction();
 				if (dir == GI.Direction.OUT || dir == GI.Direction.INOUT) {
 					return true;
 				}
@@ -831,6 +865,9 @@ $(tab)}
 		{
 			for (var a = 0; a < fi.get_n_args(); a++) {
 				var arg = fi.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
 				var dir = arg.get_direction();
 				if (dir != GI.Direction.IN
 					&& dir != GI.Direction.INOUT
@@ -838,14 +875,17 @@ $(tab)}
 					continue;
 				}
 				var at = arg.get_type();
+				var info = at.get_interface();
+				var is_object = info != null
+					&& info.get_type() == GI.InfoType.OBJECT;
 				if (dir == GI.Direction.INOUT
 					&& (this.type_is_boxed_blob(at)
-						|| this.type_is_gobject(at))) {
+						|| is_object
+						|| at.get_tag() == GI.TypeTag.ARRAY)) {
 					return false;
 				}
-				if (this.type_is_gobject(at)) {
-					var info = at.get_interface();
-					if (info == null || info.get_namespace() != ns) {
+				if (is_object) {
+					if (info.get_namespace() != ns) {
 						return false;
 					}
 					if (dir != GI.Direction.IN) {
@@ -853,7 +893,7 @@ $(tab)}
 					}
 					continue;
 				}
-				if (this.value_suffix(ns, at) == "") {
+				if (this.dbus_letter(ns, at) == "") {
 					return false;
 				}
 			}
@@ -864,10 +904,12 @@ $(tab)}
 			if (this.return_is_object_list(ns, fi.get_return_type())) {
 				return true;
 			}
-			if (this.type_is_gobject(fi.get_return_type())) {
+			var ret_iface = fi.get_return_type().get_interface();
+			if (ret_iface != null
+				&& ret_iface.get_type() == GI.InfoType.OBJECT) {
 				return true;
 			}
-			return this.value_suffix(ns, fi.get_return_type()) != "";
+			return this.dbus_letter(ns, fi.get_return_type()) != "";
 		}
 
 		private bool return_is_object_list(string ns, GI.TypeInfo ti)
@@ -882,11 +924,10 @@ $(tab)}
 				return true;
 			}
 			var elem = ti.get_param_type(0);
-			if (!this.type_is_gobject(elem)) {
-				return false;
-			}
 			var info = elem.get_interface();
-			return info != null && info.get_namespace() == ns;
+			return info != null
+				&& info.get_type() == GI.InfoType.OBJECT
+				&& info.get_namespace() == ns;
 		}
 
 		private string list_return_vala(string ns, GI.TypeInfo ti)
@@ -940,46 +981,50 @@ $(tab)}
 ");
 		}
 
-		private bool type_is_gobject(GI.TypeInfo ti)
-		{
-			if (ti.get_tag() != GI.TypeTag.INTERFACE) {
-				return false;
-			}
-			var info = ti.get_interface();
-			return info != null && info.get_type() == GI.InfoType.OBJECT;
-		}
-
-		/** GI scalar tag → {@code set_*} / {@code get_*} suffix, or {@code ""}. */
-		private string value_suffix(string ns, GI.TypeInfo ti)
+		/**
+		 * GI type → {@link OLLMrpc.args} letter (D-Bus / GVariant tags, plus
+		 * ''f'' for float, ''as'' for UTF8/FILENAME arrays, and ''ay'' for boxed blobs).
+		 */
+		private string dbus_letter(string ns, GI.TypeInfo ti)
 		{
 			switch (ti.get_tag()) {
-				case GI.TypeTag.BOOLEAN: return "boolean";
+				case GI.TypeTag.BOOLEAN: return "b";
 				case GI.TypeTag.INT8:
 				case GI.TypeTag.INT16:
-				case GI.TypeTag.INT32: return "int";
-				case GI.TypeTag.UINT8: return "uchar";
+				case GI.TypeTag.INT32: return "i";
+				case GI.TypeTag.UINT8: return "y";
 				case GI.TypeTag.UINT16:
 				case GI.TypeTag.UINT32:
-				case GI.TypeTag.UNICHAR: return "uint";
-				case GI.TypeTag.INT64: return "int64";
-				case GI.TypeTag.UINT64: return "uint64";
-				case GI.TypeTag.FLOAT: return "float";
-				case GI.TypeTag.DOUBLE: return "double";
+				case GI.TypeTag.UNICHAR: return "u";
+				case GI.TypeTag.INT64: return "x";
+				case GI.TypeTag.UINT64: return "t";
+				case GI.TypeTag.FLOAT: return "f";
+				case GI.TypeTag.DOUBLE: return "d";
 				case GI.TypeTag.UTF8:
-				case GI.TypeTag.FILENAME: return "string";
-				case GI.TypeTag.INTERFACE:
-					var es = this.enum_value_suffix(ti);
-					if (es != "") {
-						return es;
+				case GI.TypeTag.FILENAME: return "s";
+				case GI.TypeTag.ARRAY:
+					switch (ti.get_param_type(0).get_tag()) {
+						case GI.TypeTag.UTF8:
+						case GI.TypeTag.FILENAME: return "as";
+						default: return "";
 					}
-					if (this.type_is_gobject(ti)) {
-						var info = ti.get_interface();
-						if (info != null && info.get_namespace() == ns) {
-							return "object";
-						}
+				case GI.TypeTag.INTERFACE:
+					var info = ti.get_interface();
+					if (info == null) {
+						return "";
+					}
+					if (info.get_type() == GI.InfoType.ENUM) {
+						return "i";
+					}
+					if (info.get_type() == GI.InfoType.FLAGS) {
+						return "u";
+					}
+					if (info.get_type() == GI.InfoType.OBJECT
+						&& info.get_namespace() == ns) {
+						return "o";
 					}
 					if (this.type_is_boxed_blob(ti)) {
-						return "boxed";
+						return "ay";
 					}
 					return "";
 				default: return "";
@@ -1003,24 +1048,6 @@ $(tab)}
 				return false;
 			}
 			return !((GI.StructInfo) info).is_gtype_struct();
-		}
-
-		private string enum_value_suffix(GI.TypeInfo ti)
-		{
-			if (ti.get_tag() != GI.TypeTag.INTERFACE) {
-				return "";
-			}
-			var info = ti.get_interface();
-			if (info == null) {
-				return "";
-			}
-			if (info.get_type() == GI.InfoType.FLAGS) {
-				return "flags";
-			}
-			if (info.get_type() == GI.InfoType.ENUM) {
-				return "enum";
-			}
-			return "";
 		}
 
 		private string arg_decl(GI.ArgInfo arg, string type_name)
@@ -1071,6 +1098,12 @@ $(tab)}
 				case GI.TypeTag.GTYPE: return "GLib.Type";
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME: return "string";
+				case GI.TypeTag.ARRAY:
+					switch (ti.get_param_type(0).get_tag()) {
+						case GI.TypeTag.UTF8:
+						case GI.TypeTag.FILENAME: return "string[]";
+						default: return "";
+					}
 				case GI.TypeTag.UNICHAR: return "unichar";
 				case GI.TypeTag.ERROR: return "GLib.Error";
 				case GI.TypeTag.GLIST:
@@ -1087,15 +1120,6 @@ $(tab)}
 					return this.info_name(ns, iface);
 				default: return "";
 			}
-		}
-
-		private void gap(string symbol, string reason, string detail = "")
-		{
-			this.gaps += Gap() {
-				symbol = symbol,
-				reason = reason,
-				detail = detail,
-			};
 		}
 
 		private string wire_symbol(string ns, string type_name, string name)

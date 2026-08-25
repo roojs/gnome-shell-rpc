@@ -20,8 +20,8 @@ namespace GnomeShellRpc.GiRpcEcho
 		{
 			this.call_ping.connect((request) => {
 				string msg = "";
-				if (request.values.size > 0) {
-					msg = request.values.get(0).get_string();
+				if (request.args.size > 0) {
+					msg = request.args.get(0).get_string();
 				} else {
 					var p = (GiRpcSmoke.PingParams)request.param;
 					msg = p.msg;
@@ -29,10 +29,8 @@ namespace GnomeShellRpc.GiRpcEcho
 				GLib.print("got this call: ping msg=%s\n", msg);
 				var response = new OLLMrpc.Response() {
 					id = request.id,
+					args = OLLMrpc.args("s", "echo:" + msg),
 				};
-				var reply = new GLib.Value(GLib.Type.STRING);
-				reply.set_string("echo:" + msg);
-				response.values.add(reply);
 				request.reply(response);
 			});
 		}

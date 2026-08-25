@@ -5,9 +5,9 @@
  * {@link call_values}, {@link call_object}, and {@link call_list} always start
  * with {@link register}.
  *
- * Positional args use {@link OLLMrpc.Request.values} (GIR order, no direction
+ * Positional args use {@link OLLMrpc.Request.args} (GIR order, no direction
  * on the wire). Instance stubs carry {@code gsr-lease-id} data →
- * {@link OLLMrpc.Request.lease_id}. Scalar returns land in {@link OLLMrpc.Response.values}; GObjects in
+ * {@link OLLMrpc.Request.lease_id}. Scalar returns land in {@link OLLMrpc.Response.args}; GObjects in
  * {@link OLLMrpc.Response.result}.
  *
  * == Example ==
@@ -94,12 +94,12 @@ namespace GnomeShellRpc.GiStub
 		 *
 		 * @param method wire method (e.g. {@code Meta-Window.minimize})
 		 * @param instance leased stub; {@code gsr-lease-id} data → {@link OLLMrpc.Request.lease_id}
-		 * @param values GIR-order IN / INOUT args (may be empty)
+		 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
 		 */
 		public static OLLMrpc.Response call_values(
 			string method,
 			GLib.Object? instance = null,
-			owned GLib.Value?[]? values = null,
+			Gee.ArrayList<GLib.Value?>? args = null,
 			OLLMrpc.CallParam? param = null
 		) {
 			uint64 lease_id = 0;
@@ -121,19 +121,19 @@ namespace GnomeShellRpc.GiStub
 			if (param != null) {
 				req.param = param;
 			}
-			if (values == null) {
+			if (args == null) {
 				return Runtime.do_call(req);
 			}
-			foreach (unowned var val in values) {
+			foreach (var val in args) {
 				if (!val.type().is_a(GLib.Type.OBJECT)) {
-					req.values.add(val);
+					req.args.add(val);
 					continue;
 				}
 				var obj = val.get_object();
 				if (obj == null) {
 					var zero = GLib.Value(GLib.Type.UINT64);
 					zero.set_uint64(0);
-					req.values.add(zero);
+					req.args.add(zero);
 					continue;
 				}
 				var lease = obj.get_data<string>("gsr-lease-id");
@@ -146,7 +146,7 @@ namespace GnomeShellRpc.GiStub
 				}
 				var wire = GLib.Value(GLib.Type.UINT64);
 				wire.set_uint64(uint64.parse(lease));
-				req.values.add(wire);
+				req.args.add(wire);
 			}
 			return Runtime.do_call(req);
 		}

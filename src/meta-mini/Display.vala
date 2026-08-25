@@ -84,7 +84,7 @@ namespace Meta
 			var compositor = new Compositor();
 			compositor.set_data(
 				"gsr-lease-id",
-				response.values.get(0).get_uint64().to_string()
+				response.args.get(0).get_uint64().to_string()
 			);
 			return compositor;
 		}
@@ -110,10 +110,10 @@ namespace Meta
 				null,
 				bootstrap
 			);
-			if (response.values.size > 0) {
+			if (response.args.size > 0) {
 				display_singleton.set_data(
 					"gsr-lease-id",
-					response.values.get(0).get_uint64().to_string()
+					response.args.get(0).get_uint64().to_string()
 				);
 			}
 		}

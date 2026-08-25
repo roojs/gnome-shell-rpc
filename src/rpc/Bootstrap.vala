@@ -29,12 +29,10 @@ namespace GnomeShellRpc.Rpc
 		{
 			this.call_get_display.connect((request) => {
 				var handle = (uint64) request.connection.export(this.display);
-				var lease_val = GLib.Value(GLib.Type.UINT64);
-				lease_val.set_uint64(handle);
 				var response = new OLLMrpc.Response() {
 					id = request.id,
+					args = OLLMrpc.args("t", handle),
 				};
-				response.values.add(lease_val);
 				request.reply(response);
 			});
 		}

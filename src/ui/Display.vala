@@ -160,12 +160,10 @@ namespace GnomeShellRpc.Ui
 			this.call_get_compositor.connect((request) => {
 				var compositor = this.meta_display.get_compositor();
 				var handle = (uint64) request.connection.export(compositor);
-				var lease_val = GLib.Value(GLib.Type.UINT64);
-				lease_val.set_uint64(handle);
 				var response = new OLLMrpc.Response() {
 					id = request.id,
+					args = OLLMrpc.args("t", handle),
 				};
-				response.values.add(lease_val);
 				request.reply(response);
 			});
 
