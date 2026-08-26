@@ -1,5 +1,6 @@
 # gi-stub-gen deny list for Meta-16 (Type.method or bare name).
-# Denied symbols are omitted from generated stubs and do not count as gaps.
+# Bare name or Type.method: omit the stub (not a gap).
+# Trailing "noop": emit an empty stub (void) / return true (bool) / return 0.
 
 # BackgroundActor already creates the wallpaper ClutterContent and
 # attaches it as actor.content. Callers (gnome-shell, our Plugin) only
@@ -8,3 +9,24 @@
 # can make wallpaper out-of-process, but that object would not be on the
 # stage. No call sites in gnome-shell or this tree either.
 BackgroundContent.new
+
+# Compositor process bootstrap — gnome-shell JS never calls these
+# (only src/main.c / our Main.vala, before GJS starts).
+Context.configure noop
+Context.add_option_entries noop
+Context.set_plugin_gtype noop
+Plugin.manager_set_plugin_type noop
+
+# Temporary: mutter WindowActor constructor is what *sets*; JS only *gets*
+# (get_compositor_private is wired). Revisit if a client must attach an actor.
+Window.set_compositor_private noop
+
+# X11 GHashTable helpers for XIDs; gnome-shell JS never calls them.
+unsigned_long_equal noop
+unsigned_long_hash noop
+
+# Bodies from src/gi-stub/overrides/{Type}.override.vala (plan 0.5.7).
+SoundPlayer.play_from_file
+SoundPlayer.play_from_theme
+Background.set_file
+Context.terminate_with_error

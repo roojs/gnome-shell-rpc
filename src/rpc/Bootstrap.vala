@@ -13,7 +13,6 @@ namespace GnomeShellRpc.Rpc
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Bootstrap", typeof(Bootstrap));
-			BootstrapParams.rpc_register();
 		}
 
 		public static Bootstrap bind(Meta.Display display)

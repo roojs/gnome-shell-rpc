@@ -8,8 +8,7 @@ namespace GnomeShellRpc.Rpc
 	 * {{{
 	 * OLLMrpc.Request.register(
 	 *     "RPC-Daemon",
-	 *     new GnomeShellRpc.Rpc.Daemon(),
-	 *     typeof(GnomeShellRpc.Rpc.DaemonParams));
+	 *     new GnomeShellRpc.Rpc.Daemon());
 	 * }}}
 	 */
 	public class Daemon : GLib.Object, OLLMrpc.Bin.Serializable
@@ -17,7 +16,6 @@ namespace GnomeShellRpc.Rpc
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Daemon", typeof(Daemon));
-			DaemonParams.rpc_register();
 		}
 
 		public int protocol { get; set; default = 1; }
@@ -29,9 +27,12 @@ namespace GnomeShellRpc.Rpc
 		construct
 		{
 			this.call_hello.connect((request) => {
-				var p = (DaemonParams)request.param;
-				if (p.protocol > 0) {
-					this.protocol = p.protocol;
+				var protocol = 0;
+				if (request.args.size > 0) {
+					protocol = request.args.get(0).get_int();
+				}
+				if (protocol > 0) {
+					this.protocol = protocol;
 				}
 				var response = new OLLMrpc.Response() {
 					id = request.id,

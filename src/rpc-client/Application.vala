@@ -68,9 +68,6 @@ namespace GnomeShellRpc.RpcClient
 
 			GnomeShellRpc.Shared.Rectangle.rpc_register();
 			GnomeShellRpc.Ui.Window.rpc_register();
-			GnomeShellRpc.Ui.WindowParams.rpc_register();
-			GnomeShellRpc.Ui.DisplayParams.rpc_register();
-			GnomeShellRpc.Rpc.DaemonParams.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
 
 			this.hold();
@@ -138,10 +135,7 @@ namespace GnomeShellRpc.RpcClient
 
 			if (!yield Application.rpc_client.connect(new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				param = new GnomeShellRpc.Rpc.DaemonParams() {
-					protocol = 1,
-					client = "rpc-client",
-				},
+				args = OLLMrpc.args("is", 1, "rpc-client"),
 			})) {
 				throw new GLib.IOError.FAILED(
 					Application.rpc_client.connect_error
@@ -153,7 +147,6 @@ namespace GnomeShellRpc.RpcClient
 			var list_resp = yield Application.rpc_client.call(
 				new OLLMrpc.Request() {
 					method = "Meta-Display.list_windows",
-					param = new GnomeShellRpc.Ui.DisplayParams(),
 				}
 			);
 			if (list_resp.error != null) {

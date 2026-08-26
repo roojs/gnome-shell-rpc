@@ -18,8 +18,11 @@ namespace GnomeShellRpc.GiStubGen
 	 */
 	public class Generator : GLib.Object
 	{
-		/** Denylisted symbols skipped on emit; {@code Type.method} or bare name. */
+		/** Denylisted symbols omitted on emit; {@code Type.method} or bare name. */
 		public string[] deny = {};
+
+		/** Same names as {@link deny}, but emit an empty / dummy-return stub (deny-file ``noop`` flag). */
+		public string[] noop = {};
 
 		/** {@code Type.method} → override keys (e.g. {@code list_elem=WindowActor}). */
 		public Gee.HashMap<string, Gee.HashMap<string, string>> overrides =
@@ -77,10 +80,10 @@ namespace $(ns)
 						emitted += this.emit_object(stream, ns, (GI.ObjectInfo)info);
 						continue;
 					case GI.InfoType.ENUM:
-						emitted += this.emit_enum(stream, (GI.EnumInfo)info);
+						emitted += this.emit_enum_values(stream, (GI.EnumInfo)info, false);
 						continue;
 					case GI.InfoType.FLAGS:
-						emitted += this.emit_flags(stream, (GI.EnumInfo)info);
+						emitted += this.emit_enum_values(stream, (GI.EnumInfo)info, true);
 						continue;
 					case GI.InfoType.CONSTANT:
 						emitted += this.emit_constant(stream, (GI.ConstantInfo)info);
@@ -168,34 +171,41 @@ namespace $(ns)
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				methods += this.emit_callable(stream, ns, class_name, oi.get_method(m), "class");
 			}
+			this.splice_class_override(stream, class_name);
 			stream.puts("	}\n");
 			return 1 + methods;
 		}
 
 		/**
-		 * Emit an enum type.
-		 *
-		 * @param stream output Vala file
-		 * @param ei enum info
-		 * @return 1 if written
+		 * If {@code Application.opt_override_path}/{class_name}.override.vala}
+		 * exists, append it before the class closing brace. Methods must be on
+		 * the deny list so the generator does not emit stubs for them.
 		 */
-		private int emit_enum(GLib.FileStream stream, GI.EnumInfo ei)
+		private void splice_class_override(GLib.FileStream stream, string class_name)
 		{
-			return this.emit_enum_values(stream, ei, false);
+			var dir = Application.opt_override_path;
+			if (dir == "") {
+				return;
+			}
+			var path = GLib.Path.build_filename(dir, class_name + ".override.vala");
+			string contents;
+			size_t len;
+			try {
+				GLib.FileUtils.get_contents(path, out contents, out len);
+			} catch (GLib.Error e) {
+				return;
+			}
+			stream.puts("\n" + contents + "\n");
 		}
 
 		/**
-		 * Emit a flags type.
+		 * Emit an enum or flags type.
 		 *
 		 * @param stream output Vala file
-		 * @param ei flags info (same GI shape as enum)
+		 * @param ei enum / flags info
+		 * @param is_flags when true, emit {@code [Flags]}
 		 * @return 1 if written
 		 */
-		private int emit_flags(GLib.FileStream stream, GI.EnumInfo ei)
-		{
-			return this.emit_enum_values(stream, ei, true);
-		}
-
 		private int emit_enum_values(GLib.FileStream stream, GI.EnumInfo ei, bool is_flags)
 		{
 			if (ei.get_name() in this.deny) {
@@ -341,12 +351,24 @@ namespace $(ns)
 ");
 			for (var f = 0; f < si.get_n_fields(); f++) {
 				var field = si.get_field(f);
-				var ft = this.type_vala(ns, field.get_type());
+				var ft_info = field.get_type();
+				if (ft_info.get_tag() == GI.TypeTag.ARRAY
+					&& ft_info.get_array_fixed_size() > 0) {
+					var elem = this.type_vala(ns, ft_info.get_param_type(0));
+					if (elem != "") {
+						stream.puts(
+							@"		public $(elem) $(field.get_name())[$(ft_info.get_array_fixed_size())];
+"
+						);
+						continue;
+					}
+				}
+				var ft = this.type_vala(ns, ft_info);
 				if (ft == "") {
 					this.gaps.add(new Gap() {
 						symbol = @"$(si.get_name()).$(field.get_name())",
 						reason = "unmapped_field",
-						detail = field.get_type().get_tag().to_string(),
+						detail = ft_info.get_tag().to_string(),
 					});
 					continue;
 				}
@@ -475,6 +497,9 @@ namespace $(ns)
 				return 0;
 			}
 
+			var listed_noop = name in this.noop
+				|| (type_name != "" && (type_name + "." + name) in this.noop);
+
 			var flags = fi.get_flags();
 			var is_constructor = (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0;
 			if (is_constructor && kind != "class") {
@@ -512,6 +537,13 @@ namespace $(ns)
 					continue;
 				}
 				var at = this.type_vala(ns, arg.get_type());
+				if (at == "" && listed_noop
+					&& arg.get_type().get_tag() == GI.TypeTag.ARRAY) {
+					var elem = this.type_vala(ns, arg.get_type().get_param_type(0));
+					if (elem != "") {
+						at = elem + "[]";
+					}
+				}
 				if (at == "") {
 					this.gaps.add(new Gap() {
 						symbol = symbol,
@@ -524,7 +556,34 @@ namespace $(ns)
 			}
 
 			var tab = kind == "ns" ? "	" : "		";
+			var indent = tab + "\t";
 			var arglist = string.joinv(", ", args);
+			if (listed_noop && kind != "iface") {
+				this.gaps.add(new Gap() {
+					symbol = symbol,
+					reason = "noop",
+				});
+				if (is_constructor) {
+					stream.puts(
+						tab + @"public $(type_name)($(arglist)) {
+"
+					);
+				} else {
+					stream.puts(tab + @"public $(ret) $(name)($(arglist)) {
+");
+				}
+				if (ret == "bool") {
+					stream.puts(indent + "return true;\n");
+				}
+				if (ret == "string") {
+					stream.puts(indent + "return \"\";\n");
+				}
+				if (ret != "void" && ret != "bool" && ret != "string") {
+					stream.puts(indent + "return 0;\n");
+				}
+				stream.puts(tab + "}\n");
+				return 1;
+			}
 			/*
 			 * Domain wire names: no RPC- prefix (Daemon / Live-* only).
 			 * Nested type → hyphen object prefix (Meta-Window.minimize),
@@ -554,7 +613,6 @@ $(tab)public abstract $(ret) $(name)($(arglist));
 			if (!is_constructor && kind == "class") {
 				instance = "this";
 			}
-			var indent = tab + "\t";
 			if (this.callable_wireable(fi, ns)) {
 				if (is_constructor) {
 					stream.puts(
@@ -633,6 +691,14 @@ $(tab)}
 						this.type_vala(ns, at)
 					);
 				}
+				if (this.is_object_list(ns, at)) {
+					this.emit_object_list_at(stream, indent, arg.get_name(), at);
+				} else if (
+					(at.get_tag() == GI.TypeTag.GLIST || at.get_tag() == GI.TypeTag.GSLIST)
+					&& this.type_is_boxed_blob(at.get_param_type(0))
+				) {
+					this.emit_boxed_list_aay(stream, indent, arg.get_name(), ns, at);
+				}
 				sig += letter;
 				if (packed != "") {
 					packed += ", ";
@@ -640,6 +706,13 @@ $(tab)}
 				var expr = arg.get_name();
 				switch (letter) {
 					case "ay": expr = arg.get_name() + "_bytes"; break;
+					case "v":
+						if (this.is_object_list(ns, at)) {
+							expr = arg.get_name() + "_at";
+						} else {
+							expr = arg.get_name() + "_aay";
+						}
+						break;
 					case "i":
 					case "y": expr = @"(int) $(arg.get_name())"; break;
 					case "u": expr = @"(uint) $(arg.get_name())"; break;
@@ -666,8 +739,19 @@ $(tab)}
 			var has_return = ret_vala != "void";
 			var has_outs = this.has_out_values(fi);
 			if (has_return) {
-				if (this.return_is_object_list(ns, fi.get_return_type())) {
+				if (this.is_object_list(ns, fi.get_return_type())) {
 					this.emit_list_return(stream, indent, ns, fi.get_return_type());
+					return;
+				}
+				var ret_tag = fi.get_return_type().get_tag();
+				if (
+					(ret_tag == GI.TypeTag.GLIST || ret_tag == GI.TypeTag.GSLIST)
+					&& (
+						fi.get_return_type().get_param_type(0).get_tag() == GI.TypeTag.UTF8
+						|| fi.get_return_type().get_param_type(0).get_tag() == GI.TypeTag.FILENAME
+					)
+				) {
+					this.emit_utf8_list_return(stream, indent, fi.get_return_type());
 					return;
 				}
 				var ret_iface = fi.get_return_type().get_interface();
@@ -893,6 +977,30 @@ $(tab)}
 					}
 					continue;
 				}
+				if (this.is_object_list(ns, at)) {
+					if (dir != GI.Direction.IN) {
+						return false;
+					}
+					continue;
+				}
+				if (
+					(at.get_tag() == GI.TypeTag.GLIST || at.get_tag() == GI.TypeTag.GSLIST)
+					&& this.type_is_boxed_blob(at.get_param_type(0))
+				) {
+					if (dir != GI.Direction.IN) {
+						return false;
+					}
+					continue;
+				}
+				if (
+					(at.get_tag() == GI.TypeTag.GLIST || at.get_tag() == GI.TypeTag.GSLIST)
+					&& (
+						at.get_param_type(0).get_tag() == GI.TypeTag.UTF8
+						|| at.get_param_type(0).get_tag() == GI.TypeTag.FILENAME
+					)
+				) {
+					return false;
+				}
 				if (this.dbus_letter(ns, at) == "") {
 					return false;
 				}
@@ -901,7 +1009,17 @@ $(tab)}
 			if (fi.get_return_type().get_tag() == GI.TypeTag.VOID) {
 				return true;
 			}
-			if (this.return_is_object_list(ns, fi.get_return_type())) {
+			if (this.is_object_list(ns, fi.get_return_type())) {
+				return true;
+			}
+			var ret = fi.get_return_type();
+			if (
+				(ret.get_tag() == GI.TypeTag.GLIST || ret.get_tag() == GI.TypeTag.GSLIST)
+				&& (
+					ret.get_param_type(0).get_tag() == GI.TypeTag.UTF8
+					|| ret.get_param_type(0).get_tag() == GI.TypeTag.FILENAME
+				)
+			) {
 				return true;
 			}
 			var ret_iface = fi.get_return_type().get_interface();
@@ -912,7 +1030,10 @@ $(tab)}
 			return this.dbus_letter(ns, fi.get_return_type()) != "";
 		}
 
-		private bool return_is_object_list(string ns, GI.TypeInfo ti)
+		/**
+		 * GLIST / GSLIST of managed namespace GObjects (IN or return).
+		 */
+		private bool is_object_list(string ns, GI.TypeInfo ti)
 		{
 			if (ti.get_tag() != GI.TypeTag.GLIST
 				&& ti.get_tag() != GI.TypeTag.GSLIST) {
@@ -928,6 +1049,76 @@ $(tab)}
 			return info != null
 				&& info.get_type() == GI.InfoType.OBJECT
 				&& info.get_namespace() == ns;
+		}
+
+		/**
+		 * Emit Variant ''at'' of lease ids for a GObject list IN arg.
+		 */
+		private void emit_object_list_at(
+			GLib.FileStream stream,
+			string indent,
+			string arg_name,
+			GI.TypeInfo at
+		)
+		{
+			var list_type = "GLib.List";
+			var helper = "lease_ids_at_list";
+			if (at.get_tag() == GI.TypeTag.GSLIST) {
+				list_type = "GLib.SList";
+				helper = "lease_ids_at_slist";
+			}
+			stream.puts(
+				indent + @"var $(arg_name)_at = $(RUNTIME).$(helper)(($(list_type)<GLib.Object>) $(arg_name));
+"
+			);
+		}
+
+		/**
+		 * Emit Variant ''aay'' of memcpy'd boxed structs for list IN.
+		 */
+		private void emit_boxed_list_aay(
+			GLib.FileStream stream,
+			string indent,
+			string arg_name,
+			string ns,
+			GI.TypeInfo at
+		)
+		{
+			var elem = this.type_vala(ns, at.get_param_type(0));
+			var list_type = "GLib.List";
+			if (at.get_tag() == GI.TypeTag.GSLIST) {
+				list_type = "GLib.SList";
+			}
+			stream.puts(
+				indent + @"var $(arg_name)_aay_builder = new GLib.VariantBuilder(new GLib.VariantType(\"aay\"));
+"
+			);
+			stream.puts(
+				indent + @"for (unowned $(list_type)<$(elem)>? _$(arg_name)_node = $(arg_name); _$(arg_name)_node != null; _$(arg_name)_node = _$(arg_name)_node.next) {
+"
+			);
+			stream.puts(indent + @"	unsafe {
+");
+			stream.puts(
+				indent + @"		uint8[] _$(arg_name)_data = new uint8[sizeof($(elem))];
+"
+			);
+			stream.puts(
+				indent + @"		*(($(elem)*) _$(arg_name)_data) = _$(arg_name)_node.data;
+"
+			);
+			stream.puts(
+				indent + @"		$(arg_name)_aay_builder.add_value(new GLib.Variant.from_bytes(new GLib.VariantType(\"ay\"), new GLib.Bytes(_$(arg_name)_data), true));
+"
+			);
+			stream.puts(indent + @"	}
+");
+			stream.puts(indent + @"}
+");
+			stream.puts(
+				indent + @"var $(arg_name)_aay = $(arg_name)_aay_builder.end();
+"
+			);
 		}
 
 		private string list_return_vala(string ns, GI.TypeInfo ti)
@@ -982,8 +1173,39 @@ $(tab)}
 		}
 
 		/**
+		 * Unpack utf8 GLIST / GSLIST from {@link Response.args} ''string[]''.
+		 */
+		private void emit_utf8_list_return(
+			GLib.FileStream stream,
+			string indent,
+			GI.TypeInfo ret_type
+		)
+		{
+			var ret_vala = "GLib.List<string>";
+			if (ret_type.get_tag() == GI.TypeTag.GSLIST) {
+				ret_vala = "GLib.SList<string>";
+			}
+			stream.puts(
+				indent + @"var _as = (string[]) response.args.get(0).get_boxed();
+"
+			);
+			stream.puts(indent + @"var _list = new $(ret_vala)();
+");
+			stream.puts(indent + @"foreach (var _s in _as) {
+");
+			stream.puts(indent + @"	_list.append(_s);
+");
+			stream.puts(indent + @"}
+");
+			stream.puts(indent + @"return _list;
+");
+		}
+
+		/**
 		 * GI type → {@link OLLMrpc.args} letter (D-Bus / GVariant tags, plus
-		 * ''f'' for float, ''as'' for UTF8/FILENAME arrays, and ''ay'' for boxed blobs).
+		 * ''f'' for float, ''as'' for UTF8/FILENAME arrays and utf8 lists,
+		 * ''ay'' for boxed blobs, and ''v'' for GObject / boxed GLIST/GSLIST
+		 * as Variant ''at'' / ''aay'').
 		 */
 		private string dbus_letter(string ns, GI.TypeInfo ti)
 		{
@@ -1008,6 +1230,15 @@ $(tab)}
 						case GI.TypeTag.FILENAME: return "as";
 						default: return "";
 					}
+				case GI.TypeTag.GLIST:
+				case GI.TypeTag.GSLIST:
+					if (
+						this.is_object_list(ns, ti)
+						|| this.type_is_boxed_blob(ti.get_param_type(0))
+					) {
+						return "v";
+					}
+					return "";
 				case GI.TypeTag.INTERFACE:
 					var info = ti.get_interface();
 					if (info == null) {
@@ -1108,10 +1339,16 @@ $(tab)}
 				case GI.TypeTag.ERROR: return "GLib.Error";
 				case GI.TypeTag.GLIST:
 				case GI.TypeTag.GSLIST:
-					if (!this.return_is_object_list(ns, ti)) {
-						return "";
+					var elem_tag = ti.get_param_type(0).get_tag();
+					if (
+						this.is_object_list(ns, ti)
+						|| this.type_is_boxed_blob(ti.get_param_type(0))
+						|| elem_tag == GI.TypeTag.UTF8
+						|| elem_tag == GI.TypeTag.FILENAME
+					) {
+						return this.list_return_vala(ns, ti);
 					}
-					return this.list_return_vala(ns, ti);
+					return "";
 				case GI.TypeTag.INTERFACE:
 					var iface = ti.get_interface();
 					if (iface == null) {
@@ -1146,13 +1383,18 @@ $(tab)}
 				);
 			}
 
-			int denied = 0;
-			int not_wired = 0;
-			int skipped = 0;
+			var denied = 0;
+			var nooped = 0;
+			var not_wired = 0;
+			var skipped = 0;
 			var reason_counts = new Gee.HashMap<string, int>();
 			foreach (var entry in this.gaps) {
 				if (entry.reason == "denied") {
 					denied++;
+					continue;
+				}
+				if (entry.reason == "noop") {
+					nooped++;
 					continue;
 				}
 				if (entry.reason == "not_wired") {
@@ -1170,7 +1412,7 @@ $(tab)}
 			stream.puts(@"# $(ns) — gi-stub-gen gaps
 
 Auto-generated. **Goal: zero gaps** (every callable either wires
-`call_values` or is intentionally denied).
+`call_values`, is a deny-file no-op, or is intentionally omitted).
 
 ");
 			stream.puts("| | Count |\n");
@@ -1180,6 +1422,8 @@ Auto-generated. **Goal: zero gaps** (every callable either wires
 			stream.puts(@"| Not wired (placeholder stub) | $(not_wired) |
 ");
 			stream.puts(@"| Skipped (no stub) | $(skipped) |
+");
+			stream.puts(@"| No-op | $(nooped) |
 ");
 			stream.puts(@"| Denied | $(denied) |
 ");
@@ -1256,6 +1500,18 @@ Auto-generated. **Goal: zero gaps** (every callable either wires
 						stream.puts(@"- `$(entry.symbol)`
 ");
 					}
+				}
+				stream.puts("\n");
+			}
+
+			if (nooped > 0) {
+				stream.puts("## No-op\n\n");
+				foreach (var entry in this.gaps) {
+					if (entry.reason != "noop") {
+						continue;
+					}
+					stream.puts(@"- `$(entry.symbol)`
+");
 				}
 			}
 

@@ -65,7 +65,6 @@ namespace GnomeShellRpc.GiRpcEcho
 			GnomeShellRpc.debug_critical_enabled =
 				Application.opt_debug_critical;
 
-			GiRpcSmoke.PingParams.rpc_register();
 			GiRpcSmoke.PingResult.rpc_register();
 			GnomeShellRpc.Rpc.Daemon.rpc_register();
 			OLLMrpc.Request.rpc_register();
@@ -75,13 +74,11 @@ namespace GnomeShellRpc.GiRpcEcho
 
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new GnomeShellRpc.Rpc.Daemon(),
-				typeof(GnomeShellRpc.Rpc.DaemonParams)
+				new GnomeShellRpc.Rpc.Daemon()
 			);
 			OLLMrpc.Request.register(
 				"GiRpcSmoke",
-				new Echo(),
-				typeof(GiRpcSmoke.PingParams)
+				new Echo()
 			);
 
 			var socket_path = GLib.Environment.get_variable("GI_RPC_SMOKE_SOCKET");

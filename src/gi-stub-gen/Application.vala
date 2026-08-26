@@ -20,6 +20,8 @@ namespace GnomeShellRpc.GiStubGen
 		private static string opt_missing_out = "";
 		private static string opt_deny_file = "";
 		private static string opt_overrides_file = "";
+		/** Directory of `{Type}.override.vala` bodies — read by {@link Generator}. */
+		public static string opt_override_path = "";
 
 		/**
 		 * Custom help text ({ARG} = program name).
@@ -42,9 +44,11 @@ Examples:
 			{ "typelib-dir", 0, 0, GLib.OptionArg.FILENAME, ref opt_typelib_dir,
 				"Prepend typelib search path", "DIR" },
 			{ "deny-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_deny_file,
-				"Deny list file (one symbol per line, # comments)", "FILE" },
+				"Deny list (one symbol per line; optional noop flag)", "FILE" },
 			{ "overrides-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_overrides_file,
 				"Overrides file (Type.method key=value)", "FILE" },
+			{ "override-path", 0, 0, GLib.OptionArg.FILENAME, ref opt_override_path,
+				"Directory of {Type}.override.vala client bodies", "DIR" },
 			{ "out", 0, 0, GLib.OptionArg.FILENAME, ref opt_out,
 				"Output Vala path", "FILE" },
 			{ "missing-out", 0, 0, GLib.OptionArg.FILENAME, ref opt_missing_out,
@@ -76,6 +80,7 @@ Examples:
 			Application.opt_missing_out = "";
 			Application.opt_deny_file = "";
 			Application.opt_overrides_file = "";
+			Application.opt_override_path = "";
 
 			var args = command_line.get_arguments();
 			if (this.check_help_arg(args)) {
@@ -135,6 +140,7 @@ Examples:
 			}
 
 			string[] deny = {};
+			string[] noop = {};
 			if (Application.opt_deny_file != "") {
 				string contents;
 				size_t len;
@@ -155,7 +161,30 @@ Examples:
 					if (name == "" || name.has_prefix("#")) {
 						continue;
 					}
-					deny += name;
+					var hash = name.index_of("#");
+					if (hash >= 0) {
+						name = name.substring(0, hash).strip();
+					}
+					if (name == "") {
+						continue;
+					}
+					var space = name.index_of(" ");
+					if (space < 0) {
+						deny += name;
+						continue;
+					}
+					var symbol = name.substring(0, space);
+					var flag = name.substring(space + 1).strip();
+					if (flag != "noop") {
+						command_line.printerr(
+							"deny file %s: unknown flag %s on %s (only noop)\n",
+							Application.opt_deny_file,
+							flag,
+							symbol
+						);
+						return 1;
+					}
+					noop += symbol;
 				}
 			}
 
@@ -201,6 +230,7 @@ Examples:
 
 			var gen = new Generator() {
 				deny = deny,
+				noop = noop,
 				overrides = overrides,
 				missing_out_path = Application.opt_missing_out,
 			};

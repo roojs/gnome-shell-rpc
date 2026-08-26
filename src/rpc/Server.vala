@@ -26,40 +26,31 @@ namespace GnomeShellRpc.Rpc
 			this.display = display;
 			Shared.Rectangle.rpc_register();
 			Ui.Window.rpc_register();
-			Ui.WindowParams.rpc_register();
 			Ui.Workspace.rpc_register();
-			Ui.WorkspaceParams.rpc_register();
 			Ui.Display.rpc_register();
 			Rpc.Daemon.rpc_register();
 			Rpc.Bootstrap.rpc_register();
-			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 			OLLMrpc.Request.rpc_register();
 			OLLMrpc.Response.rpc_register();
 			OLLMrpc.Notification.rpc_register();
 			OLLMrpc.Error.rpc_register();
-			OLLMrpc.Live.RemoteParams.rpc_register();
-			OLLMrpc.Live.SubscribeParams.rpc_register();
 			OLLMrpc.Request.register(
 				"RPC-Live-Remote",
-				new OLLMrpc.Live.Remote(),
-				typeof(OLLMrpc.Live.RemoteParams)
+				new OLLMrpc.Live.Remote()
 			);
 			OLLMrpc.Request.register(
 				"RPC-Live-Subscribe",
-				new OLLMrpc.Live.Subscribe(),
-				typeof(OLLMrpc.Live.SubscribeParams)
+				new OLLMrpc.Live.Subscribe()
 			);
 
 			this.ui_display = new Ui.Display(display);
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new Daemon(),
-				typeof(DaemonParams)
+				new Daemon()
 			);
 			OLLMrpc.Request.register(
 				"Meta-Display",
-				this.ui_display,
-				typeof(Ui.DisplayParams)
+				this.ui_display
 			);
 
 			try {
@@ -77,8 +68,7 @@ namespace GnomeShellRpc.Rpc
 			var bootstrap = Bootstrap.bind(this.display);
 			OLLMrpc.Request.register(
 				"RPC-Bootstrap",
-				bootstrap,
-				typeof(BootstrapParams)
+				bootstrap
 			);
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");

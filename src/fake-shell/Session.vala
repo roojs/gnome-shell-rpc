@@ -31,9 +31,6 @@ namespace GnomeShellRpc.FakeShell
 		{
 			Shared.Rectangle.rpc_register();
 			Ui.Window.rpc_register();
-			Ui.WindowParams.rpc_register();
-			Ui.DisplayParams.rpc_register();
-			Rpc.DaemonParams.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
@@ -74,10 +71,7 @@ namespace GnomeShellRpc.FakeShell
 
 			if (!yield this.client.connect(new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				param = new Rpc.DaemonParams() {
-					protocol = 1,
-					client = "fake-shell",
-				},
+				args = OLLMrpc.args("is", 1, "fake-shell"),
 			})) {
 				throw new GLib.IOError.FAILED(this.client.connect_error);
 			}

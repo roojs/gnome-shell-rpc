@@ -9,8 +9,7 @@ namespace GnomeShellRpc.Ui
 	 * {{{
 	 * OLLMrpc.Request.register(
 	 *     "Meta-Display",
-	 *     new GnomeShellRpc.Ui.Display(meta_display),
-	 *     typeof(GnomeShellRpc.Ui.DisplayParams));
+	 *     new GnomeShellRpc.Ui.Display(meta_display));
 	 * }}}
 	 */
 	public class Display : GLib.Object, OLLMrpc.Bin.Serializable
@@ -18,7 +17,6 @@ namespace GnomeShellRpc.Ui
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Display", typeof(Display));
-			DisplayParams.rpc_register();
 		}
 
 		public Meta.Display meta_display { get; construct; }
@@ -94,25 +92,18 @@ namespace GnomeShellRpc.Ui
 			});
 
 			this.call_get_window.connect((request) => {
-				var p = (WindowParams)request.param;
-				if (!request.connection.leases.has_key(p.object_id)) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-							"window handle not found"
-						),
-					});
+				var object_id = this.window_id_arg(request);
+				if (object_id < 0) {
 					return;
 				}
-				var meta = (Meta.Window)request.connection.leases.get(p.object_id);
+				var meta = (Meta.Window)request.connection.leases.get(object_id);
 				var frame = meta.get_frame_rect();
 				var wm = meta.get_wm_class();
 				var response = new OLLMrpc.Response() {
 					id = request.id,
 				};
 				response.result.add(new Window() {
-					id = p.object_id,
+					id = object_id,
 					title = meta.get_title(),
 					wm_class = wm != null ? wm : "",
 					minimized = meta.minimized,
@@ -168,18 +159,11 @@ namespace GnomeShellRpc.Ui
 			});
 
 			this.call_minimize_window.connect((request) => {
-				var p = (WindowParams)request.param;
-				if (!request.connection.leases.has_key(p.object_id)) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-							"window handle not found"
-						),
-					});
+				var object_id = this.window_id_arg(request);
+				if (object_id < 0) {
 					return;
 				}
-				var meta = (Meta.Window)request.connection.leases.get(p.object_id);
+				var meta = (Meta.Window)request.connection.leases.get(object_id);
 				meta.minimize();
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -187,18 +171,11 @@ namespace GnomeShellRpc.Ui
 			});
 
 			this.call_unminimize_window.connect((request) => {
-				var p = (WindowParams)request.param;
-				if (!request.connection.leases.has_key(p.object_id)) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-							"window handle not found"
-						),
-					});
+				var object_id = this.window_id_arg(request);
+				if (object_id < 0) {
 					return;
 				}
-				var meta = (Meta.Window)request.connection.leases.get(p.object_id);
+				var meta = (Meta.Window)request.connection.leases.get(object_id);
 				meta.unminimize();
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -206,18 +183,11 @@ namespace GnomeShellRpc.Ui
 			});
 
 			this.call_activate_window.connect((request) => {
-				var p = (WindowParams)request.param;
-				if (!request.connection.leases.has_key(p.object_id)) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-							"window handle not found"
-						),
-					});
+				var object_id = this.window_id_arg(request);
+				if (object_id < 0) {
 					return;
 				}
-				var meta = (Meta.Window)request.connection.leases.get(p.object_id);
+				var meta = (Meta.Window)request.connection.leases.get(object_id);
 				meta.activate(this.meta_display.get_current_time());
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -225,23 +195,47 @@ namespace GnomeShellRpc.Ui
 			});
 
 			this.call_close_window.connect((request) => {
-				var p = (WindowParams)request.param;
-				if (!request.connection.leases.has_key(p.object_id)) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-							"window handle not found"
-						),
-					});
+				var object_id = this.window_id_arg(request);
+				if (object_id < 0) {
 					return;
 				}
-				var meta = (Meta.Window)request.connection.leases.get(p.object_id);
+				var meta = (Meta.Window)request.connection.leases.get(object_id);
 				meta.delete(this.meta_display.get_current_time());
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 				});
 			});
+		}
+
+		/**
+		 * First args slot as window lease id, or reply INVALID_PARAMS.
+		 *
+		 * @return lease id, or -1 when this method already replied
+		 */
+		private int window_id_arg(OLLMrpc.Request request)
+		{
+			if (request.args.size < 1) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+						"window handle required"
+					),
+				});
+				return -1;
+			}
+			var object_id = request.args.get(0).get_int();
+			if (!request.connection.leases.has_key(object_id)) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+						"window handle not found"
+					),
+				});
+				return -1;
+			}
+			return object_id;
 		}
 	}
 }

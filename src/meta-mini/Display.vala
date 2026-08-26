@@ -27,7 +27,6 @@ namespace Meta
 		{
 			var rows = GnomeShellRpc.GiStub.Runtime.call_list(
 				"Meta-Display.list_windows",
-				new GnomeShellRpc.Ui.DisplayParams(),
 				typeof(GnomeShellRpc.Ui.Window)
 			);
 			var list = new GLib.List<Window>();
@@ -52,7 +51,6 @@ namespace Meta
 		{
 			var snap = (GnomeShellRpc.Ui.Window?) GnomeShellRpc.GiStub.Runtime.call_object(
 				"Meta-Display.get_focused_window",
-				new GnomeShellRpc.Ui.DisplayParams(),
 				typeof(GnomeShellRpc.Ui.Window)
 			);
 			if (snap == null) {
@@ -103,12 +101,8 @@ namespace Meta
 	{
 		if (display_singleton == null) {
 			display_singleton = new Display();
-			OLLMrpc.CallParam bootstrap = new GnomeShellRpc.Rpc.BootstrapParams();
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
-				"RPC-Bootstrap.get_display",
-				null,
-				null,
-				bootstrap
+				"RPC-Bootstrap.get_display"
 			);
 			if (response.args.size > 0) {
 				display_singleton.set_data(

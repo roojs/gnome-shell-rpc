@@ -26,7 +26,6 @@ namespace GnomeShellRpc.FakeShell
 		{
 			var list_resp = yield this.session.call(new OLLMrpc.Request() {
 				method = "Meta-Display.list_windows",
-				param = new Ui.DisplayParams(),
 			});
 			var seen = new Gee.HashSet<int>();
 			foreach (var obj in list_resp.result) {
@@ -69,7 +68,6 @@ namespace GnomeShellRpc.FakeShell
 		{
 			var resp = yield this.session.call(new OLLMrpc.Request() {
 				method = "Meta-Display.get_focused_window",
-				param = new Ui.DisplayParams(),
 			});
 			if (resp.result.size == 0) {
 				if (this.focused_window.id != 0) {
@@ -95,9 +93,7 @@ namespace GnomeShellRpc.FakeShell
 		{
 			yield this.session.call(new OLLMrpc.Request() {
 				method = "Meta-Display.minimize_window",
-				param = new Ui.WindowParams() {
-					object_id = object_id,
-				},
+				args = OLLMrpc.args("i", object_id),
 			});
 		}
 
@@ -105,9 +101,7 @@ namespace GnomeShellRpc.FakeShell
 		{
 			yield this.session.call(new OLLMrpc.Request() {
 				method = "Meta-Display.unminimize_window",
-				param = new Ui.WindowParams() {
-					object_id = object_id,
-				},
+				args = OLLMrpc.args("i", object_id),
 			});
 		}
 
@@ -115,9 +109,7 @@ namespace GnomeShellRpc.FakeShell
 		{
 			yield this.session.call(new OLLMrpc.Request() {
 				method = "Meta-Display.activate_window",
-				param = new Ui.WindowParams() {
-					object_id = object_id,
-				},
+				args = OLLMrpc.args("i", object_id),
 			});
 		}
 
@@ -125,9 +117,7 @@ namespace GnomeShellRpc.FakeShell
 		{
 			yield this.session.call(new OLLMrpc.Request() {
 				method = "Meta-Display.close_window",
-				param = new Ui.WindowParams() {
-					object_id = object_id,
-				},
+				args = OLLMrpc.args("i", object_id),
 			});
 		}
 	}

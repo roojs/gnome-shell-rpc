@@ -8,8 +8,7 @@ namespace GnomeShellRpc.GiRpcEcho
 	 * {{{
 	 * OLLMrpc.Request.register(
 	 *     "GiRpcSmoke",
-	 *     new GnomeShellRpc.GiRpcEcho.Echo(),
-	 *     typeof(GiRpcSmoke.PingParams));
+	 *     new GnomeShellRpc.GiRpcEcho.Echo());
 	 * }}}
 	 */
 	public class Echo : GLib.Object
@@ -19,12 +18,9 @@ namespace GnomeShellRpc.GiRpcEcho
 		construct
 		{
 			this.call_ping.connect((request) => {
-				string msg = "";
+				var msg = "";
 				if (request.args.size > 0) {
 					msg = request.args.get(0).get_string();
-				} else {
-					var p = (GiRpcSmoke.PingParams)request.param;
-					msg = p.msg;
 				}
 				GLib.print("got this call: ping msg=%s\n", msg);
 				var response = new OLLMrpc.Response() {
