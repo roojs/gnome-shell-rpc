@@ -16,30 +16,27 @@ namespace GnomeShellRpc.Rpc
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Daemon", typeof(Daemon));
+			OLLMrpc.Request.add_class(
+				"RPC-Daemon", typeof(Daemon),
+				"hello", "is",
+				null
+			);
 		}
 
 		public int protocol { get; set; default = 1; }
 		public string server { get; set; default = "gnome-shell-rpc"; }
 		public bool ready { get; set; default = true; }
 
-		public signal void call_hello(OLLMrpc.Request request);
-
-		construct
+		public void hello(OLLMrpc.Request request, int protocol, string client)
 		{
-			this.call_hello.connect((request) => {
-				var protocol = 0;
-				if (request.args.size > 0) {
-					protocol = request.args.get(0).get_int();
-				}
-				if (protocol > 0) {
-					this.protocol = protocol;
-				}
-				var response = new OLLMrpc.Response() {
-					id = request.id,
-				};
-				response.result.add(this);
-				request.reply(response);
-			});
+			if (protocol > 0) {
+				this.protocol = protocol;
+			}
+			var response = new OLLMrpc.Response() {
+				id = request.id,
+			};
+			response.result.add(this);
+			request.reply(response);
 		}
 	}
 }

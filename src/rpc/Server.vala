@@ -34,21 +34,28 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Response.rpc_register();
 			OLLMrpc.Notification.rpc_register();
 			OLLMrpc.Error.rpc_register();
-			OLLMrpc.Request.register(
+			OLLMrpc.Live.Remote.rpc_register();
+			OLLMrpc.Request.register_live(
 				"RPC-Live-Remote",
 				new OLLMrpc.Live.Remote()
 			);
-			OLLMrpc.Request.register(
+			OLLMrpc.Live.Subscribe.rpc_register();
+			OLLMrpc.Request.register_live(
 				"RPC-Live-Subscribe",
 				new OLLMrpc.Live.Subscribe()
 			);
+
+			Rpc.CancellableBridge.register();
+			Rpc.MetaHelper.SoundPlayerHelper.register();
+			Rpc.MetaHelper.BackgroundHelper.register();
+			Rpc.MetaHelper.ContextHelper.register();
 
 			this.ui_display = new Ui.Display(display);
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
 				new Daemon()
 			);
-			OLLMrpc.Request.register(
+			OLLMrpc.Request.register_live(
 				"Meta-Display",
 				this.ui_display
 			);

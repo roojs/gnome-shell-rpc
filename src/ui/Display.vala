@@ -4,10 +4,15 @@ namespace GnomeShellRpc.Ui
 	 * Display RPC handler — queries and window mutations backed by
 	 * {@link Meta.Display}.
 	 *
+	 * Wire prefix {@code Meta-Display}. {@link OLLMrpc.Request.register_live}
+	 * keeps this singleton as {@code this}; {@code lease_id} is not the
+	 * handler.
+	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.Request.register(
+	 * GnomeShellRpc.Ui.Display.rpc_register();
+	 * OLLMrpc.Request.register_live(
 	 *     "Meta-Display",
 	 *     new GnomeShellRpc.Ui.Display(meta_display));
 	 * }}}
@@ -17,6 +22,19 @@ namespace GnomeShellRpc.Ui
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Display", typeof(Display));
+			OLLMrpc.Request.add_class(
+				"Meta-Display", typeof(Display),
+				"list_windows", "",
+				"get_window", "i",
+				"get_focused_window", "",
+				"get_compositor", "",
+				"get_sound_player", "",
+				"minimize_window", "i",
+				"unminimize_window", "i",
+				"activate_window", "i",
+				"close_window", "i",
+				null
+			);
 		}
 
 		public Meta.Display meta_display { get; construct; }
@@ -28,15 +46,6 @@ namespace GnomeShellRpc.Ui
 		{
 			GLib.Object(meta_display: meta_display);
 		}
-
-		public signal void call_list_windows(OLLMrpc.Request request);
-		public signal void call_get_window(OLLMrpc.Request request);
-		public signal void call_get_focused_window(OLLMrpc.Request request);
-		public signal void call_get_compositor(OLLMrpc.Request request);
-		public signal void call_minimize_window(OLLMrpc.Request request);
-		public signal void call_unminimize_window(OLLMrpc.Request request);
-		public signal void call_activate_window(OLLMrpc.Request request);
-		public signal void call_close_window(OLLMrpc.Request request);
 
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
@@ -61,181 +70,206 @@ namespace GnomeShellRpc.Ui
 			bin_default_read_prop(ctx, prop, type_byte);
 		}
 
-		construct
+		/**
+		 * ''Meta-Display.list_windows'' — snapshot every known window.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void list_windows(OLLMrpc.Request request)
 		{
-			this.call_list_windows.connect((request) => {
-				var response = new OLLMrpc.Response() {
-					id = request.id,
-				};
-				foreach (unowned Meta.Window win in this.meta_display.list_all_windows()) {
-					if (win == null) {
-						continue;
-					}
-					var handle = (int)request.connection.export(win);
-					var frame = win.get_frame_rect();
-					var wm = win.get_wm_class();
-					response.result.add(new Window() {
-						id = handle,
-						title = win.get_title(),
-						wm_class = wm != null ? wm : "",
-						minimized = win.minimized,
-						maximized = win.get_maximized() != 0,
-						frame_rect = new Shared.Rectangle() {
-							x = frame.x,
-							y = frame.y,
-							width = frame.width,
-							height = frame.height,
-						},
-					});
+			var response = new OLLMrpc.Response() {
+				id = request.id,
+			};
+			foreach (unowned Meta.Window win in this.meta_display.list_all_windows()) {
+				if (win == null) {
+					continue;
 				}
-				request.reply(response);
-			});
+				var handle = (int) request.connection.export(win);
+				response.result.add(this.snapshot_window(win, handle));
+			}
+			request.reply(response);
+		}
 
-			this.call_get_window.connect((request) => {
-				var object_id = this.window_id_arg(request);
-				if (object_id < 0) {
-					return;
-				}
-				var meta = (Meta.Window)request.connection.leases.get(object_id);
-				var frame = meta.get_frame_rect();
-				var wm = meta.get_wm_class();
-				var response = new OLLMrpc.Response() {
-					id = request.id,
-				};
-				response.result.add(new Window() {
-					id = object_id,
-					title = meta.get_title(),
-					wm_class = wm != null ? wm : "",
-					minimized = meta.minimized,
-					maximized = meta.get_maximized() != 0,
-					frame_rect = new Shared.Rectangle() {
-						x = frame.x,
-						y = frame.y,
-						width = frame.width,
-						height = frame.height,
-					},
-				});
-				request.reply(response);
-			});
+		/**
+		 * ''Meta-Display.get_window'' — snapshot one leased window.
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void get_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			var response = new OLLMrpc.Response() {
+				id = request.id,
+			};
+			response.result.add(this.snapshot_window(meta, object_id));
+			request.reply(response);
+		}
 
-			this.call_get_focused_window.connect((request) => {
-				var focus = this.meta_display.get_focus_window();
-				if (focus == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-					});
-					return;
-				}
-				var handle = (int)request.connection.export(focus);
-				var frame = focus.get_frame_rect();
-				var wm = focus.get_wm_class();
-				var response = new OLLMrpc.Response() {
-					id = request.id,
-				};
-				response.result.add(new Window() {
-					id = handle,
-					title = focus.get_title(),
-					wm_class = wm != null ? wm : "",
-					minimized = focus.minimized,
-					maximized = focus.get_maximized() != 0,
-					frame_rect = new Shared.Rectangle() {
-						x = frame.x,
-						y = frame.y,
-						width = frame.width,
-						height = frame.height,
-					},
-				});
-				request.reply(response);
-			});
-
-			this.call_get_compositor.connect((request) => {
-				var compositor = this.meta_display.get_compositor();
-				var handle = (uint64) request.connection.export(compositor);
-				var response = new OLLMrpc.Response() {
-					id = request.id,
-					args = OLLMrpc.args("t", handle),
-				};
-				request.reply(response);
-			});
-
-			this.call_minimize_window.connect((request) => {
-				var object_id = this.window_id_arg(request);
-				if (object_id < 0) {
-					return;
-				}
-				var meta = (Meta.Window)request.connection.leases.get(object_id);
-				meta.minimize();
+		/**
+		 * ''Meta-Display.get_focused_window'' — snapshot of focus, or empty.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void get_focused_window(OLLMrpc.Request request)
+		{
+			var focus = this.meta_display.get_focus_window();
+			if (focus == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 				});
-			});
+				return;
+			}
+			var handle = (int) request.connection.export(focus);
+			var response = new OLLMrpc.Response() {
+				id = request.id,
+			};
+			response.result.add(this.snapshot_window(focus, handle));
+			request.reply(response);
+		}
 
-			this.call_unminimize_window.connect((request) => {
-				var object_id = this.window_id_arg(request);
-				if (object_id < 0) {
-					return;
-				}
-				var meta = (Meta.Window)request.connection.leases.get(object_id);
-				meta.unminimize();
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-				});
-			});
-
-			this.call_activate_window.connect((request) => {
-				var object_id = this.window_id_arg(request);
-				if (object_id < 0) {
-					return;
-				}
-				var meta = (Meta.Window)request.connection.leases.get(object_id);
-				meta.activate(this.meta_display.get_current_time());
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-				});
-			});
-
-			this.call_close_window.connect((request) => {
-				var object_id = this.window_id_arg(request);
-				if (object_id < 0) {
-					return;
-				}
-				var meta = (Meta.Window)request.connection.leases.get(object_id);
-				meta.delete(this.meta_display.get_current_time());
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-				});
+		/**
+		 * ''Meta-Display.get_compositor'' — lease id of the compositor.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void get_compositor(OLLMrpc.Request request)
+		{
+			var compositor = this.meta_display.get_compositor();
+			var handle = (uint64) request.connection.export(compositor);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t", handle),
 			});
 		}
 
 		/**
-		 * First args slot as window lease id, or reply INVALID_PARAMS.
+		 * ''Meta-Display.get_sound_player'' — lease id of the sound player.
 		 *
-		 * @return lease id, or -1 when this method already replied
+		 * @param request inbound RPC
 		 */
-		private int window_id_arg(OLLMrpc.Request request)
+		public void get_sound_player(OLLMrpc.Request request)
 		{
-			if (request.args.size < 1) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"window handle required"
-					),
-				});
-				return -1;
+			var player = this.meta_display.get_sound_player();
+			var handle = (uint64) request.connection.export(player);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t", handle),
+			});
+		}
+
+		/**
+		 * ''Meta-Display.minimize_window''
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void minimize_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
 			}
-			var object_id = request.args.get(0).get_int();
+			meta.minimize();
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Meta-Display.unminimize_window''
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void unminimize_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			meta.unminimize();
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Meta-Display.activate_window''
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void activate_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			meta.activate(this.meta_display.get_current_time());
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Meta-Display.close_window''
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void close_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			meta.delete(this.meta_display.get_current_time());
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		private Window snapshot_window(Meta.Window meta, int handle)
+		{
+			var frame = meta.get_frame_rect();
+			var wm = meta.get_wm_class();
+			return new Window() {
+				id = handle,
+				title = meta.get_title(),
+				wm_class = wm != null ? wm : "",
+				minimized = meta.minimized,
+				maximized = meta.get_maximized() != 0,
+				frame_rect = new Shared.Rectangle() {
+					x = frame.x,
+					y = frame.y,
+					width = frame.width,
+					height = frame.height,
+				},
+			};
+		}
+
+		/**
+		 * Lease id → mutter window, or reply INVALID_PARAMS.
+		 *
+		 * @return window, or {@code null} when this method already replied
+		 */
+		private Meta.Window? window_from_id(OLLMrpc.Request request, int object_id)
+		{
 			if (!request.connection.leases.has_key(object_id)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
-						(int)OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
 						"window handle not found"
 					),
 				});
-				return -1;
+				return null;
 			}
-			return object_id;
+			return (Meta.Window) request.connection.leases.get(object_id);
 		}
 	}
 }

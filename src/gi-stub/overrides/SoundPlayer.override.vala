@@ -5,7 +5,7 @@
 				this,
 				OLLMrpc.args(
 					"sst",
-					file != null ? file.get_uri() : "",
+					file.get_uri(),
 					description,
 					cancel_id
 				)

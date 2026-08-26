@@ -42,6 +42,11 @@
           <type name="Compositor" c:type="MetaCompositor*"/>
         </return-value>
       </method>
+      <method name="get_sound_player" c:identifier="meta_display_get_sound_player">
+        <return-value transfer-ownership="none">
+          <type name="SoundPlayer" c:type="MetaSoundPlayer*"/>
+        </return-value>
+      </method>
     </class>
     <record name="DisplayClass"
              c:type="MetaDisplayClass"
@@ -83,6 +88,52 @@
              glib:is-gtype-struct-for="WindowActor">
       <field name="parent_class">
         <type name="Clutter.ActorClass" c:type="ClutterActorClass"/>
+      </field>
+    </record>
+    <class name="SoundPlayer"
+           c:type="MetaSoundPlayer"
+           glib:type-name="MetaSoundPlayer"
+           glib:get-type="meta_sound_player_get_type"
+           parent="GObject.Object"
+           glib:type-struct="SoundPlayerClass">
+      <method name="play_from_file" c:identifier="meta_sound_player_play_from_file">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="file" transfer-ownership="none">
+            <type name="Gio.File" c:type="GFile*"/>
+          </parameter>
+          <parameter name="description" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="play_from_theme" c:identifier="meta_sound_player_play_from_theme">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="name" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="description" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="SoundPlayerClass"
+             c:type="MetaSoundPlayerClass"
+             glib:is-gtype-struct-for="SoundPlayer">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
       </field>
     </record>
     <class name="StartupNotification"

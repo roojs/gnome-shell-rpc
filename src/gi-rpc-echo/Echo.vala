@@ -6,6 +6,7 @@ namespace GnomeShellRpc.GiRpcEcho
 	 * == Example ==
 	 *
 	 * {{{
+	 * GnomeShellRpc.GiRpcEcho.Echo.rpc_register();
 	 * OLLMrpc.Request.register(
 	 *     "GiRpcSmoke",
 	 *     new GnomeShellRpc.GiRpcEcho.Echo());
@@ -13,21 +14,27 @@ namespace GnomeShellRpc.GiRpcEcho
 	 */
 	public class Echo : GLib.Object
 	{
-		public signal void call_ping(OLLMrpc.Request request);
-
-		construct
+		public static void rpc_register()
 		{
-			this.call_ping.connect((request) => {
-				var msg = "";
-				if (request.args.size > 0) {
-					msg = request.args.get(0).get_string();
-				}
-				GLib.print("got this call: ping msg=%s\n", msg);
-				var response = new OLLMrpc.Response() {
-					id = request.id,
-					args = OLLMrpc.args("s", "echo:" + msg),
-				};
-				request.reply(response);
+			OLLMrpc.Request.add_class(
+				"GiRpcSmoke", typeof(Echo),
+				"ping", "s",
+				null
+			);
+		}
+
+		/**
+		 * ''GiRpcSmoke.ping'' — echo the message.
+		 *
+		 * @param request inbound RPC
+		 * @param msg client string
+		 */
+		public void ping(OLLMrpc.Request request, string msg)
+		{
+			GLib.print("got this call: ping msg=%s\n", msg);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("s", "echo:" + msg),
 			});
 		}
 	}

@@ -86,6 +86,21 @@ namespace Meta
 			);
 			return compositor;
 		}
+
+		/**
+		 * Sound player for this display (stock {@code meta_display_get_sound_player}).
+		 */
+		public SoundPlayer get_sound_player()
+		{
+			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Display.get_sound_player", this);
+			var player = new SoundPlayer();
+			player.set_data(
+				"gsr-lease-id",
+				response.args.get(0).get_uint64().to_string()
+			);
+			return player;
+		}
 	}
 
 	private static Display? display_singleton = null;

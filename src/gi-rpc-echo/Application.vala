@@ -66,6 +66,7 @@ namespace GnomeShellRpc.GiRpcEcho
 				Application.opt_debug_critical;
 
 			GiRpcSmoke.PingResult.rpc_register();
+			GnomeShellRpc.GiRpcEcho.Echo.rpc_register();
 			GnomeShellRpc.Rpc.Daemon.rpc_register();
 			OLLMrpc.Request.rpc_register();
 			OLLMrpc.Response.rpc_register();

@@ -14,6 +14,11 @@ compositor_sources = files(
   'rpc/Daemon.vala',
   'rpc/Listen.vala',
   'rpc/Server.vala',
+  'rpc/CancellableBridge.vala',
+  'rpc/meta-helper/namespace.vala',
+  'rpc/meta-helper/SoundPlayer.Helper.vala',
+  'rpc/meta-helper/Background.Helper.vala',
+  'rpc/meta-helper/Context.Helper.vala',
 )
 
 mutter_vala_args = [
@@ -45,6 +50,7 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
   dependencies: [mutter_dep, ocrpc_dep, dependency('gobject-introspection-1.0')],
   vala_args: mutter_vala_args + ocrpc_vala_args,
   build_rpath: compositor_rpath,
+  export_dynamic: true,
   install: false,
 )
 
@@ -188,10 +194,12 @@ metamini_lib = shared_library('metamini',
     'meta-mini/Compositor.vala',
     'meta-mini/WindowActor.vala',
     'meta-mini/Window.vala',
+    'meta-mini/SoundPlayer.vala',
     'meta-mini/StartupNotification.vala',
     'meta-mini/LaunchContext.vala',
     'gi-stub/namespace.vala',
     'gi-stub/Runtime.vala',
+    'gi-stub/CancellableBridge.vala',
     'shared/namespace.vala',
     'shared/Rectangle.vala',
     'ui/namespace.vala',
@@ -258,24 +266,21 @@ meta_window_generated = custom_target('meta_window_generated',
   build_by_default: true,
 )
 
-# Plan 0.5.7 Phase 1: Override helpers — compile in tree; not linked to compositor boot yet.
-meta_override_scaffold = static_library('meta-override-scaffold',
+# Plan 0.5.7: client CancellableBridge (server helpers are in gnome-shell-rpc).
+meta_override_client = static_library('meta-override-client',
   files(
-    'rpc/namespace.vala',
+    'gi-stub/namespace.vala',
+    'gi-stub/Runtime.vala',
     'gi-stub/CancellableBridge.vala',
-    'rpc/CancellableBridge.vala',
-    'rpc/meta-helper/namespace.vala',
-    'rpc/meta-helper/SoundPlayer.Helper.vala',
-    'rpc/meta-helper/Background.Helper.vala',
-    'rpc/meta-helper/Context.Helper.vala',
+    'shared/namespace.vala',
+    'shared/Rectangle.vala',
+    'ui/namespace.vala',
+    'ui/Window.vala',
+    'rpc/namespace.vala',
   ),
-  mutter_vapi_stamp,
-  dependencies: [
-    ocrpc_dep,
-    mutter_dep,
-  ],
-  vala_args: mutter_vala_args + ocrpc_vala_args,
-  build_rpath: compositor_rpath,
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
   install: false,
 )
 
@@ -294,6 +299,7 @@ gi_rpc_echo = executable('gi-rpc-echo',
   dependencies: [ocrpc_dep],
   vala_args: ocrpc_vala_args,
   build_rpath: ocrpc_rpath,
+  export_dynamic: true,
   install: false,
 )
 
