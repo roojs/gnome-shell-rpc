@@ -8,8 +8,7 @@ namespace GnomeShellRpc.Rpc
 {
 	public class CancellableBridge : GLib.Object
 	{
-		private static Gee.HashMap<uint64?, GLib.Cancellable> twins =
-			new Gee.HashMap<uint64?, GLib.Cancellable>();
+		private static Gee.HashMap<int, GLib.Cancellable>? twins = null;
 
 		public static void register()
 		{
@@ -29,16 +28,27 @@ namespace GnomeShellRpc.Rpc
 			if (id == 0) {
 				return null;
 			}
-			if (!CancellableBridge.twins.has_key(id)) {
-				CancellableBridge.twins.set(id, new GLib.Cancellable());
+			if (CancellableBridge.twins == null) {
+				CancellableBridge.twins = new Gee.HashMap<int, GLib.Cancellable>();
 			}
-			return CancellableBridge.twins.get(id);
+			var key = (int) id;
+			if (!CancellableBridge.twins.has_key(key)) {
+				CancellableBridge.twins.set(key, new GLib.Cancellable());
+			}
+			return CancellableBridge.twins.get(key);
 		}
 
 		public void cancel(OLLMrpc.Request request, uint64 id)
 		{
-			if (id != 0 && CancellableBridge.twins.has_key(id)) {
-				CancellableBridge.twins.get(id).cancel();
+			if (id == 0 || CancellableBridge.twins == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
+			}
+			var key = (int) id;
+			if (CancellableBridge.twins.has_key(key)) {
+				CancellableBridge.twins.get(key).cancel();
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

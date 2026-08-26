@@ -9,8 +9,7 @@ namespace GnomeShellRpc.GiStub
 	public class CancellableBridge : GLib.Object
 	{
 		private static uint64 next_id = 1;
-		private static Gee.HashMap<uint64?, ulong?> watch_ids =
-			new Gee.HashMap<uint64?, ulong?>();
+		private static Gee.HashMap<int, ulong>? watch_ids = null;
 
 		/**
 		 * Register a client cancellable; returns wire id (0 = null / none).
@@ -20,6 +19,9 @@ namespace GnomeShellRpc.GiStub
 			if (cancellable == null) {
 				return 0;
 			}
+			if (CancellableBridge.watch_ids == null) {
+				CancellableBridge.watch_ids = new Gee.HashMap<int, ulong>();
+			}
 			var id = CancellableBridge.next_id++;
 			var watch = cancellable.connect((c) => {
 				GnomeShellRpc.GiStub.Runtime.call_values(
@@ -28,7 +30,7 @@ namespace GnomeShellRpc.GiStub
 					OLLMrpc.args("t", id)
 				);
 			});
-			CancellableBridge.watch_ids.set(id, watch);
+			CancellableBridge.watch_ids.set((int) id, watch);
 			return id;
 		}
 	}

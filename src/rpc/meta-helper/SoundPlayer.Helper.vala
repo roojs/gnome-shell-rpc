@@ -16,10 +16,7 @@ namespace GnomeShellRpc.Rpc.MetaHelper
 				"play_from_theme", "sst",
 				null
 			);
-			OLLMrpc.Request.register_live(
-				"Meta-Helper-SoundPlayer",
-				new SoundPlayerHelper()
-			);
+			OLLMrpc.Request.register_live("Meta-Helper-SoundPlayer", new SoundPlayerHelper());
 		}
 
 		public void play_from_file(
@@ -32,27 +29,14 @@ namespace GnomeShellRpc.Rpc.MetaHelper
 			if (uri == "") {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"play_from_file requires a file uri"
-					),
-				});
-				return;
-			}
-			var file = GLib.File.new_for_uri(uri);
-			if (file.get_path() == null) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"play_from_file uri has no local path"
-					),
+					error = new OLLMrpc.Error((int) OLLMrpc.RpcErrorCode.INVALID_PARAMS, 
+						"play_from_file requires a file uri"),
 				});
 				return;
 			}
 			var player = (Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
-			var cancel = GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id);
-			player.play_from_file(file, description, cancel);
+			player.play_from_file(GLib.File.new_for_uri(uri), description,
+				GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id));
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});
@@ -66,8 +50,8 @@ namespace GnomeShellRpc.Rpc.MetaHelper
 		)
 		{
 			var player = (Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
-			var cancel = GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id);
-			player.play_from_theme(name, description, cancel);
+			player.play_from_theme(name, description,
+				GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id));
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});
