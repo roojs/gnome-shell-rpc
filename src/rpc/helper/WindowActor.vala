@@ -14,6 +14,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request.add_class(
 				"Helper-WindowActor", typeof(WindowActor),
 				"paint_to_content", "biiii",
+				"get_image", "biiii",
 				null
 			);
 			OLLMrpc.Request.register_live("Helper-WindowActor",
@@ -33,11 +34,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			Clutter.Content? content = null;
 			try {
 				if (has_clip) {
-					Mtk.Rectangle clip = {};
-					clip.x = clip_x;
-					clip.y = clip_y;
-					clip.width = clip_width;
-					clip.height = clip_height;
+					Mtk.Rectangle clip = {
+						clip_x, clip_y, clip_width, clip_height
+					};
 					content = actor.paint_to_content(clip);
 				} else {
 					content = actor.paint_to_content(null);
@@ -92,6 +91,68 @@ namespace GnomeShellRpc.Rpc.Helper
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("iii", width, height, stride),
+			}, new OLLMrpc.Live.Buffer(fd));
+		}
+
+		public void get_image(
+			OLLMrpc.Request request,
+			bool has_clip,
+			int clip_x,
+			int clip_y,
+			int clip_width,
+			int clip_height
+		) {
+			var actor = (Meta.WindowActor) request.connection.leases.get(
+				(int) request.lease_id);
+			Mtk.Rectangle? clip = null;
+			if (has_clip) {
+				clip = { clip_x, clip_y, clip_width, clip_height };
+			}
+			var surface = actor.get_image(clip);
+			if (surface == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
+			}
+			if (surface.get_type() != Cairo.SurfaceType.IMAGE) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
+			}
+			var img = (Cairo.ImageSurface) surface;
+			img.flush();
+			var height = img.get_height();
+			var stride = img.get_stride();
+			var nbytes = stride * height;
+			var pixels = new uint8[nbytes];
+			GLib.Memory.copy(pixels, img.get_data(), (size_t) nbytes);
+
+			string path;
+			GLib.IOStream iostream;
+			try {
+				var file = GLib.File.new_tmp("gsr-wact-XXXXXX", out iostream);
+				path = file.get_path();
+				size_t written;
+				iostream.output_stream.write_all(pixels, out written);
+				iostream.close();
+			} catch (GLib.Error e) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e);
+				return;
+			}
+			var fd = Posix.open(path, Posix.O_RDONLY);
+			GLib.FileUtils.unlink(path);
+			if (fd < 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("iii", img.get_width(), height, stride),
 			}, new OLLMrpc.Live.Buffer(fd));
 		}
 	}

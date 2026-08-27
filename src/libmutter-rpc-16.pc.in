@@ -1,0 +1,10 @@
+libdir=@libdir@
+typelibdir=${libdir}
+mutter_includedir=@mutter_includedir@
+
+Name: mutter-rpc
+Description: Mutter-shaped RPC client (GJS + C Meta-16)
+Version: @version@
+Requires: gio-2.0, gobject-2.0, mutter-clutter-16
+Libs: -L${libdir} -lmutter-rpc-16
+Cflags: -I${mutter_includedir}

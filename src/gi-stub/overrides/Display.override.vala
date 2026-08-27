@@ -12,7 +12,7 @@
 				if (win_h != 0) {
 					window = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(win_h);
 				}
-				handler(display, window, null, null, null);
+				handler(display, window, null, KeyBinding());
 				return null;
 			});
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
@@ -73,4 +73,20 @@
 				OLLMrpc.args("tsiui", device_lease, device_name,
 					(int) feature, (uint) direction, feature_number));
 			return response.args.get(0).get_string();
+		}
+
+		public StartupNotification get_startup_notification()
+		{
+			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Display.get_startup_notification", this);
+			return (StartupNotification) response.result.get(0);
+		}
+
+		/**
+		 * Stock {@code meta_display_is_pointer_emulating_sequence}. Mutter-internal
+		 * grab helper; gnome-shell JS never calls — always false out-of-process.
+		 */
+		public bool is_pointer_emulating_sequence(Clutter.EventSequence? sequence)
+		{
+			return false;
 		}

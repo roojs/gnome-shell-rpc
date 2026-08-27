@@ -14,6 +14,7 @@ BackgroundContent.new
 # (only src/main.c / our Main.vala, before GJS starts).
 Context.configure noop
 Context.add_option_entries noop
+Context.add_option_group noop
 Context.set_plugin_gtype noop
 Plugin.manager_set_plugin_type noop
 
@@ -45,6 +46,11 @@ Selection.transfer_async
 Selection.transfer_finish
 SelectionSource.read_async
 SelectionSource.read_finish
+SelectionSourceMemory.new
+ShapedTexture.get_image
+WindowActor.get_image
+Display.is_pointer_emulating_sequence
+WaylandCompositor.get_wayland_display
 
 # ---------------------------------------------------------------------------
 # Priority E (0.5.5) — CHEATING: noop / omit because gnome-shell does not

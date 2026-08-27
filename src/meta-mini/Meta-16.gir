@@ -12,7 +12,7 @@
   <include name="Graphene" version="1.0"/>
   <namespace name="Meta"
              version="16"
-             shared-library="libmetamini.so"
+             shared-library="libmutter-rpc-16.so"
              c:identifier-prefixes="Meta"
              c:symbol-prefixes="meta">
     <class name="Display"

@@ -4,8 +4,7 @@
 				callback(
 					(IdleMonitor) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
 						(int) call.args.get(0).get_uint64()),
-					(uint32) call.args.get(1).get_uint(),
-					null);
+					(uint32) call.args.get(1).get_uint());
 				return null;
 			});
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
@@ -21,8 +20,7 @@
 				callback(
 					(IdleMonitor) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
 						(int) call.args.get(0).get_uint64()),
-					(uint32) call.args.get(1).get_uint(),
-					null);
+					(uint32) call.args.get(1).get_uint());
 				return null;
 			});
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(

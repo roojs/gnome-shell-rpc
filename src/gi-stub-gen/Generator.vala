@@ -350,6 +350,7 @@ namespace $(ns)
 	public struct $(si.get_name())
 	{
 ");
+			var n_written = 0;
 			for (var f = 0; f < si.get_n_fields(); f++) {
 				var field = si.get_field(f);
 				var ft_info = field.get_type();
@@ -361,6 +362,7 @@ namespace $(ns)
 							@"		public $(elem) $(field.get_name())[$(ft_info.get_array_fixed_size())];
 "
 						);
+						n_written++;
 						continue;
 					}
 				}
@@ -375,6 +377,10 @@ namespace $(ns)
 				}
 				stream.puts(@"		public $(ft) $(field.get_name());
 ");
+				n_written++;
+			}
+			if (n_written == 0) {
+				stream.puts("		public uint8 _unused;\n");
 			}
 			stream.puts("	}\n");
 			return 1;
@@ -443,6 +449,11 @@ namespace $(ns)
 			for (var a = 0; a < ci.get_n_args(); a++) {
 				var arg = ci.get_arg(a);
 				if (arg.is_skip()) {
+					continue;
+				}
+				if (arg.get_name() == "user_data"
+					&& arg.get_type().get_tag() == GI.TypeTag.VOID
+					&& arg.get_type().is_pointer()) {
 					continue;
 				}
 				var at = this.type_vala(ns, arg.get_type());
@@ -585,7 +596,8 @@ $(tab){
 					stream.puts(indent + "return \"\";\n");
 				}
 				if (ret != "void" && ret != "bool" && ret != "string") {
-					stream.puts(indent + "return 0;\n");
+					stream.puts(indent + @"GLib.error(\"gi-stub: $(symbol) noop\");
+");
 				}
 				stream.puts(tab + "}\n");
 				return 1;
@@ -705,7 +717,7 @@ $(tab)}
 					this.emit_object_list_at(stream, indent, arg.get_name(), at);
 				} else if (
 					(at.get_tag() == GI.TypeTag.GLIST || at.get_tag() == GI.TypeTag.GSLIST)
-					&& this.type_is_boxed_blob(at.get_param_type(0))
+					&& this.type_is_boxed_blob(ns, at.get_param_type(0))
 				) {
 					this.emit_boxed_list_aay(stream, indent, arg.get_name(), ns, at);
 				}
@@ -876,22 +888,18 @@ $(tab)}
 			var bytes_name = arg_name + "_bytes";
 			stream.puts(indent + @"GLib.Bytes $(bytes_name);
 ");
-			stream.puts(indent + @"unsafe {
-");
 			stream.puts(
-				indent + @"	uint8[] _$(arg_name)_data = new uint8[sizeof($(vala_type))];
+				indent + @"uint8[] _$(arg_name)_data = new uint8[sizeof($(vala_type))];
 "
 			);
 			stream.puts(
-				indent + @"	*(($(vala_type))*) _$(arg_name)_data = $(arg_name);
+				indent + @"*(($(vala_type)*) _$(arg_name)_data) = $(arg_name);
 "
 			);
 			stream.puts(
-				indent + @"	$(bytes_name) = new GLib.Bytes(_$(arg_name)_data);
+				indent + @"$(bytes_name) = new GLib.Bytes(_$(arg_name)_data);
 "
 			);
-			stream.puts(indent + @"}
-");
 		}
 
 		private void emit_value_get_boxed(
@@ -903,38 +911,30 @@ $(tab)}
 			string assign_name
 		) {
 			var idx = value_idx.to_string();
-			stream.puts(indent + @"unsafe {
-");
 			stream.puts(
-				indent + @"	var _blob = (GLib.Bytes) response.args.get($(idx)).get_boxed();
+				indent + @"var _blob = (GLib.Bytes) response.args.get($(idx)).get_boxed();
 "
 			);
 			if (is_return) {
 				stream.puts(
-					indent + @"	return *(($(vala_type))*) _blob.get_data();
+					indent + @"return *(($(vala_type)*) _blob.get_data());
 "
 				);
-				stream.puts(indent + @"}
-");
 				return;
 			}
 			if (assign_name != "") {
 				stream.puts(
-					indent + @"	$(assign_name) = *(($(vala_type))*) _blob.get_data();
+					indent + @"$(assign_name) = *(($(vala_type)*) _blob.get_data());
 "
 				);
-				stream.puts(indent + @"}
-");
 				return;
 			}
 			stream.puts(indent + @"$(vala_type) __ret;
 ");
 			stream.puts(
-				indent + @"	__ret = *(($(vala_type))*) _blob.get_data();
+				indent + @"__ret = *(($(vala_type)*) _blob.get_data());
 "
 			);
-			stream.puts(indent + @"}
-");
 		}
 
 		private bool has_out_values(GI.FunctionInfo fi)
@@ -970,7 +970,7 @@ $(tab)}
 				var is_object = info != null
 					&& info.get_type() == GI.InfoType.OBJECT;
 				if (dir == GI.Direction.INOUT
-					&& (this.type_is_boxed_blob(at)
+					&& (this.type_is_boxed_blob(ns, at)
 						|| is_object
 						|| at.get_tag() == GI.TypeTag.ARRAY)) {
 					return false;
@@ -992,7 +992,7 @@ $(tab)}
 				}
 				if (
 					(at.get_tag() == GI.TypeTag.GLIST || at.get_tag() == GI.TypeTag.GSLIST)
-					&& this.type_is_boxed_blob(at.get_param_type(0))
+					&& this.type_is_boxed_blob(ns, at.get_param_type(0))
 				) {
 					if (dir != GI.Direction.IN) {
 						return false;
@@ -1013,7 +1013,8 @@ $(tab)}
 				}
 			}
 
-			if (fi.get_return_type().get_tag() == GI.TypeTag.VOID) {
+			if (fi.get_return_type().get_tag() == GI.TypeTag.VOID
+				&& !fi.get_return_type().is_pointer()) {
 				return true;
 			}
 			if (this.is_object_list(ns, fi.get_return_type())) {
@@ -1090,6 +1091,10 @@ $(tab)}
 			GI.TypeInfo at
 		) {
 			var elem = this.type_vala(ns, at.get_param_type(0));
+			var list_elem = elem;
+			if (this.type_is_boxed_blob(ns, at.get_param_type(0))) {
+				list_elem = elem + "?";
+			}
 			var list_type = "GLib.List";
 			if (at.get_tag() == GI.TypeTag.GSLIST) {
 				list_type = "GLib.SList";
@@ -1099,25 +1104,21 @@ $(tab)}
 "
 			);
 			stream.puts(
-				indent + @"for (unowned $(list_type)<$(elem)>? _$(arg_name)_node = $(arg_name); _$(arg_name)_node != null; _$(arg_name)_node = _$(arg_name)_node.next) {
-"
-			);
-			stream.puts(indent + @"	unsafe {
-");
-			stream.puts(
-				indent + @"		uint8[] _$(arg_name)_data = new uint8[sizeof($(elem))];
+				indent + @"for (unowned $(list_type)<$(list_elem)>? _$(arg_name)_node = $(arg_name); _$(arg_name)_node != null; _$(arg_name)_node = _$(arg_name)_node.next) {
 "
 			);
 			stream.puts(
-				indent + @"		*(($(elem)*) _$(arg_name)_data) = _$(arg_name)_node.data;
+				indent + @"	uint8[] _$(arg_name)_data = new uint8[sizeof($(elem))];
 "
 			);
 			stream.puts(
-				indent + @"		$(arg_name)_aay_builder.add_value(new GLib.Variant.from_bytes(new GLib.VariantType(\"ay\"), new GLib.Bytes(_$(arg_name)_data), true));
+				indent + @"	*(($(elem)*) _$(arg_name)_data) = _$(arg_name)_node.data;
 "
 			);
-			stream.puts(indent + @"	}
-");
+			stream.puts(
+				indent + @"	$(arg_name)_aay_builder.add_value(new GLib.Variant.from_bytes(new GLib.VariantType(\"ay\"), new GLib.Bytes(_$(arg_name)_data), true));
+"
+			);
 			stream.puts(indent + @"}
 ");
 			stream.puts(
@@ -1139,6 +1140,9 @@ $(tab)}
 			}
 			if (elem_vala == "") {
 				return "";
+			}
+			if (this.type_is_boxed_blob(ns, ti.get_param_type(0))) {
+				elem_vala = elem_vala + "?";
 			}
 			if (ti.get_tag() == GI.TypeTag.GLIST) {
 				return @"GLib.List<$(elem_vala)>";
@@ -1237,7 +1241,7 @@ $(tab)}
 				case GI.TypeTag.GSLIST:
 					if (
 						this.is_object_list(ns, ti)
-						|| this.type_is_boxed_blob(ti.get_param_type(0))
+						|| this.type_is_boxed_blob(ns, ti.get_param_type(0))
 					) {
 						return "v";
 					}
@@ -1257,7 +1261,7 @@ $(tab)}
 						&& info.get_namespace() == ns) {
 						return "o";
 					}
-					if (this.type_is_boxed_blob(ti)) {
+					if (this.type_is_boxed_blob(ns, ti)) {
 						return "ay";
 					}
 					return "";
@@ -1265,7 +1269,7 @@ $(tab)}
 			}
 		}
 
-		private bool type_is_boxed_blob(GI.TypeInfo ti)
+		private bool type_is_boxed_blob(string ns, GI.TypeInfo ti)
 		{
 			if (ti.get_tag() != GI.TypeTag.INTERFACE) {
 				return false;
@@ -1281,7 +1285,18 @@ $(tab)}
 				&& info.get_type() != GI.InfoType.BOXED) {
 				return false;
 			}
-			return !((GI.StructInfo) info).is_gtype_struct();
+			var si = (GI.StructInfo) info;
+			if (si.is_gtype_struct()) {
+				return false;
+			}
+			// C struct layout only (Strut, Cogl.Color, Graphene.Point). Not classes.
+			if (si.is_foreign()) {
+				return false;
+			}
+			if (si.get_size() == 0) {
+				return false;
+			}
+			return true;
 		}
 
 		private string arg_decl(GI.ArgInfo arg, string type_name)
@@ -1302,22 +1317,36 @@ $(tab)}
 			if (info_ns == null || info_ns == "") {
 				return info.get_name();
 			}
-			if (info_ns == "GObject" && info.get_name() == "Object") {
-				return "GLib.Object";
-			}
 			if (info_ns == ns) {
 				return info.get_name();
 			}
-			if (info_ns == "GObject") {
-				return "GLib." + info.get_name();
+			// Vala vapis remap GI namespaces (Gio types live in GLib, etc.).
+			var vala_ns = info_ns;
+			switch (info_ns) {
+				case "GObject":
+				case "Gio":
+					vala_ns = "GLib";
+					break;
+
+				case "cairo":
+					vala_ns = "Cairo";
+					break;
+
+				case "GDesktopEnums":
+					vala_ns = "GDesktop";
+					break;
 			}
-			return info_ns + "." + info.get_name();
+			return vala_ns + "." + info.get_name();
 		}
 
 		private string type_vala(string ns, GI.TypeInfo ti)
 		{
 			switch (ti.get_tag()) {
-				case GI.TypeTag.VOID: return "void";
+				case GI.TypeTag.VOID:
+					if (ti.is_pointer()) {
+						return "void*";
+					}
+					return "void";
 				case GI.TypeTag.BOOLEAN: return "bool";
 				case GI.TypeTag.INT8: return "int8";
 				case GI.TypeTag.UINT8: return "uint8";
@@ -1345,7 +1374,7 @@ $(tab)}
 					var elem_tag = ti.get_param_type(0).get_tag();
 					if (
 						this.is_object_list(ns, ti)
-						|| this.type_is_boxed_blob(ti.get_param_type(0))
+						|| this.type_is_boxed_blob(ns, ti.get_param_type(0))
 						|| elem_tag == GI.TypeTag.UTF8
 						|| elem_tag == GI.TypeTag.FILENAME
 					) {

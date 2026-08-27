@@ -1,4 +1,4 @@
-		public void play_from_file(Gio.File file, string description, Gio.Cancellable? cancellable)
+		public void play_from_file(GLib.File file, string description, GLib.Cancellable? cancellable)
 		{
 			uint64 cancel_id = GnomeShellRpc.GiStub.CancellableBridge.register(cancellable);
 			GnomeShellRpc.GiStub.Runtime.call_values(
@@ -13,7 +13,7 @@
 			);
 		}
 
-		public void play_from_theme(string name, string description, Gio.Cancellable? cancellable)
+		public void play_from_theme(string name, string description, GLib.Cancellable? cancellable)
 		{
 			uint64 cancel_id = GnomeShellRpc.GiStub.CancellableBridge.register(cancellable);
 			GnomeShellRpc.GiStub.Runtime.call_values(

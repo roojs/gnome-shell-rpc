@@ -28,6 +28,8 @@ compositor_sources = files(
   'rpc/helper/Devices.vala',
   'rpc/helper/Selection.vala',
   'rpc/helper/SelectionSource.vala',
+  'rpc/helper/SelectionSourceMemory.vala',
+  'rpc/helper/ShapedTexture.vala',
 )
 
 mutter_vala_args = [
@@ -199,64 +201,9 @@ girpcsmoke_typelib = custom_target('GiRpcSmoke-1.0.typelib',
   depends: girpcsmoke_lib,
 )
 
-metamini_lib = shared_library('metamini',
-  files(
-    'meta-mini/namespace.vala',
-    'meta-mini/Display.vala',
-    'meta-mini/Compositor.vala',
-    'meta-mini/Backend.vala',
-    'meta-mini/IdleMonitor.vala',
-    'meta-mini/WindowActor.vala',
-    'meta-mini/Window.vala',
-    'meta-mini/SoundPlayer.vala',
-    'meta-mini/StartupNotification.vala',
-    'meta-mini/LaunchContext.vala',
-    'gi-stub/namespace.vala',
-    'gi-stub/Runtime.vala',
-    'gi-stub/CancellableBridge.vala',
-    'gi-stub/PaintedContent.vala',
-    'shared/namespace.vala',
-    'shared/Rectangle.vala',
-    'ui/namespace.vala',
-    'ui/Window.vala',
-    'rpc/namespace.vala',
-  ),
-  mutter_vapi_stamp,
-  dependencies: [
-    ocrpc_dep,
-    dependency('mutter-clutter-16'),
-    dependency('mutter-cogl-16'),
-    dependency('mutter-mtk-16'),
-  ],
-  vala_args: ocrpc_vala_args + [
-    '--pkg=gio-2.0',
-    '--pkg=posix',
-    '--pkg=mutter-clutter-16',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
-    '--vapidir', meson.project_build_root() / 'vapi',
-    '--vapidir', meson.project_source_root() / 'vapi',
-  ],
-  build_rpath: ocrpc_rpath,
-  link_args: ['-L' + mutter_typelib_dir],
-  install: false,
-)
-
-metamini_typelib = custom_target('Meta-16.typelib',
-  input: files('meta-mini/Meta-16.gir'),
-  output: 'Meta-16.typelib',
-  command: [
-    g_ir_compiler,
-    '--output', '@OUTPUT@',
-    '--shared-library', metamini_lib.full_path(),
-    '--includedir', mutter_typelib_dir,
-    '@INPUT@',
-  ],
-  depends: [metamini_lib],
-  build_by_default: true,
-)
-
-# Review artifact: client stubs from stock mutter Meta-16 typelib (not linked yet).
+# Client Meta from gi-stub-gen (0.6 Phase 2 / 0.5.2 Phase 9).
+# MUTTER_TL=$(pkg-config --variable=typelibdir libmutter-16)
+# GI_TYPELIB_PATH=./build/src:$MUTTER_TL ./build/src/gjs-embed --debug src/gjs-embed/meta-smoke.js
 meta_deny_file = files('gi-stub-gen/Meta.deny')
 meta_overrides_file = files('gi-stub-gen/Meta.overrides')
 meta_override_dir = meson.current_source_dir() / 'gi-stub/overrides'
@@ -271,14 +218,17 @@ meta_override_files = files(
   'gi-stub/overrides/WindowActor.override.vala',
   'gi-stub/overrides/Selection.override.vala',
   'gi-stub/overrides/SelectionSource.override.vala',
+  'gi-stub/overrides/SelectionSourceMemory.override.vala',
+  'gi-stub/overrides/ShapedTexture.override.vala',
+  'gi-stub/overrides/WaylandCompositor.override.vala',
 )
 
-meta_window_generated = custom_target('meta_window_generated',
-  output: ['Meta_window_generated.vala', 'Meta_window_generated.missing.md'],
+meta_window_generated = custom_target('Meta_window_generated.vala',
+  output: 'Meta_window_generated.vala',
   command: [
     gi_stub_gen,
-    '--out=@OUTPUT0@',
-    '--missing-out=@OUTPUT1@',
+    '--out=@OUTPUT@',
+    '--missing-out=' + meson.current_build_dir() / 'Meta_window_generated.missing.md',
     '--typelib-dir=' + mutter_typelib_dir,
     '--deny-file=@INPUT0@',
     '--overrides-file=@INPUT1@',
@@ -288,6 +238,70 @@ meta_window_generated = custom_target('meta_window_generated',
   input: [meta_deny_file, meta_overrides_file] + meta_override_files,
   depends: [gi_stub_gen],
   build_by_default: true,
+)
+
+mutter_rpc_lib = shared_library('mutter-rpc-16',
+  meta_window_generated,
+  files(
+    'gi-stub/namespace.vala',
+    'gi-stub/Runtime.vala',
+    'gi-stub/CancellableBridge.vala',
+    'gi-stub/PaintedContent.vala',
+    'shared/namespace.vala',
+    'shared/Rectangle.vala',
+    'ui/namespace.vala',
+    'ui/Window.vala',
+    'rpc/namespace.vala',
+  ),
+  mutter_vapi_stamp,
+  dependencies: [
+    ocrpc_dep,
+    dependency('gio-2.0'),
+    dependency('cairo'),
+    dependency('graphene-gobject-1.0'),
+    dependency('mutter-clutter-16'),
+    dependency('mutter-cogl-16'),
+    dependency('mutter-mtk-16'),
+  ],
+  vala_args: ocrpc_vala_args + [
+    '--pkg=posix',
+    '--pkg=gdesktopenums-3.0',
+    '--pkg=mutter-clutter-16',
+    '--pkg=mutter-cogl-16',
+    '--pkg=mutter-mtk-16',
+    '--vapidir', meson.project_build_root() / 'vapi',
+    '--vapidir', meson.project_source_root() / 'vapi',
+  ],
+  build_rpath: ocrpc_rpath,
+  link_args: ['-L' + mutter_typelib_dir],
+  install: false,
+)
+
+mutter_rpc_typelib = custom_target('Meta-16.typelib',
+  input: files('meta-mini/Meta-16.gir'),
+  output: 'Meta-16.typelib',
+  command: [
+    g_ir_compiler,
+    '--output', '@OUTPUT@',
+    '--shared-library', mutter_rpc_lib.full_path(),
+    '--includedir', mutter_typelib_dir,
+    '@INPUT@',
+  ],
+  depends: [mutter_rpc_lib],
+  build_by_default: true,
+)
+
+configure_file(
+  input: 'libmutter-rpc-16.pc.in',
+  output: 'libmutter-rpc-16.pc',
+  configuration: {
+    'libdir': meson.current_build_dir(),
+    'mutter_includedir': join_paths(
+      libmutter_dep.get_variable('includedir'),
+      'mutter-16',
+    ),
+    'version': meson.project_version(),
+  },
 )
 
 # Plan 0.5.7: client CancellableBridge (server helpers are in gnome-shell-rpc).

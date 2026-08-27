@@ -45,6 +45,8 @@ namespace GnomeShellRpc.Rpc
 			Rpc.Helper.WindowActor.register();
 			Rpc.Helper.Selection.register();
 			Rpc.Helper.SelectionSource.register();
+			Rpc.Helper.SelectionSourceMemory.register();
+			Rpc.Helper.ShapedTexture.register();
 
 			this.ui_display = new Ui.Display(display);
 			OLLMrpc.Request.register("RPC-Daemon", new Daemon());

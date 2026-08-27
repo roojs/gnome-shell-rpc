@@ -3,7 +3,7 @@
 			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 				var win = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
-				return OLLMrpc.args("b", func(win, null));
+				return OLLMrpc.args("b", func(win));
 			});
 			GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Window.foreach_transient", this,
@@ -15,7 +15,7 @@
 			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 				var win = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
-				return OLLMrpc.args("b", func(win, null));
+				return OLLMrpc.args("b", func(win));
 			});
 			GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Window.foreach_ancestor", this,
