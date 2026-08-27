@@ -4,7 +4,7 @@
  * Requires meta-mini typelib with WindowActor / Compositor stubs and a
  * running gnome-shell-rpc compositor (nested).
  *
- * GI_META_SMOKE_CLUTTER=1 ./build/src/gjs-embed --debug src/gjs-embed/clutter-smoke.js
+ * GI_META_SMOKE=clutter-smoke dbus-run-session ./build/src/gnome-shell-rpc --debug --wayland --nested
  */
 
 imports.gi.versions.Meta = '16';
@@ -87,6 +87,7 @@ function main() {
 	actor.set_size(200, 150);
 	const pos = actor.get_position();
 	smokeLog('after set_position/set_size: pos=' + pos);
+	smokeLog('ok');
 }
 
 main();

@@ -41,6 +41,7 @@ namespace GnomeShellRpc.Rpc
 			Rpc.Helper.Context.register();
 			Rpc.Helper.IdleMonitor.register();
 			Rpc.Helper.Display.register();
+			Rpc.Helper.Window.register();
 
 			this.ui_display = new Ui.Display(display);
 			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
@@ -141,13 +142,12 @@ namespace GnomeShellRpc.Rpc
 			}
 			var bindir = GLib.Path.get_dirname(self_exe);
 			var gjs_embed = GLib.Path.build_filename(bindir, "gjs-embed");
-			var smoke_name = "meta-smoke.js";
-			if (GLib.Environment.get_variable("GI_META_SMOKE_CLUTTER") == "1") {
-				smoke_name = "clutter-smoke.js";
-			} else if (GLib.Environment.get_variable("GI_META_SMOKE_IDLE") == "1") {
-				smoke_name = "idle-smoke.js";
-			} else if (GLib.Environment.get_variable("GI_META_SMOKE_KEY") == "1") {
-				smoke_name = "key-smoke.js";
+			var smoke_env = GLib.Environment.get_variable("GI_META_SMOKE");
+			var smoke_name = (smoke_env != null && smoke_env.length > 0)
+				? smoke_env
+				: "meta-smoke.js";
+			if (!smoke_name.has_suffix(".js")) {
+				smoke_name += ".js";
 			}
 			var script = GLib.Path.build_filename(
 				bindir, "..", "..", "src", "gjs-embed", smoke_name);

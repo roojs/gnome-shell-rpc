@@ -63,5 +63,27 @@ namespace Meta
 				OLLMrpc.args("u", timestamp)
 			);
 		}
+
+		/**
+		 * Stock {@code meta_window_foreach_transient}. Client callback
+		 * return is the continue bool on {@code RPC-Live-Callback.reply}.
+		 */
+		public void foreach_transient(WindowForeachFunc func)
+		{
+			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+				var win = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
+					(int) call.args.get(0).get_uint64());
+				return OLLMrpc.args("b", func(win));
+			});
+			GnomeShellRpc.GiStub.Runtime.call_values(
+				"Helper-Window.foreach_transient", this,
+				OLLMrpc.args("t", callback_id));
+		}
 	}
+
+	/**
+	 * Watch func for {@link Window.foreach_transient} (mutter Vala drops
+	 * GIR user_data).
+	 */
+	public delegate bool WindowForeachFunc(Window window);
 }

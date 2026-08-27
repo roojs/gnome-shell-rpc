@@ -118,6 +118,7 @@ namespace Meta
 					window = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(win_h);
 				}
 				callback(display, window);
+				return null;
 			});
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Display.add_keybinding", this,
@@ -166,6 +167,7 @@ namespace Meta
 				window = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(win_h);
 			}
 			callback(display, window);
+			return null;
 		});
 		var response = GnomeShellRpc.GiStub.Runtime.call_values(
 			"Helper-Display.keybindings_set_custom_handler", null,

@@ -5,6 +5,7 @@
 						(int) call.args.get(0).get_uint64()),
 					(uint32) call.args.get(1).get_uint(),
 					null);
+				return null;
 			});
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-IdleMonitor.add_idle_watch",
@@ -20,6 +21,7 @@
 						(int) call.args.get(0).get_uint64()),
 					(uint32) call.args.get(1).get_uint(),
 					null);
+				return null;
 			});
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-IdleMonitor.add_user_active_watch",

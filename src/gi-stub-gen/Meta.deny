@@ -34,3 +34,4 @@ IdleMonitor.add_idle_watch
 IdleMonitor.add_user_active_watch
 Display.add_keybinding
 keybindings_set_custom_handler
+Window.foreach_transient

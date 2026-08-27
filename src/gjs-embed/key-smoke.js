@@ -2,7 +2,7 @@
  * 0.5.6 B1 — Display.add_keybinding + keybindings_set_custom_handler
  * (nested mutter only).
  *
- *   GI_META_SMOKE_KEY=1 dbus-run-session ./build/src/gnome-shell-rpc --debug --wayland --nested
+ *   GI_META_SMOKE=key-smoke dbus-run-session ./build/src/gnome-shell-rpc --debug --wayland --nested
  *
  * Registers a shell-schema keybinding. Fire is not required — Clutter.Event
  * packing is still 0.5.3. The callback path is the same Live.Invoke as B2.

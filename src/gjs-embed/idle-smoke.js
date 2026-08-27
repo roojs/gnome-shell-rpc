@@ -2,7 +2,7 @@
  * 0.5.6 B2 — IdleMonitor add_idle_watch (nested mutter only).
  *
  * Nested compositor already running gnome-shell-rpc:
- *   GI_META_SMOKE_IDLE=1 dbus-run-session ./build/src/gnome-shell-rpc --debug --wayland --nested
+ *   GI_META_SMOKE=idle-smoke dbus-run-session ./build/src/gnome-shell-rpc --debug --wayland --nested
  */
 
 imports.gi.versions.Meta = '16';

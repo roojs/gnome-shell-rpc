@@ -26,7 +26,8 @@ namespace GnomeShellRpc.GiStub
 		public static OLLMrpc.Client client;
 		private static bool connected = false;
 
-		public delegate void InvokeHandler(OLLMrpc.Live.Invoke call);
+		public delegate Gee.ArrayList<GLib.Value?>? 
+			InvokeHandler(OLLMrpc.Live.Invoke call);
 
 		private class InvokeRow : GLib.Object
 		{
@@ -49,7 +50,8 @@ namespace GnomeShellRpc.GiStub
 			GnomeShellRpc.Shared.Rectangle.rpc_register();
 			GnomeShellRpc.Ui.Window.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
-			Meta.WindowActor.rpc_register();
+			OLLMrpc.Bin.register("Meta-Window", typeof(Meta.Window));
+			OLLMrpc.Bin.register("Meta-WindowActor", typeof(Meta.WindowActor));
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {
@@ -67,14 +69,24 @@ namespace GnomeShellRpc.GiStub
 				debug = false,
 			};
 			Runtime.client.invoke.connect((call) => {
+				Gee.ArrayList<GLib.Value?>? extra = null;
 				if (Runtime.handlers != null && Runtime.handlers.has_key(call.id)) {
-					Runtime.handlers.get(call.id).handler(call);
+					extra = Runtime.handlers.get(call.id).handler(call);
 				} else {
 					GLib.warning("Live.Invoke id=%d has no handler", call.id);
 				}
 				var reply_id = (uint64) call.reply_id;
 				GLib.Idle.add(() => {
-					Runtime.call_values("RPC-Live-Callback.reply", null, OLLMrpc.args("t", reply_id));
+					if (extra == null) {
+						Runtime.call_values("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("t", reply_id));
+						return GLib.Source.REMOVE;
+					}
+					var reply = OLLMrpc.args("t", reply_id);
+					foreach (var v in extra) {
+						reply.add(v);
+					}
+					Runtime.call_values("RPC-Live-Callback.reply", null, reply);
 					return GLib.Source.REMOVE;
 				});
 			});
@@ -112,7 +124,8 @@ namespace GnomeShellRpc.GiStub
 		 *
 		 * Sends {@code RPC-Live-Callback.register}. Incoming
 		 * {@link OLLMrpc.Live.Invoke} runs {@code handler} then
-		 * {@code RPC-Live-Callback.reply}.
+		 * {@code RPC-Live-Callback.reply} (handler return values after
+		 * {@code reply_id}; void returns {@code null}).
 		 *
 		 * @param handler demux for one callback id
 		 * @return wire callback id

@@ -404,6 +404,19 @@
           <type name="none" c:type="void"/>
         </return-value>
       </method>
+      <method name="foreach_transient" c:identifier="meta_window_foreach_transient">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="window" transfer-ownership="none">
+            <type name="Window" c:type="MetaWindow*"/>
+          </instance-parameter>
+          <parameter name="func" transfer-ownership="none" scope="call">
+            <type name="WindowForeachFunc" c:type="MetaWindowForeachFunc"/>
+          </parameter>
+        </parameters>
+      </method>
     </class>
     <record name="WindowClass"
              c:type="MetaWindowClass"
@@ -412,6 +425,16 @@
         <type name="GObject.ObjectClass" c:type="GObjectClass"/>
       </field>
     </record>
+    <callback name="WindowForeachFunc" c:type="MetaWindowForeachFunc">
+      <return-value transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="window" transfer-ownership="none">
+          <type name="Window" c:type="MetaWindow*"/>
+        </parameter>
+      </parameters>
+    </callback>
     <callback name="KeyHandlerFunc" c:type="MetaKeyHandlerFunc">
       <return-value transfer-ownership="none">
         <type name="none" c:type="void"/>

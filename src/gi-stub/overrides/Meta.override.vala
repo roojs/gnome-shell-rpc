@@ -8,6 +8,7 @@
 				window = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(win_h);
 			}
 			handler(display, window, null, null, null);
+			return null;
 		});
 		var response = GnomeShellRpc.GiStub.Runtime.call_values(
 			"Helper-Display.keybindings_set_custom_handler", null,
