@@ -1,4 +1,5 @@
-		public uint32 add_idle_watch(uint64 interval_msec, IdleMonitorWatchFunc callback) {
+		public uint32 add_idle_watch(uint64 interval_msec, IdleMonitorWatchFunc callback)
+		{
 			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 				callback(
 					(IdleMonitor) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
@@ -14,7 +15,8 @@
 			return (uint32) response.args.get(0).get_uint();
 		}
 
-		public uint32 add_user_active_watch(IdleMonitorWatchFunc callback) {
+		public uint32 add_user_active_watch(IdleMonitorWatchFunc callback)
+		{
 			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 				callback(
 					(IdleMonitor) GnomeShellRpc.GiStub.Runtime.client.proxies.get(

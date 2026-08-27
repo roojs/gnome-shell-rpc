@@ -75,8 +75,7 @@ namespace GnomeShellRpc
 			string help_text,
 			string program_name,
 			GLib.OptionContext opt_context
-		)
-		{
+		) {
 			if (help_text == "") {
 				return null;
 			}
@@ -114,8 +113,7 @@ namespace GnomeShellRpc
 			string? in_domain,
 			GLib.LogLevelFlags level,
 			string message
-		)
-		{
+		) {
 			// Prevent recursive logging if an error occurs during logging
 			if (debug_log_in_progress) {
 				return;

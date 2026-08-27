@@ -22,8 +22,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			string domain,
 			int code,
 			string message
-		)
-		{
+		) {
 			var context = (Meta.Context) request.connection.leases.get((int) request.lease_id);
 			var error = new GLib.Error.literal(
 				GLib.Quark.from_string(domain),

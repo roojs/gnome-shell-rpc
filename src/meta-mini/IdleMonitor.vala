@@ -28,7 +28,8 @@ namespace Meta
 			return (uint32) response.args.get(0).get_uint();
 		}
 
-		public uint32 add_user_active_watch(IdleMonitorWatchFunc callback) {
+		public uint32 add_user_active_watch(IdleMonitorWatchFunc callback)
+		{
 			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 				callback(
 					(IdleMonitor) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
@@ -43,7 +44,8 @@ namespace Meta
 			return (uint32) response.args.get(0).get_uint();
 		}
 
-		public void remove_watch(uint32 id) {
+		public void remove_watch(uint32 id)
+		{
 			GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-IdleMonitor.remove_watch",
 				this,

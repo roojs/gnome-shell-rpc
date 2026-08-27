@@ -1,4 +1,5 @@
-		public void set_file(Gio.File file, GDesktopEnums.BackgroundStyle style) {
+		public void set_file(Gio.File file, GDesktopEnums.BackgroundStyle style)
+		{
 			GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Background.set_file",
 				this,

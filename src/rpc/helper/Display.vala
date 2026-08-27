@@ -17,6 +17,9 @@ namespace GnomeShellRpc.Rpc.Helper
 				"Helper-Display", typeof(Display),
 				"add_keybinding", "ssut",
 				"keybindings_set_custom_handler", "st",
+				"request_pad_osd", "tsb",
+				"get_pad_button_label", "tsi",
+				"get_pad_feature_label", "tsiui",
 				null
 			);
 			OLLMrpc.Request.register_live("Helper-Display",
@@ -84,6 +87,68 @@ namespace GnomeShellRpc.Rpc.Helper
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("b", ok),
+			});
+		}
+
+		public void request_pad_osd(
+			OLLMrpc.Request request,
+			uint64 device_lease,
+			string device_name,
+			bool edition_mode
+		) {
+			var display = (Meta.Display) request.connection.leases.get(
+				(int) request.lease_id);
+			var pad = Devices.resolve(request.connection, device_lease,
+				device_name, true);
+			if (pad != null) {
+				display.request_pad_osd(pad, edition_mode);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		public void get_pad_button_label(
+			OLLMrpc.Request request,
+			uint64 device_lease,
+			string device_name,
+			int button_number
+		) {
+			var display = (Meta.Display) request.connection.leases.get(
+				(int) request.lease_id);
+			var pad = Devices.resolve(request.connection, device_lease,
+				device_name, true);
+			var label = "";
+			if (pad != null) {
+				label = display.get_pad_button_label(pad, button_number);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("s", label),
+			});
+		}
+
+		public void get_pad_feature_label(
+			OLLMrpc.Request request,
+			uint64 device_lease,
+			string device_name,
+			int feature,
+			uint direction,
+			int feature_number
+		) {
+			var display = (Meta.Display) request.connection.leases.get(
+				(int) request.lease_id);
+			var pad = Devices.resolve(request.connection, device_lease,
+				device_name, true);
+			var label = "";
+			if (pad != null) {
+				label = display.get_pad_feature_label(pad,
+					(Meta.PadFeatureType) feature,
+					(Meta.PadDirection) direction, feature_number);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("s", label),
 			});
 		}
 	}

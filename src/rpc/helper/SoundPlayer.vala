@@ -24,8 +24,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			string uri,
 			string description,
 			uint64 cancel_id
-		)
-		{
+		) {
 			if (uri == "") {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -47,8 +46,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			string name,
 			string description,
 			uint64 cancel_id
-		)
-		{
+		) {
 			var player = (Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
 			player.play_from_theme(name, description,
 				GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id));

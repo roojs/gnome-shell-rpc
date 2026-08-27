@@ -334,6 +334,19 @@ class MyClass
 }
 ```
 
+**Also Good (multi-line parameter list — put `{` on the `)` line):**
+```vala
+public void add_keybinding(
+    OLLMrpc.Request request,
+    string name,
+    string schema_id,
+    uint flags,
+    uint64 callback_id
+) {
+```
+
+Do **not** leave `)` and `{` on consecutive lines by themselves after a wrapped signature; that is pointless vertical noise. Short signatures still use `{` on the next line (`public void method()\n{`).
+
 **Also Good (body on separate line):**
 ```vala
 if (embed_response.embeddings.size == 0) {

@@ -24,6 +24,10 @@ compositor_sources = files(
   'rpc/helper/IdleMonitor.vala',
   'rpc/helper/Display.vala',
   'rpc/helper/Window.vala',
+  'rpc/helper/WindowActor.vala',
+  'rpc/helper/Devices.vala',
+  'rpc/helper/Selection.vala',
+  'rpc/helper/SelectionSource.vala',
 )
 
 mutter_vala_args = [
@@ -34,6 +38,7 @@ mutter_vala_args = [
   '--pkg=gobject-introspection-1.0',
   '--pkg=xfixes-4.0',
   '--pkg=gdesktopenums-3.0',
+  '--pkg=posix',
   '--vapidir', meson.project_build_root() / 'vapi',
   '--vapidir', meson.project_source_root() / 'vapi',
 ]
@@ -209,6 +214,7 @@ metamini_lib = shared_library('metamini',
     'gi-stub/namespace.vala',
     'gi-stub/Runtime.vala',
     'gi-stub/CancellableBridge.vala',
+    'gi-stub/PaintedContent.vala',
     'shared/namespace.vala',
     'shared/Rectangle.vala',
     'ui/namespace.vala',
@@ -224,6 +230,7 @@ metamini_lib = shared_library('metamini',
   ],
   vala_args: ocrpc_vala_args + [
     '--pkg=gio-2.0',
+    '--pkg=posix',
     '--pkg=mutter-clutter-16',
     '--pkg=mutter-cogl-16',
     '--pkg=mutter-mtk-16',
@@ -262,6 +269,8 @@ meta_override_files = files(
   'gi-stub/overrides/Window.override.vala',
   'gi-stub/overrides/Meta.override.vala',
   'gi-stub/overrides/WindowActor.override.vala',
+  'gi-stub/overrides/Selection.override.vala',
+  'gi-stub/overrides/SelectionSource.override.vala',
 )
 
 meta_window_generated = custom_target('meta_window_generated',

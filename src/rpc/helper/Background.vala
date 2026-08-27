@@ -21,8 +21,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request request,
 			string uri,
 			int style
-		)
-		{
+		) {
 			var background = (Meta.Background) request.connection.leases.get((int) request.lease_id);
 			GLib.File? file = null;
 			if (uri != "") {

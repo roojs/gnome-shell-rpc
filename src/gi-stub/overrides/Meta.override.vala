@@ -1,4 +1,5 @@
-	public bool keybindings_set_custom_handler(string name, KeyHandlerFunc handler) {
+	public bool keybindings_set_custom_handler(string name, KeyHandlerFunc handler)
+	{
 		var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 			var display = (Display) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
 				(int) call.args.get(0).get_uint64());

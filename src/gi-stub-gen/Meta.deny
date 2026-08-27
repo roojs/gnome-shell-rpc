@@ -35,3 +35,28 @@ IdleMonitor.add_user_active_watch
 Display.add_keybinding
 keybindings_set_custom_handler
 Window.foreach_transient
+Window.foreach_ancestor
+Window.begin_grab_op
+Display.request_pad_osd
+Display.get_pad_button_label
+Display.get_pad_feature_label
+WindowActor.paint_to_content
+Selection.transfer_async
+Selection.transfer_finish
+SelectionSource.read_async
+SelectionSource.read_finish
+
+# ---------------------------------------------------------------------------
+# Priority E (0.5.5) — CHEATING: noop / omit because gnome-shell does not
+# call these (no hits in sibling js/ or src/). Not real RPC. Revisit if an
+# extension or future shell needs them. Constructors are omitted (deny), not
+# noop — empty ctor cannot return a real GObject (same as BackgroundContent.new).
+# ---------------------------------------------------------------------------
+BackgroundImageCache.load noop
+BackgroundImageCache.purge noop
+Background.set_blend noop
+Laters.add noop
+ShapedTexture.set_mask_texture noop
+MultiTexture.new
+MultiTexture.new_simple
+WaylandClient.new

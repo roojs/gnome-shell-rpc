@@ -478,8 +478,7 @@ namespace $(ns)
 			string type_name,
 			GI.FunctionInfo fi,
 			string kind
-		)
-		{
+		) {
 			var name = fi.get_name();
 			var symbol = this.wire_symbol(ns, type_name, name);
 			if (name in this.deny) {
@@ -570,11 +569,13 @@ namespace $(ns)
 				});
 				if (is_constructor) {
 					stream.puts(
-						tab + @"public $(type_name)($(arglist))$(throws_clause) {
+						tab + @"public $(type_name)($(arglist))$(throws_clause)
+$(tab){
 "
 					);
 				} else {
-					stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause) {
+					stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause)
+$(tab){
 ");
 				}
 				if (ret == "bool") {
@@ -621,11 +622,13 @@ $(tab)public abstract $(ret) $(name)($(arglist))$(throws_clause);
 			if (this.callable_wireable(fi, ns)) {
 				if (is_constructor) {
 					stream.puts(
-						tab + @"public $(type_name)($(arglist))$(throws_clause) {
+						tab + @"public $(type_name)($(arglist))$(throws_clause)
+$(tab){
 "
 					);
 				} else {
-					stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause) {
+					stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause)
+$(tab){
 ");
 				}
 				this.emit_call_values_body(
@@ -643,18 +646,21 @@ $(tab)public abstract $(ret) $(name)($(arglist))$(throws_clause);
 
 			if (is_constructor) {
 				stream.puts(
-					tab + @"public $(type_name)($(arglist))$(throws_clause) {
+					tab + @"public $(type_name)($(arglist))$(throws_clause)
+$(tab){
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 "
 				);
 			} else if (ret == "void") {
-				stream.puts(tab + @"public void $(name)($(arglist))$(throws_clause) {
+				stream.puts(tab + @"public void $(name)($(arglist))$(throws_clause)
+$(tab){
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");
 			} else {
-				stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause) {
+				stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause)
+$(tab){
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");
@@ -671,8 +677,7 @@ $(tab)}
 			GI.FunctionInfo fi,
 			string ret_vala,
 			bool is_constructor = false
-		)
-		{
+		) {
 			if (is_constructor) {
 				stream.puts(indent + "Object();\n");
 			}
@@ -824,8 +829,7 @@ $(tab)}
 			int value_idx,
 			bool is_return,
 			string assign_name = ""
-		)
-		{
+		) {
 			if (letter == "ay") {
 				this.emit_value_get_boxed(
 					stream, indent, vala_type, value_idx, is_return, assign_name
@@ -868,8 +872,7 @@ $(tab)}
 			string indent,
 			string arg_name,
 			string vala_type
-		)
-		{
+		) {
 			var bytes_name = arg_name + "_bytes";
 			stream.puts(indent + @"GLib.Bytes $(bytes_name);
 ");
@@ -898,8 +901,7 @@ $(tab)}
 			int value_idx,
 			bool is_return,
 			string assign_name
-		)
-		{
+		) {
 			var idx = value_idx.to_string();
 			stream.puts(indent + @"unsafe {
 ");
@@ -1064,8 +1066,7 @@ $(tab)}
 			string indent,
 			string arg_name,
 			GI.TypeInfo at
-		)
-		{
+		) {
 			var list_type = "GLib.List";
 			var helper = "lease_ids_at_list";
 			if (at.get_tag() == GI.TypeTag.GSLIST) {
@@ -1087,8 +1088,7 @@ $(tab)}
 			string arg_name,
 			string ns,
 			GI.TypeInfo at
-		)
-		{
+		) {
 			var elem = this.type_vala(ns, at.get_param_type(0));
 			var list_type = "GLib.List";
 			if (at.get_tag() == GI.TypeTag.GSLIST) {
@@ -1154,8 +1154,7 @@ $(tab)}
 			string indent,
 			string ns,
 			GI.TypeInfo ret_type
-		)
-		{
+		) {
 			var ret_vala = this.list_return_vala(ns, ret_type);
 			var elem_vala = this.type_vala(ns, ret_type.get_param_type(0));
 			if (this.emit_symbol != ""
@@ -1184,8 +1183,7 @@ $(tab)}
 			GLib.FileStream stream,
 			string indent,
 			GI.TypeInfo ret_type
-		)
-		{
+		) {
 			var ret_vala = "GLib.List<string>";
 			if (ret_type.get_tag() == GI.TypeTag.GSLIST) {
 				ret_vala = "GLib.SList<string>";

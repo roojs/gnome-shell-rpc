@@ -113,7 +113,8 @@ namespace GnomeShellRpc.RpcClient
 						}
 						Application.rpc_client.proxies.set(
 							notif.id,
-							new GnomeShellRpc.Ui.Window() {
+							new GnomeShellRpc.Ui.Window()
+							{
 								id = notif.id,
 							}
 						);
@@ -145,7 +146,8 @@ namespace GnomeShellRpc.RpcClient
 			GLib.print("connected to %s\n", socket_path);
 
 			var list_resp = yield Application.rpc_client.call(
-				new OLLMrpc.Request() {
+				new OLLMrpc.Request()
+				{
 					method = "Meta-Display.list_windows",
 				}
 			);
