@@ -101,6 +101,29 @@ namespace Meta
 			);
 			return player;
 		}
+
+		/**
+		 * Stock {@code meta_display_add_keybinding}. {@link GLib.Settings}
+		 * crosses as schema id.
+		 */
+		public uint add_keybinding(string name, GLib.Settings settings,
+			KeyBindingFlags flags, KeyHandlerFunc callback)
+		{
+			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+				var display = (Display) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
+					(int) call.args.get(0).get_uint64());
+				Window? window = null;
+				var win_h = (int) call.args.get(1).get_uint64();
+				if (win_h != 0) {
+					window = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(win_h);
+				}
+				callback(display, window);
+			});
+			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+				"Helper-Display.add_keybinding", this,
+				OLLMrpc.args("ssut", name, settings.schema_id, (uint) flags, callback_id));
+			return response.args.get(0).get_uint();
+		}
 	}
 
 	private static Display? display_singleton = null;
@@ -127,5 +150,43 @@ namespace Meta
 			}
 		}
 		return display_singleton;
+	}
+
+	/**
+	 * Stock {@code meta_keybindings_set_custom_handler}.
+	 */
+	public bool keybindings_set_custom_handler(string name, KeyHandlerFunc callback)
+	{
+		var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			var display = (Display) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
+				(int) call.args.get(0).get_uint64());
+			Window? window = null;
+			var win_h = (int) call.args.get(1).get_uint64();
+			if (win_h != 0) {
+				window = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(win_h);
+			}
+			callback(display, window);
+		});
+		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			"Helper-Display.keybindings_set_custom_handler", null,
+			OLLMrpc.args("st", name, callback_id));
+		return response.args.get(0).get_boolean();
+	}
+
+	/**
+	 * Watch func for {@link Display.add_keybinding} (mutter Vala drops
+	 * GIR user_data). Event / KeyBinding packing is 0.5.3 leftover.
+	 */
+	public delegate void KeyHandlerFunc(Display display, Window? window);
+
+	[Flags]
+	public enum KeyBindingFlags {
+		NONE = 0,
+		PER_WINDOW = 1,
+		BUILTIN = 2,
+		IS_REVERSED = 4,
+		NON_MASKABLE = 8,
+		IGNORE_AUTOREPEAT = 16,
+		TRIGGER_RELEASE = 32
 	}
 }

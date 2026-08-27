@@ -47,6 +47,28 @@
           <type name="SoundPlayer" c:type="MetaSoundPlayer*"/>
         </return-value>
       </method>
+      <method name="add_keybinding" c:identifier="meta_display_add_keybinding">
+        <return-value transfer-ownership="none">
+          <type name="guint" c:type="guint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="display" transfer-ownership="none">
+            <type name="Display" c:type="MetaDisplay*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+          <parameter name="settings" transfer-ownership="none">
+            <type name="Gio.Settings" c:type="GSettings*"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <type name="KeyBindingFlags" c:type="MetaKeyBindingFlags"/>
+          </parameter>
+          <parameter name="callback" transfer-ownership="none" scope="notified">
+            <type name="KeyHandlerFunc" c:type="MetaKeyHandlerFunc"/>
+          </parameter>
+        </parameters>
+      </method>
     </class>
     <record name="DisplayClass"
              c:type="MetaDisplayClass"
@@ -390,10 +412,49 @@
         <type name="GObject.ObjectClass" c:type="GObjectClass"/>
       </field>
     </record>
+    <callback name="KeyHandlerFunc" c:type="MetaKeyHandlerFunc">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="display" transfer-ownership="none">
+          <type name="Display" c:type="MetaDisplay*"/>
+        </parameter>
+        <parameter name="window" transfer-ownership="none" nullable="1">
+          <type name="Window" c:type="MetaWindow*"/>
+        </parameter>
+      </parameters>
+    </callback>
+    <bitfield name="KeyBindingFlags"
+              glib:type-name="MetaKeyBindingFlags"
+              glib:get-type="meta_key_binding_flags_get_type"
+              c:type="MetaKeyBindingFlags">
+      <member name="none" value="0" c:identifier="META_KEY_BINDING_NONE"/>
+      <member name="per_window" value="1" c:identifier="META_KEY_BINDING_PER_WINDOW"/>
+      <member name="builtin" value="2" c:identifier="META_KEY_BINDING_BUILTIN"/>
+      <member name="is_reversed" value="4" c:identifier="META_KEY_BINDING_IS_REVERSED"/>
+      <member name="non_maskable" value="8" c:identifier="META_KEY_BINDING_NON_MASKABLE"/>
+      <member name="ignore_autorepeat" value="16" c:identifier="META_KEY_BINDING_IGNORE_AUTOREPEAT"/>
+      <member name="trigger_release" value="32" c:identifier="META_KEY_BINDING_TRIGGER_RELEASE"/>
+    </bitfield>
     <function name="get_display" c:identifier="meta_get_display">
       <return-value transfer-ownership="full">
         <type name="Display" c:type="MetaDisplay*"/>
       </return-value>
+    </function>
+    <function name="keybindings_set_custom_handler"
+              c:identifier="meta_keybindings_set_custom_handler">
+      <return-value transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="name" transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </parameter>
+        <parameter name="handler" transfer-ownership="none" scope="notified">
+          <type name="KeyHandlerFunc" c:type="MetaKeyHandlerFunc"/>
+        </parameter>
+      </parameters>
     </function>
   </namespace>
 </repository>

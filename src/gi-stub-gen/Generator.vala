@@ -106,6 +106,7 @@ namespace $(ns)
 						continue;
 				}
 			}
+			this.splice_class_override(stream, ns);
 			stream.puts("}\n");
 			stream = null;
 
@@ -502,6 +503,10 @@ namespace $(ns)
 
 			var flags = fi.get_flags();
 			var is_constructor = (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0;
+			var throws_clause = "";
+			if ((flags & GI.FunctionInfoFlags.THROWS) != 0) {
+				throws_clause = " throws GLib.Error";
+			}
 			if (is_constructor && kind != "class") {
 				this.gaps.add(new Gap() {
 					symbol = symbol,
@@ -565,11 +570,11 @@ namespace $(ns)
 				});
 				if (is_constructor) {
 					stream.puts(
-						tab + @"public $(type_name)($(arglist)) {
+						tab + @"public $(type_name)($(arglist))$(throws_clause) {
 "
 					);
 				} else {
-					stream.puts(tab + @"public $(ret) $(name)($(arglist)) {
+					stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause) {
 ");
 				}
 				if (ret == "bool") {
@@ -599,11 +604,11 @@ namespace $(ns)
 			if (kind == "iface") {
 				if (ret == "void") {
 					stream.puts(@"
-$(tab)public abstract void $(name)($(arglist));
+$(tab)public abstract void $(name)($(arglist))$(throws_clause);
 ");
 				} else {
 					stream.puts(@"
-$(tab)public abstract $(ret) $(name)($(arglist));
+$(tab)public abstract $(ret) $(name)($(arglist))$(throws_clause);
 ");
 				}
 				return 1;
@@ -616,11 +621,11 @@ $(tab)public abstract $(ret) $(name)($(arglist));
 			if (this.callable_wireable(fi, ns)) {
 				if (is_constructor) {
 					stream.puts(
-						tab + @"public $(type_name)($(arglist)) {
+						tab + @"public $(type_name)($(arglist))$(throws_clause) {
 "
 					);
 				} else {
-					stream.puts(tab + @"public $(ret) $(name)($(arglist)) {
+					stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause) {
 ");
 				}
 				this.emit_call_values_body(
@@ -638,18 +643,18 @@ $(tab)public abstract $(ret) $(name)($(arglist));
 
 			if (is_constructor) {
 				stream.puts(
-					tab + @"public $(type_name)($(arglist)) {
+					tab + @"public $(type_name)($(arglist))$(throws_clause) {
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 "
 				);
 			} else if (ret == "void") {
-				stream.puts(tab + @"public void $(name)($(arglist)) {
+				stream.puts(tab + @"public void $(name)($(arglist))$(throws_clause) {
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");
 			} else {
-				stream.puts(tab + @"public $(ret) $(name)($(arglist)) {
+				stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause) {
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");

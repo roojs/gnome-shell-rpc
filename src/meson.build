@@ -22,6 +22,7 @@ compositor_sources = files(
   'rpc/helper/Background.vala',
   'rpc/helper/Context.vala',
   'rpc/helper/IdleMonitor.vala',
+  'rpc/helper/Display.vala',
 )
 
 mutter_vala_args = [
@@ -166,6 +167,7 @@ girpcsmoke_lib = shared_library('girpcsmoke',
     'gi-rpc-smoke/namespace.vala',
     'gi-stub/namespace.vala',
     'gi-stub/Runtime.vala',
+    'meta-mini/WindowActor.vala',
     'shared/namespace.vala',
     'shared/Rectangle.vala',
     'ui/namespace.vala',
@@ -219,6 +221,7 @@ metamini_lib = shared_library('metamini',
     dependency('mutter-mtk-16'),
   ],
   vala_args: ocrpc_vala_args + [
+    '--pkg=gio-2.0',
     '--pkg=mutter-clutter-16',
     '--pkg=mutter-cogl-16',
     '--pkg=mutter-mtk-16',
@@ -253,6 +256,8 @@ meta_override_files = files(
   'gi-stub/overrides/Background.override.vala',
   'gi-stub/overrides/Context.override.vala',
   'gi-stub/overrides/IdleMonitor.override.vala',
+  'gi-stub/overrides/Display.override.vala',
+  'gi-stub/overrides/Meta.override.vala',
   'gi-stub/overrides/WindowActor.override.vala',
 )
 
@@ -278,6 +283,7 @@ meta_override_client = static_library('meta-override-client',
   files(
     'gi-stub/namespace.vala',
     'gi-stub/Runtime.vala',
+    'meta-mini/WindowActor.vala',
     'gi-stub/CancellableBridge.vala',
     'shared/namespace.vala',
     'shared/Rectangle.vala',

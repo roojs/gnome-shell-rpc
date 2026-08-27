@@ -10,6 +10,24 @@ namespace Meta
 	 */
 	public class WindowActor : GLib.Object
 	{
+		private static bool registered = false;
+
+		/**
+		 * Wire type for leased actors.
+		 */
+		public static void rpc_register()
+		{
+			if (WindowActor.registered) {
+				return;
+			}
+			WindowActor.registered = true;
+			try {
+				OLLMrpc.Bin.register("Meta-WindowActor", typeof(WindowActor));
+			} catch (GLib.Error e) {
+				GLib.error("%s", e.message);
+			}
+		}
+
 		public void show()
 		{
 			GnomeShellRpc.GiStub.Runtime.call_values("Clutter-Actor.show", this);

@@ -149,9 +149,6 @@ namespace GnomeShellRpc.RpcClient
 					method = "Meta-Display.list_windows",
 				}
 			);
-			if (list_resp.error != null) {
-				throw new GLib.IOError.FAILED(list_resp.error.message);
-			}
 			GLib.print("list_windows: %d window(s)\n", list_resp.result.size);
 			foreach (var obj in list_resp.result) {
 				var win = (GnomeShellRpc.Ui.Window)obj;

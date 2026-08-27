@@ -87,11 +87,7 @@ namespace GnomeShellRpc.FakeShell
 		 */
 		public async OLLMrpc.Response call(OLLMrpc.Request request) throws GLib.Error
 		{
-			var response = yield this.client.call(request);
-			if (response.error != null) {
-				throw new GLib.IOError.FAILED(response.error.message);
-			}
-			return response;
+			return yield this.client.call(request);
 		}
 	}
 }

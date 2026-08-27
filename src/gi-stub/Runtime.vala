@@ -49,11 +49,7 @@ namespace GnomeShellRpc.GiStub
 			GnomeShellRpc.Shared.Rectangle.rpc_register();
 			GnomeShellRpc.Ui.Window.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
-			try {
-				OLLMrpc.Bin.register("Meta-WindowActor", typeof(Meta.WindowActor));
-			} catch (GLib.Error e) {
-				GLib.error("%s", e.message);
-			}
+			Meta.WindowActor.rpc_register();
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {
@@ -204,12 +200,13 @@ namespace GnomeShellRpc.GiStub
 		 * @param method wire method (e.g. {@code Meta-Window.minimize})
 		 * @param instance leased stub; {@code gsr-lease-id} data → {@link OLLMrpc.Request.lease_id}
 		 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
+		 * @throws GLib.Error the error from the remote function or RPC
 		 */
 		public static OLLMrpc.Response call_values(
 			string method,
 			GLib.Object? instance = null,
 			Gee.ArrayList<GLib.Value?>? args = null
-		) {
+		) throws GLib.Error {
 			uint64 lease_id = 0;
 			if (instance != null) {
 				var lease = instance.get_data<string>("gsr-lease-id");
@@ -256,12 +253,18 @@ namespace GnomeShellRpc.GiStub
 
 		/**
 		 * Sync call; first {@link OLLMrpc.Response.result} row, or null.
+		 *
+		 * @param method wire method
+		 * @param expected GType of the first result row
+		 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
+		 * @return first result row, or null
+		 * @throws GLib.Error the error from the remote function or RPC
 		 */
 		public static GLib.Object? call_object(
 			string method,
 			GLib.Type expected,
 			Gee.ArrayList<GLib.Value?>? args = null
-		) {
+		) throws GLib.Error {
 			var response = Runtime.call_values(method, null, args);
 			if (response.result.size == 0) {
 				return null;
@@ -276,12 +279,18 @@ namespace GnomeShellRpc.GiStub
 
 		/**
 		 * Sync call; every {@link OLLMrpc.Response.result} row.
+		 *
+		 * @param method wire method
+		 * @param elem GType of each result row
+		 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
+		 * @return every result row
+		 * @throws GLib.Error the error from the remote function or RPC
 		 */
 		public static GLib.List<GLib.Object> call_list(
 			string method,
 			GLib.Type elem,
 			Gee.ArrayList<GLib.Value?>? args = null
-		) {
+		) throws GLib.Error {
 			var response = Runtime.call_values(method, null, args);
 			var list = new GLib.List<GLib.Object>();
 			for (var i = 0; i < response.result.size; i++) {
@@ -295,7 +304,7 @@ namespace GnomeShellRpc.GiStub
 			return list;
 		}
 
-		private static OLLMrpc.Response do_call(OLLMrpc.Request request)
+		private static OLLMrpc.Response do_call(OLLMrpc.Request request) throws GLib.Error
 		{
 			Runtime.register();
 
@@ -312,10 +321,7 @@ namespace GnomeShellRpc.GiStub
 			});
 			call_loop.run();
 			if (call_error != null) {
-				GLib.error("%s", call_error.message);
-			}
-			if (response.error != null) {
-				GLib.error("%s", response.error.message);
+				throw call_error;
 			}
 			for (var i = 0; i < response.result.size; i++) {
 				Runtime.attach_lease(response.result.get(i));
