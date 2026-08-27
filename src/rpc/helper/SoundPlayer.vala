@@ -1,22 +1,22 @@
 /**
  * Delivers {@link Meta.SoundPlayer} Override RPC (plan 0.5.7 C1).
  *
- * Wire prefix ''Meta-Helper-SoundPlayer''. Lease is the player;
+ * Wire prefix ''Helper-SoundPlayer''. Lease is the player;
  * {@link OLLMrpc.Request.register_live} keeps this singleton as ''this''.
  */
-namespace GnomeShellRpc.Rpc.MetaHelper
+namespace GnomeShellRpc.Rpc.Helper
 {
-	public class SoundPlayerHelper : GLib.Object
+	public class SoundPlayer : GLib.Object
 	{
 		public static void register()
 		{
 			OLLMrpc.Request.add_class(
-				"Meta-Helper-SoundPlayer", typeof(SoundPlayerHelper),
+				"Helper-SoundPlayer", typeof(SoundPlayer),
 				"play_from_file", "sst",
 				"play_from_theme", "sst",
 				null
 			);
-			OLLMrpc.Request.register_live("Meta-Helper-SoundPlayer", new SoundPlayerHelper());
+			OLLMrpc.Request.register_live("Helper-SoundPlayer", new SoundPlayer());
 		}
 
 		public void play_from_file(

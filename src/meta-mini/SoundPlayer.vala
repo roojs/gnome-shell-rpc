@@ -15,7 +15,7 @@ namespace Meta
 			uint64 cancel_id =
 				GnomeShellRpc.GiStub.CancellableBridge.register(cancellable);
 			GnomeShellRpc.GiStub.Runtime.call_values(
-				"Meta-Helper-SoundPlayer.play_from_file",
+				"Helper-SoundPlayer.play_from_file",
 				this,
 				OLLMrpc.args(
 					"sst",
@@ -34,7 +34,7 @@ namespace Meta
 			uint64 cancel_id =
 				GnomeShellRpc.GiStub.CancellableBridge.register(cancellable);
 			GnomeShellRpc.GiStub.Runtime.call_values(
-				"Meta-Helper-SoundPlayer.play_from_theme",
+				"Helper-SoundPlayer.play_from_theme",
 				this,
 				OLLMrpc.args("sst", name, description, cancel_id)
 			);

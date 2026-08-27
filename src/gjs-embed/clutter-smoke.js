@@ -52,9 +52,20 @@ function main() {
 	var actors = [];
 
 	while (GLib.get_monotonic_time() < deadline) {
+		var titled = false;
+		const wins = display.list_all_windows();
+		if (wins !== null) {
+			for (var i = 0; i < wins.length; i++) {
+				const title = wins[i].get_title();
+				if (title) {
+					titled = true;
+					break;
+				}
+			}
+		}
 		const compositor = display.get_compositor();
 		const list = compositor.get_window_actors();
-		if (list !== null && list.length > 0) {
+		if (titled && list !== null && list.length > 0) {
 			actors = list;
 			break;
 		}
@@ -65,11 +76,17 @@ function main() {
 		throw new Error('no WindowActor within ' + WAIT_MS + 'ms');
 	}
 
-	const actor = actors[0];
-	smokeLog('actors=' + actors.length + ' calling show() on first');
+	const actor = actors[actors.length - 1];
+	smokeLog('actors=' + actors.length + ' calling show() on last');
+	const visible_before = actor.visible;
+	smokeLog('visible before show()=' + visible_before);
 	actor.show();
 	const visible = actor.visible;
 	smokeLog('after show(): visible=' + visible);
+	actor.set_position(10, 20);
+	actor.set_size(200, 150);
+	const pos = actor.get_position();
+	smokeLog('after set_position/set_size: pos=' + pos);
 }
 
 main();

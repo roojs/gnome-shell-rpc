@@ -7,10 +7,27 @@ namespace Meta
 		{
 			var response = GnomeShellRpc.GiStub.Runtime.call_values("Meta-Compositor.get_window_actors", this);
 			var list = new GLib.List<WindowActor>();
-			for (var i = 0; i < response.result.size; i++) {
-				list.append((WindowActor) response.result.get(i));
+			for (var i = 0; i < response.args.size; i++) {
+				var actor = new WindowActor();
+				actor.set_data(
+					"gsr-lease-id",
+					response.args.get(i).get_uint64().to_string()
+				);
+				list.append(actor);
 			}
 			return list;
+		}
+
+		public Backend get_backend()
+		{
+			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Compositor.get_backend", this);
+			var backend = new Backend();
+			backend.set_data(
+				"gsr-lease-id",
+				response.args.get(0).get_uint64().to_string()
+			);
+			return backend;
 		}
 	}
 }

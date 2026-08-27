@@ -17,10 +17,7 @@ namespace GnomeShellRpc.Rpc
 				"cancel", "t",
 				null
 			);
-			OLLMrpc.Request.register(
-				"RPC-Cancellable",
-				new CancellableBridge()
-			);
+			OLLMrpc.Request.register("RPC-Cancellable", new CancellableBridge());
 		}
 
 		public static GLib.Cancellable? lookup(uint64 id)

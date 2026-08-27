@@ -39,3 +39,7 @@ Pair **⏳** with **🔷** or **💩** on every open work item.
 **Allowed without asking:** repo edits, meson **build** in this tree, nested `mutter --wayland --devkit --mutter-plugin /abs/path/to/our.so` inside `dbus-run-session`.
 
 When a session or install step is needed: print the command, explain why, wait.
+
+## OLLMchat `libocrpc` plan names
+
+New work there is **`{PREFIX}-1.n-slug.md`** (example: `RPC-1.1-rpc-register.md`). Old **`RPC-8.x`** filenames stay. Category index: `docs/plans/RPC-1.0-summary.md`. See `OLLMchat/docs/plans/-README.md`.

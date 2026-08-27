@@ -20,63 +20,51 @@ namespace GnomeShellRpc.Rpc
 		private Gee.HashMap<Meta.Window, ulong> title_watch_ids =
 			new Gee.HashMap<Meta.Window, ulong>();
 		private Meta.WaylandClient? smoke_client = null;
+		private bool window_actor_aliased = false;
 
 		public void start(Meta.Display display)
 		{
 			this.display = display;
+			OLLMrpc.rpc_register(true);
 			Shared.Rectangle.rpc_register();
 			Ui.Window.rpc_register();
 			Ui.Workspace.rpc_register();
 			Ui.Display.rpc_register();
+			Ui.Compositor.rpc_register();
+			Ui.Backend.rpc_register();
 			Rpc.Daemon.rpc_register();
 			Rpc.Bootstrap.rpc_register();
-			OLLMrpc.Request.rpc_register();
-			OLLMrpc.Response.rpc_register();
-			OLLMrpc.Notification.rpc_register();
-			OLLMrpc.Error.rpc_register();
-			OLLMrpc.Live.Remote.rpc_register();
-			OLLMrpc.Request.register_live(
-				"RPC-Live-Remote",
-				new OLLMrpc.Live.Remote()
-			);
-			OLLMrpc.Live.Subscribe.rpc_register();
-			OLLMrpc.Request.register_live(
-				"RPC-Live-Subscribe",
-				new OLLMrpc.Live.Subscribe()
-			);
 
 			Rpc.CancellableBridge.register();
-			Rpc.MetaHelper.SoundPlayerHelper.register();
-			Rpc.MetaHelper.BackgroundHelper.register();
-			Rpc.MetaHelper.ContextHelper.register();
+			Rpc.Helper.SoundPlayer.register();
+			Rpc.Helper.Background.register();
+			Rpc.Helper.Context.register();
+			Rpc.Helper.IdleMonitor.register();
 
 			this.ui_display = new Ui.Display(display);
-			OLLMrpc.Request.register(
-				"RPC-Daemon",
-				new Daemon()
-			);
-			OLLMrpc.Request.register_live(
-				"Meta-Display",
-				this.ui_display
-			);
+			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
+			OLLMrpc.Request.register_live("Meta-Display", this.ui_display);
+			OLLMrpc.Request.register_live("Meta-Compositor",
+				new Ui.Compositor(display.get_compositor()));
+			OLLMrpc.Request.register_live("Meta-Backend",
+				new Ui.Backend(display.get_context().get_backend()));
 
 			try {
 				GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 				OLLMrpc.Gi.register("Meta", "16");
 				OLLMrpc.Gi.register("Clutter", "16");
-				GLib.debug(
-					"Gi.register Meta-16 ok (%u types)",
-					OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0
-				);
+				OLLMrpc.Bin.register_alias("Meta-Compositor",
+					display.get_compositor().get_type());
+				OLLMrpc.Bin.register_alias("Meta-Backend",
+					display.get_context().get_backend().get_type());
 			} catch (GLib.Error e) {
-				GLib.warning("Gi.register(Meta/Clutter) failed: %s", e.message);
+				GLib.error("%s", e.message);
 			}
+			GLib.debug("Gi.register Meta-16 ok (%u types)",
+				OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0);
 
 			var bootstrap = Bootstrap.bind(this.display);
-			OLLMrpc.Request.register(
-				"RPC-Bootstrap",
-				bootstrap
-			);
+			OLLMrpc.Request.register("RPC-Bootstrap", bootstrap);
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {
@@ -98,13 +86,22 @@ namespace GnomeShellRpc.Rpc
 			this.spawn_client();
 
 			display.window_created.connect((meta_window) => {
+				if (!this.window_actor_aliased) {
+					var priv = meta_window.get_compositor_private();
+					if (priv != null) {
+						try {
+							OLLMrpc.Bin.register_alias("Meta-WindowActor",
+								priv.get_type());
+							this.window_actor_aliased = true;
+						} catch (GLib.Error e) {
+							GLib.error("%s", e.message);
+						}
+					}
+				}
 				var frame = meta_window.get_frame_rect();
-				GLib.debug(
-					"window_created title=%s frame=%d,%d %dx%d minimized=%s",
-					meta_window.get_title(),
-					frame.x, frame.y, frame.width, frame.height,
-					meta_window.minimized.to_string()
-				);
+				GLib.debug("window_created title=%s frame=%d,%d %dx%d minimized=%s",
+					meta_window.get_title(), frame.x, frame.y, frame.width,
+					frame.height, meta_window.minimized.to_string());
 				this.track_window(meta_window);
 				if (this.listen == null) {
 					return;
@@ -146,10 +143,11 @@ namespace GnomeShellRpc.Rpc
 			var smoke_name = "meta-smoke.js";
 			if (GLib.Environment.get_variable("GI_META_SMOKE_CLUTTER") == "1") {
 				smoke_name = "clutter-smoke.js";
+			} else if (GLib.Environment.get_variable("GI_META_SMOKE_IDLE") == "1") {
+				smoke_name = "idle-smoke.js";
 			}
 			var script = GLib.Path.build_filename(
-				bindir, "..", "..", "src", "gjs-embed", smoke_name
-			);
+				bindir, "..", "..", "src", "gjs-embed", smoke_name);
 			if (!GLib.FileUtils.test(gjs_embed, GLib.FileTest.IS_EXECUTABLE)) {
 				GLib.warning("gjs-embed missing at %s — skip client spawn", gjs_embed);
 				return;
@@ -171,9 +169,7 @@ namespace GnomeShellRpc.Rpc
 			launcher.setenv("GI_TYPELIB_PATH", tip, true);
 			try {
 				this.smoke_client = new Meta.WaylandClient(
-					this.display.get_context(),
-					launcher
-				);
+					this.display.get_context(), launcher);
 				this.smoke_client.spawnv(this.display, argv);
 			} catch (GLib.Error e) {
 				GLib.warning("client spawn failed: %s", e.message);
@@ -184,9 +180,8 @@ namespace GnomeShellRpc.Rpc
 		}
 
 		private uint64? lease_handle_for(
-			OLLMrpc.Transport.Connection connection,
-			Meta.Window meta_window
-		) {
+			OLLMrpc.Transport.Connection connection, Meta.Window meta_window)
+		{
 			var ptr = (uint64) (void*) meta_window;
 			var hi = (int) (ptr >> 32);
 			var lo = (int) ptr;

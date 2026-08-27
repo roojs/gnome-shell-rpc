@@ -1,23 +1,20 @@
 /**
  * Delivers {@link Meta.Context} Override RPC (plan 0.5.7 C3).
  *
- * Wire prefix ''Meta-Helper-Context''.
+ * Wire prefix ''Helper-Context''.
  */
-namespace GnomeShellRpc.Rpc.MetaHelper
+namespace GnomeShellRpc.Rpc.Helper
 {
-	public class ContextHelper : GLib.Object
+	public class Context : GLib.Object
 	{
 		public static void register()
 		{
 			OLLMrpc.Request.add_class(
-				"Meta-Helper-Context", typeof(ContextHelper),
+				"Helper-Context", typeof(Context),
 				"terminate_with_error", "sis",
 				null
 			);
-			OLLMrpc.Request.register_live(
-				"Meta-Helper-Context",
-				new ContextHelper()
-			);
+			OLLMrpc.Request.register_live("Helper-Context", new Context());
 		}
 
 		public void terminate_with_error(

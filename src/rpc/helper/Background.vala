@@ -1,23 +1,20 @@
 /**
  * Delivers {@link Meta.Background} Override RPC (plan 0.5.7 C2).
  *
- * Wire prefix ''Meta-Helper-Background''.
+ * Wire prefix ''Helper-Background''.
  */
-namespace GnomeShellRpc.Rpc.MetaHelper
+namespace GnomeShellRpc.Rpc.Helper
 {
-	public class BackgroundHelper : GLib.Object
+	public class Background : GLib.Object
 	{
 		public static void register()
 		{
 			OLLMrpc.Request.add_class(
-				"Meta-Helper-Background", typeof(BackgroundHelper),
+				"Helper-Background", typeof(Background),
 				"set_file", "si",
 				null
 			);
-			OLLMrpc.Request.register_live(
-				"Meta-Helper-Background",
-				new BackgroundHelper()
-			);
+			OLLMrpc.Request.register_live("Helper-Background", new Background());
 		}
 
 		public void set_file(

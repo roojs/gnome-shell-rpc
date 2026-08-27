@@ -6,9 +6,7 @@ namespace GnomeShellRpc.Rpc
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.Request.register(
-	 *     "RPC-Daemon",
-	 *     new GnomeShellRpc.Rpc.Daemon());
+	 * OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
 	 * }}}
 	 */
 	public class Daemon : GLib.Object, OLLMrpc.Bin.Serializable
