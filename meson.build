@@ -1,6 +1,7 @@
 project('gnome-shell-rpc', 'vala', 'c',
   version: '0.1.0',
   meson_version: '>= 0.59.0',
+  license: 'GPL-2.0-or-later',
   default_options: [
     'warning_level=1',
     'prefix=/usr',
@@ -63,6 +64,28 @@ ocrpc_rpath = ocrpc_libdir
 
 vapigen = find_program('vapigen', required: true)
 
+if get_option('gnome_shell_client_libs').enabled()
+  gvc_gir_dir = '/usr/share/gnome-shell'
+  if not fs.exists(gvc_gir_dir / 'Gvc-1.0.gir')
+    error('Gvc-1.0.gir not found at @0@ — install gnome-shell (reference GIRs)'.format(gvc_gir_dir))
+  endif
+  g_ir_compiler_wrapper = configure_file(
+    input: meson.project_source_root() / 'gnome-shell/client-libs/g-ir-compiler-wrapper.sh',
+    output: 'g-ir-compiler-wrapper.sh',
+    configuration: {
+      'G_IR_COMPILER': '/usr/bin/g-ir-compiler',
+      'MUTTER_GIR_DIR': mutter_typelib_dir,
+      'META_GIR_DIR': meson.project_source_root() / 'src' / 'meta-mini',
+      'GVC_GIR_DIR': gvc_gir_dir,
+    },
+  )
+  meson.override_find_program('g-ir-compiler', g_ir_compiler_wrapper)
+endif
+
 subdir('gnome-shell')
 subdir('vapi')
 subdir('src')
+
+if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != ''
+  subdir('gnome-shell/client-libs')
+endif

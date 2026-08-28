@@ -64,3 +64,10 @@ This project was developed with the assistance of artificial intelligence.
 - Application code is treated as author-approved; generated Meta stubs are gated by deny lists, overrides, and a zero-gap scoreboard
 
 Limited exceptions apply mainly to build scaffolding.
+
+---
+
+## License
+
+gnome-shell-rpc is distributed under the terms of the GNU General Public License,
+version 2 or later. See the [COPYING](COPYING) file for details.

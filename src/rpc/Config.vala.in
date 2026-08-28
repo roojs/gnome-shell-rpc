@@ -2,4 +2,7 @@ namespace GnomeShellRpc.Rpc
 {
 	/** Mutter typelib dir (from meson); needed for {@link OLLMrpc.Gi.register}. */
 	public const string MUTTER_TYPELIB_DIR = "@MUTTER_TYPELIB_DIR@";
+
+	/** Client Shell/St typelib dir (Phase 4); empty when client libs disabled. */
+	public const string GNOME_SHELL_CLIENT_TYPELIB_DIR = "@GNOME_SHELL_CLIENT_TYPELIB_DIR@";
 }

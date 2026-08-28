@@ -32,3 +32,10 @@ option(
   value: '',
   description: 'Override distro gnome-shell JS directory (default: auto from prefix or /usr/share/gnome-shell/js)',
 )
+
+option(
+  'gnome_shell_client_libs',
+  type: 'feature',
+  value: 'enabled',
+  description: 'Build client Shell/St from vendor sources linked to libmutter-rpc-16 (Phase 4)',
+)

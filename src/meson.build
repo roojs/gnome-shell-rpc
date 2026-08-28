@@ -60,11 +60,16 @@ meta_mini_vala_args = [
   '--vapidir', meson.project_source_root() / 'vapi',
 ]
 
+# Fixed build-tree location (client-libs/meson.build uses meson.current_build_dir()).
+gnome_shell_client_libdir = meson.project_build_root() / 'gnome-shell' / 'client-libs'
+gnome_shell_client_typelibdir = get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != '' ? gnome_shell_client_libdir : ''
+
 rpc_config = configure_file(
   input: 'rpc/Config.vala.in',
   output: 'Config.vala',
   configuration: configuration_data({
     'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
+    'GNOME_SHELL_CLIENT_TYPELIB_DIR': gnome_shell_client_typelibdir,
   }),
 )
 
@@ -295,6 +300,11 @@ meta_window_generated = custom_target('Meta_window_generated.vala',
   build_by_default: true,
 )
 
+mutter_includedir = join_paths(
+  libmutter_dep.get_variable('includedir'),
+  'mutter-16',
+)
+
 mutter_rpc_lib = shared_library('mutter-rpc-16',
   meta_window_generated,
   files(
@@ -302,6 +312,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     'gi-stub/Runtime.vala',
     'gi-stub/CancellableBridge.vala',
     'gi-stub/PaintedContent.vala',
+    'gi-stub/c-meta-shell-gaps.c',
     'shared/namespace.vala',
     'shared/Rectangle.vala',
     'ui/namespace.vala',
@@ -317,6 +328,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     dependency('mutter-clutter-16'),
     dependency('mutter-cogl-16'),
     dependency('mutter-mtk-16'),
+    dependency('x11'),
   ],
   vala_args: ocrpc_vala_args + [
     '--pkg=posix',
@@ -327,6 +339,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     '--vapidir', meson.project_build_root() / 'vapi',
     '--vapidir', meson.project_source_root() / 'vapi',
   ],
+  c_args: ['-I' + mutter_includedir],
   build_rpath: ocrpc_rpath,
   link_args: ['-L' + mutter_typelib_dir],
   install: true,
@@ -352,11 +365,6 @@ mutter_rpc_typelib = custom_target('Meta-16.typelib',
 install_data(
   files('meta-mini/Meta-16.gir'),
   install_dir: mutter_rpc_typelib_install_dir,
-)
-
-mutter_includedir = join_paths(
-  libmutter_dep.get_variable('includedir'),
-  'mutter-16',
 )
 
 # Build-tree pc (nested / PKG_CONFIG_PATH=build/src). typelib lives next to .so here.

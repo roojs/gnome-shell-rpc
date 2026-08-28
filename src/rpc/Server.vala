@@ -168,18 +168,26 @@ namespace GnomeShellRpc.Rpc
 			}
 
 			var tip = GLib.Environment.get_variable("GI_TYPELIB_PATH");
-			if (tip != null && tip.length > 0) {
-				tip = bindir + ":" + MUTTER_TYPELIB_DIR + ":" + tip;
-			} else {
-				tip = bindir + ":" + MUTTER_TYPELIB_DIR;
+			var client_tl = GNOME_SHELL_CLIENT_TYPELIB_DIR;
+			string[] tip_parts = { bindir };
+			if (client_tl.length > 0) {
+				tip_parts += client_tl;
 			}
+			tip_parts += MUTTER_TYPELIB_DIR;
+			if (tip != null && tip.length > 0) {
+				tip_parts += tip;
+			}
+			tip = string.joinv(":", tip_parts);
 
 			var ld = GLib.Environment.get_variable("LD_LIBRARY_PATH");
-			if (ld != null && ld.length > 0) {
-				ld = bindir + ":" + ld;
-			} else {
-				ld = bindir;
+			string[] ld_parts = { bindir };
+			if (client_tl.length > 0) {
+				ld_parts += client_tl;
 			}
+			if (ld != null && ld.length > 0) {
+				ld_parts += ld;
+			}
+			ld = string.joinv(":", ld_parts);
 
 			string[] argv = { shell_bin, "--debug", script };
 			var launcher = new GLib.SubprocessLauncher(GLib.SubprocessFlags.NONE);
