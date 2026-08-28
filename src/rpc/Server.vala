@@ -162,9 +162,17 @@ namespace GnomeShellRpc.Rpc
 				GLib.warning("gnome-shell-rpc missing at %s — skip client spawn", shell_bin);
 				return;
 			}
-			if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
-				GLib.warning("%s missing at %s — skip client spawn", smoke_name, script);
-				return;
+
+			string[] argv;
+			if (smoke_name == "init.js") {
+				// Phase 5: libshell bootstrap loads resource:///org/gnome/shell/ui/init.js
+				argv = { shell_bin, "--debug" };
+			} else {
+				if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
+					GLib.warning("%s missing at %s — skip client spawn", smoke_name, script);
+					return;
+				}
+				argv = { shell_bin, "--debug", script };
 			}
 
 			var tip = GLib.Environment.get_variable("GI_TYPELIB_PATH");
@@ -174,6 +182,7 @@ namespace GnomeShellRpc.Rpc
 				tip_parts += client_tl;
 			}
 			tip_parts += MUTTER_TYPELIB_DIR;
+			tip_parts += "/usr/lib/gnome-shell";
 			if (tip != null && tip.length > 0) {
 				tip_parts += tip;
 			}
@@ -189,7 +198,6 @@ namespace GnomeShellRpc.Rpc
 			}
 			ld = string.joinv(":", ld_parts);
 
-			string[] argv = { shell_bin, "--debug", script };
 			var launcher = new GLib.SubprocessLauncher(GLib.SubprocessFlags.NONE);
 			launcher.setenv("GI_TYPELIB_PATH", tip, true);
 			launcher.setenv("LD_LIBRARY_PATH", ld, true);
@@ -205,7 +213,7 @@ namespace GnomeShellRpc.Rpc
 				this.smoke_client = null;
 				return;
 			}
-			GLib.debug("spawned %s %s via Meta.WaylandClient", shell_bin, script);
+			GLib.debug("spawned %s via Meta.WaylandClient", string.joinv(" ", argv));
 		}
 
 		private uint64? lease_handle_for(

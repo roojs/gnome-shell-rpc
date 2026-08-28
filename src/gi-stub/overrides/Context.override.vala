@@ -11,3 +11,12 @@
 				)
 			);
 		}
+
+		/**
+		 * Client GLib loop — compositor main loop stays in mutter-rpc.
+		 */
+		public void run_main_loop()
+		{
+			var loop = new GLib.MainLoop(null, false);
+			loop.run();
+		}

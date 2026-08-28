@@ -31,6 +31,7 @@ SoundPlayer.play_from_file
 SoundPlayer.play_from_theme
 Background.set_file
 Context.terminate_with_error
+Context.run_main_loop
 IdleMonitor.add_idle_watch
 IdleMonitor.add_user_active_watch
 Display.add_keybinding

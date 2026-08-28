@@ -274,6 +274,7 @@ shell_cflags = [
   '-I' + vendor_st_dir,
   '-I' + vendor_src_dir / 'tray',
   '-I' + meson.current_build_dir(),
+  '-I' + meson.project_source_root() / 'src/shell-client',
   '-DCLUTTER_ENABLE_EXPERIMENTAL_API',
   '-DCOGL_ENABLE_EXPERIMENTAL_API',
   '-DVERSION="48.0"',
@@ -348,9 +349,24 @@ foreach h : libshell_public_headers + libshell_private_headers
   libshell_header_files += vendor_src_dir / h
 endforeach
 
+shell_global_rpc_append = meson.project_source_root() / 'src/shell-client/shell-global-rpc-append.c'
+shell_global_patched = custom_target(
+  'shell-global-patched.c',
+  input: [vendor_src_dir / 'shell-global.c', shell_global_rpc_append],
+  output: 'shell-global-patched.c',
+  command: [
+    'sh', '-c', 'cat "$1" "$2" > "$3"', 'sh',
+    '@INPUT0@', '@INPUT1@', '@OUTPUT@',
+  ],
+)
+
 libshell_source_files = []
 foreach s : libshell_sources
-  libshell_source_files += vendor_src_dir / s
+  if s == 'shell-global.c'
+    libshell_source_files += shell_global_patched
+  else
+    libshell_source_files += vendor_src_dir / s
+  endif
 endforeach
 
 libshell_enums = gnome.mkenums_simple('shell-enum-types',

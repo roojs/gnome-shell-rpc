@@ -137,15 +137,6 @@ gjs_embed_config = configure_file(
   }),
 )
 
-gnome_shell_rpc_config = configure_file(
-  input: 'gjs-embed/Config.vala.in',
-  output: 'GnomeShellRpcConfig.vala',
-  configuration: configuration_data({
-    'GNOME_SHELL_JS_DIR': gnome_shell_js_runtime_dir,
-    'APPLICATION_ID': 'org.gnome.ShellRpc',
-  }),
-)
-
 gjs_embed = executable('gjs-embed',
   gjs_shell_sources,
   gjs_embed_config,
@@ -154,12 +145,13 @@ gjs_embed = executable('gjs-embed',
   install: false,
 )
 
-gnome_shell_rpc = executable('gnome-shell-rpc',
-  gjs_shell_sources,
-  gnome_shell_rpc_config,
-  dependencies: gjs_shell_deps,
-  vala_args: gjs_shell_vala_args,
-  install: false,
+gnome_shell_rpc_config = configure_file(
+  input: 'gjs-embed/Config.vala.in',
+  output: 'GnomeShellRpcConfig.vala',
+  configuration: configuration_data({
+    'GNOME_SHELL_JS_DIR': gnome_shell_js_runtime_dir,
+    'APPLICATION_ID': 'org.gnome.ShellRpc',
+  }),
 )
 
 g_ir_compiler = find_program('g-ir-compiler')
@@ -345,6 +337,15 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
   install: true,
 )
 
+mutter_rpc_client_dep = declare_dependency(
+  link_with: mutter_rpc_lib,
+  dependencies: [
+    dependency('mutter-clutter-16'),
+    dependency('mutter-mtk-16'),
+  ],
+  compile_args: ['-I' + mutter_includedir],
+)
+
 # Soname only — do not bake build-dir full_path into the typelib.
 mutter_rpc_typelib = custom_target('Meta-16.typelib',
   input: files('meta-mini/Meta-16.gir'),
@@ -460,3 +461,62 @@ fake_shell = executable('fake-shell',
   build_rpath: ocrpc_rpath,
   install: false,
 )
+
+if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != ''
+  gnome_shell_rpc_host_inc = include_directories('shell-client')
+
+  gnome_shell_rpc_host_c_args = [
+    '-I' + mutter_includedir,
+    '-I' + gnome_shell_vendor_root / 'src',
+    '-I' + gnome_shell_vendor_root / 'src/st',
+    '-I' + gnome_shell_client_libdir,
+    '-I' + gnome_shell_client_libdir / 'st',
+  ]
+
+  gnome_shell_rpc_host_vala_args = gjs_shell_vala_args + ocrpc_vala_args + [
+    '--pkg=mutter-rpc-16',
+    '--pkg=gdesktopenums-3.0',
+    '--vapidir', meson.current_build_dir(),
+    '--vapidir', meson.project_build_root() / 'vapi',
+    '--vapidir', meson.project_source_root() / 'vapi',
+  ]
+
+  gnome_shell_rpc_host_rpath = gnome_shell_client_libdir + ':' + meson.current_build_dir() + ':' + ocrpc_rpath
+
+  gnome_shell_rpc = executable('gnome-shell-rpc',
+    files(
+      'ApplicationInterface.vala',
+      'shell-client/namespace.vala',
+      'shell-client/ShellApplication.vala',
+    ),
+    'shell-client/bootstrap.c',
+    dependencies: gjs_shell_deps + [
+      ocrpc_dep,
+      mutter_rpc_client_dep,
+      dependency('gdk-pixbuf-2.0'),
+      dependency('mutter-clutter-16'),
+    ],
+    vala_args: gnome_shell_rpc_host_vala_args,
+    c_args: gnome_shell_rpc_host_c_args,
+    include_directories: gnome_shell_rpc_host_inc,
+    link_args: [
+      '-L' + gnome_shell_client_libdir,
+      '-lshell-16',
+      '-L' + meson.current_build_dir(),
+    ],
+    link_depends: [
+      gnome_shell_client_libdir / 'libshell-16.so',
+      mutter_rpc_lib,
+    ],
+    build_rpath: gnome_shell_rpc_host_rpath,
+    install: false,
+  )
+else
+  gnome_shell_rpc = executable('gnome-shell-rpc',
+    gjs_shell_sources,
+    gnome_shell_rpc_config,
+    dependencies: gjs_shell_deps,
+    vala_args: gjs_shell_vala_args,
+    install: false,
+  )
+endif
