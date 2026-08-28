@@ -63,5 +63,6 @@ ocrpc_rpath = ocrpc_libdir
 
 vapigen = find_program('vapigen', required: true)
 
+subdir('gnome-shell')
 subdir('vapi')
 subdir('src')

@@ -202,8 +202,14 @@ girpcsmoke_typelib = custom_target('GiRpcSmoke-1.0.typelib',
 )
 
 # Client Meta from gi-stub-gen (0.6 Phase 2 / 0.5.2 Phase 9).
+# Install layout mirrors mutter: .so in libdir; Meta-16 typelib + GIR in
+# ${libdir}/mutter-rpc-16/ — never stock mutter-16 or /usr/share/gir-1.0.
 # MUTTER_TL=$(pkg-config --variable=typelibdir libmutter-16)
-# GI_TYPELIB_PATH=./build/src:$MUTTER_TL ./build/src/gjs-embed --debug src/gjs-embed/meta-smoke.js
+# GI_TYPELIB_PATH=$(pkg-config --variable=typelibdir libmutter-rpc-16):$MUTTER_TL \
+#   ./build/src/gjs-embed --debug src/gjs-embed/meta-smoke.js
+mutter_rpc_gir_name = 'mutter-rpc-16'
+mutter_rpc_typelib_install_dir = get_option('libdir') / mutter_rpc_gir_name
+
 meta_deny_file = files('gi-stub-gen/Meta.deny')
 meta_overrides_file = files('gi-stub-gen/Meta.overrides')
 meta_override_dir = meson.current_source_dir() / 'gi-stub/overrides'
@@ -274,34 +280,64 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
   ],
   build_rpath: ocrpc_rpath,
   link_args: ['-L' + mutter_typelib_dir],
-  install: false,
+  install: true,
 )
 
+# Soname only — do not bake build-dir full_path into the typelib.
 mutter_rpc_typelib = custom_target('Meta-16.typelib',
   input: files('meta-mini/Meta-16.gir'),
   output: 'Meta-16.typelib',
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
-    '--shared-library', mutter_rpc_lib.full_path(),
+    '--shared-library', 'libmutter-rpc-16.so',
     '--includedir', mutter_typelib_dir,
     '@INPUT@',
   ],
   depends: [mutter_rpc_lib],
   build_by_default: true,
+  install: true,
+  install_dir: mutter_rpc_typelib_install_dir,
 )
 
+install_data(
+  files('meta-mini/Meta-16.gir'),
+  install_dir: mutter_rpc_typelib_install_dir,
+)
+
+mutter_includedir = join_paths(
+  libmutter_dep.get_variable('includedir'),
+  'mutter-16',
+)
+
+# Build-tree pc (nested / PKG_CONFIG_PATH=build/src). typelib lives next to .so here.
 configure_file(
   input: 'libmutter-rpc-16.pc.in',
   output: 'libmutter-rpc-16.pc',
   configuration: {
+    'prefix': meson.project_build_root(),
     'libdir': meson.current_build_dir(),
-    'mutter_includedir': join_paths(
-      libmutter_dep.get_variable('includedir'),
-      'mutter-16',
-    ),
+    'typelibdir': meson.current_build_dir(),
+    'girdir': meson.current_source_dir() / 'meta-mini',
+    'mutter_includedir': mutter_includedir,
     'version': meson.project_version(),
   },
+)
+
+# Installed pc: Meta-16.{typelib,gir} under ${libdir}/mutter-rpc-16.
+pkg = import('pkgconfig')
+pkg.generate(
+  mutter_rpc_lib,
+  filebase: 'libmutter-rpc-16',
+  name: 'mutter-rpc',
+  description: 'Mutter-shaped RPC client (GJS + C Meta-16)',
+  requires: ['gio-2.0', 'gobject-2.0', 'mutter-clutter-16'],
+  variables: [
+    'typelibdir=${libdir}/' + mutter_rpc_gir_name,
+    'girdir=${libdir}/' + mutter_rpc_gir_name,
+    'mutter_includedir=' + mutter_includedir,
+  ],
+  extra_cflags: '-I' + mutter_includedir,
 )
 
 # Plan 0.5.7: client CancellableBridge (server helpers are in gnome-shell-rpc).

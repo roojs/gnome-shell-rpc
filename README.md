@@ -1,13 +1,66 @@
 # gnome-shell-rpc
 
-Vala **mutter plugin** that exposes compositor state over GObject RPC, plus an out-of-process shell client. Stock `mutter` loads the plugin; the shell is a separate process that can crash and restart.
+Today, GNOME Shell and Mutter run in one process: the shell’s JavaScript calls straight into the compositor. If the shell crashes, the whole session goes down.
 
-Plans live in [`docs/plans/`](docs/plans/):
+This project **separates** them. Mutter keeps compositing (windows, Wayland, the display server). GNOME Shell’s JavaScript runs in another process and talks to Mutter over RPC — same `Meta` API from JS’s point of view, but calls go out-of-process instead of in-process.
 
-| Plan | What |
-| ---- | ---- |
-| [`0.1`](docs/plans/0.1-decouple-gnome-shell-vala-rpc.md) | Master plan (Phases 1, 2.0, 4, 5) |
-| [`0.2`](docs/plans/0.2-rpc-server-read-only-streaming.md) | RPC server + read-only streaming |
-| [`0.3`](docs/plans/0.3-minimal-shell-top-bar.md) | Out-of-process minimal shell (top bar) |
+The goal is a shell client you can restart without tearing down the desktop.
 
-Start at [`0.1`](docs/plans/0.1-decouple-gnome-shell-vala-rpc.md).
+**Status:** core stack **builds and runs nested** on **gnome-shell 48** / **libmutter-16**. Remaining work is packaging a full shell client process — not proving the split. Still **not** for your live session until that lands.
+
+---
+
+## How it fits together
+
+```
+mutter + gnome-shell-rpc plugin          gnome-shell-rpc-client (target)
+  real libmutter                             distro gnome-shell js/ + libmutter-rpc-16
+         ▲                                            │
+         └──────────── libocrpc / Unix socket ────────┘
+
+today (test phase): gjs-embed + src/gjs-embed/*.js — temporary; deprecated by 0.7
+```
+
+- **Compositor side** — a Vala mutter **plugin** in this repo; real Mutter, real windows.
+- **Client side** — stock GJS + **distro gnome-shell JS** (`Depends: gnome-shell` in packages); **`libmutter-rpc-16`** stands in for `libmutter`. We do **not** ship upstream `js/`.
+- **`vendor/gnome-shell/`** — build/CI reference only (gitignored); not installed.
+
+All development uses **nested** mutter inside `dbus-run-session`. Do not point this at your host `gnome-shell`.
+
+---
+
+## Where we are
+
+| Area | Status |
+| --- | --- |
+| Plugin + RPC + window ops | Working nested |
+| Generated Meta stubs (`gi-stub-gen`) | Gaps **0** |
+| Client library `libmutter-rpc-16` | Built; install under `…/mutter-rpc-16/` |
+| GJS loads our Meta (not distro mutter) | Proven nested |
+| Full gnome-shell JS client process | In progress (`gjs-embed` is temporary test harness only) |
+
+---
+
+## Documentation
+
+| Doc | What |
+| --- | --- |
+| [`docs/build.md`](docs/build.md) | Prerequisites, meson/ninja, nested run |
+| [`docs/libmutter-rpc-for-gnome-shell-js.md`](docs/libmutter-rpc-for-gnome-shell-js.md) | Point gnome-shell JS at `libmutter-rpc` |
+| [`docs/README.md`](docs/README.md) | Index (includes agent plans under `docs/plans/`) |
+
+RPC wire format lives in OLLMchat **libocrpc**.
+
+---
+
+## Artificial intelligence usage
+
+This project was developed with the assistance of artificial intelligence.
+
+- Architecture and design direction are human-led
+- AI’s main role was writing implementation for review
+- Most of the coding was performed by AI
+- Changes were reviewed, revised, and approved before landing
+- Application code is treated as author-approved; generated Meta stubs are gated by deny lists, overrides, and a zero-gap scoreboard
+
+Limited exceptions apply mainly to build scaffolding.

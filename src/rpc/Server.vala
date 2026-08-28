@@ -172,9 +172,17 @@ namespace GnomeShellRpc.Rpc
 				tip = bindir + ":" + MUTTER_TYPELIB_DIR;
 			}
 
+			var ld = GLib.Environment.get_variable("LD_LIBRARY_PATH");
+			if (ld != null && ld.length > 0) {
+				ld = bindir + ":" + ld;
+			} else {
+				ld = bindir;
+			}
+
 			string[] argv = { gjs_embed, "--debug", script };
 			var launcher = new GLib.SubprocessLauncher(GLib.SubprocessFlags.NONE);
 			launcher.setenv("GI_TYPELIB_PATH", tip, true);
+			launcher.setenv("LD_LIBRARY_PATH", ld, true);
 			try {
 				this.smoke_client = new Meta.WaylandClient(
 					this.display.get_context(), launcher);

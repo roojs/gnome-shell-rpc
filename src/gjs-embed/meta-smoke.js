@@ -16,13 +16,30 @@
 
 imports.gi.versions.Meta = '16';
 
-const { Gio, GLib, Meta } = imports.gi;
+const { Gio, GLib, Meta, GIRepository } = imports.gi;
 
 const SMOKE_DOMAIN = 'meta-smoke';
 const APP_CMD = GLib.getenv('GI_META_SMOKE_CMD') || 'gtk4-demo';
 const WAIT_MS = 8000;
 const POLL_MS = 200;
 const DEFAULT_HOLD_MS = 5000;
+
+/**
+ * Fail if Meta resolved to distro libmutter instead of libmutter-rpc.
+ */
+function assertMutterRpcSharedLibrary() {
+	const repo = GIRepository.Repository.dup_default
+		? GIRepository.Repository.dup_default()
+		: GIRepository.Repository.get_default();
+	const libs = repo.get_shared_library('Meta');
+	const text = libs === null || libs === undefined ? '' : '' + libs;
+	smokeLog('Meta shared-library=' + text);
+	if (text.indexOf('mutter-rpc') < 0) {
+		throw new Error(
+			'expected Meta shared-library to contain mutter-rpc, got: ' + text
+		);
+	}
+}
 
 /**
  * @returns {number}
@@ -126,6 +143,7 @@ function sleepMs(ms) {
 
 function main() {
 	smokeLog('meta-smoke: launch -> fetch -> minimize -> unminimize');
+	assertMutterRpcSharedLibrary();
 
 	const display = getDisplay();
 	launchApp(display);

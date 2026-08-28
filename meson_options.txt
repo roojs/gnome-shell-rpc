@@ -4,3 +4,24 @@ option(
   value: '/home/alan/gitlive/OLLMchat/build/libocrpc',
   description: 'Directory containing libocrpc.so and ocrpc.vapi from an OLLMchat build',
 )
+
+option(
+  'vendor_gnome_shell',
+  type: 'feature',
+  value: 'enabled',
+  description: 'Fetch and validate vendored upstream gnome-shell under vendor/gnome-shell/',
+)
+
+option(
+  'gnome_shell_vendor_ref',
+  type: 'string',
+  value: 'head',
+  description: 'Upstream gnome-shell git ref when cloning or refreshing: head, tag, branch, or commit',
+)
+
+option(
+  'gnome_shell_vendor_refresh',
+  type: 'boolean',
+  value: false,
+  description: 'If true, git fetch and checkout vendor ref; if false, use existing tree when present',
+)

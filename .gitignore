@@ -1,5 +1,6 @@
 /build/
 /builddir/
+/vendor/gnome-shell/
 *.o
 *.vala.c
 *.vala.h

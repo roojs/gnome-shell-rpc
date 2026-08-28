@@ -1,0 +1,132 @@
+# Build and run (nested)
+
+All commands assume a checkout of this repo. **Do not** use these against your live desktop session.
+
+**Target:** distro **gnome-shell 48** / **libmutter-16** (Meta-16).
+
+---
+
+## Prerequisites
+
+- **libocrpc** from a sibling OLLMchat build (`libocrpc.so` + `ocrpc.vapi` in one directory)
+- **gnome-shell 48** / **libmutter-16** on the host (Ubuntu 25.04+ or Debian with mutter 48)
+
+### Debian / Ubuntu
+
+**Ubuntu 25.04+** (or Debian with `libmutter-16-dev`). Adjust names on other distros.
+
+```bash
+sudo apt install \
+  build-essential \
+  pkg-config \
+  meson \
+  ninja-build \
+  valac \
+  gobject-introspection \
+  libgirepository-2.0-dev \
+  libmutter-16-dev \
+  gjs \
+  libgjs-dev \
+  libgee-0.8-dev \
+  libjson-glib-dev \
+  libsoup-3.0-dev \
+  libgtk-4-dev \
+  dbus-x11
+```
+
+- **libmutter-16-dev** — compositor link + mutter typelibs (Clutter/Cogl/Mtk come with it)
+- **gjs** / **libgjs-dev** — `gjs-embed` and smoke scripts
+- **libgee-0.8-dev**, **libjson-glib-dev**, **libsoup-3.0-dev** — `libocrpc` headers at compile time
+- **libgtk-4-dev** — `fake-shell` test client
+- **dbus-x11** — `dbus-run-session` for nested compositor runs
+
+Build OLLMchat **libocrpc** first, then pass its output directory to meson:
+
+```bash
+meson setup build -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc
+ninja -C build
+```
+
+First **`meson setup`** may clone upstream gnome-shell into **`vendor/gnome-shell/`** (gitignored) for **build/CI reference** — not installed, not shipped. Runtime JS comes from the **installed `gnome-shell` package** (`Depends:` in our packages). Later rebuilds reuse the vendor tree unless you refresh:
+
+```bash
+meson setup build -Dgnome_shell_vendor_refresh=true --reconfigure   # pull latest main
+./scripts/gnome-shell-fetch.sh --refresh                                       # same, manual
+meson setup build -Dvendor_gnome_shell=disabled --reconfigure         # smokes-only, skip vendor
+```
+
+See [`gnome-shell/README.md`](../gnome-shell/README.md).
+
+Main artifacts under `build/src/`:
+
+| Output | Role |
+| --- | --- |
+| `gnome-shell-rpc` | Compositor binary (mutter plugin) |
+| `gjs-embed` | **Temporary** GJS host for smoke tests (deprecated by `gnome-shell-rpc-client`) |
+| `libmutter-rpc-16.so` | Client Meta stubs (RPC to plugin) |
+| `Meta-16.typelib` | GI typelib → `libmutter-rpc-16.so` |
+
+---
+
+## Install (optional, private prefix)
+
+Default meson prefix is `/usr` — **prefer a user prefix** so nothing overwrites distro mutter:
+
+```bash
+meson setup build --prefix=$HOME/.local \
+  -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc
+ninja -C build install
+```
+
+Layout after install:
+
+- `libmutter-rpc-16.so` → `${libdir}/`
+- `Meta-16.typelib` + `Meta-16.gir` → `${libdir}/mutter-rpc-16/`
+- `libmutter-rpc-16.pc` → `${libdir}/pkgconfig/`
+
+See [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md) for `GI_TYPELIB_PATH` after install.
+
+---
+
+## Run nested compositor
+
+```bash
+dbus-run-session ./build/src/gnome-shell-rpc --wayland --nested
+```
+
+On startup the plugin listens on `$XDG_RUNTIME_DIR/mutter-rpc.sock` (or `MUTTER_RPC_SOCKET`) and spawns a GJS smoke client by default.
+
+Override the smoke script:
+
+```bash
+GI_META_SMOKE=mutter-rpc-load.js \
+  dbus-run-session ./build/src/gnome-shell-rpc --wayland --nested
+```
+
+Other smokes live under `src/gjs-embed/` (`meta-smoke.js`, etc.).
+
+---
+
+## Run GJS client by hand
+
+Useful without starting the full compositor, or to debug typelib loading:
+
+```bash
+MUTTER_TL=$(pkg-config --variable=typelibdir libmutter-16)
+export GI_TYPELIB_PATH=$PWD/build/src:$MUTTER_TL${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}
+export LD_LIBRARY_PATH=$PWD/build/src${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+
+./build/src/gjs-embed --debug src/gjs-embed/mutter-rpc-load.js
+```
+
+`mutter-rpc-load.js` checks that `Meta` resolves to `libmutter-rpc-16.so`, not distro `libmutter-16`.
+
+For launch/minimize exercises against a running compositor, use `meta-smoke.js` (nested compositor above, or with RPC socket env if wired).
+
+---
+
+## Session safety
+
+- **Do not** `meson install` to `/usr` on a machine where you rely on stock mutter.
+- **Do not** prepend our typelib path on the host `/usr/bin/gnome-shell`.
+- Nested work only: `dbus-run-session` + `./build/src/gnome-shell-rpc --wayland --nested`.

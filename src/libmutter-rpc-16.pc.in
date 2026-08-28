@@ -1,5 +1,7 @@
+prefix=@prefix@
 libdir=@libdir@
-typelibdir=${libdir}
+typelibdir=@typelibdir@
+girdir=@girdir@
 mutter_includedir=@mutter_includedir@
 
 Name: mutter-rpc
