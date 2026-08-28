@@ -35,10 +35,12 @@ meson setup build -Dvendor_gnome_shell=disabled      # smokes-only
 
 Configure prints **`gnome-shell runtime JS dir:`** (distro — not installed by us) and **`gnome-shell vendor root:`** (build/CI only). **`gjs-embed`** uses the runtime path in GJS `search-path` (**`GNOME_SHELL_JS_DIR`** env overrides at run time).
 
-**Client libs (Phase 4):** `-Dgnome_shell_client_libs=enabled` (default) builds **`libst-16.so`** from vendor sources linked to **`libmutter-rpc-16`**. Pin vendor to **48.x** for client-lib builds (`-Dgnome_shell_vendor_ref=48.0`). Proof:
+**Client libs (Phase 4):** `-Dgnome_shell_client_libs=enabled` (default) builds **`libst-16.so`** and **`libshell-16.so`** from vendor **48.x**, linked to **`libmutter-rpc-16`**, under **`build/gnome-shell/client-libs/`**. Import smokes:
 
 ```bash
-GI_META_SMOKE=shell-st-smoke.js dbus-run-session ./build/src/mutter-rpc --wayland --nested
+GI_META_SMOKE=shell-import-smoke.js dbus-run-session ./build/src/mutter-rpc --wayland --nested
 ```
+
+Phase 5 (**`init.js`**) is **not** this one-liner — see [`0.7-gnome-shell-rpc-client.md`](../docs/plans/0.7-gnome-shell-rpc-client.md) Phase 5.
 
 Plan: [`docs/plans/0.7-gnome-shell-rpc-client.md`](../docs/plans/0.7-gnome-shell-rpc-client.md).

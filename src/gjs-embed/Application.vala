@@ -95,6 +95,16 @@ namespace GnomeShellRpc.GjsEmbed
 				GLib.debug("gnome-shell JS search-path %s", js_dir);
 			}
 
+			var js_extra = GLib.Environment.get_variable("GNOME_SHELL_JS_EXTRA_DIRS");
+			if (js_extra != null && js_extra.length > 0) {
+				foreach (var part in js_extra.split(":")) {
+					if (part.length > 0) {
+						search_path += part;
+						GLib.debug("gnome-shell JS extra search-path %s", part);
+					}
+				}
+			}
+
 			search_path += GLib.Path.get_dirname(script);
 			search_path += ".";
 			GLib.debug("script %s", script);
@@ -102,8 +112,16 @@ namespace GnomeShellRpc.GjsEmbed
 			var ctx = new Gjs.Context.with_search_path(search_path);
 			var status = 0;
 			var ok = false;
+			var use_module = script.contains("/ui/init.js")
+				|| (js_dir.length > 0 && script.has_prefix(js_dir));
 			try {
-				ok = ctx.eval_file(script, out status);
+				if (use_module) {
+					uint8 module_status = 0;
+					ok = ctx.eval_module_file(script, out module_status);
+					status = module_status;
+				} else {
+					ok = ctx.eval_file(script, out status);
+				}
 			} catch (GLib.Error e) {
 				command_line.printerr("%s\n", e.message);
 				return 1;
