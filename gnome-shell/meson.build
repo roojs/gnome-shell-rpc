@@ -1,11 +1,52 @@
 # Phase 0.7: vendored upstream gnome-shell for build/CI reference only.
-# Does not install upstream JS — runtime JS comes from distro gnome-shell package.
+# Runtime JS comes from the installed gnome-shell package — not installed from here.
 
 fs = import('fs')
 
+# --- Runtime: distro gnome-shell JS (package dependency at install time) ---
+
+js_dir_override = get_option('gnome_shell_js_dir')
+if js_dir_override != ''
+  gnome_shell_js_runtime_dir = js_dir_override
+else
+  gnome_shell_pc = dependency('gnome-shell', required: false)
+  if gnome_shell_pc.found()
+    jsdir = gnome_shell_pc.get_variable('jsdir', default_value: '')
+    if jsdir != ''
+      gnome_shell_js_runtime_dir = jsdir
+    else
+      pkgdatadir = gnome_shell_pc.get_variable('pkgdatadir', default_value: '')
+      if pkgdatadir != ''
+        gnome_shell_js_runtime_dir = pkgdatadir / 'js'
+      else
+        gnome_shell_js_runtime_dir = get_option('prefix') / get_option('datadir') / 'gnome-shell' / 'js'
+      endif
+    endif
+  else
+    prefix_js = get_option('prefix') / get_option('datadir') / 'gnome-shell' / 'js'
+    if fs.exists(prefix_js)
+      gnome_shell_js_runtime_dir = prefix_js
+    elif fs.exists('/usr/share/gnome-shell/js')
+      gnome_shell_js_runtime_dir = '/usr/share/gnome-shell/js'
+    else
+      gnome_shell_js_runtime_dir = prefix_js
+      warning(
+        'gnome-shell JS directory not found on disk (@0@) — runtime expects an installed gnome-shell package (Depends: gnome-shell)'.format(
+          prefix_js,
+        ),
+      )
+    endif
+  endif
+endif
+
+message('gnome-shell runtime JS dir: @0@ (distro package; not installed by us)'.format(gnome_shell_js_runtime_dir))
+
+# --- Build-time: vendor checkout (optional) ---
+
+gnome_shell_vendor_root = ''
 vendor_gnome_shell = get_option('vendor_gnome_shell')
 if vendor_gnome_shell.disabled()
-  message('vendor gnome-shell disabled — skipping fetch')
+  message('vendor gnome-shell disabled — no build-time upstream checkout')
 else
   vendor_root = meson.project_source_root() / 'vendor' / 'gnome-shell'
   fetch_script = meson.project_source_root() / 'scripts' / 'gnome-shell-fetch.sh'
@@ -38,5 +79,5 @@ else
   endif
 
   gnome_shell_vendor_root = vendor_root
-  gnome_shell_js_dir = vendor_js
+  message('gnome-shell vendor root: @0@ (build/CI only; JS not installed)'.format(gnome_shell_vendor_root))
 endif

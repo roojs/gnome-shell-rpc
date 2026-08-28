@@ -55,14 +55,15 @@ meson setup build -Dgnome_shell_vendor_refresh=true --reconfigure   # pull lates
 meson setup build -Dvendor_gnome_shell=disabled --reconfigure         # smokes-only, skip vendor
 ```
 
-See [`gnome-shell/README.md`](../gnome-shell/README.md).
+See [`gnome-shell/README.md`](../gnome-shell/README.md). Meson prints **`gnome-shell runtime JS dir:`** at configure (from distro layout, not vendor). Override: **`-Dgnome_shell_js_dir=…`** or runtime **`GNOME_SHELL_JS_DIR`**.
 
 Main artifacts under `build/src/`:
 
 | Output | Role |
 | --- | --- |
-| `gnome-shell-rpc` | Compositor binary (mutter plugin) |
-| `gjs-embed` | **Temporary** GJS host for smoke tests (deprecated by `gnome-shell-rpc-client`) |
+| `mutter-rpc` | Compositor binary (mutter plugin) |
+| `gnome-shell-rpc` | Shell client (GJS + distro gnome-shell JS path) |
+| `gjs-embed` | **Temporary** test GJS host (manual smokes only) |
 | `libmutter-rpc-16.so` | Client Meta stubs (RPC to plugin) |
 | `Meta-16.typelib` | GI typelib → `libmutter-rpc-16.so` |
 
@@ -91,19 +92,19 @@ See [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md)
 ## Run nested compositor
 
 ```bash
-dbus-run-session ./build/src/gnome-shell-rpc --wayland --nested
+dbus-run-session ./build/src/mutter-rpc --wayland --nested
 ```
 
-On startup the plugin listens on `$XDG_RUNTIME_DIR/mutter-rpc.sock` (or `MUTTER_RPC_SOCKET`) and spawns a GJS smoke client by default.
+On startup the plugin listens on `$XDG_RUNTIME_DIR/mutter-rpc.sock` (or `MUTTER_RPC_SOCKET`) and spawns **`gnome-shell-rpc`** with a smoke script by default.
 
 Override the smoke script:
 
 ```bash
 GI_META_SMOKE=mutter-rpc-load.js \
-  dbus-run-session ./build/src/gnome-shell-rpc --wayland --nested
+  dbus-run-session ./build/src/mutter-rpc --wayland --nested
 ```
 
-Other smokes live under `src/gjs-embed/` (`meta-smoke.js`, etc.).
+Other smokes live under `src/gjs-embed/` (`meta-smoke.js`, etc.). Run them manually with **`gjs-embed`** or via **`GI_META_SMOKE`** as above (compositor spawns **`gnome-shell-rpc`**, not **`gjs-embed`**).
 
 ---
 
@@ -116,7 +117,14 @@ MUTTER_TL=$(pkg-config --variable=typelibdir libmutter-16)
 export GI_TYPELIB_PATH=$PWD/build/src:$MUTTER_TL${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}
 export LD_LIBRARY_PATH=$PWD/build/src${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
+./build/src/gnome-shell-rpc --debug src/gjs-embed/mutter-rpc-load.js
+```
+
+Or with the temporary test host:
+
+```bash
 ./build/src/gjs-embed --debug src/gjs-embed/mutter-rpc-load.js
+```
 ```
 
 `mutter-rpc-load.js` checks that `Meta` resolves to `libmutter-rpc-16.so`, not distro `libmutter-16`.
@@ -129,4 +137,4 @@ For launch/minimize exercises against a running compositor, use `meta-smoke.js` 
 
 - **Do not** `meson install` to `/usr` on a machine where you rely on stock mutter.
 - **Do not** prepend our typelib path on the host `/usr/bin/gnome-shell`.
-- Nested work only: `dbus-run-session` + `./build/src/gnome-shell-rpc --wayland --nested`.
+- Nested work only: `dbus-run-session` + `./build/src/mutter-rpc --wayland --nested`.

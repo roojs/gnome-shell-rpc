@@ -1,0 +1,8 @@
+namespace GnomeShellRpc.GjsEmbed
+{
+	/** Distro gnome-shell JS tree (meson); overridden by {@code GNOME_SHELL_JS_DIR} env. */
+	public const string GNOME_SHELL_JS_DIR = "@GNOME_SHELL_JS_DIR@";
+
+	/** {@link GLib.Application} id for this executable (meson). */
+	public const string APPLICATION_ID = "@APPLICATION_ID@";
+}

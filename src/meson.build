@@ -45,6 +45,21 @@ mutter_vala_args = [
   '--vapidir', meson.project_source_root() / 'vapi',
 ]
 
+# meta-mini/*.vala uses Clutter / Mtk / Graphene types in a few hand stubs.
+meta_mini_deps = [
+  dependency('graphene-gobject-1.0'),
+  dependency('mutter-clutter-16'),
+  dependency('mutter-mtk-16'),
+]
+
+meta_mini_vala_args = [
+  '--pkg=posix',
+  '--pkg=mutter-clutter-16',
+  '--pkg=mutter-mtk-16',
+  '--vapidir', meson.project_build_root() / 'vapi',
+  '--vapidir', meson.project_source_root() / 'vapi',
+]
+
 rpc_config = configure_file(
   input: 'rpc/Config.vala.in',
   output: 'Config.vala',
@@ -55,7 +70,7 @@ rpc_config = configure_file(
 
 compositor_rpath = mutter_typelib_dir + ':' + ocrpc_rpath
 
-gnome_shell_rpc = executable('gnome-shell-rpc',
+mutter_rpc = executable('mutter-rpc',
   compositor_sources,
   rpc_config,
   mutter_vapi_stamp,
@@ -87,25 +102,58 @@ rpc_client = executable('rpc-client',
 gjs_dep = dependency('gjs-1.0')
 girepository_dep = dependency('gobject-introspection-1.0')
 
+gjs_shell_sources = files(
+  'ApplicationInterface.vala',
+  'gjs-embed/namespace.vala',
+  'gjs-embed/Application.vala',
+)
+
+gjs_shell_deps = [
+  gjs_dep,
+  girepository_dep,
+  dependency('gee-0.8'),
+  dependency('gio-2.0'),
+]
+
+gjs_shell_vala_args = [
+  '--pkg=gjs-1.0',
+  '--pkg=gobject-introspection-1.0',
+  '--pkg=gee-0.8',
+  '--pkg=gio-2.0',
+  '--vapidir', meson.project_source_root() / 'vapi',
+]
+
+gjs_embed_config = configure_file(
+  input: 'gjs-embed/Config.vala.in',
+  output: 'GjsEmbedConfig.vala',
+  configuration: configuration_data({
+    'GNOME_SHELL_JS_DIR': gnome_shell_js_runtime_dir,
+    'APPLICATION_ID': 'org.gnome.ShellRpc.GjsEmbed',
+  }),
+)
+
+gnome_shell_rpc_config = configure_file(
+  input: 'gjs-embed/Config.vala.in',
+  output: 'GnomeShellRpcConfig.vala',
+  configuration: configuration_data({
+    'GNOME_SHELL_JS_DIR': gnome_shell_js_runtime_dir,
+    'APPLICATION_ID': 'org.gnome.ShellRpc',
+  }),
+)
+
 gjs_embed = executable('gjs-embed',
-  files(
-    'ApplicationInterface.vala',
-    'gjs-embed/namespace.vala',
-    'gjs-embed/Application.vala',
-  ),
-  dependencies: [
-    gjs_dep,
-    girepository_dep,
-    dependency('gee-0.8'),
-    dependency('gio-2.0'),
-  ],
-  vala_args: [
-    '--pkg=gjs-1.0',
-    '--pkg=gobject-introspection-1.0',
-    '--pkg=gee-0.8',
-    '--pkg=gio-2.0',
-    '--vapidir', meson.project_source_root() / 'vapi',
-  ],
+  gjs_shell_sources,
+  gjs_embed_config,
+  dependencies: gjs_shell_deps,
+  vala_args: gjs_shell_vala_args,
+  install: false,
+)
+
+gnome_shell_rpc = executable('gnome-shell-rpc',
+  gjs_shell_sources,
+  gnome_shell_rpc_config,
+  dependencies: gjs_shell_deps,
+  vala_args: gjs_shell_vala_args,
   install: false,
 )
 
@@ -177,14 +225,15 @@ girpcsmoke_lib = shared_library('girpcsmoke',
     'gi-stub/Runtime.vala',
     'meta-mini/Window.vala',
     'meta-mini/WindowActor.vala',
+    'gi-stub/PaintedContent.vala',
     'shared/namespace.vala',
     'shared/Rectangle.vala',
     'ui/namespace.vala',
     'ui/Window.vala',
     'rpc/namespace.vala',
   ),
-  dependencies: [ocrpc_dep],
-  vala_args: ocrpc_vala_args,
+  dependencies: [ocrpc_dep] + meta_mini_deps,
+  vala_args: ocrpc_vala_args + meta_mini_vala_args,
   build_rpath: ocrpc_rpath,
   install: false,
 )
@@ -340,7 +389,7 @@ pkg.generate(
   extra_cflags: '-I' + mutter_includedir,
 )
 
-# Plan 0.5.7: client CancellableBridge (server helpers are in gnome-shell-rpc).
+# Plan 0.5.7: client CancellableBridge (server helpers are in mutter-rpc).
 meta_override_client = static_library('meta-override-client',
   files(
     'gi-stub/namespace.vala',
@@ -348,14 +397,15 @@ meta_override_client = static_library('meta-override-client',
     'meta-mini/Window.vala',
     'meta-mini/WindowActor.vala',
     'gi-stub/CancellableBridge.vala',
+    'gi-stub/PaintedContent.vala',
     'shared/namespace.vala',
     'shared/Rectangle.vala',
     'ui/namespace.vala',
     'ui/Window.vala',
     'rpc/namespace.vala',
   ),
-  dependencies: [ocrpc_dep],
-  vala_args: ocrpc_vala_args,
+  dependencies: [ocrpc_dep] + meta_mini_deps,
+  vala_args: ocrpc_vala_args + meta_mini_vala_args,
   build_rpath: ocrpc_rpath,
   install: false,
 )

@@ -10,7 +10,7 @@ namespace GnomeShellRpc
 	 * == Example ==
 	 *
 	 * {{{
-	 * dbus-run-session ./build/src/gnome-shell-rpc --debug --wayland --nested
+	 * dbus-run-session ./build/src/mutter-rpc --debug --wayland --nested
 	 * }}}
 	 */
 	private class CompositorApp : GLib.Object, ApplicationInterface
@@ -33,7 +33,7 @@ namespace GnomeShellRpc
 
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
 				ApplicationInterface.debug_log(
-					"gnome-shell-rpc", dom, lvl, msg
+					"mutter-rpc", dom, lvl, msg
 				);
 			});
 

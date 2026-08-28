@@ -65,7 +65,7 @@ export GI_GIR_PATH=$RPC_GIR${GI_GIR_PATH:+:$GI_GIR_PATH}
 | --- | --- |
 | **GJS** (`js/ui`, smokes) | `GI_TYPELIB_PATH` as above; stock `gi.require('Meta', '16')` |
 | **C** linking Meta | `pkg-config --libs --cflags libmutter-rpc-16` |
-| **Process** | **Not** stock `/usr/bin/gnome-shell` (that process **is** the compositor). Use `gjs-embed` or a dedicated client binary — see [`build.md`](build.md). |
+| **Process** | **Not** stock `/usr/bin/gnome-shell` (that process **is** the compositor). Use **`gnome-shell-rpc`** (shell) or **`gjs-embed`** (manual test smokes) — see [`build.md`](build.md). |
 
 ---
 

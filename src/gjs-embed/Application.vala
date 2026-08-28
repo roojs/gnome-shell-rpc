@@ -29,7 +29,7 @@ namespace GnomeShellRpc.GjsEmbed
 		public Application()
 		{
 			GLib.Object(
-				application_id: "org.gnome.ShellRpc.GjsEmbed",
+				application_id: APPLICATION_ID,
 				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
 					| GLib.ApplicationFlags.NON_UNIQUE
 			);
@@ -68,7 +68,10 @@ namespace GnomeShellRpc.GjsEmbed
 				Application.opt_debug_critical;
 
 			if (remaining.length < 2) {
-				command_line.printerr("usage: gjs-embed [--debug] SCRIPT.js\n");
+				command_line.printerr(
+					"usage: %s [--debug] SCRIPT.js\n",
+					GLib.Path.get_basename(remaining[0])
+				);
 				return 1;
 			}
 
@@ -82,6 +85,16 @@ namespace GnomeShellRpc.GjsEmbed
 
 			var script = remaining[1];
 			string[] search_path = {};
+
+			var js_dir = GLib.Environment.get_variable("GNOME_SHELL_JS_DIR");
+			if (js_dir == null || js_dir.length == 0) {
+				js_dir = GNOME_SHELL_JS_DIR;
+			}
+			if (js_dir.length > 0) {
+				search_path += js_dir;
+				GLib.debug("gnome-shell JS search-path %s", js_dir);
+			}
+
 			search_path += GLib.Path.get_dirname(script);
 			search_path += ".";
 			GLib.debug("script %s", script);

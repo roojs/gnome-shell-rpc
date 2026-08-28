@@ -25,3 +25,10 @@ option(
   value: false,
   description: 'If true, git fetch and checkout vendor ref; if false, use existing tree when present',
 )
+
+option(
+  'gnome_shell_js_dir',
+  type: 'string',
+  value: '',
+  description: 'Override distro gnome-shell JS directory (default: auto from prefix or /usr/share/gnome-shell/js)',
+)

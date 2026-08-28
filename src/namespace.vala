@@ -12,7 +12,7 @@
  * == Example ==
  *
  * {{{
- * dbus-run-session ./build/src/gnome-shell-rpc --wayland --nested
+ * dbus-run-session ./build/src/mutter-rpc --wayland --nested
  * }}}
  */
 namespace GnomeShellRpc

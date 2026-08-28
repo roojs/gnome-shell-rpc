@@ -13,16 +13,16 @@ The goal is a shell client you can restart without tearing down the desktop.
 ## How it fits together
 
 ```
-mutter + gnome-shell-rpc plugin          gnome-shell-rpc-client (target)
+mutter-rpc (compositor)                 gnome-shell-rpc (shell)
   real libmutter                             distro gnome-shell js/ + libmutter-rpc-16
          ▲                                            │
          └──────────── libocrpc / Unix socket ────────┘
 
-today (test phase): gjs-embed + src/gjs-embed/*.js — temporary; deprecated by 0.7
+today (test phase): manual smokes via `gjs-embed` — compositor spawns `gnome-shell-rpc`
 ```
 
-- **Compositor side** — a Vala mutter **plugin** in this repo; real Mutter, real windows.
-- **Client side** — stock GJS + **distro gnome-shell JS** (`Depends: gnome-shell` in packages); **`libmutter-rpc-16`** stands in for `libmutter`. We do **not** ship upstream `js/`.
+- **Compositor side** — **`mutter-rpc`**: mutter **plugin** in this repo; real Mutter, real windows.
+- **Client side** — **`gnome-shell-rpc`**: stock GJS + **distro gnome-shell JS** (`Depends: gnome-shell` in packages); **`libmutter-rpc-16`** stands in for `libmutter`. We do **not** ship upstream `js/`.
 - **`vendor/gnome-shell/`** — build/CI reference only (gitignored); not installed.
 
 All development uses **nested** mutter inside `dbus-run-session`. Do not point this at your host `gnome-shell`.
@@ -37,7 +37,7 @@ All development uses **nested** mutter inside `dbus-run-session`. Do not point t
 | Generated Meta stubs (`gi-stub-gen`) | Gaps **0** |
 | Client library `libmutter-rpc-16` | Built; install under `…/mutter-rpc-16/` |
 | GJS loads our Meta (not distro mutter) | Proven nested |
-| Full gnome-shell JS client process | In progress (`gjs-embed` is temporary test harness only) |
+| Shell client `gnome-shell-rpc` + nested spawn | Working (smoke scripts) |
 
 ---
 

@@ -2,7 +2,7 @@ namespace GnomeShellRpc.Rpc
 {
 	/**
 	 * RPC server boot — socket, registrations, display/window notifications,
-	 * then a lightweight spawn of {@code gjs-embed} + {@code meta-smoke.js}
+	 * then spawn {@code gnome-shell-rpc} + a smoke script (no pid watch).
 	 * (no pid watch).
 	 *
 	 * == Example ==
@@ -21,6 +21,7 @@ namespace GnomeShellRpc.Rpc
 			new Gee.HashMap<Meta.Window, ulong>();
 		private Meta.WaylandClient? smoke_client = null;
 		private bool window_actor_aliased = false;
+		private string rpc_socket_path = "";
 
 		public void start(Meta.Display display)
 		{
@@ -83,6 +84,8 @@ namespace GnomeShellRpc.Rpc
 				}
 			}
 
+			this.rpc_socket_path = socket_path;
+
 			this.listen = new Listen(socket_path) {
 				live_handles = true,
 			};
@@ -132,9 +135,8 @@ namespace GnomeShellRpc.Rpc
 		}
 
 		/**
-		 * Spawn {@code gjs-embed} + {@code meta-smoke.js} via
-		 * {@link Meta.WaylandClient}. Smoke launches apps with stock
-		 * {@code get_startup_notification().create_launcher()} + Gio.
+		 * Spawn {@code gnome-shell-rpc} + smoke JS via {@link Meta.WaylandClient}.
+		 * Manual runs may still use {@code gjs-embed} from the build tree.
 		 */
 		private void spawn_client()
 		{
@@ -146,7 +148,7 @@ namespace GnomeShellRpc.Rpc
 				return;
 			}
 			var bindir = GLib.Path.get_dirname(self_exe);
-			var gjs_embed = GLib.Path.build_filename(bindir, "gjs-embed");
+			var shell_bin = GLib.Path.build_filename(bindir, "gnome-shell-rpc");
 			var smoke_env = GLib.Environment.get_variable("GI_META_SMOKE");
 			var smoke_name = (smoke_env != null && smoke_env.length > 0)
 				? smoke_env
@@ -156,8 +158,8 @@ namespace GnomeShellRpc.Rpc
 			}
 			var script = GLib.Path.build_filename(
 				bindir, "..", "..", "src", "gjs-embed", smoke_name);
-			if (!GLib.FileUtils.test(gjs_embed, GLib.FileTest.IS_EXECUTABLE)) {
-				GLib.warning("gjs-embed missing at %s — skip client spawn", gjs_embed);
+			if (!GLib.FileUtils.test(shell_bin, GLib.FileTest.IS_EXECUTABLE)) {
+				GLib.warning("gnome-shell-rpc missing at %s — skip client spawn", shell_bin);
 				return;
 			}
 			if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
@@ -179,10 +181,13 @@ namespace GnomeShellRpc.Rpc
 				ld = bindir;
 			}
 
-			string[] argv = { gjs_embed, "--debug", script };
+			string[] argv = { shell_bin, "--debug", script };
 			var launcher = new GLib.SubprocessLauncher(GLib.SubprocessFlags.NONE);
 			launcher.setenv("GI_TYPELIB_PATH", tip, true);
 			launcher.setenv("LD_LIBRARY_PATH", ld, true);
+			if (this.rpc_socket_path.length > 0) {
+				launcher.setenv("MUTTER_RPC_SOCKET", this.rpc_socket_path, true);
+			}
 			try {
 				this.smoke_client = new Meta.WaylandClient(
 					this.display.get_context(), launcher);
@@ -192,7 +197,7 @@ namespace GnomeShellRpc.Rpc
 				this.smoke_client = null;
 				return;
 			}
-			GLib.debug("spawned %s %s via Meta.WaylandClient", gjs_embed, script);
+			GLib.debug("spawned %s %s via Meta.WaylandClient", shell_bin, script);
 		}
 
 		private uint64? lease_handle_for(
