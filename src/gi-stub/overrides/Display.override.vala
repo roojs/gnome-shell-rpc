@@ -83,6 +83,41 @@
 		}
 
 		/**
+		 * Lease handle in {@code args[0]} — Ui.Display packs uint64, not
+		 * {@code result} (live GObject rows arrive with handle 0).
+		 */
+		public Context get_context()
+		{
+			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Display.get_context", this);
+			var ctx = new Context();
+			if (response.args.size > 0) {
+				ctx.set_data(
+					"gsr-lease-id",
+					response.args.get(0).get_uint64().to_string()
+				);
+			}
+			return ctx;
+		}
+
+		/**
+		 * Lease handle in {@code args[0]} — same packing as {@link get_context}.
+		 */
+		public Compositor get_compositor()
+		{
+			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Display.get_compositor", this);
+			var compositor = new Compositor();
+			if (response.args.size > 0) {
+				compositor.set_data(
+					"gsr-lease-id",
+					response.args.get(0).get_uint64().to_string()
+				);
+			}
+			return compositor;
+		}
+
+		/**
 		 * Stock {@code meta_display_is_pointer_emulating_sequence}. Mutter-internal
 		 * grab helper; gnome-shell JS never calls — always false out-of-process.
 		 */

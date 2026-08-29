@@ -8,6 +8,11 @@ namespace Meta
 	 */
 	public class Backend : GLib.Object
 	{
+		public static void register()
+		{
+			OLLMrpc.Bin.register("Meta-Backend", typeof(Backend));
+		}
+
 		public IdleMonitor get_core_idle_monitor()
 		{
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(

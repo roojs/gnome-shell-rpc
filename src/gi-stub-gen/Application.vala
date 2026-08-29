@@ -46,7 +46,7 @@ Examples:
 			{ "deny-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_deny_file,
 				"Deny list (one symbol per line; optional noop flag)", "FILE" },
 			{ "overrides-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_overrides_file,
-				"Overrides file (Type.method key=value)", "FILE" },
+				"Overrides file (Type[.method] key=value; type emit=… policies)", "FILE" },
 			{ "override-path", 0, 0, GLib.OptionArg.FILENAME, ref opt_override_path,
 				"Directory of {Type}.override.vala client bodies", "DIR" },
 			{ "out", 0, 0, GLib.OptionArg.FILENAME, ref opt_out,

@@ -3,6 +3,11 @@ namespace Meta
 {
 	public class Compositor : GLib.Object
 	{
+		public static void register()
+		{
+			OLLMrpc.Bin.register("Meta-Compositor", typeof(Compositor));
+		}
+
 		public GLib.List<WindowActor> get_window_actors()
 		{
 			var response = GnomeShellRpc.GiStub.Runtime.call_values("Meta-Compositor.get_window_actors", this);

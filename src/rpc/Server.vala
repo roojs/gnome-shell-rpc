@@ -33,6 +33,7 @@ namespace GnomeShellRpc.Rpc
 			Ui.Display.rpc_register();
 			Ui.Compositor.rpc_register();
 			Ui.Backend.rpc_register();
+			Ui.Context.rpc_register();
 			Rpc.Daemon.rpc_register();
 			Rpc.Bootstrap.rpc_register();
 
@@ -48,6 +49,7 @@ namespace GnomeShellRpc.Rpc
 			Rpc.Helper.SelectionSource.register();
 			Rpc.Helper.SelectionSourceMemory.register();
 			Rpc.Helper.ShapedTexture.register();
+			Rpc.Helper.ShaderEffect.register();
 
 			this.ui_display = new Ui.Display(display);
 			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
@@ -56,6 +58,8 @@ namespace GnomeShellRpc.Rpc
 				new Ui.Compositor(display.get_compositor()));
 			OLLMrpc.Request.register_live("Meta-Backend",
 				new Ui.Backend(display.get_context().get_backend()));
+			OLLMrpc.Request.register_live("Meta-Context",
+				new Ui.Context(display.get_context()));
 
 			try {
 				GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
@@ -63,6 +67,8 @@ namespace GnomeShellRpc.Rpc
 				OLLMrpc.Gi.register("Clutter", "16");
 				OLLMrpc.Bin.register_alias("Meta-Compositor",
 					display.get_compositor().get_type());
+				OLLMrpc.Bin.register_alias("Meta-Context",
+					display.get_context().get_type());
 				OLLMrpc.Bin.register_alias("Meta-Backend",
 					display.get_context().get_backend().get_type());
 			} catch (GLib.Error e) {

@@ -10,6 +10,11 @@ namespace Meta
 	 */
 	public class WindowActor : GLib.Object
 	{
+		public static void register()
+		{
+			OLLMrpc.Bin.register("Meta-WindowActor", typeof(WindowActor));
+		}
+
 		public void show()
 		{
 			GnomeShellRpc.GiStub.Runtime.call_values("Clutter-Actor.show", this);

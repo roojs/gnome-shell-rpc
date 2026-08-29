@@ -50,8 +50,8 @@ namespace GnomeShellRpc.GiStub
 			GnomeShellRpc.Shared.Rectangle.rpc_register();
 			GnomeShellRpc.Ui.Window.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
-			OLLMrpc.Bin.register("Meta-Window", typeof(Meta.Window));
-			OLLMrpc.Bin.register("Meta-WindowActor", typeof(Meta.WindowActor));
+			Clutter.register();
+			Meta.register();
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {

@@ -32,9 +32,12 @@ SoundPlayer.play_from_theme
 Background.set_file
 Context.terminate_with_error
 Context.run_main_loop
+Context.get_backend
 IdleMonitor.add_idle_watch
 IdleMonitor.add_user_active_watch
 Display.add_keybinding
+Display.get_context
+Display.get_compositor
 keybindings_set_custom_handler
 Window.foreach_transient
 Window.foreach_ancestor
@@ -42,6 +45,7 @@ Window.begin_grab_op
 Display.request_pad_osd
 Display.get_pad_button_label
 Display.get_pad_feature_label
+Display.is_pointer_emulating_sequence
 WindowActor.paint_to_content
 Selection.transfer_async
 Selection.transfer_finish
@@ -50,7 +54,6 @@ SelectionSource.read_finish
 SelectionSourceMemory.new
 ShapedTexture.get_image
 WindowActor.get_image
-Display.is_pointer_emulating_sequence
 WaylandCompositor.get_wayland_display
 
 # ---------------------------------------------------------------------------

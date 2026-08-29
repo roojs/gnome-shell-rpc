@@ -24,9 +24,33 @@ namespace GnomeShellRpc.GiStubGen
 		/** Same names as {@link deny}, but emit an empty / dummy-return stub (deny-file ``noop`` flag). */
 		public string[] noop = {};
 
-		/** {@code Type.method} → override keys (e.g. {@code list_elem=WindowActor}). */
+		/** {@code Type.method} or bare {@code Type} → override keys (e.g. {@code list_elem=WindowActor}, {@code emit=union-as-class}). */
 		public Gee.HashMap<string, Gee.HashMap<string, string>> overrides =
 			new Gee.HashMap<string, Gee.HashMap<string, string>>();
+
+		/** Lookup a type-level policy from {@link overrides} (bare type name, no method). */
+		private string? type_policy(string type_name, string key)
+		{
+			if (!this.overrides.has_key(type_name)) {
+				return null;
+			}
+			var map = this.overrides.get(type_name);
+			if (!map.has_key(key)) {
+				return null;
+			}
+			return map.get(key);
+		}
+
+		/** True when a GIR union is emitted / wired as {@code GLib.Object}. */
+		private bool union_as_gobject(string ns, GI.BaseInfo info)
+		{
+			if (info == null
+				|| info.get_type() != GI.InfoType.UNION
+				|| info.get_namespace() != ns) {
+				return false;
+			}
+			return this.type_policy(info.get_name(), "wire_as") == "gobject";
+		}
 
 		/** Current {@code Type.method} while emitting (for {@link overrides}). */
 		private string emit_symbol = "";
@@ -46,6 +70,9 @@ namespace GnomeShellRpc.GiStubGen
 		private Gee.ArrayList<Gap> gaps = new Gee.ArrayList<Gap>();
 		private int wired_callables = 0;
 
+		/** Object types emitted this run (for namespace {@code register()}). */
+		private Gee.ArrayList<string> object_classes = new Gee.ArrayList<string>();
+
 		/**
 		 * Write Vala stubs for {@code ns}, skipping {@link deny} symbols.
 		 *
@@ -57,6 +84,7 @@ namespace GnomeShellRpc.GiStubGen
 		{
 			this.gaps.clear();
 			this.wired_callables = 0;
+			this.object_classes.clear();
 
 			var stream = GLib.FileStream.open(out_path, "w");
 			if (stream == null) {
@@ -97,6 +125,11 @@ namespace $(ns)
 					case GI.InfoType.CALLBACK:
 						emitted += this.emit_callback(stream, ns, (GI.CallbackInfo)info);
 						continue;
+					case GI.InfoType.UNION:
+						emitted += this.emit_union_as_object(
+							stream, ns, (GI.UnionInfo) info
+						);
+						continue;
 					default:
 						this.gaps.add(new Gap() {
 							symbol = info.get_name(),
@@ -106,6 +139,7 @@ namespace $(ns)
 						continue;
 				}
 			}
+			this.emit_namespace_register(stream);
 			this.splice_class_override(stream, ns);
 			stream.puts("}\n");
 			stream = null;
@@ -172,9 +206,91 @@ namespace $(ns)
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				methods += this.emit_callable(stream, ns, class_name, oi.get_method(m), "class");
 			}
+			this.emit_object_bin_register(stream, ns, class_name);
+			this.object_classes.add(class_name);
 			this.splice_class_override(stream, class_name);
 			stream.puts("	}\n");
 			return 1 + methods;
+		}
+
+		/**
+		 * Emit a GIR union when {@code Type emit=union-as-class} is set in overrides.
+		 */
+		private int emit_union_as_object(
+			GLib.FileStream stream,
+			string ns,
+			GI.UnionInfo ui
+		) {
+			var class_name = ui.get_name();
+			if (this.type_policy(class_name, "emit") != "union-as-class") {
+				this.gaps.add(new Gap() {
+					symbol = class_name,
+					reason = "unhandled_info",
+					detail = "UNION",
+				});
+				return 0;
+			}
+			if (class_name in this.deny) {
+				this.gaps.add(new Gap() {
+					symbol = this.wire_symbol(ns, class_name, ""),
+					reason = "denied",
+					detail = "union",
+				});
+				return 0;
+			}
+
+			stream.puts(@"
+	public class $(class_name) : GLib.Object
+	{
+");
+			var methods = 0;
+			for (var m = 0; m < ui.get_n_methods(); m++) {
+				var fi = ui.get_method(m);
+				var flags = fi.get_flags();
+				/* Nested <function>s share clutter_event_* cnames with ns stubs. */
+				if ((flags & GI.FunctionInfoFlags.IS_METHOD) == 0
+					&& (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) == 0) {
+					continue;
+				}
+				methods += this.emit_callable(stream, ns, class_name, fi, "class");
+			}
+			this.emit_object_bin_register(stream, ns, class_name);
+			this.object_classes.add(class_name);
+			this.splice_class_override(stream, class_name);
+			stream.puts("	}\n");
+			return 1 + methods;
+		}
+
+		/**
+		 * Emit {@code register()} that maps {@code Ns-Type} → the stub GType.
+		 */
+		private void emit_object_bin_register(
+			GLib.FileStream stream,
+			string ns,
+			string class_name
+		) {
+			stream.printf(
+				"\n\t\tpublic static new void register()\n\t\t{\n" +
+				"\t\t\tOLLMrpc.Bin.register(\"%s-%s\", typeof(%s));\n" +
+				"\t\t}\n",
+				ns, class_name, class_name
+			);
+		}
+
+		/**
+		 * Emit namespace {@code register()} that calls every object {@code register()}.
+		 */
+		private void emit_namespace_register(GLib.FileStream stream)
+		{
+			if (this.object_classes.size == 0) {
+				return;
+			}
+			stream.puts("\n	public void register()\n	{\n");
+			foreach (var class_name in this.object_classes) {
+				stream.puts(@"		$(class_name).register();
+");
+			}
+			stream.puts("	}\n");
 		}
 
 		/**
@@ -328,6 +444,9 @@ namespace $(ns)
 		/**
 		 * Emit a struct (skips GType class structs).
 		 *
+		 * Opaque boxed records with methods ({@code PaintContext}, …) are emitted
+		 * as GObject classes so instance methods export {@code clutter_*_*} C symbols.
+		 *
 		 * @param stream output Vala file
 		 * @param ns GI namespace
 		 * @param si struct info
@@ -345,6 +464,11 @@ namespace $(ns)
 					detail = "struct",
 				});
 				return 0;
+			}
+			if (si.get_size() == 0
+				&& si.get_n_methods() > 0
+				&& this.type_policy(si.get_name(), "emit") == "opaque-as-class") {
+				return this.emit_opaque_struct_as_object(stream, ns, si);
 			}
 			stream.puts(@"
 	public struct $(si.get_name())
@@ -382,8 +506,53 @@ namespace $(ns)
 			if (n_written == 0) {
 				stream.puts("		public uint8 _unused;\n");
 			}
+			var methods = 0;
+			if (this.type_policy(si.get_name(), "emit") == "struct-methods") {
+				for (var m = 0; m < si.get_n_methods(); m++) {
+					var fi = si.get_method(m);
+					var flags = fi.get_flags();
+					if ((flags & GI.FunctionInfoFlags.IS_METHOD) == 0
+						&& (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) == 0) {
+						continue;
+					}
+					methods += this.emit_callable(
+						stream, ns, si.get_name(), fi, "struct"
+					);
+				}
+				this.splice_class_override(stream, si.get_name());
+			}
 			stream.puts("	}\n");
-			return 1;
+			return 1 + methods;
+		}
+
+		/**
+		 * Opaque GIR record → class + methods when {@code emit=opaque-as-class}.
+		 */
+		private int emit_opaque_struct_as_object(
+			GLib.FileStream stream,
+			string ns,
+			GI.StructInfo si
+		) {
+			var class_name = si.get_name();
+			stream.puts(@"
+	public class $(class_name) : GLib.Object
+	{
+");
+			var methods = 0;
+			for (var m = 0; m < si.get_n_methods(); m++) {
+				var fi = si.get_method(m);
+				var flags = fi.get_flags();
+				if ((flags & GI.FunctionInfoFlags.IS_METHOD) == 0
+					&& (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) == 0) {
+					continue;
+				}
+				methods += this.emit_callable(stream, ns, class_name, fi, "class");
+			}
+			this.emit_object_bin_register(stream, ns, class_name);
+			this.object_classes.add(class_name);
+			this.splice_class_override(stream, class_name);
+			stream.puts("	}\n");
+			return 1 + methods;
 		}
 
 		/**
@@ -573,6 +742,7 @@ namespace $(ns)
 			var tab = kind == "ns" ? "	" : "		";
 			var indent = tab + "\t";
 			var arglist = string.joinv(", ", args);
+			var vala_name = this.vala_ident(name);
 			if (listed_noop && kind != "iface") {
 				this.gaps.add(new Gap() {
 					symbol = symbol,
@@ -580,12 +750,12 @@ namespace $(ns)
 				});
 				if (is_constructor) {
 					stream.puts(
-						tab + @"public $(type_name)($(arglist))$(throws_clause)
+						tab + @"public $(this.constructor_decl(type_name, name))($(arglist))$(throws_clause)
 $(tab){
 "
 					);
 				} else {
-					stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause)
+					stream.puts(tab + @"public $(ret) $(vala_name)($(arglist))$(throws_clause)
 $(tab){
 ");
 				}
@@ -617,11 +787,11 @@ $(tab){
 			if (kind == "iface") {
 				if (ret == "void") {
 					stream.puts(@"
-$(tab)public abstract void $(name)($(arglist))$(throws_clause);
+$(tab)public abstract void $(vala_name)($(arglist))$(throws_clause);
 ");
 				} else {
 					stream.puts(@"
-$(tab)public abstract $(ret) $(name)($(arglist))$(throws_clause);
+$(tab)public abstract $(ret) $(vala_name)($(arglist))$(throws_clause);
 ");
 				}
 				return 1;
@@ -631,15 +801,16 @@ $(tab)public abstract $(ret) $(name)($(arglist))$(throws_clause);
 			if (!is_constructor && kind == "class") {
 				instance = "this";
 			}
-			if (this.callable_wireable(fi, ns)) {
+			/* Struct methods are C ABI only — no GObject lease wire. */
+			if (kind != "struct" && this.callable_wireable(fi, ns)) {
 				if (is_constructor) {
 					stream.puts(
-						tab + @"public $(type_name)($(arglist))$(throws_clause)
+						tab + @"public $(this.constructor_decl(type_name, name))($(arglist))$(throws_clause)
 $(tab){
 "
 					);
 				} else {
-					stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause)
+					stream.puts(tab + @"public $(ret) $(vala_name)($(arglist))$(throws_clause)
 $(tab){
 ");
 				}
@@ -658,26 +829,71 @@ $(tab){
 
 			if (is_constructor) {
 				stream.puts(
-					tab + @"public $(type_name)($(arglist))$(throws_clause)
+					tab + @"public $(this.constructor_decl(type_name, name))($(arglist))$(throws_clause)
 $(tab){
+$(indent)Object();
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 "
 				);
 			} else if (ret == "void") {
-				stream.puts(tab + @"public void $(name)($(arglist))$(throws_clause)
+				stream.puts(tab + @"public void $(vala_name)($(arglist))$(throws_clause)
 $(tab){
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");
 			} else {
-				stream.puts(tab + @"public $(ret) $(name)($(arglist))$(throws_clause)
+				stream.puts(tab + @"public $(ret) $(vala_name)($(arglist))$(throws_clause)
 $(tab){
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");
 			}
 			return 1;
+		}
+
+		/**
+		 * Escape Vala keywords used as GIR method names ({@code type} → {@code @type}).
+		 */
+		private string vala_ident(string name)
+		{
+			switch (name) {
+				case "type":
+				case "new":
+				case "class":
+				case "base":
+				case "owned":
+				case "unowned":
+				case "weak":
+				case "value":
+				case "construct":
+				case "foreach":
+				case "in":
+				case "is":
+				case "as":
+				case "out":
+				case "ref":
+				case "lock":
+				case "union":
+					return "@" + name;
+				default:
+					return name;
+			}
+		}
+
+		/**
+		 * Vala constructor name: {@code Type} for {@code new}, else
+		 * {@code Type.suffix} from GIR {@code new_suffix} / other ctor names.
+		 */
+		private string constructor_decl(string type_name, string gir_name)
+		{
+			if (gir_name == "new") {
+				return type_name;
+			}
+			if (gir_name.has_prefix("new_")) {
+				return @"$(type_name).$(gir_name.substring(4))";
+			}
+			return @"$(type_name).$(gir_name)";
 		}
 
 		private void emit_call_values_body(
@@ -777,8 +993,12 @@ $(tab)}
 					return;
 				}
 				var ret_iface = fi.get_return_type().get_interface();
-				if (ret_iface != null
-					&& ret_iface.get_type() == GI.InfoType.OBJECT) {
+				var ret_is_gobj = ret_iface != null
+					&& (
+						ret_iface.get_type() == GI.InfoType.OBJECT
+						|| this.union_as_gobject(ns, ret_iface)
+					);
+				if (ret_is_gobj) {
 					if (is_constructor) {
 						stream.puts(indent + @"var _stub = ($(ret_vala)) response.result.get(0);
 ");
@@ -911,20 +1131,21 @@ $(tab)}
 			string assign_name
 		) {
 			var idx = value_idx.to_string();
+			var blob = @"_blob$(idx)";
 			stream.puts(
-				indent + @"var _blob = (GLib.Bytes) response.args.get($(idx)).get_boxed();
+				indent + @"var $(blob) = (GLib.Bytes) response.args.get($(idx)).get_boxed();
 "
 			);
 			if (is_return) {
 				stream.puts(
-					indent + @"return *(($(vala_type)*) _blob.get_data());
+					indent + @"return *(($(vala_type)*) $(blob).get_data());
 "
 				);
 				return;
 			}
 			if (assign_name != "") {
 				stream.puts(
-					indent + @"$(assign_name) = *(($(vala_type)*) _blob.get_data());
+					indent + @"$(assign_name) = *(($(vala_type)*) $(blob).get_data());
 "
 				);
 				return;
@@ -932,7 +1153,7 @@ $(tab)}
 			stream.puts(indent + @"$(vala_type) __ret;
 ");
 			stream.puts(
-				indent + @"__ret = *(($(vala_type)*) _blob.get_data());
+				indent + @"__ret = *(($(vala_type)*) $(blob).get_data());
 "
 			);
 		}
@@ -1261,6 +1482,9 @@ $(tab)}
 						&& info.get_namespace() == ns) {
 						return "o";
 					}
+					if (this.union_as_gobject(ns, info)) {
+						return "o";
+					}
 					if (this.type_is_boxed_blob(ns, ti)) {
 						return "ay";
 					}
@@ -1278,7 +1502,14 @@ $(tab)}
 			if (info == null) {
 				return false;
 			}
+			// Opaque / callback bags (e.g. GLib.Closure) are not memcpy blobs.
+			if (info.get_namespace() == "GLib") {
+				return false;
+			}
 			if (info.get_type() == GI.InfoType.UNION) {
+				if (this.union_as_gobject(ns, info)) {
+					return false;
+				}
 				return true;
 			}
 			if (info.get_type() != GI.InfoType.STRUCT

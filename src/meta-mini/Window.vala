@@ -24,6 +24,11 @@ namespace Meta
 		public string title { get; set; default = ""; }
 		public string wm_class { get; set; default = ""; }
 
+		public static void register()
+		{
+			OLLMrpc.Bin.register("Meta-Window", typeof(Window));
+		}
+
 		/** Minimize this window on the nested compositor. */
 		public void minimize()
 		{

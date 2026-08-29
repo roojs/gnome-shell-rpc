@@ -15,4 +15,17 @@
  */
 namespace Meta
 {
+	/**
+	 * Register wire aliases for the mini Meta stubs (mirrors generated
+	 * {@code Meta.register()} from gi-stub-gen).
+	 */
+	public void register()
+	{
+		Window.register();
+		WindowActor.register();
+		Display.register();
+		Context.register();
+		Compositor.register();
+		Backend.register();
+	}
 }

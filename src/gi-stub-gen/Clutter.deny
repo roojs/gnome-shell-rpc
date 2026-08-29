@@ -1,0 +1,36 @@
+# Clutter generate/compile deny list.
+
+# GString return — generator maps poorly (GLib.String).
+FrameClock.get_max_render_time_debug_info
+
+# Replace with parameterless override so ColorNode/TextureNode can Object().
+PipelineNode.new
+
+# GLib.Closure is not a memcpy blob.
+BindingPool.install_closure
+BindingPool.override_closure
+
+# Handed in overrides-clutter/Clutter.override.vala (needs get_slot).
+EventSequence
+
+# Nested <function>s on the Event union; ns already emits event_{add,remove}_filter / event_get
+# with the same clutter_event_* cnames — skip class duplicates.
+Event.add_filter
+Event.get
+Event.remove_filter
+
+# Opaque paint records emitted as GObject — skip boxed ref/unref (clash with GObject).
+PaintContext.ref
+PaintContext.unref
+PickContext.ref
+PickContext.unref
+
+# float[] / Point3D[] not mapped unless noop; St only needs the C symbols.
+PaintNode.add_rectangles noop
+PaintNode.add_texture_rectangles noop
+ActorBox.from_vertices noop
+Actor.get_abs_allocation_vertices noop
+
+# Vala auto-emits free/dup when struct has methods — skip GIR copies.
+ActorBox.free
+ActorBox.copy

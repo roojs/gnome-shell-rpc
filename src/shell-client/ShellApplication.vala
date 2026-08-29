@@ -59,7 +59,6 @@ namespace GnomeShellRpc.ShellClient
 
 			prepend_typelib_paths();
 
-			GnomeShellRpc.GiStub.Runtime.register();
 			shell_bootstrap_connected();
 
 			var ctx = get_gjs_context();

@@ -18,6 +18,11 @@ namespace Meta
 		private StartupNotification startup_notification =
 			new StartupNotification();
 
+		public static void register()
+		{
+			OLLMrpc.Bin.register("Meta-Display", typeof(Display));
+		}
+
 		/**
 		 * All windows currently known to the plugin.
 		 *

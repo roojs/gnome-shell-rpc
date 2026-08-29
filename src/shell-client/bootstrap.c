@@ -1,10 +1,18 @@
 #include <meta/display.h>
+#include <glib-object.h>
 
 #include "bootstrap.h"
 #include "shell-global-private.h"
 #include "shell-global-rpc.h"
 
 MetaDisplay *meta_get_display (void);
+void gnome_shell_rpc_gi_stub_runtime_register (void);
+
+/* Stub GTypes from libmutter-rpc-16 (not stock libmutter). */
+GType meta_context_get_type (void);
+GType meta_display_get_type (void);
+GType meta_compositor_get_type (void);
+GType meta_backend_get_type (void);
 
 void
 gnome_shell_rpc_shell_bootstrap (MetaDisplay *display)
@@ -16,6 +24,13 @@ gnome_shell_rpc_shell_bootstrap (MetaDisplay *display)
 void
 gnome_shell_rpc_shell_bootstrap_connected (void)
 {
+  /* Runtime.register Type.from_name needs these classes initialized. */
+  g_type_ensure (meta_context_get_type ());
+  g_type_ensure (meta_display_get_type ());
+  g_type_ensure (meta_compositor_get_type ());
+  g_type_ensure (meta_backend_get_type ());
+
+  gnome_shell_rpc_gi_stub_runtime_register ();
   gnome_shell_rpc_shell_bootstrap (meta_get_display ());
 }
 

@@ -41,8 +41,17 @@ cdata.set('HAVE_MALLINFO2', cc.has_function('mallinfo2'))
 cdata.set('HAVE_SYS_RESOURCE_H', cc.has_header('sys/resource.h'))
 cdata.set('HAVE_EXE_INTROSPECTION', cc.has_header('elf.h') and cc.has_header('link.h'))
 cdata.set('HAVE__NL_TIME_FIRST_WEEKDAY', cc.has_header_symbol('langinfo.h', '_NL_TIME_FIRST_WEEKDAY'))
-clutter_dep = dependency('mutter-clutter-16')
+# Stock clutter headers for #include <clutter/…>; link is stub Clutter inside
+# libmutter-rpc-16 (do not link libmutter-clutter).
+clutter_dep = dependency('mutter-clutter-16').partial_dependency(
+  includes: true,
+  compile_args: true,
+  link_args: false,
+  links: false,
+)
 mtk_dep = dependency('mutter-mtk-16')
+cogl_dep = dependency('mutter-cogl-16')
+atk_dep = dependency('atk')
 gdk_pixbuf_dep = dependency('gdk-pixbuf-2.0')
 pango_dep = dependency('pango')
 libxml_dep = dependency('libxml-2.0')
@@ -66,10 +75,10 @@ config_h = configure_file(
   configuration: cdata,
 )
 
-# Link Meta symbols from libmutter-rpc-16, not stock libmutter-16.
+# Link Meta + stub Clutter from libmutter-rpc-16, not stock libmutter / clutter.
 mutter_rpc_client_dep = declare_dependency(
   link_with: mutter_rpc_lib,
-  dependencies: [clutter_dep, mtk_dep],
+  dependencies: [mtk_dep],
   compile_args: ['-I' + mutter_includedir],
 )
 
@@ -189,7 +198,7 @@ glsl_sources = custom_target('st-scroll-view-fade-glsl',
   command: [data_to_c, '@INPUT@', 'st_scroll_view_fade_glsl'],
 )
 
-st_deps = [mtk_dep, clutter_dep, mutter_rpc_client_dep, gdk_pixbuf_dep, pango_dep]
+st_deps = [mtk_dep, cogl_dep, atk_dep, clutter_dep, mutter_rpc_client_dep, gdk_pixbuf_dep, pango_dep]
 
 st_lib_sources = st_source_files + st_header_files
 st_lib_sources += st_enums

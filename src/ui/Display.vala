@@ -27,6 +27,7 @@ namespace GnomeShellRpc.Ui
 				"get_window", "i",
 				"get_focused_window", "",
 				"get_compositor", "",
+				"get_context", "",
 				"get_sound_player", "",
 				"minimize_window", "i",
 				"unminimize_window", "i",
@@ -139,6 +140,25 @@ namespace GnomeShellRpc.Ui
 		{
 			var compositor = this.meta_display.get_compositor();
 			var handle = (uint64) request.connection.export(compositor);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t", handle),
+			});
+		}
+
+		/**
+		 * ''Meta-Display.get_context'' — lease id of the meta context.
+		 *
+		 * Same packing as {@link get_compositor}: uint64 handle in
+		 * {@link OLLMrpc.Response.args} (live {@code result} rows arrive
+		 * with handle 0 on the client).
+		 *
+		 * @param request inbound RPC
+		 */
+		public void get_context(OLLMrpc.Request request)
+		{
+			var context = this.meta_display.get_context();
+			var handle = (uint64) request.connection.export(context);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("t", handle),
