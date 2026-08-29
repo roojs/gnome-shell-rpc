@@ -10,7 +10,7 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class Selection : GLib.Object
 	{
-		public static void register()
+		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-Selection", typeof(Selection),

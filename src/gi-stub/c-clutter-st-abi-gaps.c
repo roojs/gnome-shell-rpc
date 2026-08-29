@@ -1,8 +1,14 @@
 /*
- * libst link-time clutter_* export not emitted by gi-stub-gen (plan 0.7.2 Phase D).
+ * ═══════════════════════════════════════════════════════════════════════════
+ * VARARGS ONLY — do not add further clutter_* exports here.
  *
- * GIR marks set_uniform introspectable=0 (C varargs). Unpack into floats +
- * type name and RPC via gsr_clutter_shader_effect_set_uniform (Vala → Helper).
+ * This .c exists solely because GIR marks clutter_shader_effect_set_uniform
+ * introspectable=0 (C varargs). Vala cannot emit that ABI; we unpack here and
+ * RPC via gsr_clutter_shader_effect_set_uniform (Vala → Helper).
+ *
+ * Everything else (class methods, Stage/PaintContext gaps, signals) belongs in
+ * Vala: [CCode (cname = "clutter_…")] overrides / ClutterStageAbi.vala.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 #include <clutter/clutter.h>

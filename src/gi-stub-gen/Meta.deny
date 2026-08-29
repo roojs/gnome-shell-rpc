@@ -9,6 +9,9 @@
 # can make wallpaper out-of-process, but that object would not be on the
 # stage. No call sites in gnome-shell or this tree either.
 BackgroundContent.new
+# Bodies use construct props + construct {} in overrides (GJS g_object_new).
+Background.new
+BackgroundActor.new
 
 # Compositor process bootstrap — gnome-shell JS never calls these
 # (only src/main.c / our Main.vala, before GJS starts).
@@ -31,6 +34,7 @@ SoundPlayer.play_from_file
 SoundPlayer.play_from_theme
 Background.set_file
 Context.terminate_with_error
+Context.terminate
 Context.run_main_loop
 Context.get_backend
 IdleMonitor.add_idle_watch
@@ -38,6 +42,8 @@ IdleMonitor.add_user_active_watch
 Display.add_keybinding
 Display.get_context
 Display.get_compositor
+Backend.get_stage
+Backend.get_core_idle_monitor
 keybindings_set_custom_handler
 Window.foreach_transient
 Window.foreach_ancestor

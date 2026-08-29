@@ -13,6 +13,10 @@ GType meta_context_get_type (void);
 GType meta_display_get_type (void);
 GType meta_compositor_get_type (void);
 GType meta_backend_get_type (void);
+GType meta_background_get_type (void);
+GType meta_background_actor_get_type (void);
+GType meta_background_content_get_type (void);
+GType meta_background_group_get_type (void);
 
 void
 gnome_shell_rpc_shell_bootstrap (MetaDisplay *display)
@@ -24,11 +28,15 @@ gnome_shell_rpc_shell_bootstrap (MetaDisplay *display)
 void
 gnome_shell_rpc_shell_bootstrap_connected (void)
 {
-  /* Runtime.register Type.from_name needs these classes initialized. */
+  /* Runtime.register Type.from_name / GJS typelib need these initialized. */
   g_type_ensure (meta_context_get_type ());
   g_type_ensure (meta_display_get_type ());
   g_type_ensure (meta_compositor_get_type ());
   g_type_ensure (meta_backend_get_type ());
+  g_type_ensure (meta_background_get_type ());
+  g_type_ensure (meta_background_actor_get_type ());
+  g_type_ensure (meta_background_content_get_type ());
+  g_type_ensure (meta_background_group_get_type ());
 
   gnome_shell_rpc_gi_stub_runtime_register ();
   gnome_shell_rpc_shell_bootstrap (meta_get_display ());

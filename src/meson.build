@@ -22,6 +22,7 @@ compositor_sources = files(
   'rpc/helper/SoundPlayer.vala',
   'rpc/helper/Background.vala',
   'rpc/helper/Context.vala',
+  'rpc/helper/Settings.vala',
   'rpc/helper/IdleMonitor.vala',
   'rpc/helper/Display.vala',
   'rpc/helper/Window.vala',
@@ -32,6 +33,9 @@ compositor_sources = files(
   'rpc/helper/SelectionSourceMemory.vala',
   'rpc/helper/ShapedTexture.vala',
   'rpc/helper/ShaderEffect.vala',
+  'rpc/helper/ClutterThreads.vala',
+  'rpc/helper/ClutterActor.vala',
+  'rpc/helper/ClutterStage.vala',
   'rpc/helper/shader-uniform-apply.c',
 )
 
@@ -73,6 +77,8 @@ rpc_config = configure_file(
   configuration: configuration_data({
     'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
     'GNOME_SHELL_CLIENT_TYPELIB_DIR': gnome_shell_client_typelibdir,
+    # Distro Gvc typelib + libgvc.so (same pkglibdir as stock gnome-shell).
+    'GNOME_SHELL_PKGLIBDIR': '/usr/lib/gnome-shell',
   }),
 )
 
@@ -275,9 +281,11 @@ meta_override_dir = meson.current_source_dir() / 'gi-stub/overrides'
 meta_override_files = files(
   'gi-stub/overrides/SoundPlayer.override.vala',
   'gi-stub/overrides/Background.override.vala',
+  'gi-stub/overrides/BackgroundActor.override.vala',
   'gi-stub/overrides/Context.override.vala',
   'gi-stub/overrides/IdleMonitor.override.vala',
   'gi-stub/overrides/Display.override.vala',
+  'gi-stub/overrides/Backend.override.vala',
   'gi-stub/overrides/Window.override.vala',
   'gi-stub/overrides/Meta.override.vala',
   'gi-stub/overrides/WindowActor.override.vala',
@@ -320,6 +328,10 @@ clutter_overrides_file = files('gi-stub-gen/Clutter.overrides')
 clutter_override_dir = meson.current_source_dir() / 'gi-stub/overrides-clutter'
 clutter_override_files = files(
   'gi-stub/overrides-clutter/Clutter.override.vala',
+  'gi-stub/overrides-clutter/Stage.override.vala',
+  'gi-stub/overrides-clutter/Actor.override.vala',
+  'gi-stub/overrides-clutter/Backend.override.vala',
+  'gi-stub/overrides-clutter/Context.override.vala',
   'gi-stub/overrides-clutter/PipelineNode.override.vala',
   'gi-stub/overrides-clutter/PaintContext.override.vala',
   'gi-stub/overrides-clutter/PaintNode.override.vala',
@@ -352,6 +364,8 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     'gi-stub/CancellableBridge.vala',
     'gi-stub/PaintedContent.vala',
     'gi-stub/ShaderEffectUniform.vala',
+    'gi-stub/ClutterStageAbi.vala',
+    'gi-stub/MetaSettingsAbi.vala',
     'gi-stub/c-meta-shell-gaps.c',
     'gi-stub/c-clutter-st-abi-gaps.c',
     'shared/namespace.vala',
@@ -393,20 +407,45 @@ mutter_rpc_client_dep = declare_dependency(
   link_with: mutter_rpc_lib,
   dependencies: [
     dependency('mutter-mtk-16'),
+    dependency('mutter-cogl-16'),
+    dependency('atk'),
+    dependency('pango'),
   ],
-  compile_args: ['-I' + mutter_includedir],
+  # C only — schemas/clutter headers; do not put gsettings-desktop-schemas in
+  # dependencies (no Vala VAPI; breaks --pkg resolution).
+  compile_args: ['-I' + mutter_includedir] + mutter_clutter_cflags,
 )
 
-# Soname only — do not bake build-dir full_path into the typelib.
+# Stock Meta GIR, shared-library → our stub .so (same pattern as Clutter).
+# Hand meta-mini/Meta-16.gir stays for docs / early smokes; typelib must list
+# Background etc. for init.js.
+mutter_meta_gir = mutter_typelib_dir / 'Meta-16.gir'
 mutter_rpc_typelib = custom_target('Meta-16.typelib',
-  input: files('meta-mini/Meta-16.gir'),
   output: 'Meta-16.typelib',
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
     '--shared-library', 'libmutter-rpc-16.so',
     '--includedir', mutter_typelib_dir,
-    '@INPUT@',
+    mutter_meta_gir,
+  ],
+  depends: [mutter_rpc_lib],
+  build_by_default: true,
+  install: true,
+  install_dir: mutter_rpc_typelib_install_dir,
+)
+
+# Stock Clutter GIR, shared-library → our stub .so (client must not dlopen
+# libmutter-clutter; libshell / init.js need the same symbols as libst).
+mutter_clutter_gir = mutter_typelib_dir / 'Clutter-16.gir'
+clutter_rpc_typelib = custom_target('Clutter-16.typelib',
+  output: 'Clutter-16.typelib',
+  command: [
+    g_ir_compiler,
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libmutter-rpc-16.so',
+    '--includedir', mutter_typelib_dir,
+    mutter_clutter_gir,
   ],
   depends: [mutter_rpc_lib],
   build_by_default: true,
@@ -440,7 +479,14 @@ pkg.generate(
   filebase: 'libmutter-rpc-16',
   name: 'mutter-rpc',
   description: 'Mutter-shaped RPC client (GJS + C Meta-16)',
-  requires: ['gio-2.0', 'gobject-2.0'],
+  requires: [
+    'gio-2.0',
+    'gobject-2.0',
+    'atk',
+    'pango',
+    'mutter-cogl-16',
+    'mutter-mtk-16',
+  ],
   variables: [
     'typelibdir=${libdir}/' + mutter_rpc_gir_name,
     'girdir=${libdir}/' + mutter_rpc_gir_name,
@@ -531,11 +577,14 @@ if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root !
     '-I' + gnome_shell_vendor_root / 'src/st',
     '-I' + gnome_shell_client_libdir,
     '-I' + gnome_shell_client_libdir / 'st',
-  ]
+  ] + mutter_clutter_cflags
 
   gnome_shell_rpc_host_vala_args = gjs_shell_vala_args + ocrpc_vala_args + [
     '--pkg=mutter-rpc-16',
     '--pkg=gdesktopenums-3.0',
+    '--pkg=atk',
+    '--pkg=pango',
+    '--pkg=mutter-cogl-16',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.project_build_root() / 'vapi',
     '--vapidir', meson.project_source_root() / 'vapi',
@@ -561,10 +610,12 @@ if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root !
     link_args: [
       '-L' + gnome_shell_client_libdir,
       '-lshell-16',
+      '-lst-16',
       '-L' + meson.current_build_dir(),
     ],
     link_depends: [
       gnome_shell_client_libdir / 'libshell-16.so',
+      gnome_shell_client_libdir / 'libst-16.so',
       mutter_rpc_lib,
     ],
     build_rpath: gnome_shell_rpc_host_rpath,

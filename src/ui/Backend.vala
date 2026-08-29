@@ -21,6 +21,7 @@ namespace GnomeShellRpc.Ui
 			OLLMrpc.Request.add_class(
 				"Meta-Backend", typeof(Backend),
 				"get_core_idle_monitor", "",
+				"get_stage", "",
 				null
 			);
 		}
@@ -45,6 +46,23 @@ namespace GnomeShellRpc.Ui
 		{
 			var monitor = this.meta_backend.get_core_idle_monitor();
 			var handle = (uint64) request.connection.export(monitor);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t", handle),
+			});
+		}
+
+		/**
+		 * ''Meta-Backend.get_stage'' — lease id of the stage ({@code MetaStage}).
+		 *
+		 * Same packing as {@link get_core_idle_monitor}.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void get_stage(OLLMrpc.Request request)
+		{
+			var stage = this.meta_backend.get_stage();
+			var handle = (uint64) request.connection.export(stage);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("t", handle),

@@ -125,10 +125,68 @@
           </parameter>
         </parameters>
       </method>
+      <method name="get_context" c:identifier="meta_display_get_context">
+        <return-value transfer-ownership="none">
+          <type name="Context" c:type="MetaContext*"/>
+        </return-value>
+      </method>
     </class>
     <record name="DisplayClass"
              c:type="MetaDisplayClass"
              glib:is-gtype-struct-for="Display">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <!-- Client GLib loop + leases; bodies in Context.override.vala -->
+    <class name="Context"
+           c:type="MetaContext"
+           glib:type-name="MetaContext"
+           glib:get-type="meta_context_get_type"
+           parent="GObject.Object"
+           glib:type-struct="ContextClass">
+      <method name="run_main_loop"
+              c:identifier="meta_context_run_main_loop"
+              throws="1">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+      </method>
+      <method name="terminate_with_error"
+              c:identifier="meta_context_terminate_with_error">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="error" transfer-ownership="none">
+            <type name="GLib.Error" c:type="GError*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_backend" c:identifier="meta_context_get_backend">
+        <return-value transfer-ownership="none">
+          <type name="Backend" c:type="MetaBackend*"/>
+        </return-value>
+      </method>
+      <method name="get_display" c:identifier="meta_context_get_display">
+        <return-value transfer-ownership="none">
+          <type name="Display" c:type="MetaDisplay*"/>
+        </return-value>
+      </method>
+      <method name="terminate" c:identifier="meta_context_terminate">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </method>
+      <method name="notify_ready" c:identifier="meta_context_notify_ready">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </method>
+    </class>
+    <record name="ContextClass"
+             c:type="MetaContextClass"
+             glib:is-gtype-struct-for="Context">
       <field name="parent_class">
         <type name="GObject.ObjectClass" c:type="GObjectClass"/>
       </field>

@@ -2,8 +2,7 @@ namespace GnomeShellRpc.Rpc
 {
 	/**
 	 * RPC server boot — socket, registrations, display/window notifications,
-	 * then spawn {@code gnome-shell-rpc} + a smoke script (no pid watch).
-	 * (no pid watch).
+	 * then spawn {@code gnome-shell-rpc} (default {@code init.js}; no pid watch).
 	 *
 	 * == Example ==
 	 *
@@ -38,18 +37,8 @@ namespace GnomeShellRpc.Rpc
 			Rpc.Bootstrap.rpc_register();
 
 			Rpc.CancellableBridge.register();
-			Rpc.Helper.SoundPlayer.register();
-			Rpc.Helper.Background.register();
-			Rpc.Helper.Context.register();
-			Rpc.Helper.IdleMonitor.register();
-			Rpc.Helper.Display.register();
-			Rpc.Helper.Window.register();
-			Rpc.Helper.WindowActor.register();
-			Rpc.Helper.Selection.register();
-			Rpc.Helper.SelectionSource.register();
-			Rpc.Helper.SelectionSourceMemory.register();
-			Rpc.Helper.ShapedTexture.register();
-			Rpc.Helper.ShaderEffect.register();
+			Rpc.Helper.rpc_register();
+			Rpc.Helper.Settings.bind(display);
 
 			this.ui_display = new Ui.Display(display);
 			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
@@ -141,8 +130,11 @@ namespace GnomeShellRpc.Rpc
 		}
 
 		/**
-		 * Spawn {@code gnome-shell-rpc} + smoke JS via {@link Meta.WaylandClient}.
-		 * Manual runs may still use {@code gjs-embed} from the build tree.
+		 * Spawn {@code gnome-shell-rpc} via {@link Meta.WaylandClient}.
+		 *
+		 * Default (no {@code GI_META_SMOKE}, or {@code init}): product
+		 * {@code init.js} resource. Otherwise a {@code src/gjs-embed/} smoke.
+		 * Sets {@code MUTTER_RPC_SOCKET} and {@code WAYLAND_DISPLAY}.
 		 */
 		private void spawn_client()
 		{
@@ -155,25 +147,27 @@ namespace GnomeShellRpc.Rpc
 			}
 			var bindir = GLib.Path.get_dirname(self_exe);
 			var shell_bin = GLib.Path.build_filename(bindir, "gnome-shell-rpc");
-			var smoke_env = GLib.Environment.get_variable("GI_META_SMOKE");
-			var smoke_name = (smoke_env != null && smoke_env.length > 0)
-				? smoke_env
-				: "meta-smoke.js";
-			if (!smoke_name.has_suffix(".js")) {
-				smoke_name += ".js";
-			}
-			var script = GLib.Path.build_filename(
-				bindir, "..", "..", "src", "gjs-embed", smoke_name);
 			if (!GLib.FileUtils.test(shell_bin, GLib.FileTest.IS_EXECUTABLE)) {
 				GLib.warning("gnome-shell-rpc missing at %s — skip client spawn", shell_bin);
 				return;
 			}
 
+			var smoke_env = GLib.Environment.get_variable("GI_META_SMOKE");
+			var use_init = smoke_env == null
+				|| smoke_env.length == 0
+				|| smoke_env == "init"
+				|| smoke_env == "init.js";
+
 			string[] argv;
-			if (smoke_name == "init.js") {
-				// Phase 5: libshell bootstrap loads resource:///org/gnome/shell/ui/init.js
+			if (use_init) {
 				argv = { shell_bin, "--debug" };
 			} else {
+				var smoke_name = smoke_env;
+				if (!smoke_name.has_suffix(".js")) {
+					smoke_name += ".js";
+				}
+				var script = GLib.Path.build_filename(
+					bindir, "..", "..", "src", "gjs-embed", smoke_name);
 				if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
 					GLib.warning("%s missing at %s — skip client spawn", smoke_name, script);
 					return;
@@ -183,12 +177,15 @@ namespace GnomeShellRpc.Rpc
 
 			var tip = GLib.Environment.get_variable("GI_TYPELIB_PATH");
 			var client_tl = GNOME_SHELL_CLIENT_TYPELIB_DIR;
+			var shell_pkg = GNOME_SHELL_PKGLIBDIR;
 			string[] tip_parts = { bindir };
 			if (client_tl.length > 0) {
 				tip_parts += client_tl;
 			}
 			tip_parts += MUTTER_TYPELIB_DIR;
-			tip_parts += "/usr/lib/gnome-shell";
+			if (shell_pkg.length > 0) {
+				tip_parts += shell_pkg;
+			}
 			if (tip != null && tip.length > 0) {
 				tip_parts += tip;
 			}
@@ -198,6 +195,9 @@ namespace GnomeShellRpc.Rpc
 			string[] ld_parts = { bindir };
 			if (client_tl.length > 0) {
 				ld_parts += client_tl;
+			}
+			if (shell_pkg.length > 0) {
+				ld_parts += shell_pkg;
 			}
 			if (ld != null && ld.length > 0) {
 				ld_parts += ld;
@@ -210,6 +210,10 @@ namespace GnomeShellRpc.Rpc
 			if (this.rpc_socket_path.length > 0) {
 				launcher.setenv("MUTTER_RPC_SOCKET", this.rpc_socket_path, true);
 			}
+			var wayland_display = GLib.Environment.get_variable("WAYLAND_DISPLAY");
+			if (wayland_display != null && wayland_display.length > 0) {
+				launcher.setenv("WAYLAND_DISPLAY", wayland_display, true);
+			}
 			try {
 				this.smoke_client = new Meta.WaylandClient(
 					this.display.get_context(), launcher);
@@ -219,7 +223,12 @@ namespace GnomeShellRpc.Rpc
 				this.smoke_client = null;
 				return;
 			}
-			GLib.debug("spawned %s via Meta.WaylandClient", string.joinv(" ", argv));
+			GLib.debug(
+				"spawned %s MUTTER_RPC_SOCKET=%s WAYLAND_DISPLAY=%s via Meta.WaylandClient",
+				string.joinv(" ", argv),
+				this.rpc_socket_path,
+				wayland_display ?? "(unset)"
+			);
 		}
 
 		private uint64? lease_handle_for(

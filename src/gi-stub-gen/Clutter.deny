@@ -13,6 +13,9 @@ BindingPool.override_closure
 # Handed in overrides-clutter/Clutter.override.vala (needs get_slot).
 EventSequence
 
+# Live callback (IdleMonitor-style); GSourceFunc is not DBus-marshallable.
+threads_add_repaint_func
+
 # Nested <function>s on the Event union; ns already emits event_{add,remove}_filter / event_get
 # with the same clutter_event_* cnames — skip class duplicates.
 Event.add_filter
@@ -30,6 +33,17 @@ PaintNode.add_rectangles noop
 PaintNode.add_texture_rectangles noop
 ActorBox.from_vertices noop
 Actor.get_abs_allocation_vertices noop
+
+# Method name clashes with GObject signal "event" (st_focus_manager).
+Actor.event
+
+# Method name clashes with GObject signal "destroy" (st_theme_context).
+# C ABI: Actor.override destroy_rpc [CCode cname = clutter_actor_destroy].
+Actor.destroy
+
+# result-row live handles arrive as 0 — pack uint64 in args (same as Meta Ui.*).
+Actor.get_context
+Context.get_backend
 
 # Vala auto-emits free/dup when struct has methods — skip GIR copies.
 ActorBox.free

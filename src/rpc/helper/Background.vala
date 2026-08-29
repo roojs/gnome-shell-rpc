@@ -7,7 +7,7 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class Background : GLib.Object
 	{
-		public static void register()
+		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-Background", typeof(Background),

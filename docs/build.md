@@ -102,16 +102,16 @@ See [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md)
 dbus-run-session ./build/src/mutter-rpc --wayland --nested
 ```
 
-On startup the plugin listens on `$XDG_RUNTIME_DIR/mutter-rpc.sock` (or `MUTTER_RPC_SOCKET`) and spawns **`gnome-shell-rpc`** with a smoke script by default.
+On startup the plugin listens on `$XDG_RUNTIME_DIR/mutter-rpc.sock` (or `MUTTER_RPC_SOCKET`) and spawns **`gnome-shell-rpc`** with **`resource:///org/gnome/shell/ui/init.js`** by default (`MUTTER_RPC_SOCKET` + `WAYLAND_DISPLAY` set on the child).
 
-Override the smoke script:
+Override with a smoke script:
 
 ```bash
 GI_META_SMOKE=mutter-rpc-load.js \
   dbus-run-session ./build/src/mutter-rpc --wayland --nested
 ```
 
-Other smokes live under `src/gjs-embed/` (`meta-smoke.js`, etc.). Run them manually with **`gjs-embed`** or via **`GI_META_SMOKE`** as above (compositor spawns **`gnome-shell-rpc`**, not **`gjs-embed`**).
+`GI_META_SMOKE=init` is the same as the default. Other smokes live under `src/gjs-embed/` (`meta-smoke.js`, etc.). Run them manually with **`gjs-embed`** or via **`GI_META_SMOKE`** as above (compositor spawns **`gnome-shell-rpc`**, not **`gjs-embed`**).
 
 ---
 

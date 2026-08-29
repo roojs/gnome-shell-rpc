@@ -9,7 +9,7 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class WindowActor : GLib.Object
 	{
-		public static void register()
+		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-WindowActor", typeof(WindowActor),

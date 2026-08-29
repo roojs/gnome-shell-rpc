@@ -18,7 +18,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			int n_values
 		);
 
-		public static void register()
+		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-ShaderEffect", typeof(ShaderEffect),

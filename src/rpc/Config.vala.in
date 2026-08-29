@@ -5,4 +5,10 @@ namespace GnomeShellRpc.Rpc
 
 	/** Client Shell/St typelib dir (Phase 4); empty when client libs disabled. */
 	public const string GNOME_SHELL_CLIENT_TYPELIB_DIR = "@GNOME_SHELL_CLIENT_TYPELIB_DIR@";
+
+	/**
+	 * Distro gnome-shell pkglibdir — Gvc typelib + {@code libgvc.so}
+	 * (not our client Shell/St).
+	 */
+	public const string GNOME_SHELL_PKGLIBDIR = "@GNOME_SHELL_PKGLIBDIR@";
 }

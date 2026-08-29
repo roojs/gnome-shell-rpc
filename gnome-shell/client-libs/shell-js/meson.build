@@ -22,10 +22,12 @@ subdir('misc')
 
 shell_js_build_dir = meson.current_build_dir()
 
+# Build dir first: substituted misc/config.js must win over any leftover
+# config.js under vendor (upstream ships only config.js.in).
 js_resources = gnome.compile_resources(
   'js-resources',
   vendor_js_dir / 'js-resources.gresource.xml',
-  source_dir: [vendor_js_dir, shell_js_build_dir],
+  source_dir: [shell_js_build_dir, vendor_js_dir],
   c_name: 'shell_js_resources',
   dependencies: [config_js],
 )

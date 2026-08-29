@@ -1,7 +1,8 @@
 /*
- * libshell link-time meta_* exports (plan 0.7.1 Phase 1).
+ * libshell link-time meta_* exports (plan 0.7.1).
  * X11 (#3–10): permanent noops — Wayland-only shell client.
- * Settings (#1–2): link stubs until Phase 2 Helper wiring.
+ * #1 meta_backend_get_settings: local GObject stub (scaling signal).
+ * #2 meta_settings_get_ui_scaling_factor: Vala MetaSettingsAbi (Helper RPC).
  */
 
 #include <meta/meta-backend.h>
@@ -11,25 +12,49 @@
 
 #include <glib-object.h>
 
+typedef struct {
+  GObject parent;
+} GsrMetaSettingsStub;
+
+typedef struct {
+  GObjectClass parent_class;
+} GsrMetaSettingsStubClass;
+
 static GObject *settings_link_stub;
+
+G_DEFINE_TYPE (GsrMetaSettingsStub, gsr_meta_settings_stub, G_TYPE_OBJECT)
+
+static void
+gsr_meta_settings_stub_class_init (GsrMetaSettingsStubClass *klass)
+{
+  /* Same arity as mutter: instance only (handler gets settings + user_data). */
+  g_signal_new ("ui-scaling-factor-changed",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0,
+                NULL, NULL, NULL,
+                G_TYPE_NONE, 0);
+}
+
+static void
+gsr_meta_settings_stub_init (GsrMetaSettingsStub *self)
+{
+  (void) self;
+}
 
 MetaSettings *
 meta_backend_get_settings (MetaBackend *backend)
 {
   (void) backend;
 
-  if (settings_link_stub == NULL)
-    settings_link_stub = g_object_new (G_TYPE_OBJECT, NULL);
+  if (settings_link_stub == NULL) {
+    settings_link_stub = g_object_new (gsr_meta_settings_stub_get_type (), NULL);
+  }
 
   return (MetaSettings *) settings_link_stub;
 }
 
-int
-meta_settings_get_ui_scaling_factor (MetaSettings *settings)
-{
-  (void) settings;
-  return 1;
-}
+/* meta_settings_get_ui_scaling_factor — Vala MetaSettingsAbi.vala (Helper RPC) */
 
 MetaX11Display *
 meta_display_get_x11_display (MetaDisplay *display)
