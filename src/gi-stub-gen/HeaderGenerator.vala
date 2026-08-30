@@ -745,7 +745,7 @@ struct _$(tn) { guint8 _gsr_opaque; };
 
 		private string type_c(HeaderConfig cfg, GI.TypeInfo ti, bool force_ptr)
 		{
-			var base_type = this.type_c_base(cfg, ti);
+			var base_type = this.field_c_type(cfg, ti);
 			var ptr = force_ptr || ti.is_pointer();
 			/* GIR marks object args as INTERFACE + pointer; avoid "Foo * *". */
 			if (force_ptr && ti.is_pointer()
@@ -770,45 +770,6 @@ struct _$(tn) { guint8 _gsr_opaque; };
 				return "gpointer";
 			}
 			return base_type;
-		}
-
-		private string type_c_base(HeaderConfig cfg, GI.TypeInfo ti)
-		{
-			switch (ti.get_tag()) {
-			case GI.TypeTag.VOID:
-				return ti.is_pointer() ? "gpointer" : "void";
-			case GI.TypeTag.BOOLEAN:
-				return "gboolean";
-			case GI.TypeTag.INT8:
-				return "gint8";
-			case GI.TypeTag.UINT8:
-				return "guint8";
-			case GI.TypeTag.INT16:
-				return "gint16";
-			case GI.TypeTag.UINT16:
-				return "guint16";
-			case GI.TypeTag.INT32:
-				return "gint32";
-			case GI.TypeTag.UINT32:
-				return "guint32";
-			case GI.TypeTag.INT64:
-				return "gint64";
-			case GI.TypeTag.UINT64:
-				return "guint64";
-			case GI.TypeTag.FLOAT:
-				return "gfloat";
-			case GI.TypeTag.DOUBLE:
-				return "gdouble";
-			case GI.TypeTag.GTYPE:
-				return "GType";
-			case GI.TypeTag.UTF8:
-			case GI.TypeTag.FILENAME:
-				return "gchar *";
-			case GI.TypeTag.INTERFACE:
-				return this.field_c_type(cfg, ti);
-			default:
-				return ti.is_pointer() ? "gpointer" : "guint8";
-			}
 		}
 
 		private void emit_object_method_protos(
@@ -918,82 +879,59 @@ struct _$(tn) { guint8 _gsr_opaque; };
 
 		private string field_c_type(HeaderConfig cfg, GI.TypeInfo ti)
 		{
-			switch (ti.get_tag()) {
-			case GI.TypeTag.BOOLEAN:
-				return "gboolean";
-			case GI.TypeTag.INT8:
-				return "gint8";
-			case GI.TypeTag.UINT8:
-				return "guint8";
-			case GI.TypeTag.INT16:
-				return "gint16";
-			case GI.TypeTag.UINT16:
-				return "guint16";
-			case GI.TypeTag.INT32:
-				return "gint32";
-			case GI.TypeTag.UINT32:
-				return "guint32";
-			case GI.TypeTag.INT64:
-				return "gint64";
-			case GI.TypeTag.UINT64:
-				return "guint64";
-			case GI.TypeTag.FLOAT:
-				return "gfloat";
-			case GI.TypeTag.DOUBLE:
-				return "gdouble";
-			case GI.TypeTag.UTF8:
-			case GI.TypeTag.FILENAME:
-				return "gchar *";
-			case GI.TypeTag.INTERFACE:
-				var iface = ti.get_interface();
-				if (iface != null) {
-					switch (iface.get_type()) {
-					case GI.InfoType.OBJECT:
-						return ((GI.ObjectInfo) iface).get_type_name()
-							+ (ti.is_pointer() ? " *" : "");
-					case GI.InfoType.INTERFACE:
-						var iri = (GI.RegisteredTypeInfo) iface;
-						var itn = iri.get_type_name();
-						if (itn == null || itn == "") {
-							itn = this.gir_c_name(cfg, iface);
-						}
-						return itn + (ti.is_pointer() ? " *" : "");
-					case GI.InfoType.STRUCT:
-					case GI.InfoType.UNION:
-						var mapped = this.gir_c_name(cfg, iface);
-						if (mapped != null && mapped != "") {
-							return mapped + (ti.is_pointer() ? " *" : "");
-						}
-						try {
-							var sri = (GI.RegisteredTypeInfo) iface;
-							var rtn = sri.get_type_name();
-							if (rtn != null && rtn != "") {
-								return rtn + (ti.is_pointer() ? " *" : "");
-							}
-						} catch (GLib.Error e) {
-							/* not a registered type */
-						}
-						var ins = iface.get_namespace();
-						var iname = iface.get_name();
-						if (ins != null && ins != "") {
-							return ins + iname
-								+ (ti.is_pointer() ? " *" : "");
-						}
-						return this.c_prefix(cfg) + iname
-							+ (ti.is_pointer() ? " *" : "");
-					case GI.InfoType.ENUM:
-					case GI.InfoType.FLAGS:
-						var ens = iface.get_namespace();
-						if (ens != null && ens != ""
-							&& ens != this.c_prefix(cfg)) {
-							return ens + iface.get_name();
-						}
-						return this.c_prefix(cfg) + iface.get_name();
-					default:
-						break;
-					}
-				}
+			var scalar = this.type_c_scalar(ti);
+			if (scalar != "") {
+				return scalar;
+			}
+			if (ti.get_tag() != GI.TypeTag.INTERFACE) {
 				return ti.is_pointer() ? "gpointer" : "guint8";
+			}
+			var iface = ti.get_interface();
+			if (iface == null) {
+				return ti.is_pointer() ? "gpointer" : "guint8";
+			}
+			switch (iface.get_type()) {
+			case GI.InfoType.OBJECT:
+				return ((GI.ObjectInfo) iface).get_type_name()
+					+ (ti.is_pointer() ? " *" : "");
+			case GI.InfoType.INTERFACE:
+				var iri = (GI.RegisteredTypeInfo) iface;
+				var itn = iri.get_type_name();
+				if (itn == null || itn == "") {
+					itn = this.gir_c_name(cfg, iface);
+				}
+				return itn + (ti.is_pointer() ? " *" : "");
+			case GI.InfoType.STRUCT:
+			case GI.InfoType.UNION:
+				var mapped = this.gir_c_name(cfg, iface);
+				if (mapped != null && mapped != "") {
+					return mapped + (ti.is_pointer() ? " *" : "");
+				}
+				try {
+					var sri = (GI.RegisteredTypeInfo) iface;
+					var rtn = sri.get_type_name();
+					if (rtn != null && rtn != "") {
+						return rtn + (ti.is_pointer() ? " *" : "");
+					}
+				} catch (GLib.Error e) {
+					/* not a registered type */
+				}
+				var ins = iface.get_namespace();
+				var iname = iface.get_name();
+				if (ins != null && ins != "") {
+					return ins + iname
+						+ (ti.is_pointer() ? " *" : "");
+				}
+				return this.c_prefix(cfg) + iname
+					+ (ti.is_pointer() ? " *" : "");
+			case GI.InfoType.ENUM:
+			case GI.InfoType.FLAGS:
+				var ens = iface.get_namespace();
+				if (ens != null && ens != ""
+					&& ens != this.c_prefix(cfg)) {
+					return ens + iface.get_name();
+				}
+				return this.c_prefix(cfg) + iface.get_name();
 			default:
 				return ti.is_pointer() ? "gpointer" : "guint8";
 			}

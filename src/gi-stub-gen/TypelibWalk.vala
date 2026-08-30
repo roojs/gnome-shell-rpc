@@ -2,8 +2,8 @@ namespace GnomeShellRpc.GiStubGen
 {
 	/**
 	 * Shared typelib walk + deny/override policy for {@link Generator} and
-	 * {@link HeaderGenerator}. No library-specific header layout here —
-	 * see {@link HeaderConfig}.
+	 * {@link HeaderGenerator}. Includes scalar GIR→C helpers ({@link type_c_scalar});
+	 * header layout stays in {@link HeaderConfig}.
 	 */
 	public class TypelibWalk : GLib.Object
 	{
@@ -75,6 +75,33 @@ namespace GnomeShellRpc.GiStubGen
 				}
 			}
 			return sb.str;
+		}
+
+		/**
+		 * Scalar / string GIR tags → C type names for {@link HeaderGenerator}.
+		 * Empty string means the caller must handle the tag (INTERFACE, ARRAY, …).
+		 */
+		protected string type_c_scalar(GI.TypeInfo ti)
+		{
+			switch (ti.get_tag()) {
+				case GI.TypeTag.VOID:
+					return ti.is_pointer() ? "gpointer" : "void";
+				case GI.TypeTag.BOOLEAN:  return "gboolean";
+				case GI.TypeTag.INT8:     return "gint8";
+				case GI.TypeTag.UINT8:    return "guint8";
+				case GI.TypeTag.INT16:    return "gint16";
+				case GI.TypeTag.UINT16:   return "guint16";
+				case GI.TypeTag.INT32:    return "gint32";
+				case GI.TypeTag.UINT32:   return "guint32";
+				case GI.TypeTag.INT64:    return "gint64";
+				case GI.TypeTag.UINT64:   return "guint64";
+				case GI.TypeTag.FLOAT:    return "gfloat";
+				case GI.TypeTag.DOUBLE:   return "gdouble";
+				case GI.TypeTag.GTYPE:    return "GType";
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME: return "gchar *";
+				default:                 return "";
+			}
 		}
 	}
 }
