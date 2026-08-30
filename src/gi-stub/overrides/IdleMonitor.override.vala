@@ -11,7 +11,7 @@
 				"Helper-IdleMonitor.add_idle_watch",
 				this,
 				OLLMrpc.args("tt", interval_msec, callback_id));
-			return (uint32) response.args.get(0).get_uint();
+			return (uint32) response.retval.get_uint();
 		}
 
 		public uint32 add_user_active_watch(IdleMonitorWatchFunc callback)
@@ -27,5 +27,5 @@
 				"Helper-IdleMonitor.add_user_active_watch",
 				this,
 				OLLMrpc.args("t", callback_id));
-			return (uint32) response.args.get(0).get_uint();
+			return (uint32) response.retval.get_uint();
 		}

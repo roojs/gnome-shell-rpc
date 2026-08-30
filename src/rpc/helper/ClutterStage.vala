@@ -2,7 +2,7 @@
  * Clutter Stage / PaintContext Helpers for C ABI gaps (libshell link).
  *
  * Wire prefixes ''Clutter-Stage'' / ''Clutter-PaintContext''. Live GObject
- * returns use uint64 lease in {@link OLLMrpc.Response.args} (not result).
+ * returns use uint64 lease in {@link OLLMrpc.Response.args} (not retval).
  * {@code get_stage_view} / {@code get_view_at} are not in the mutter VAPI
  * ({@code introspectable=0}) — call stock C directly via {@code extern}.
  */

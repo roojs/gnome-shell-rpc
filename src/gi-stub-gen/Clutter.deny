@@ -1,5 +1,12 @@
 # Clutter generate/compile deny list.
 
+# Header-sized GTypes in c-clutter-effect-abi.c + gsr-clutter-effect-abi.vapi
+# (Vala priv* makes OffscreenEffect 48B; stock/libshell expect 24B).
+ActorMeta
+Effect
+OffscreenEffect
+ActorMetaPrivate
+
 # GString return — generator maps poorly (GLib.String).
 FrameClock.get_max_render_time_debug_info
 
@@ -41,7 +48,7 @@ Actor.event
 # C ABI: Actor.override destroy_rpc [CCode cname = clutter_actor_destroy].
 Actor.destroy
 
-# result-row live handles arrive as 0 — pack uint64 in args (same as Meta Ui.*).
+# retval live handles arrive as 0 — pack uint64 in args (same as Meta Ui.*).
 Actor.get_context
 Context.get_backend
 

@@ -14,7 +14,7 @@
 		var response = GnomeShellRpc.GiStub.Runtime.call_values(
 			"Helper-Display.keybindings_set_custom_handler", null,
 			OLLMrpc.args("st", name, callback_id));
-		return response.args.get(0).get_boolean();
+		return response.retval.get_boolean();
 	}
 
 	private static Display? display_singleton = null;

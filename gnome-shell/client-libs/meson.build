@@ -1,5 +1,7 @@
 # Phase 0.7 Phase 4: client Shell/St linked against libmutter-rpc-16 (not libmutter-16).
 # Sources live in vendor/gnome-shell/ (pinned 48.x); we port upstream meson slices only.
+# Build outputs stay in this build dir; install → ${libdir}/mutter-rpc-16/
+# (never /usr/lib/gnome-shell/).
 
 gnome = import('gnome')
 fs = import('fs')
@@ -9,6 +11,7 @@ mutter_api_version = '16'
 vendor_st_dir = gnome_shell_vendor_root / 'src' / 'st'
 vendor_src_dir = gnome_shell_vendor_root / 'src'
 client_libdir = meson.current_build_dir()
+mutter_rpc_client_install_dir = mutter_rpc_typelib_install_dir
 
 version_cmd = run_command(
   'git', '-C', gnome_shell_vendor_root, 'describe', '--tags', '--always',
@@ -41,14 +44,7 @@ cdata.set('HAVE_MALLINFO2', cc.has_function('mallinfo2'))
 cdata.set('HAVE_SYS_RESOURCE_H', cc.has_header('sys/resource.h'))
 cdata.set('HAVE_EXE_INTROSPECTION', cc.has_header('elf.h') and cc.has_header('link.h'))
 cdata.set('HAVE__NL_TIME_FIRST_WEEKDAY', cc.has_header_symbol('langinfo.h', '_NL_TIME_FIRST_WEEKDAY'))
-# Stock clutter headers for #include <clutter/…>; link is stub Clutter inside
-# libmutter-rpc-16 (do not link libmutter-clutter).
-clutter_dep = dependency('mutter-clutter-16').partial_dependency(
-  includes: true,
-  compile_args: true,
-  link_args: false,
-  links: false,
-)
+# Clutter C API via libmutter-rpc (compile_args); never link stock libmutter-clutter.
 mtk_dep = dependency('mutter-mtk-16')
 cogl_dep = dependency('mutter-cogl-16')
 atk_dep = dependency('atk')
@@ -75,10 +71,11 @@ config_h = configure_file(
   configuration: cdata,
 )
 
-# Link Meta + stub Clutter from libmutter-rpc-16, not stock libmutter / clutter.
+# Link Meta (libmutter-rpc-16) + Clutter (libmutter-clutter-rpc-16).
+# Clutter headers: Vala-generated clutter/clutter.h via mutter_clutter_rpc_client_dep.
 mutter_rpc_client_dep = declare_dependency(
   link_with: mutter_rpc_lib,
-  dependencies: [mtk_dep],
+  dependencies: [mutter_clutter_rpc_client_dep, mtk_dep, cogl_dep, atk_dep, pango_dep],
   compile_args: ['-I' + mutter_includedir],
 )
 
@@ -198,7 +195,7 @@ glsl_sources = custom_target('st-scroll-view-fade-glsl',
   command: [data_to_c, '@INPUT@', 'st_scroll_view_fade_glsl'],
 )
 
-st_deps = [mtk_dep, cogl_dep, atk_dep, clutter_dep, mutter_rpc_client_dep, gdk_pixbuf_dep, pango_dep]
+st_deps = [mtk_dep, cogl_dep, atk_dep, mutter_rpc_client_dep, gdk_pixbuf_dep, pango_dep]
 
 st_lib_sources = st_source_files + st_header_files
 st_lib_sources += st_enums
@@ -217,7 +214,8 @@ libst = shared_library(
   include_directories: st_inc,
   build_rpath: client_rpath,
   name_prefix: 'lib',
-  install: false,
+  install: true,
+  install_dir: mutter_rpc_client_install_dir,
 )
 
 libst_dep = declare_dependency(
@@ -242,7 +240,7 @@ libst_gir = gnome.generate_gir(
     'GdkPixbuf-2.0',
     'Meta-' + mutter_api_version,
   ],
-  dependencies: [mutter_rpc_client_dep, gdk_pixbuf_dep, clutter_dep],
+  dependencies: [mutter_rpc_client_dep, gdk_pixbuf_dep],
   include_directories: st_inc,
   extra_args: [
     '-DST_COMPILATION',
@@ -253,14 +251,19 @@ libst_gir = gnome.generate_gir(
     '-I' + vendor_st_dir,
     '-I' + meson.current_build_dir(),
   ],
-  install: false,
+  install: true,
+  install_dir_gir: mutter_rpc_client_install_dir,
+  install_dir_typelib: mutter_rpc_client_install_dir,
 )
 
 gnome_shell_client_libdir = client_libdir
 gnome_shell_client_typelibdir = client_libdir
 
 message(
-  'gnome-shell client libs: @0@ (libst linked to libmutter-rpc-16)'.format(client_libdir),
+  'gnome-shell client libs: @0@ (libst → libmutter-rpc-16; install @1@)'.format(
+    client_libdir,
+    mutter_rpc_client_install_dir,
+  ),
 )
 
 # --- libshell-16 (vendor src/meson.build @ 48.0, Wayland-only client) ---
@@ -301,7 +304,7 @@ shell_deps = [
   gdk_pixbuf_dep,
   gjs_dep,
   mtk_dep,
-  clutter_dep,
+  cogl_dep,
   polkit_dep,
   gcr_dep,
   pango_dep,
@@ -318,7 +321,7 @@ libshell_menu = static_library(
     vendor_src_dir / 'gtkactionobservable.c',
     vendor_src_dir / 'gtkactionobserver.c',
   ],
-  dependencies: [dependency('gio-2.0'), clutter_dep, mtk_dep],
+  dependencies: [dependency('gio-2.0'), mutter_rpc_client_dep, mtk_dep],
   include_directories: shell_inc,
 )
 
@@ -407,7 +410,8 @@ libshell = shared_library(
   include_directories: shell_inc,
   build_rpath: client_rpath,
   name_prefix: 'lib',
-  install: false,
+  install: true,
+  install_dir: mutter_rpc_client_install_dir,
 )
 
 libshell_dep = declare_dependency(
@@ -449,7 +453,9 @@ libshell_gir = gnome.generate_gir(
     '-I' + vendor_st_dir,
     '-I' + meson.current_build_dir(),
   ],
-  install: false,
+  install: true,
+  install_dir_gir: mutter_rpc_client_install_dir,
+  install_dir_typelib: mutter_rpc_client_install_dir,
 )
 
 message('gnome-shell client libs: libshell-16 linked to libmutter-rpc-16')

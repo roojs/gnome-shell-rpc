@@ -7,8 +7,9 @@
  *
  * Positional args use {@link OLLMrpc.Request.args} (GIR order, no direction
  * on the wire). Instance stubs carry {@code gsr-lease-id} data →
- * {@link OLLMrpc.Request.lease_id}. Scalar returns land in {@link OLLMrpc.Response.args}; GObjects in
- * {@link OLLMrpc.Response.result}.
+ * {@link OLLMrpc.Request.lease_id}. The C return lands in
+ * {@link OLLMrpc.Response.retval}. OUT / INOUT scalars land in
+ * {@link OLLMrpc.Response.args}.
  *
  * == Example ==
  *
@@ -25,6 +26,9 @@ namespace GnomeShellRpc.GiStub
 	{
 		public static OLLMrpc.Client client;
 		private static bool connected = false;
+
+		[CCode (cname = "meta_register", cheader_filename = "meta-register.h")]
+		private static extern void meta_register_bins();
 
 		public delegate Gee.ArrayList<GLib.Value?>? 
 			InvokeHandler(OLLMrpc.Live.Invoke call);
@@ -51,7 +55,11 @@ namespace GnomeShellRpc.GiStub
 			GnomeShellRpc.Ui.Window.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
 			Clutter.register();
-			Meta.register();
+			meta_register_bins();
+			OLLMrpc.Bin.register("Clutter-ActorMeta", typeof(Clutter.ActorMeta));
+			OLLMrpc.Bin.register("Clutter-Effect", typeof(Clutter.Effect));
+			OLLMrpc.Bin.register(
+				"Clutter-OffscreenEffect", typeof(Clutter.OffscreenEffect));
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {
@@ -179,7 +187,7 @@ namespace GnomeShellRpc.GiStub
 		/**
 		 * Copy the live proxy id onto {@code gsr-lease-id} when decode left it unset.
 		 *
-		 * @param obj object from {@link OLLMrpc.Response.result}
+		 * @param obj object from {@link OLLMrpc.Response.retval}
 		 */
 		public static void attach_lease(GLib.Object obj)
 		{
@@ -260,12 +268,12 @@ namespace GnomeShellRpc.GiStub
 		}
 
 		/**
-		 * Sync call; first {@link OLLMrpc.Response.result} row, or null.
+		 * Sync call; {@link OLLMrpc.Response.retval} object, or null.
 		 *
 		 * @param method wire method
-		 * @param expected GType of the first result row
+		 * @param expected GType of the return object
 		 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
-		 * @return first result row, or null
+		 * @return the return object, or null when retval is unset
 		 * @throws GLib.Error the error from the remote function or RPC
 		 */
 		public static GLib.Object? call_object(
@@ -274,24 +282,24 @@ namespace GnomeShellRpc.GiStub
 			Gee.ArrayList<GLib.Value?>? args = null
 		) throws GLib.Error {
 			var response = Runtime.call_values(method, null, args);
-			if (response.result.size == 0) {
+			if (response.retval.type() == GLib.Type.INVALID) {
 				return null;
 			}
-			var obj = response.result.get(0);
+			var obj = response.retval.get_object();
 			if (!obj.get_type().is_a(expected)) {
 				GLib.error("RPC %s: expected %s, got %s",
-					"result[0]", expected.name(), obj.get_type().name());
+					method, expected.name(), obj.get_type().name());
 			}
 			return obj;
 		}
 
 		/**
-		 * Sync call; every {@link OLLMrpc.Response.result} row.
+		 * Sync call; every object in {@link OLLMrpc.Response.retval}.
 		 *
 		 * @param method wire method
-		 * @param elem GType of each result row
+		 * @param elem GType of each list row
 		 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
-		 * @return every result row
+		 * @return every list row (empty when retval is unset)
 		 * @throws GLib.Error the error from the remote function or RPC
 		 */
 		public static GLib.List<GLib.Object> call_list(
@@ -301,10 +309,14 @@ namespace GnomeShellRpc.GiStub
 		) throws GLib.Error {
 			var response = Runtime.call_values(method, null, args);
 			var list = new GLib.List<GLib.Object>();
-			for (var i = 0; i < response.result.size; i++) {
-				var obj = response.result.get(i);
+			if (response.retval.type() == GLib.Type.INVALID) {
+				return list;
+			}
+			var rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
+			for (var i = 0; i < rows.size; i++) {
+				var obj = rows.get(i);
 				if (!obj.get_type().is_a(elem)) {
-					GLib.error("RPC result[%d]: expected %s, got %s",
+					GLib.error("RPC retval[%d]: expected %s, got %s",
 						i, elem.name(), obj.get_type().name());
 				}
 				list.append(obj);
@@ -331,9 +343,17 @@ namespace GnomeShellRpc.GiStub
 			if (call_error != null) {
 				throw call_error;
 			}
-			for (var i = 0; i < response.result.size; i++) {
-				Runtime.attach_lease(response.result.get(i));
+			if (response.retval.type() == GLib.Type.INVALID) {
+				return response;
 			}
+			if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
+				var rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
+				for (var i = 0; i < rows.size; i++) {
+					Runtime.attach_lease(rows.get(i));
+				}
+				return response;
+			}
+			Runtime.attach_lease(response.retval.get_object());
 			return response;
 		}
 	}

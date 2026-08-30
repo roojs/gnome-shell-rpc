@@ -1,7 +1,7 @@
 /**
- * Clutter Actor / Context helpers — uint64 lease in args (not result).
+ * Clutter Actor / Context helpers — uint64 lease in args (not retval).
  *
- * Live GObject rows in {@link OLLMrpc.Response.result} arrive with handle 0;
+ * Live GObject rows in {@link OLLMrpc.Response.retval} arrive with handle 0;
  * same packing as {@link GnomeShellRpc.Ui.Display.get_compositor}.
  */
 namespace GnomeShellRpc.Rpc.Helper

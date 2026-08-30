@@ -39,3 +39,10 @@ option(
   value: 'enabled',
   description: 'Build client Shell/St from vendor sources linked to libmutter-rpc-16 (Phase 4)',
 )
+
+option(
+  'legacy_gi_rpc_smoke',
+  type: 'boolean',
+  value: false,
+  description: 'Build 0.5 GiRpcSmoke toy (libgirpcsmoke, gi-rpc-echo) and meta-override-client scaffold',
+)

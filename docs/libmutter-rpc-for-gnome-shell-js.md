@@ -52,8 +52,9 @@ export GI_GIR_PATH=$RPC_GIR${GI_GIR_PATH:+:$GI_GIR_PATH}
 
 | pkg-config variable | Role |
 | --- | --- |
-| `typelibdir` | `${libdir}/mutter-rpc-16` — `Meta-16.typelib` |
+| `typelibdir` | `${libdir}/mutter-rpc-16` — `Meta-16.typelib` (+ installed client `St` / `Shell` typelibs) |
 | `girdir` | same dir — `Meta-16.gir` |
+| `clientlibdir` | same dir — installed `libst-16.so` / `libshell-16.so` (not `/usr/lib/gnome-shell`) |
 | `Libs` | `-lmutter-rpc-16` |
 | `Cflags` | stock mutter public `meta/*.h` |
 

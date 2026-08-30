@@ -39,7 +39,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				GLib.warning("unknown callback id");
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					args = OLLMrpc.args("u", (uint) 0),
+					retval = OLLMrpc.val("u", (uint) 0),
 				});
 				return;
 			}
@@ -57,7 +57,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				});
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("u", action),
+				retval = OLLMrpc.val("u", action),
 			});
 		}
 
@@ -70,7 +70,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				GLib.warning("unknown callback id");
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					args = OLLMrpc.args("b", false),
+					retval = OLLMrpc.val("b", false),
 				});
 				return;
 			}
@@ -86,7 +86,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				});
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("b", ok),
+				retval = OLLMrpc.val("b", ok),
 			});
 		}
 
@@ -124,7 +124,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("s", label),
+				retval = OLLMrpc.val("s", label),
 			});
 		}
 
@@ -148,7 +148,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("s", label),
+				retval = OLLMrpc.val("s", label),
 			});
 		}
 	}

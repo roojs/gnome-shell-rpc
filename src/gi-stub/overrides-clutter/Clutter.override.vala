@@ -72,5 +72,5 @@
 		var response = GnomeShellRpc.GiStub.Runtime.call_values(
 			"Helper-ClutterThreads.threads_add_repaint_func", null,
 			OLLMrpc.args("ut", (uint) flags, callback_id));
-		return (uint32) response.args.get(0).get_uint();
+		return (uint32) response.retval.get_uint();
 	}

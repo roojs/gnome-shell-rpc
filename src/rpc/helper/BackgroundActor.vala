@@ -2,7 +2,7 @@
  * Delivers {@link Meta.BackgroundActor} construct RPC.
  *
  * Lease id in {@link OLLMrpc.Response.args} (same packing as
- * {@link Background.create}) — avoid {@code result} re-entering client
+ * {@link Background.create}) — avoid {@code retval} re-entering client
  * {@code construct}.
  */
 namespace GnomeShellRpc.Rpc.Helper

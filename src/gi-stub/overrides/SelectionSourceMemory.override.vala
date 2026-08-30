@@ -9,7 +9,7 @@
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-SelectionSourceMemory.create", null,
 				OLLMrpc.args("say", mimetype, content));
-			var stub = (SelectionSourceMemory) response.result.get(0);
+			var stub = (SelectionSourceMemory) response.retval.get_object();
 			this.set_data_full(
 				"gsr-lease-id",
 				stub.get_data<void*>("gsr-lease-id"),

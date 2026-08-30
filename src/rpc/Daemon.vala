@@ -30,11 +30,10 @@ namespace GnomeShellRpc.Rpc
 			if (protocol > 0) {
 				this.protocol = protocol;
 			}
-			var response = new OLLMrpc.Response() {
+			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-			};
-			response.result.add(this);
-			request.reply(response);
+				retval = OLLMrpc.val("o", this),
+			});
 		}
 	}
 }

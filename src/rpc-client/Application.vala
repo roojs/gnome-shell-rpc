@@ -151,8 +151,12 @@ namespace GnomeShellRpc.RpcClient
 					method = "Meta-Display.list_windows",
 				}
 			);
-			GLib.print("list_windows: %d window(s)\n", list_resp.result.size);
-			foreach (var obj in list_resp.result) {
+			var windows = new Gee.ArrayList<GLib.Object>();
+			if (list_resp.retval.type() != GLib.Type.INVALID) {
+				windows = (Gee.ArrayList<GLib.Object>) list_resp.retval.get_object();
+			}
+			GLib.print("list_windows: %d window(s)\n", windows.size);
+			foreach (var obj in windows) {
 				var win = (GnomeShellRpc.Ui.Window)obj;
 				GLib.print("  [%d] title=%s wm_class=%s\n",
 					win.id, win.title, win.wm_class);

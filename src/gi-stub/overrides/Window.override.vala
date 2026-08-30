@@ -53,5 +53,5 @@
 				"Helper-Window.begin_grab_op", this,
 				OLLMrpc.args("utsiubff", (uint) op, device_lease, device_name,
 					sequence_slot, timestamp, has_pos, pos_x, pos_y));
-			return response.args.get(0).get_boolean();
+			return response.retval.get_boolean();
 		}

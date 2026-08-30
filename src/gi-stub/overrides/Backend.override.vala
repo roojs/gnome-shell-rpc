@@ -1,6 +1,6 @@
 		/**
 		 * Lease handle in {@code args[0]} — Ui.Backend packs uint64, not
-		 * {@code result} (live GObject rows arrive with handle 0).
+		 * {@code retval} (live GObject rows arrive with handle 0).
 		 *
 		 * Returns {@link Clutter.Stage} (in Clutter typelib) — not
 		 * {@code Meta.Stage}, which our hand Meta-16.gir omits.

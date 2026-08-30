@@ -29,7 +29,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				GLib.warning("unknown callback id");
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					args = OLLMrpc.args("u", (uint) 0),
+					retval = OLLMrpc.val("u", (uint) 0),
 				});
 				return;
 			}
@@ -45,7 +45,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				});
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("u", handle),
+				retval = OLLMrpc.val("u", handle),
 			});
 		}
 	}

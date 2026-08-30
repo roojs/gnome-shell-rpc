@@ -77,17 +77,18 @@ namespace GnomeShellRpc.Ui
 		 */
 		public void list_windows(OLLMrpc.Request request)
 		{
-			var response = new OLLMrpc.Response() {
-				id = request.id,
-			};
+			var list = new Gee.ArrayList<GLib.Object>();
 			foreach (unowned Meta.Window win in this.meta_display.list_all_windows()) {
 				if (win == null) {
 					continue;
 				}
 				var handle = (int) request.connection.export(win);
-				response.result.add(this.snapshot_window(win, handle));
+				list.add(this.snapshot_window(win, handle));
 			}
-			request.reply(response);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", list),
+			});
 		}
 
 		/**
@@ -102,11 +103,10 @@ namespace GnomeShellRpc.Ui
 			if (meta == null) {
 				return;
 			}
-			var response = new OLLMrpc.Response() {
+			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-			};
-			response.result.add(this.snapshot_window(meta, object_id));
-			request.reply(response);
+				retval = OLLMrpc.val("o", this.snapshot_window(meta, object_id)),
+			});
 		}
 
 		/**
@@ -124,11 +124,10 @@ namespace GnomeShellRpc.Ui
 				return;
 			}
 			var handle = (int) request.connection.export(focus);
-			var response = new OLLMrpc.Response() {
+			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-			};
-			response.result.add(this.snapshot_window(focus, handle));
-			request.reply(response);
+				retval = OLLMrpc.val("o", this.snapshot_window(focus, handle)),
+			});
 		}
 
 		/**
@@ -150,8 +149,8 @@ namespace GnomeShellRpc.Ui
 		 * ''Meta-Display.get_context'' — lease id of the meta context.
 		 *
 		 * Same packing as {@link get_compositor}: uint64 handle in
-		 * {@link OLLMrpc.Response.args} (live {@code result} rows arrive
-		 * with handle 0 on the client).
+		 * {@link OLLMrpc.Response.args} (live {@link OLLMrpc.Response.retval}
+		 * objects arrive with handle 0 on the client).
 		 *
 		 * @param request inbound RPC
 		 */

@@ -37,7 +37,7 @@ namespace GnomeShellRpc.Ui
 		 *
 		 * Same packing as {@link Display.get_compositor}: uint64 handle in
 		 * {@link OLLMrpc.Response.args}. Live GObject rows in
-		 * {@link OLLMrpc.Response.result} arrive with handle 0.
+		 * {@link OLLMrpc.Response.retval} arrive with handle 0.
 		 *
 		 * @param request inbound RPC
 		 */

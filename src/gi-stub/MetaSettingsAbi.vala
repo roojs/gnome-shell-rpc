@@ -12,7 +12,7 @@ namespace GnomeShellRpc.GiStub
 		try {
 			var response = Runtime.call_values(
 				"Helper-Settings.get_ui_scaling_factor", null);
-			return response.args.get(0).get_int();
+			return response.retval.get_int();
 		} catch (GLib.Error e) {
 			GLib.warning(
 				"meta_settings_get_ui_scaling_factor: %s", e.message);

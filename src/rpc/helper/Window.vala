@@ -107,7 +107,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				timestamp, pos_hint);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("b", ok),
+				retval = OLLMrpc.val("b", ok),
 			});
 		}
 	}

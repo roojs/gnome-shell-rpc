@@ -33,11 +33,10 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			request.connection.export(source);
-			var response = new OLLMrpc.Response() {
+			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-			};
-			response.result.add(source);
-			request.reply(response);
+				retval = OLLMrpc.val("o", source),
+			});
 		}
 	}
 }

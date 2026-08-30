@@ -50,7 +50,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				.get_ui_scaling_factor();
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("i", scale),
+				retval = OLLMrpc.val("i", scale),
 			});
 		}
 	}

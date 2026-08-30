@@ -34,7 +34,7 @@ namespace GnomeShellRpc.GiRpcEcho
 			GLib.print("got this call: ping msg=%s\n", msg);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("s", "echo:" + msg),
+				retval = OLLMrpc.val("s", "echo:" + msg),
 			});
 		}
 	}

@@ -28,7 +28,11 @@ namespace GnomeShellRpc.FakeShell
 				method = "Meta-Display.list_windows",
 			});
 			var seen = new Gee.HashSet<int>();
-			foreach (var obj in list_resp.result) {
+			var rows = new Gee.ArrayList<GLib.Object>();
+			if (list_resp.retval.type() != GLib.Type.INVALID) {
+				rows = (Gee.ArrayList<GLib.Object>) list_resp.retval.get_object();
+			}
+			foreach (var obj in rows) {
 				var snap = (Ui.Window)obj;
 				seen.add(snap.id);
 				if (!this.windows.has_key(snap.id)) {
@@ -69,13 +73,13 @@ namespace GnomeShellRpc.FakeShell
 			var resp = yield this.session.call(new OLLMrpc.Request() {
 				method = "Meta-Display.get_focused_window",
 			});
-			if (resp.result.size == 0) {
+			if (resp.retval.type() == GLib.Type.INVALID) {
 				if (this.focused_window.id != 0) {
 					this.focused_window = new Window(this.session, 0);
 				}
 				return;
 			}
-			var snap = (Ui.Window)resp.result.get(0);
+			var snap = (Ui.Window)resp.retval.get_object();
 			if (!this.windows.has_key(snap.id)) {
 				this.windows.set(snap.id, new Window(this.session, snap.id));
 				this.session.client.proxies.set(snap.id, this.windows.get(snap.id));

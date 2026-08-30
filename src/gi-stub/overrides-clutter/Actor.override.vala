@@ -21,7 +21,7 @@
 	}
 
 	/**
-	 * Lease handle in {@code args[0]} — Helper packs uint64, not {@code result}.
+	 * Lease handle in {@code args[0]} — Helper packs uint64, not {@code retval}.
 	 */
 	public Context get_context()
 	{

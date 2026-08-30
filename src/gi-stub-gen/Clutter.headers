@@ -1,0 +1,29 @@
+# Header emit config for `gi-stub-gen emit-headers Clutter …` (0.7.4).
+# Line format: key [value…]  — comments with #.
+
+subdir clutter
+file_prefix clutter
+inside_macro __CLUTTER_H_INSIDE__
+compilation_macro CLUTTER_COMPILATION
+umbrella clutter.h
+
+# Always emitted (empty in Phase A), included before per-type headers.
+fixed types
+fixed macros
+fixed main
+fixed enum-types
+fixed enums
+
+# Extra umbrellas (empty in Phase A); included after per-type headers.
+extra pango
+
+# Foreign GI namespaces → include lines (emitter does not hardcode these).
+foreign_include Atk <atk/atk.h>
+foreign_include Cogl "cogl/cogl.h"
+foreign_include Graphene <graphene.h>
+
+# GIR Ns.Name → C spelling when get_type_name() is missing / wrong for headers.
+c_type GObject.InitiallyUnownedClass GInitiallyUnownedClass
+c_type GObject.ObjectClass GObjectClass
+c_type GObject.TypeInterface GTypeInterface
+c_type Graphene.Matrix graphene_matrix_t

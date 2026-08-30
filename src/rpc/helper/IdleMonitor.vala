@@ -9,7 +9,7 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class IdleMonitor : GLib.Object
 	{
-		public static void rpc_register()
+		public static void register()
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-IdleMonitor", typeof(IdleMonitor),
@@ -17,7 +17,8 @@ namespace GnomeShellRpc.Rpc.Helper
 				"add_user_active_watch", "t",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-IdleMonitor", new IdleMonitor());
+			OLLMrpc.Request.register_live("Helper-IdleMonitor",
+				 new IdleMonitor());
 		}
 
 		public void add_idle_watch(
@@ -43,7 +44,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			});
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("u", watch_id)
+				retval = OLLMrpc.val("u", watch_id)
 			});
 		}
 
@@ -69,7 +70,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			});
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("u", watch_id)
+				retval = OLLMrpc.val("u", watch_id)
 			});
 		}
 	}

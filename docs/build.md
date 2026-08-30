@@ -71,8 +71,10 @@ Main artifacts under `build/src/`:
 | `gjs-embed` | **Temporary** test GJS host (manual smokes only) |
 | `libmutter-rpc-16.so` | Client Meta stubs (RPC to plugin) |
 | `Meta-16.typelib` | GI typelib → `libmutter-rpc-16.so` |
-| `build/gnome-shell/client-libs/libst-16.so` | Client St (vendor, linked to `libmutter-rpc-16`) |
-| `build/gnome-shell/client-libs/libshell-16.so` | Client Shell C lib (vendor, linked to `libmutter-rpc-16`) |
+| `build/gnome-shell/client-libs/libst-16.so` | Client St (linked to `libmutter-rpc-16`) |
+| `build/gnome-shell/client-libs/libshell-16.so` | Client Shell C lib (same) |
+
+Install puts St/Shell next to Meta typelibs under **`${libdir}/mutter-rpc-16/`** — never `/usr/lib/gnome-shell/`. Nested runs use the client-libs build dir via `GI_TYPELIB_PATH` / rpath.
 
 ---
 
@@ -90,7 +92,8 @@ Layout after install:
 
 - `libmutter-rpc-16.so` → `${libdir}/`
 - `Meta-16.typelib` + `Meta-16.gir` → `${libdir}/mutter-rpc-16/`
-- `libmutter-rpc-16.pc` → `${libdir}/pkgconfig/`
+- `libst-16.so` + `St-16.typelib` + `libshell-16.so` + `Shell-16.typelib` → `${libdir}/mutter-rpc-16/`
+- `libmutter-rpc-16.pc` → `${libdir}/pkgconfig/` (`typelibdir` / `clientlibdir` → `${libdir}/mutter-rpc-16`)
 
 See [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md) for `GI_TYPELIB_PATH` after install.
 

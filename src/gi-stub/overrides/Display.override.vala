@@ -18,7 +18,7 @@
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Display.add_keybinding", this,
 				OLLMrpc.args("ssut", name, settings.schema_id, (uint) flags, callback_id));
-			return response.args.get(0).get_uint();
+			return response.retval.get_uint();
 		}
 
 		public void request_pad_osd(Clutter.InputDevice pad, bool edition_mode)
@@ -51,7 +51,7 @@
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Display.get_pad_button_label", this,
 				OLLMrpc.args("tsi", device_lease, device_name, button_number));
-			return response.args.get(0).get_string();
+			return response.retval.get_string();
 		}
 
 		public string get_pad_feature_label(
@@ -72,19 +72,19 @@
 				"Helper-Display.get_pad_feature_label", this,
 				OLLMrpc.args("tsiui", device_lease, device_name,
 					(int) feature, (uint) direction, feature_number));
-			return response.args.get(0).get_string();
+			return response.retval.get_string();
 		}
 
 		public StartupNotification get_startup_notification()
 		{
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Display.get_startup_notification", this);
-			return (StartupNotification) response.result.get(0);
+			return (StartupNotification) response.retval.get_object();
 		}
 
 		/**
 		 * Lease handle in {@code args[0]} — Ui.Display packs uint64, not
-		 * {@code result} (live GObject rows arrive with handle 0).
+		 * {@code retval} (live GObject rows arrive with handle 0).
 		 */
 		public Context get_context()
 		{

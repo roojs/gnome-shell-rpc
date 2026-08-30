@@ -29,7 +29,7 @@ namespace Meta
 			get {
 				var response = GnomeShellRpc.GiStub.Runtime.call_values(
 					"Clutter-Actor.is_visible", this);
-				return response.args.get(0).get_boolean();
+				return response.retval.get_boolean();
 			}
 		}
 

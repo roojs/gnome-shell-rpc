@@ -23,7 +23,7 @@
 
 		/**
 		 * Lease handle in {@code args[0]} — Ui.Context packs uint64, not
-		 * {@code result} (live GObject rows arrive with handle 0).
+		 * {@code retval} (live GObject rows arrive with handle 0).
 		 */
 		public Backend get_backend()
 		{

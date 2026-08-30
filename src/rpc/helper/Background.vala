@@ -2,7 +2,7 @@
  * Delivers {@link Meta.Background} Override RPC (plan 0.5.7 C2).
  *
  * Wire prefix ''Helper-Background''. {@code create} returns lease id in
- * {@link OLLMrpc.Response.args} — not {@code result} — so the client
+ * {@link OLLMrpc.Response.args} — not {@code retval} — so the client
  * {@code construct} can set {@code gsr-lease-id} without
  * {@code attach_lease} re-entering {@code Background} construction.
  */
@@ -18,8 +18,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				"set_file", "si",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-Background",
-				new Background());
+			OLLMrpc.Request.register_live("Helper-Background", new Background());
 		}
 
 		/**

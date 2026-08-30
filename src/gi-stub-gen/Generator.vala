@@ -16,42 +16,8 @@ namespace GnomeShellRpc.GiStubGen
 	 * gen.emit("GiRpcSmoke", "GiRpcSmoke_generated.vala");
 	 * }}}
 	 */
-	public class Generator : GLib.Object
+	public class Generator : TypelibWalk
 	{
-		/** Denylisted symbols omitted on emit; {@code Type.method} or bare name. */
-		public string[] deny = {};
-
-		/** Same names as {@link deny}, but emit an empty / dummy-return stub (deny-file ``noop`` flag). */
-		public string[] noop = {};
-
-		/** {@code Type.method} or bare {@code Type} → override keys (e.g. {@code list_elem=WindowActor}, {@code emit=union-as-class}). */
-		public Gee.HashMap<string, Gee.HashMap<string, string>> overrides =
-			new Gee.HashMap<string, Gee.HashMap<string, string>>();
-
-		/** Lookup a type-level policy from {@link overrides} (bare type name, no method). */
-		private string? type_policy(string type_name, string key)
-		{
-			if (!this.overrides.has_key(type_name)) {
-				return null;
-			}
-			var map = this.overrides.get(type_name);
-			if (!map.has_key(key)) {
-				return null;
-			}
-			return map.get(key);
-		}
-
-		/** True when a GIR union is emitted / wired as {@code GLib.Object}. */
-		private bool union_as_gobject(string ns, GI.BaseInfo info)
-		{
-			if (info == null
-				|| info.get_type() != GI.InfoType.UNION
-				|| info.get_namespace() != ns) {
-				return false;
-			}
-			return this.type_policy(info.get_name(), "wire_as") == "gobject";
-		}
-
 		/** Current {@code Type.method} while emitting (for {@link overrides}). */
 		private string emit_symbol = "";
 
@@ -72,6 +38,17 @@ namespace GnomeShellRpc.GiStubGen
 
 		/** Object types emitted this run (for namespace {@code register()}). */
 		private Gee.ArrayList<string> object_classes = new Gee.ArrayList<string>();
+
+		/** True when a GIR union is emitted / wired as {@code GLib.Object}. */
+		private bool union_as_gobject(string ns, GI.BaseInfo info)
+		{
+			if (info == null
+				|| info.get_type() != GI.InfoType.UNION
+				|| info.get_namespace() != ns) {
+				return false;
+			}
+			return this.type_policy(info.get_name(), "wire_as") == "gobject";
+		}
 
 		/**
 		 * Write Vala stubs for {@code ns}, skipping {@link deny} symbols.
@@ -1000,7 +977,7 @@ $(tab)}
 					);
 				if (ret_is_gobj) {
 					if (is_constructor) {
-						stream.puts(indent + @"var _stub = ($(ret_vala)) response.result.get(0);
+						stream.puts(indent + @"var _stub = ($(ret_vala)) response.retval.get_object();
 ");
 						stream.puts(
 							indent + @"this.set_data_full(\"gsr-lease-id\", _stub.get_data<void*>(\"gsr-lease-id\"), null);
@@ -1009,11 +986,11 @@ $(tab)}
 						return;
 					}
 					if (!has_outs) {
-						stream.puts(indent + @"return ($(ret_vala)) response.result.get(0);
+						stream.puts(indent + @"return ($(ret_vala)) response.retval.get_object();
 ");
 						return;
 					}
-					stream.puts(indent + @"var __ret = ($(ret_vala)) response.result.get(0);
+					stream.puts(indent + @"var __ret = ($(ret_vala)) response.retval.get_object();
 ");
 				} else {
 					var ret_letter = this.dbus_letter(ns, fi.get_return_type());
@@ -1026,7 +1003,6 @@ $(tab)}
 					this.emit_value_get(
 						stream, indent, ret_vala, ret_letter, 0, false
 					);
-					value_idx = 1;
 				}
 			}
 
@@ -1082,8 +1058,10 @@ $(tab)}
 				case "s": get = "string"; break;
 				case "as": get = "boxed"; break;
 			}
-			var idx = value_idx.to_string();
-			var expr = @"($(vala_type)) response.args.get($(idx)).get_$(get)()";
+			var expr = @"($(vala_type)) response.retval.get_$(get)()";
+			if (!is_return && assign_name != "") {
+				expr = @"($(vala_type)) response.args.get($(value_idx.to_string())).get_$(get)()";
+			}
 
 			if (is_return) {
 				stream.puts(indent + @"return $(expr);
@@ -1130,10 +1108,14 @@ $(tab)}
 			bool is_return,
 			string assign_name
 		) {
-			var idx = value_idx.to_string();
-			var blob = @"_blob$(idx)";
+			var blob = "_blob";
+			var boxed_src = "response.retval";
+			if (!is_return && assign_name != "") {
+				blob = @"_blob$(value_idx.to_string())";
+				boxed_src = @"response.args.get($(value_idx.to_string()))";
+			}
 			stream.puts(
-				indent + @"var $(blob) = (GLib.Bytes) response.args.get($(idx)).get_boxed();
+				indent + @"var $(blob) = (GLib.Bytes) $(boxed_src).get_boxed();
 "
 			);
 			if (is_return) {
@@ -1389,12 +1371,18 @@ $(tab)}
 			}
 			stream.puts(indent + @"var _list = new $(ret_vala)();
 ");
-			stream.puts(indent + @"for (var _i = 0; _i < response.result.size; _i++) {
+			stream.puts(indent + @"if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
+");
+			stream.puts(indent + @"	var _rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
+");
+			stream.puts(indent + @"	for (var _i = 0; _i < _rows.size; _i++) {
 ");
 			stream.puts(
-				indent + @"	_list.append(($(elem_vala)) response.result.get(_i));
+				indent + @"		_list.append(($(elem_vala)) _rows.get(_i));
 "
 			);
+			stream.puts(indent + @"	}
+");
 			stream.puts(indent + @"}
 ");
 			stream.puts(indent + @"return _list;
@@ -1402,7 +1390,7 @@ $(tab)}
 		}
 
 		/**
-		 * Unpack utf8 GLIST / GSLIST from {@link Response.args} ''string[]''.
+		 * Unpack utf8 GLIST / GSLIST from {@link Response.retval} ''string[]''.
 		 */
 		private void emit_utf8_list_return(
 			GLib.FileStream stream,
@@ -1414,7 +1402,7 @@ $(tab)}
 				ret_vala = "GLib.SList<string>";
 			}
 			stream.puts(
-				indent + @"var _as = (string[]) response.args.get(0).get_boxed();
+				indent + @"var _as = (string[]) response.retval.get_boxed();
 "
 			);
 			stream.puts(indent + @"var _list = new $(ret_vala)();

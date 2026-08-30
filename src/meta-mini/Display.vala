@@ -133,7 +133,7 @@ namespace Meta
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Display.add_keybinding", this,
 				OLLMrpc.args("ssut", name, settings.schema_id, (uint) flags, callback_id));
-			return response.args.get(0).get_uint();
+			return response.retval.get_uint();
 		}
 
 		/**
@@ -172,7 +172,7 @@ namespace Meta
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Display.get_pad_button_label", this,
 				OLLMrpc.args("tsi", device_lease, device_name, button_number));
-			return response.args.get(0).get_string();
+			return response.retval.get_string();
 		}
 
 		/**
@@ -196,7 +196,7 @@ namespace Meta
 				"Helper-Display.get_pad_feature_label", this,
 				OLLMrpc.args("tsiui", device_lease, device_name,
 					(int) feature, (uint) direction, feature_number));
-			return response.args.get(0).get_string();
+			return response.retval.get_string();
 		}
 	}
 
@@ -246,7 +246,7 @@ namespace Meta
 		var response = GnomeShellRpc.GiStub.Runtime.call_values(
 			"Helper-Display.keybindings_set_custom_handler", null,
 			OLLMrpc.args("st", name, callback_id));
-		return response.args.get(0).get_boolean();
+		return response.retval.get_boolean();
 	}
 
 	/**
