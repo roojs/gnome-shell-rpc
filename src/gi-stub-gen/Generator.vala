@@ -1003,7 +1003,7 @@ $(tab)}
 						stream.puts(indent + @"var _stub = ($(ret_vala)) response.result.get(0);
 ");
 						stream.puts(
-							indent + @"this.set_data(\"gsr-lease-id\", _stub.get_data<string>(\"gsr-lease-id\"));
+							indent + @"this.set_data_full(\"gsr-lease-id\", _stub.get_data<void*>(\"gsr-lease-id\"), null);
 "
 						);
 						return;

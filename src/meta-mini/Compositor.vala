@@ -14,9 +14,10 @@ namespace Meta
 			var list = new GLib.List<WindowActor>();
 			for (var i = 0; i < response.args.size; i++) {
 				var actor = new WindowActor();
-				actor.set_data(
+				actor.set_data_full(
 					"gsr-lease-id",
-					response.args.get(i).get_uint64().to_string()
+					(void*) response.args.get(i).get_uint64(),
+					null
 				);
 				list.append(actor);
 			}
@@ -28,9 +29,10 @@ namespace Meta
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Compositor.get_backend", this);
 			var backend = new Backend();
-			backend.set_data(
+			backend.set_data_full(
 				"gsr-lease-id",
-				response.args.get(0).get_uint64().to_string()
+				(void*) response.args.get(0).get_uint64(),
+				null
 			);
 			return backend;
 		}

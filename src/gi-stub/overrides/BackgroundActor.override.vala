@@ -6,14 +6,15 @@
 		public int monitor { get; construct; }
 
 		construct {
+			var lease = (uint64) this.meta_display.get_data<void*>("gsr-lease-id");
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
-				"Meta-BackgroundActor.new",
+				"Helper-BackgroundActor.create",
 				null,
-				OLLMrpc.args("oi", this.meta_display, this.monitor)
+				OLLMrpc.args("ti", lease, this.monitor)
 			);
-			var stub = (BackgroundActor) response.result.get(0);
-			this.set_data(
+			this.set_data_full(
 				"gsr-lease-id",
-				stub.get_data<string>("gsr-lease-id")
+				(void*) response.args.get(0).get_uint64(),
+				null
 			);
 		}

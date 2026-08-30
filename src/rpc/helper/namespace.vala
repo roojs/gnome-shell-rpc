@@ -19,6 +19,7 @@ namespace GnomeShellRpc.Rpc.Helper
 	{
 		SoundPlayer.rpc_register();
 		Background.rpc_register();
+		BackgroundActor.rpc_register();
 		Context.rpc_register();
 		Settings.rpc_register();
 		IdleMonitor.rpc_register();

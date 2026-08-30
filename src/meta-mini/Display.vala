@@ -41,7 +41,7 @@ namespace Meta
 					title = snap.title,
 					wm_class = snap.wm_class,
 				};
-				win.set_data("gsr-lease-id", snap.id.to_string());
+				win.set_data_full("gsr-lease-id", (void*) snap.id, null);
 				list.append(win);
 			}
 			return list;
@@ -65,7 +65,7 @@ namespace Meta
 				title = snap.title,
 				wm_class = snap.wm_class,
 			};
-			win.set_data("gsr-lease-id", snap.id.to_string());
+			win.set_data_full("gsr-lease-id", (void*) snap.id, null);
 			return win;
 		}
 
@@ -85,9 +85,10 @@ namespace Meta
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Display.get_compositor", this);
 			var compositor = new Compositor();
-			compositor.set_data(
+			compositor.set_data_full(
 				"gsr-lease-id",
-				response.args.get(0).get_uint64().to_string()
+				(void*) response.args.get(0).get_uint64(),
+				null
 			);
 			return compositor;
 		}
@@ -100,9 +101,10 @@ namespace Meta
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Display.get_sound_player", this);
 			var player = new SoundPlayer();
-			player.set_data(
+			player.set_data_full(
 				"gsr-lease-id",
-				response.args.get(0).get_uint64().to_string()
+				(void*) response.args.get(0).get_uint64(),
+				null
 			);
 			return player;
 		}
@@ -141,9 +143,9 @@ namespace Meta
 		{
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = pad.get_data<string>("gsr-lease-id");
-			if (lease != null && lease.length > 0) {
-				device_lease = uint64.parse(lease);
+			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			if (lease != 0) {
+				device_lease = lease;
 			} else {
 				device_name = pad.get_device_name();
 			}
@@ -161,9 +163,9 @@ namespace Meta
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = pad.get_data<string>("gsr-lease-id");
-			if (lease != null && lease.length > 0) {
-				device_lease = uint64.parse(lease);
+			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			if (lease != 0) {
+				device_lease = lease;
 			} else {
 				device_name = pad.get_device_name();
 			}
@@ -184,9 +186,9 @@ namespace Meta
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = pad.get_data<string>("gsr-lease-id");
-			if (lease != null && lease.length > 0) {
-				device_lease = uint64.parse(lease);
+			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			if (lease != 0) {
+				device_lease = lease;
 			} else {
 				device_name = pad.get_device_name();
 			}
@@ -215,9 +217,10 @@ namespace Meta
 				"RPC-Bootstrap.get_display"
 			);
 			if (response.args.size > 0) {
-				display_singleton.set_data(
+				display_singleton.set_data_full(
 					"gsr-lease-id",
-					response.args.get(0).get_uint64().to_string()
+					(void*) response.args.get(0).get_uint64(),
+					null
 				);
 			}
 		}

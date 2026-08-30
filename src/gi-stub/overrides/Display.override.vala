@@ -25,9 +25,9 @@
 		{
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = pad.get_data<string>("gsr-lease-id");
-			if (lease != null && lease.length > 0) {
-				device_lease = uint64.parse(lease);
+			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			if (lease != 0) {
+				device_lease = lease;
 			} else {
 				device_name = pad.get_device_name();
 			}
@@ -42,9 +42,9 @@
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = pad.get_data<string>("gsr-lease-id");
-			if (lease != null && lease.length > 0) {
-				device_lease = uint64.parse(lease);
+			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			if (lease != 0) {
+				device_lease = lease;
 			} else {
 				device_name = pad.get_device_name();
 			}
@@ -62,9 +62,9 @@
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = pad.get_data<string>("gsr-lease-id");
-			if (lease != null && lease.length > 0) {
-				device_lease = uint64.parse(lease);
+			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			if (lease != 0) {
+				device_lease = lease;
 			} else {
 				device_name = pad.get_device_name();
 			}
@@ -92,9 +92,10 @@
 				"Meta-Display.get_context", this);
 			var ctx = new Context();
 			if (response.args.size > 0) {
-				ctx.set_data(
+				ctx.set_data_full(
 					"gsr-lease-id",
-					response.args.get(0).get_uint64().to_string()
+					(void*) response.args.get(0).get_uint64(),
+					null
 				);
 			}
 			return ctx;
@@ -109,9 +110,10 @@
 				"Meta-Display.get_compositor", this);
 			var compositor = new Compositor();
 			if (response.args.size > 0) {
-				compositor.set_data(
+				compositor.set_data_full(
 					"gsr-lease-id",
-					response.args.get(0).get_uint64().to_string()
+					(void*) response.args.get(0).get_uint64(),
+					null
 				);
 			}
 			return compositor;

@@ -5,15 +5,16 @@
 		public Display meta_display { get; construct; }
 
 		construct {
+			var lease = (uint64) this.meta_display.get_data<void*>("gsr-lease-id");
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
-				"Meta-Background.new",
+				"Helper-Background.create",
 				null,
-				OLLMrpc.args("o", this.meta_display)
+				OLLMrpc.args("t", lease)
 			);
-			var stub = (Background) response.result.get(0);
-			this.set_data(
+			this.set_data_full(
 				"gsr-lease-id",
-				stub.get_data<string>("gsr-lease-id")
+				(void*) response.args.get(0).get_uint64(),
+				null
 			);
 		}
 

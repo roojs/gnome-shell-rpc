@@ -32,9 +32,9 @@
 			uint64 device_lease = 0;
 			var device_name = "";
 			if (device != null) {
-				var lease = device.get_data<string>("gsr-lease-id");
-				if (lease != null && lease.length > 0) {
-					device_lease = uint64.parse(lease);
+				var lease = (uint64) device.get_data<void*>("gsr-lease-id");
+				if (lease != 0) {
+					device_lease = lease;
 				} else {
 					device_name = device.get_device_name();
 				}

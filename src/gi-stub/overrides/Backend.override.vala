@@ -11,9 +11,10 @@
 				"Meta-Backend.get_stage", this);
 			var stage = new Clutter.Stage();
 			if (response.args.size > 0) {
-				stage.set_data(
+				stage.set_data_full(
 					"gsr-lease-id",
-					response.args.get(0).get_uint64().to_string()
+					(void*) response.args.get(0).get_uint64(),
+					null
 				);
 			}
 			return stage;
@@ -28,9 +29,10 @@
 				"Meta-Backend.get_core_idle_monitor", this);
 			var monitor = new IdleMonitor();
 			if (response.args.size > 0) {
-				monitor.set_data(
+				monitor.set_data_full(
 					"gsr-lease-id",
-					response.args.get(0).get_uint64().to_string()
+					(void*) response.args.get(0).get_uint64(),
+					null
 				);
 			}
 			return monitor;

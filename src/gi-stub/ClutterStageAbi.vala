@@ -28,7 +28,7 @@ namespace GnomeShellRpc.GiStub
 					return null;
 				}
 				var view = new Clutter.StageView();
-				view.set_data("gsr-lease-id", handle.to_string());
+				view.set_data_full("gsr-lease-id", (void*) handle, null);
 				return view;
 			} catch (GLib.Error e) {
 				GLib.warning("get_stage_view: %s", e.message);
@@ -62,7 +62,7 @@ namespace GnomeShellRpc.GiStub
 					return null;
 				}
 				var view = new Clutter.StageView();
-				view.set_data("gsr-lease-id", handle.to_string());
+				view.set_data_full("gsr-lease-id", (void*) handle, null);
 				return view;
 			} catch (GLib.Error e) {
 				GLib.warning("get_view_at: %s", e.message);

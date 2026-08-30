@@ -14,7 +14,7 @@ namespace Meta
 	 *     title = snap.title,
 	 *     wm_class = snap.wm_class,
 	 * };
-	 * win.set_data("gsr-lease-id", snap.id.to_string());
+	 * win.set_data_full("gsr-lease-id", (void*) snap.id, null);
 	 * win.minimize();
 	 * win.unminimize();
 	 * }}}
@@ -116,9 +116,9 @@ namespace Meta
 			uint64 device_lease = 0;
 			var device_name = "";
 			if (device != null) {
-				var lease = device.get_data<string>("gsr-lease-id");
-				if (lease != null && lease.length > 0) {
-					device_lease = uint64.parse(lease);
+				var lease = (uint64) device.get_data<void*>("gsr-lease-id");
+				if (lease != 0) {
+					device_lease = lease;
 				} else {
 					device_name = device.get_device_name();
 				}

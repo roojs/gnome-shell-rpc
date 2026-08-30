@@ -183,13 +183,13 @@ namespace GnomeShellRpc.GiStub
 		 */
 		public static void attach_lease(GLib.Object obj)
 		{
-			var lease = obj.get_data<string>("gsr-lease-id");
-			if (lease != null && lease.length > 0) {
+			var lease = (uint64) obj.get_data<void*>("gsr-lease-id");
+			if (lease != 0) {
 				return;
 			}
 			foreach (var entry in Runtime.client.proxies) {
 				if (entry.value == obj) {
-					obj.set_data("gsr-lease-id", entry.key.to_string());
+					obj.set_data_full("gsr-lease-id", (void*) entry.key, null);
 					return;
 				}
 			}
@@ -197,14 +197,14 @@ namespace GnomeShellRpc.GiStub
 
 		private static uint64 lease_id_of(GLib.Object obj)
 		{
-			var lease = obj.get_data<string>("gsr-lease-id");
-			if (lease == null || lease.length == 0) {
+			var lease = (uint64) obj.get_data<void*>("gsr-lease-id");
+			if (lease == 0) {
 				GLib.error(
 					"RPC lease_ids_at: no gsr-lease-id on %s",
 					obj.get_type().name()
 				);
 			}
-			return uint64.parse(lease);
+			return lease;
 		}
 
 		/**
@@ -222,15 +222,10 @@ namespace GnomeShellRpc.GiStub
 		) throws GLib.Error {
 			uint64 lease_id = 0;
 			if (instance != null) {
-				var lease = instance.get_data<string>("gsr-lease-id");
-				if (lease == null || lease.length == 0) {
-				GLib.error("RPC %s: no gsr-lease-id on %s",
-					method, instance.get_type().name());
-				}
-				lease_id = uint64.parse(lease);
+				lease_id = (uint64) instance.get_data<void*>("gsr-lease-id");
 				if (lease_id == 0) {
-				GLib.error("RPC %s: lease_id 0 on %s",
-					method, instance.get_type().name());
+					GLib.error("RPC %s: no gsr-lease-id on %s",
+						method, instance.get_type().name());
 				}
 			}
 			var req = new OLLMrpc.Request() {
@@ -252,13 +247,13 @@ namespace GnomeShellRpc.GiStub
 					req.args.add(zero);
 					continue;
 				}
-				var lease = obj.get_data<string>("gsr-lease-id");
-				if (lease == null || lease.length == 0) {
-				GLib.error("RPC %s: cannot serialize %s (not a leased stub)",
-					method, val.type().name());
+				var lease = (uint64) obj.get_data<void*>("gsr-lease-id");
+				if (lease == 0) {
+					GLib.error("RPC %s: cannot serialize %s (not a leased stub)",
+						method, val.type().name());
 				}
 				var wire = GLib.Value(GLib.Type.UINT64);
-				wire.set_uint64(uint64.parse(lease));
+				wire.set_uint64(lease);
 				req.args.add(wire);
 			}
 			return Runtime.do_call(req);

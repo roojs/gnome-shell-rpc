@@ -10,8 +10,9 @@
 				"Helper-SelectionSourceMemory.create", null,
 				OLLMrpc.args("say", mimetype, content));
 			var stub = (SelectionSourceMemory) response.result.get(0);
-			this.set_data(
+			this.set_data_full(
 				"gsr-lease-id",
-				stub.get_data<string>("gsr-lease-id")
+				stub.get_data<void*>("gsr-lease-id"),
+				null
 			);
 		}

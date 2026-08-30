@@ -15,9 +15,10 @@ namespace Meta
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Context.get_backend", this);
 			var backend = new Backend();
-			backend.set_data(
+			backend.set_data_full(
 				"gsr-lease-id",
-				response.args.get(0).get_uint64().to_string()
+				(void*) response.args.get(0).get_uint64(),
+				null
 			);
 			return backend;
 		}

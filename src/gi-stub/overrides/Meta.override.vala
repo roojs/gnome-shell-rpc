@@ -35,9 +35,10 @@
 		var response = GnomeShellRpc.GiStub.Runtime.call_values(
 			"RPC-Bootstrap.get_display");
 		if (response.args.size > 0) {
-			display_singleton.set_data(
+			display_singleton.set_data_full(
 				"gsr-lease-id",
-				response.args.get(0).get_uint64().to_string()
+				(void*) response.args.get(0).get_uint64(),
+				null
 			);
 		}
 		return display_singleton;
