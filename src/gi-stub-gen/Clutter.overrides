@@ -1,6 +1,10 @@
 # gi-stub-gen overrides for Clutter-16 (Type[.method] key=value).
 # Type-level keys drive emit policy; method keys tweak wire (see Meta.overrides).
 
+# Phase C: GIR class/iface struct → Vala virtual/abstract slots (ABI vs headers).
+Namespace emit_class_slots=1
+Namespace emit_iface_slots=1
+
 # GIR union → GObject class + instance methods (Vala null, Meta key handlers).
 Event emit=union-as-class
 Event wire_as=gobject

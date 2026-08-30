@@ -179,9 +179,19 @@ namespace $(ns)
 	public class $(class_name) : $(parent)
 	{
 ");
+			var vfunc_names = new Gee.HashSet<string>();
 			var methods = 0;
+			if (this.type_policy("Namespace", "emit_class_slots") == "1") {
+				methods += this.emit_object_class_slots(
+					stream, ns, oi, vfunc_names);
+			}
 			for (var m = 0; m < oi.get_n_methods(); m++) {
-				methods += this.emit_callable(stream, ns, class_name, oi.get_method(m), "class");
+				var fi = oi.get_method(m);
+				if (vfunc_names.contains(fi.get_name())) {
+					continue;
+				}
+				methods += this.emit_callable(
+					stream, ns, class_name, fi, "class", false);
 			}
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
@@ -556,12 +566,266 @@ namespace $(ns)
 	public interface $(iface_name) : GLib.Object
 	{
 ");
+			var vfunc_names = new Gee.HashSet<string>();
 			var methods = 0;
+			if (this.type_policy("Namespace", "emit_iface_slots") == "1") {
+				methods += this.emit_iface_struct_slots(
+					stream, ns, ii, vfunc_names);
+			}
 			for (var m = 0; m < ii.get_n_methods(); m++) {
-				methods += this.emit_callable(stream, ns, iface_name, ii.get_method(m), "iface");
+				var fi = ii.get_method(m);
+				if (vfunc_names.contains(fi.get_name())) {
+					continue;
+				}
+				methods += this.emit_callable(
+					stream, ns, iface_name, fi, "iface", false);
 			}
 			stream.puts("	}\n");
 			return 1 + methods;
+		}
+
+		/**
+		 * Emit class vfuncs in GIR {@code class_struct} order so Vala class
+		 * layout matches generated C headers / stock offsets.
+		 */
+		private int emit_object_class_slots(
+			GLib.FileStream stream,
+			string ns,
+			GI.ObjectInfo oi,
+			Gee.HashSet<string> vfunc_names
+		) {
+			var cs = oi.get_class_struct();
+			if (cs == null) {
+				return 0;
+			}
+			var class_name = oi.get_name();
+			var emitted = 0;
+			for (var f = 0; f < cs.get_n_fields(); f++) {
+				var field = cs.get_field(f);
+				var fname = field.get_name();
+				var ti = field.get_type();
+				if (fname == "parent_class" || fname.has_prefix("parent")) {
+					continue;
+				}
+				if (ti.get_tag() == GI.TypeTag.GTYPE) {
+					/*
+					 * Pointer-sized pad so class_size matches headers that end
+					 * with a GType field ({@code layout_manager_type}).
+					 */
+					stream.puts(@"
+		public virtual void _gsr_$(fname)_pad() {
+		}
+");
+					emitted++;
+					continue;
+				}
+				if (ti.get_tag() != GI.TypeTag.INTERFACE) {
+					continue;
+				}
+				var iface = ti.get_interface();
+				if (iface == null || iface.get_type() != GI.InfoType.CALLBACK) {
+					continue;
+				}
+				vfunc_names.add(fname);
+				var cb = (GI.CallbackInfo) iface;
+				var denied = fname in this.deny
+					|| (class_name + "." + fname) in this.deny;
+				var fi = oi.find_method(fname);
+				if (fi != null && !denied) {
+					emitted += this.emit_callable(
+						stream, ns, class_name, fi, "class", true);
+				} else {
+					emitted += this.emit_virtual_from_callback(
+						stream, ns, class_name, fname, cb, denied);
+				}
+			}
+			return emitted;
+		}
+
+		/**
+		 * Emit iface vfuncs in GIR {@code iface_struct} field order.
+		 */
+		private int emit_iface_struct_slots(
+			GLib.FileStream stream,
+			string ns,
+			GI.InterfaceInfo ii,
+			Gee.HashSet<string> vfunc_names
+		) {
+			var istruct = ii.get_iface_struct();
+			if (istruct == null) {
+				return 0;
+			}
+			var iface_name = ii.get_name();
+			var emitted = 0;
+			for (var f = 0; f < istruct.get_n_fields(); f++) {
+				var field = istruct.get_field(f);
+				var fname = field.get_name();
+				if (fname == "g_iface" || fname == "parent_iface"
+					|| fname.has_prefix("parent")) {
+					continue;
+				}
+				var ti = field.get_type();
+				if (ti.get_tag() != GI.TypeTag.INTERFACE) {
+					continue;
+				}
+				var iface = ti.get_interface();
+				if (iface == null || iface.get_type() != GI.InfoType.CALLBACK) {
+					continue;
+				}
+				vfunc_names.add(fname);
+				var cb = (GI.CallbackInfo) iface;
+				var fi = ii.find_method(fname);
+				if (fi != null) {
+					emitted += this.emit_callable(
+						stream, ns, iface_name, fi, "iface", false);
+				} else {
+					emitted += this.emit_abstract_from_callback(
+						stream, ns, fname, cb);
+				}
+			}
+			return emitted;
+		}
+
+		/**
+		 * Class slot from a GIR callback. When {@code denied}, Vala name is
+		 * {@code name_vfunc} with {@code cname = name} so override signals can
+		 * keep the stock signal name.
+		 */
+		private int emit_virtual_from_callback(
+			GLib.FileStream stream,
+			string ns,
+			string class_name,
+			string fname,
+			GI.CallbackInfo cb,
+			bool denied
+		) {
+			string ret;
+			string[] args;
+			if (!this.callback_vala_sig(ns, cb, true, out ret, out args)) {
+				this.gaps.add(new Gap() {
+					symbol = @"$(class_name).$(fname)",
+					reason = "unhandled_vfunc",
+					detail = "callback sig",
+				});
+				return 0;
+			}
+			var vala_name = this.vala_ident(fname);
+			if (denied) {
+				stream.puts(@"
+		[CCode (cname = \"$(fname)\")]
+		public virtual $(ret) $(vala_name)_vfunc($(string.joinv(", ", args))) {
+");
+			} else {
+				stream.puts(@"
+		public virtual $(ret) $(vala_name)($(string.joinv(", ", args))) {
+");
+			}
+			stream.puts(this.default_return_body(ret, "\t\t\t"));
+			stream.puts("		}\n");
+			return 1;
+		}
+
+		private int emit_abstract_from_callback(
+			GLib.FileStream stream,
+			string ns,
+			string fname,
+			GI.CallbackInfo cb
+		) {
+			string ret;
+			string[] args;
+			if (!this.callback_vala_sig(ns, cb, true, out ret, out args)) {
+				this.gaps.add(new Gap() {
+					symbol = fname,
+					reason = "unhandled_iface_vfunc",
+					detail = "callback sig",
+				});
+				return 0;
+			}
+			var vala_name = this.vala_ident(fname);
+			if (ret == "void") {
+				stream.puts(@"
+		public abstract void $(vala_name)($(string.joinv(", ", args)));
+");
+			} else {
+				stream.puts(@"
+		public abstract $(ret) $(vala_name)($(string.joinv(", ", args)));
+");
+			}
+			return 1;
+		}
+
+		/**
+		 * Build Vala return + args from a callback; optionally skip {@code self}.
+		 */
+		private bool callback_vala_sig(
+			string ns,
+			GI.CallbackInfo cb,
+			bool skip_self,
+			out string ret,
+			out string[] args
+		) {
+			ret = this.type_vala(ns, cb.get_return_type());
+			args = new string[0];
+			if (ret == "") {
+				return false;
+			}
+			var arg_list = new Gee.ArrayList<string>();
+			for (var a = 0; a < cb.get_n_args(); a++) {
+				var arg = cb.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
+				if (skip_self && a == 0
+					&& arg.get_type().get_tag() == GI.TypeTag.INTERFACE
+					&& arg.get_type().is_pointer()) {
+					continue;
+				}
+				if (arg.get_name() == "user_data"
+					&& arg.get_type().get_tag() == GI.TypeTag.VOID
+					&& arg.get_type().is_pointer()) {
+					continue;
+				}
+				var at = this.type_vala(ns, arg.get_type());
+				if (at == "") {
+					return false;
+				}
+				arg_list.add(this.arg_decl(arg, at));
+			}
+			args = arg_list.to_array();
+			return true;
+		}
+
+		private string default_return_body(string ret, string indent)
+		{
+			if (ret == "void") {
+				return "";
+			}
+			switch (ret) {
+			case "bool":
+				return @"$(indent)return false;\n";
+			case "float":
+				return @"$(indent)return 0.0f;\n";
+			case "double":
+				return @"$(indent)return 0.0;\n";
+			case "GLib.Type":
+				return @"$(indent)return 0;\n";
+			case "int":
+			case "int8":
+			case "int16":
+			case "int32":
+			case "int64":
+			case "uint":
+			case "uint8":
+			case "uint16":
+			case "uint32":
+			case "uint64":
+				return @"$(indent)return 0;\n";
+			case "string":
+				return @"$(indent)return null;\n";
+			default:
+				/* Enums / structs / objects — avoid invalid {@code null} casts. */
+				return @"$(indent)GLib.error(\"gi-stub: vfunc $(ret) unset\");\n";
+			}
 		}
 
 		/**
@@ -627,6 +891,7 @@ namespace $(ns)
 		 * @param type_name owning type name, or empty for namespace functions
 		 * @param fi function info
 		 * @param kind {@code ns}, {@code class}, or {@code iface}
+		 * @param as_virtual emit {@code public virtual} (class vfunc slot)
 		 * @return 1 if written
 		 */
 		private int emit_callable(
@@ -634,7 +899,8 @@ namespace $(ns)
 			string ns,
 			string type_name,
 			GI.FunctionInfo fi,
-			string kind
+			string kind,
+			bool as_virtual = false
 		) {
 			var name = fi.get_name();
 			var symbol = this.wire_symbol(ns, type_name, name);
@@ -671,6 +937,11 @@ namespace $(ns)
 				});
 				return 0;
 			}
+			if (as_virtual && is_constructor) {
+				return 0;
+			}
+
+			var vis = as_virtual ? "public virtual" : "public";
 
 			this.emit_symbol = "";
 			if (type_name != "") {
@@ -732,7 +1003,7 @@ $(tab){
 "
 					);
 				} else {
-					stream.puts(tab + @"public $(ret) $(vala_name)($(arglist))$(throws_clause)
+					stream.puts(tab + @"$(vis) $(ret) $(vala_name)($(arglist))$(throws_clause)
 $(tab){
 ");
 				}
@@ -787,7 +1058,7 @@ $(tab){
 "
 					);
 				} else {
-					stream.puts(tab + @"public $(ret) $(vala_name)($(arglist))$(throws_clause)
+					stream.puts(tab + @"$(vis) $(ret) $(vala_name)($(arglist))$(throws_clause)
 $(tab){
 ");
 				}
@@ -814,13 +1085,13 @@ $(tab)}
 "
 				);
 			} else if (ret == "void") {
-				stream.puts(tab + @"public void $(vala_name)($(arglist))$(throws_clause)
+				stream.puts(tab + @"$(vis) void $(vala_name)($(arglist))$(throws_clause)
 $(tab){
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}
 ");
 			} else {
-				stream.puts(tab + @"public $(ret) $(vala_name)($(arglist))$(throws_clause)
+				stream.puts(tab + @"$(vis) $(ret) $(vala_name)($(arglist))$(throws_clause)
 $(tab){
 $(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
 $(tab)}

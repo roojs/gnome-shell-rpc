@@ -48,5 +48,13 @@ namespace GnomeShellRpc.GiStub
 			Clutter.PaintContext paint_context
 		) {
 		}
+
+		public void attached(Clutter.Actor actor)
+		{
+		}
+
+		public void detached(Clutter.Actor actor)
+		{
+		}
 	}
 }

@@ -1,6 +1,7 @@
 /*
  * Instance/class layouts matching stock G_DECLARE_DERIVABLE sizes.
  * Do not include clutter.h (enum clashes with Vala mutter-rpc-16.h).
+ * Class fields mirror Clutter-16 GIR class_struct (same count/order as pads).
  */
 #pragma once
 
@@ -28,7 +29,8 @@ struct _ClutterActorMeta {
 /* Stock class sizes: ActorMeta=152 Effect=200 OffscreenEffect=224. */
 struct _ClutterActorMetaClass {
 	GInitiallyUnownedClass parent_class;
-	void (*_gsr_pad[2]) (void);
+	void (*set_actor) (void);
+	void (*set_enabled) (void);
 };
 
 struct _ClutterEffect {
@@ -37,7 +39,12 @@ struct _ClutterEffect {
 
 struct _ClutterEffectClass {
 	ClutterActorMetaClass parent_class;
-	void (*_gsr_pad[6]) (void);
+	void (*pre_paint) (void);
+	void (*post_paint) (void);
+	void (*modify_paint_volume) (void);
+	void (*paint) (void);
+	void (*paint_node) (void);
+	void (*pick) (void);
 };
 
 struct _ClutterOffscreenEffect {
@@ -46,5 +53,7 @@ struct _ClutterOffscreenEffect {
 
 struct _ClutterOffscreenEffectClass {
 	ClutterEffectClass parent_class;
-	void (*_gsr_pad[3]) (void);
+	void (*create_texture) (void);
+	void (*create_pipeline) (void);
+	void (*paint_target) (void);
 };

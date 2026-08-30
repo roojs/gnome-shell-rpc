@@ -9,7 +9,7 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class IdleMonitor : GLib.Object
 	{
-		public static void register()
+		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-IdleMonitor", typeof(IdleMonitor),

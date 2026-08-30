@@ -26,6 +26,7 @@ namespace GnomeShellRpc.GiStubGen
 			var objects = new Gee.ArrayList<GI.ObjectInfo>();
 			var interfaces = new Gee.ArrayList<GI.InterfaceInfo>();
 			var records = new Gee.ArrayList<GI.StructInfo>();
+			var unions = new Gee.ArrayList<GI.UnionInfo>();
 			var enums = new Gee.ArrayList<GI.EnumInfo>();
 			var flags = new Gee.ArrayList<GI.EnumInfo>();
 
@@ -52,6 +53,9 @@ namespace GnomeShellRpc.GiStubGen
 					}
 					records.add(si);
 					break;
+				case GI.InfoType.UNION:
+					unions.add((GI.UnionInfo) info);
+					break;
 				case GI.InfoType.ENUM:
 					enums.add((GI.EnumInfo) info);
 					break;
@@ -67,7 +71,7 @@ namespace GnomeShellRpc.GiStubGen
 				switch (suffix) {
 				case "types":
 					this.write_types_header(
-						ns_dir, cfg, objects, interfaces, records);
+						ns_dir, cfg, objects, interfaces, records, unions);
 					break;
 				case "enums":
 					this.write_enums_header(ns_dir, cfg, enums, flags);
@@ -94,8 +98,12 @@ namespace GnomeShellRpc.GiStubGen
 			foreach (var si in records) {
 				this.write_struct_header(ns_dir, cfg, si);
 			}
+			foreach (var ui in unions) {
+				this.write_union_header(ns_dir, cfg, ui);
+			}
 
-			var ordered = this.order_per_type_stems(cfg, objects, interfaces, records);
+			var ordered = this.order_per_type_stems(
+				cfg, objects, interfaces, records, unions);
 			this.write_umbrella(ns_dir, ordered, cfg);
 		}
 
@@ -106,7 +114,8 @@ namespace GnomeShellRpc.GiStubGen
 			HeaderConfig cfg,
 			Gee.ArrayList<GI.ObjectInfo> objects,
 			Gee.ArrayList<GI.InterfaceInfo> interfaces,
-			Gee.ArrayList<GI.StructInfo> records
+			Gee.ArrayList<GI.StructInfo> records,
+			Gee.ArrayList<GI.UnionInfo> unions
 		) {
 			var ordered = new Gee.ArrayList<string>();
 			var seen = new Gee.HashSet<string>();
@@ -122,6 +131,13 @@ namespace GnomeShellRpc.GiStubGen
 			}
 			foreach (var si in records) {
 				var stem = cfg.stem(TypelibWalk.to_kebab(si.get_name()));
+				if (!seen.contains(stem)) {
+					seen.add(stem);
+					ordered.add(stem);
+				}
+			}
+			foreach (var ui in unions) {
+				var stem = cfg.stem(TypelibWalk.to_kebab(ui.get_name()));
 				if (!seen.contains(stem)) {
 					seen.add(stem);
 					ordered.add(stem);
@@ -215,6 +231,19 @@ namespace GnomeShellRpc.GiStubGen
 			return stem.up();
 		}
 
+		/**
+		 * {@code clutter_actor_get_type} → {@code CLUTTER_IS_ACTOR} (stock shape).
+		 */
+		private string is_macro_from_func(string type_init)
+		{
+			var cast = this.cast_macro_from_func(type_init);
+			var i = cast.index_of("_");
+			if (i < 0) {
+				return cast + "_IS";
+			}
+			return cast.substring(0, i) + "_IS" + cast.substring(i);
+		}
+
 		private void write_minimal_fixed(
 			string ns_dir,
 			HeaderConfig cfg,
@@ -236,7 +265,8 @@ namespace GnomeShellRpc.GiStubGen
 			HeaderConfig cfg,
 			Gee.ArrayList<GI.ObjectInfo> objects,
 			Gee.ArrayList<GI.InterfaceInfo> interfaces,
-			Gee.ArrayList<GI.StructInfo> records
+			Gee.ArrayList<GI.StructInfo> records,
+			Gee.ArrayList<GI.UnionInfo> unions
 		) throws GLib.Error {
 			var stream = this.open_h(ns_dir, cfg.stem("types") + ".h");
 			this.write_banner(stream, cfg);
@@ -261,6 +291,11 @@ namespace GnomeShellRpc.GiStubGen
 			foreach (var si in records) {
 				var tn = this.c_prefix(cfg) + si.get_name();
 				stream.printf("typedef struct _%s %s;\n", tn, tn);
+			}
+			stream.puts("\n");
+			foreach (var ui in unions) {
+				var tn = this.c_prefix(cfg) + ui.get_name();
+				stream.printf("typedef union _%s %s;\n", tn, tn);
 			}
 			stream.puts("\nG_END_DECLS\n");
 		}
@@ -370,6 +405,9 @@ namespace GnomeShellRpc.GiStubGen
 			if (cs != null) {
 				this.collect_struct_foreign(cfg, foreign, cs);
 			}
+			for (var m = 0; m < oi.get_n_methods(); m++) {
+				this.collect_callable_foreign(cfg, foreign, oi.get_method(m));
+			}
 			foreach (var inc in foreign) {
 				stream.puts(inc);
 			}
@@ -379,43 +417,42 @@ namespace GnomeShellRpc.GiStubGen
 			var type_init = oi.get_type_init();
 			var cast_macro = this.cast_macro_from_func(type_init);
 			var type_macro = this.type_macro_from_func(type_init);
+			var is_macro = this.is_macro_from_func(type_init);
 
-			stream.printf("#define %s (%s ())\n", type_macro, type_init);
-			stream.printf(
-				"#define %s(obj) \\\n"
-				+ "  (G_TYPE_CHECK_INSTANCE_CAST ((obj), %s, %s))\n",
-				cast_macro, type_macro, tn);
-			stream.printf(
-				"#define %s_CLASS(klass) \\\n"
-				+ "  (G_TYPE_CHECK_CLASS_CAST ((klass), %s, %sClass))\n",
-				cast_macro, type_macro, tn);
-			stream.printf(
-				"#define %s_IS_INSTANCE(obj) \\\n"
-				+ "  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), %s))\n",
-				cast_macro, type_macro);
-			stream.printf(
-				"#define %s_IS_CLASS(klass) \\\n"
-				+ "  (G_TYPE_CHECK_CLASS_TYPE ((klass), %s))\n",
-				cast_macro, type_macro);
-			stream.printf(
-				"#define %s_GET_CLASS(obj) \\\n"
-				+ "  (G_TYPE_INSTANCE_GET_CLASS ((obj), %s, %sClass))\n\n",
-				cast_macro, type_macro, tn);
+			stream.puts(@"#define $(type_macro) ($(type_init) ())
+#define $(cast_macro)(obj) \\
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), $(type_macro), $(tn)))
+#define $(cast_macro)_CLASS(klass) \\
+  (G_TYPE_CHECK_CLASS_CAST ((klass), $(type_macro), $(tn)Class))
+#define $(is_macro)(obj) \\
+  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), $(type_macro)))
+#define $(is_macro)_CLASS(klass) \\
+  (G_TYPE_CHECK_CLASS_TYPE ((klass), $(type_macro)))
+#define $(cast_macro)_GET_CLASS(obj) \\
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), $(type_macro), $(tn)Class))
+
+");
 
 			/* Opaque instance (parent + priv only) — no invented fields. */
-			stream.printf("struct _%s\n{\n", tn);
-			stream.printf("  %s parent_instance;\n", parent_tn);
-			stream.printf("  %sPrivate *priv;\n", tn);
-			stream.puts("};\n\n");
+			stream.puts(@"struct _$(tn)
+{
+  $(parent_tn) parent_instance;
+  $(tn)Private *priv;
+};
+
+");
 
 			/*
 			 * Class vfuncs / fields in GIR class_struct order (stock-shaped ABI).
 			 */
-			stream.printf("struct _%sClass\n{\n", tn);
+			stream.puts(@"struct _$(tn)Class
+{
+");
 			if (cs != null && cs.get_n_fields() > 0) {
 				this.emit_gtype_struct_fields(stream, cfg, cs);
 			} else {
-				stream.printf("  %s parent_class;\n", parent_class_tn);
+				stream.puts(@"  $(parent_class_tn) parent_class;
+");
 			}
 			stream.puts("};\n\n");
 
@@ -453,18 +490,21 @@ namespace GnomeShellRpc.GiStubGen
 			var type_init = ri.get_type_init();
 			var cast_macro = this.cast_macro_from_func(type_init);
 			var type_macro = this.type_macro_from_func(type_init);
+			var is_macro = this.is_macro_from_func(type_init);
 
-			stream.printf("#define %s (%s ())\n", type_macro, type_init);
-			stream.printf(
-				"#define %s(obj) \\\n"
-				+ "  (G_TYPE_CHECK_INSTANCE_CAST ((obj), %s, %s))\n",
-				cast_macro, type_macro, tn);
-			stream.printf(
-				"#define %s_GET_IFACE(obj) \\\n"
-				+ "  (G_TYPE_INSTANCE_GET_INTERFACE ((obj), %s, %sInterface))\n\n",
-				cast_macro, type_macro, tn);
+			stream.puts(@"#define $(type_macro) ($(type_init) ())
+#define $(cast_macro)(obj) \\
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), $(type_macro), $(tn)))
+#define $(is_macro)(obj) \\
+  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), $(type_macro)))
+#define $(cast_macro)_GET_IFACE(obj) \\
+  (G_TYPE_INSTANCE_GET_INTERFACE ((obj), $(type_macro), $(tn)Interface))
 
-			stream.printf("struct _%sInterface\n{\n", tn);
+");
+
+			stream.puts(@"struct _$(tn)Interface
+{
+");
 			if (istruct != null && istruct.get_n_fields() > 0) {
 				this.emit_gtype_struct_fields(stream, cfg, istruct);
 			} else {
@@ -501,24 +541,82 @@ namespace GnomeShellRpc.GiStubGen
 			var tn = this.c_prefix(cfg) + name;
 			var n_fields = si.get_n_fields();
 			if (n_fields > 0 && si.get_size() > 0) {
-				stream.printf("struct _%s\n{\n", tn);
+				stream.puts(@"struct _$(tn)
+{
+");
 				for (var f = 0; f < n_fields; f++) {
 					var field = si.get_field(f);
 					var ctype = this.field_c_type(cfg, field.get_type());
-					stream.printf("  %s %s;\n", ctype, field.get_name());
+					stream.puts(@"  $(ctype) $(field.get_name());
+");
 				}
 				stream.puts("};\n\n");
 			} else {
-				stream.printf(
-					"/* Opaque record %s */\n"
-					+ "struct _%s { guint8 _gsr_opaque; };\n\n",
-					tn, tn);
+				stream.puts(@"/* Opaque record $(tn) */
+struct _$(tn) { guint8 _gsr_opaque; };
+
+");
 			}
 
 			var kebab = TypelibWalk.to_kebab(name).replace("-", "_");
 			var func = @"$(cfg.file_prefix)_$(kebab)_get_type";
 			stream.printf("GType %s (void);\n\n", func);
 			stream.puts("G_END_DECLS\n");
+		}
+
+		/**
+		 * Opaque union shell (e.g. {@code ClutterEvent}) — enough for pointers.
+		 */
+		private void write_union_header(
+			string ns_dir,
+			HeaderConfig cfg,
+			GI.UnionInfo ui
+		) throws GLib.Error {
+			var name = ui.get_name();
+			var filename = cfg.stem(TypelibWalk.to_kebab(name)) + ".h";
+			var stream = this.open_h(ns_dir, filename);
+			this.write_banner(stream, cfg);
+			stream.puts("#include <glib-object.h>\n");
+			stream.printf(
+				"#include \"%s\"\n\n",
+				cfg.include_path(cfg.stem("types") + ".h"));
+			stream.puts("G_BEGIN_DECLS\n\n");
+			var tn = this.c_prefix(cfg) + name;
+			var size = ui.get_size();
+			if (size > 0) {
+				stream.puts(@"union _$(tn)
+{
+  guint8 _gsr_opaque[$(size)];
+};
+
+");
+			} else {
+				stream.puts(@"union _$(tn)
+{
+  guint8 _gsr_opaque;
+};
+
+");
+			}
+			var kebab = TypelibWalk.to_kebab(name).replace("-", "_");
+			var func = @"$(cfg.file_prefix)_$(kebab)_get_type";
+			stream.printf("GType %s (void);\n\n", func);
+			for (var m = 0; m < ui.get_n_methods(); m++) {
+				this.emit_function_proto(stream, cfg, ui.get_method(m));
+			}
+			stream.puts("G_END_DECLS\n");
+		}
+
+		private void collect_callable_foreign(
+			HeaderConfig cfg,
+			Gee.HashSet<string> dest,
+			GI.CallableInfo ci
+		) {
+			this.collect_type_foreign(cfg, dest, ci.get_return_type());
+			for (var a = 0; a < ci.get_n_args(); a++) {
+				this.collect_type_foreign(
+					cfg, dest, ci.get_arg(a).get_type());
+			}
 		}
 
 		private void add_foreign_ns(
