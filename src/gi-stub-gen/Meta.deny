@@ -62,6 +62,10 @@ ShapedTexture.get_image
 WindowActor.get_image
 WaylandCompositor.get_wayland_display
 
+# C ABI for libshell: src/gi-stub/MetaSettingsAbi.vala (Helper RPC). Deny the
+# generated method so Vala does not also emit meta_settings_get_ui_scaling_factor.
+Settings.get_ui_scaling_factor
+
 # ---------------------------------------------------------------------------
 # Priority E (0.5.5) — CHEATING: noop / omit because gnome-shell does not
 # call these (no hits in sibling js/ or src/). Not real RPC. Revisit if an
