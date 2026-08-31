@@ -493,13 +493,25 @@ namespace $(ns)
 			if (n_written == 0) {
 				stream.puts("		public uint8 _unused;\n");
 			}
+			/*
+			 * Sized records: emit GIR methods + constructors when present.
+			 * Stock Clutter typelib expects symbols like {@code clutter_margin_new};
+			 * whitelist no longer required (unused stubs are fine).
+			 */
 			var methods = 0;
-			if (this.type_policy(si.get_name(), "emit") == "struct-methods") {
+			if (si.get_n_methods() > 0) {
 				for (var m = 0; m < si.get_n_methods(); m++) {
 					var fi = si.get_method(m);
 					var flags = fi.get_flags();
 					if ((flags & GI.FunctionInfoFlags.IS_METHOD) == 0
 						&& (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) == 0) {
+						continue;
+					}
+					var mname = fi.get_name();
+					/* Vala emits free/dup for structs with methods — skip GIR copies. */
+					if (mname == "free" || mname == "copy"
+						|| mname == "ref" || mname == "unref"
+						|| mname == "dup") {
 						continue;
 					}
 					methods += this.emit_callable(
@@ -604,7 +616,8 @@ namespace $(ns)
 				var field = cs.get_field(f);
 				var fname = field.get_name();
 				var ti = field.get_type();
-				if (fname == "parent_class" || fname.has_prefix("parent")) {
+				/* Only the embedded parent class struct — not parent_set etc. */
+				if (fname == "parent_class" || fname == "parent") {
 					continue;
 				}
 				if (ti.get_tag() == GI.TypeTag.GTYPE) {
@@ -661,7 +674,7 @@ namespace $(ns)
 				var field = istruct.get_field(f);
 				var fname = field.get_name();
 				if (fname == "g_iface" || fname == "parent_iface"
-					|| fname.has_prefix("parent")) {
+					|| fname == "parent") {
 					continue;
 				}
 				var ti = field.get_type();
@@ -929,6 +942,16 @@ namespace $(ns)
 			if ((flags & GI.FunctionInfoFlags.THROWS) != 0) {
 				throws_clause = " throws GLib.Error";
 			}
+			/*
+			 * Stock typelibs call clutter_*_new (pointer). Vala struct
+			 * constructors do not export that ABI — emit a malloc0 stub with
+			 * the GIR C symbol.
+			 */
+			if (is_constructor && kind == "struct") {
+				return this.emit_struct_constructor_stub(
+					stream, ns, type_name, fi
+				);
+			}
 			if (is_constructor && kind != "class") {
 				this.gaps.add(new Gap() {
 					symbol = symbol,
@@ -1142,6 +1165,64 @@ $(tab)}
 				return @"$(type_name).$(gir_name.substring(4))";
 			}
 			return @"$(type_name).$(gir_name)";
+		}
+
+		/**
+		 * Heap stub for GIR record constructors ({@code clutter_margin_new}, …).
+		 *
+		 * Body is {@code malloc0(sizeof(T))} only — enough when stock just
+		 * allocates. If mutter's ctor initializes fields / registers GTypes /
+		 * does real work, replace the stub (override or smarter emit) and
+		 * clear the {@code struct_ctor_alloc_stub} gap flag for that symbol.
+		 *
+		 * Args match the C ABI so callers do not smash; values are ignored.
+		 */
+		private int emit_struct_constructor_stub(
+			GLib.FileStream stream,
+			string ns,
+			string type_name,
+			GI.FunctionInfo fi
+		) {
+			var symbol = fi.get_symbol();
+			if (symbol == null || symbol == "") {
+				this.gaps.add(new Gap() {
+					symbol = @"$(type_name).$(fi.get_name())",
+					reason = "constructor",
+					detail = "no C symbol",
+				});
+				return 0;
+			}
+			string[] args = {};
+			for (var a = 0; a < fi.get_n_args(); a++) {
+				var arg = fi.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
+				var at = this.type_vala(ns, arg.get_type());
+				if (at == "") {
+					this.gaps.add(new Gap() {
+						symbol = @"$(type_name).$(fi.get_name())",
+						reason = "constructor",
+						detail = @"unmapped arg $(arg.get_name())",
+					});
+					return 0;
+				}
+				args += this.arg_decl(arg, at);
+			}
+			var arglist = string.joinv(", ", args);
+			var stub_name = @"_gsr_$(fi.get_name())";
+			this.gaps.add(new Gap() {
+				symbol = @"$(type_name).$(fi.get_name())",
+				reason = "struct_ctor_alloc_stub",
+				detail = @"$(symbol) — malloc0 only; audit if stock ctor does more",
+			});
+			stream.puts(@"
+		[CCode (cname = \"$(symbol)\")]
+		public static void* $(stub_name)($(arglist)) {
+			return GLib.malloc0(sizeof($(type_name)));
+		}
+");
+			return 1;
 		}
 
 		private void emit_call_values_body(
@@ -1907,6 +1988,7 @@ $(tab)}
 
 			var denied = 0;
 			var nooped = 0;
+			var alloc_ctors = 0;
 			var not_wired = 0;
 			var skipped = 0;
 			var reason_counts = new Gee.HashMap<string, int>();
@@ -1917,6 +1999,10 @@ $(tab)}
 				}
 				if (entry.reason == "noop") {
 					nooped++;
+					continue;
+				}
+				if (entry.reason == "struct_ctor_alloc_stub") {
+					alloc_ctors++;
 					continue;
 				}
 				if (entry.reason == "not_wired") {
@@ -1936,6 +2022,11 @@ $(tab)}
 Auto-generated. **Goal: zero gaps** (every callable either wires
 `call_values`, is a deny-file no-op, or is intentionally omitted).
 
+Struct record constructors emitted as {@code malloc0} only are listed under
+**Struct ctor alloc stubs** — not counted as gaps. Audit those against stock:
+if the real ctor does more than allocate, implement it and stop emitting the
+alloc stub for that symbol.
+
 ");
 			stream.puts("| | Count |\n");
 			stream.puts("|---|---:|\n");
@@ -1946,6 +2037,8 @@ Auto-generated. **Goal: zero gaps** (every callable either wires
 			stream.puts(@"| Skipped (no stub) | $(skipped) |
 ");
 			stream.puts(@"| No-op | $(nooped) |
+");
+			stream.puts(@"| Struct ctor alloc stubs (audit) | $(alloc_ctors) |
 ");
 			stream.puts(@"| Denied | $(denied) |
 ");
@@ -2034,6 +2127,31 @@ Auto-generated. **Goal: zero gaps** (every callable either wires
 					}
 					stream.puts(@"- `$(entry.symbol)`
 ");
+				}
+				stream.puts("\n");
+			}
+
+			if (alloc_ctors > 0) {
+				stream.puts(@"## Struct ctor alloc stubs (audit)
+
+Emitted as {@code malloc0(sizeof(T))} with the stock C symbol. **Fine** when
+mutter only allocates. **Needs work** if stock initializes state — fix that
+symbol (override / real body) when boot or tests hit wrong behaviour.
+
+");
+				foreach (var entry in this.gaps) {
+					if (entry.reason != "struct_ctor_alloc_stub") {
+						continue;
+					}
+					if (entry.detail != "") {
+						stream.puts(
+							@"- `$(entry.symbol)` — $(entry.detail)
+"
+						);
+					} else {
+						stream.puts(@"- `$(entry.symbol)`
+");
+					}
 				}
 			}
 

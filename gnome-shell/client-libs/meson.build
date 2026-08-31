@@ -72,7 +72,7 @@ config_h = configure_file(
 )
 
 # Link Meta (libmutter-rpc-16) + Clutter (libmutter-clutter-rpc-16).
-# Clutter headers: Vala-generated clutter/clutter.h via mutter_clutter_rpc_client_dep.
+# Clutter C headers: generated clutter-include via mutter_clutter_rpc_client_dep.
 mutter_rpc_client_dep = declare_dependency(
   link_with: mutter_rpc_lib,
   dependencies: [mutter_clutter_rpc_client_dep, mtk_dep, cogl_dep, atk_dep, pango_dep],

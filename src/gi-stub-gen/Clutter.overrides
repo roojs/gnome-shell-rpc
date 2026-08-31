@@ -14,6 +14,7 @@ PaintContext emit=opaque-as-class
 PaintVolume emit=opaque-as-class
 PickContext emit=opaque-as-class
 
-# Sized records: emit fields + GIR methods (C ABI stubs, no lease wire).
+# Sized records: fields + GIR methods/ctors when present (Generator).
+# Ctors are malloc0-only stubs — see missing.md "Struct ctor alloc stubs (audit)".
 ActorBox emit=struct-methods
 ActorIter emit=struct-methods

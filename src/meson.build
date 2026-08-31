@@ -448,11 +448,33 @@ mutter_clutter_rpc_lib = shared_library(
   install: true,
 )
 
-# Generator-owned stock-shaped clutter/ tree (0.7.4 Phase A — empty shells).
+# Generator-owned stock-shaped clutter/ tree (0.7.4).
 clutter_headers_config = files('gi-stub-gen/Clutter.headers')
+clutter_header_override_files = files(
+  'gi-stub-gen/header-overrides/Event.h',
+  'gi-stub-gen/header-overrides/ActorBox.h',
+  'gi-stub-gen/header-overrides/ActorIter.h',
+  'gi-stub-gen/header-overrides/Actor.methods.h',
+  'gi-stub-gen/header-overrides/Interval.methods.h',
+  'gi-stub-gen/header-overrides/PaintContext.methods.h',
+  'gi-stub-gen/header-overrides/PaintNode.methods.h',
+  'gi-stub-gen/header-overrides/ShaderEffect.methods.h',
+  'gi-stub-gen/header-overrides/Stage.methods.h',
+  'gi-stub-gen/header-overrides/TextBuffer.h',
+  'gi-stub-gen/header-overrides/TextBuffer.methods.h',
+  'gi-stub-gen/header-overrides/clutter-keysyms.h',
+  'gi-stub-gen/header-overrides/clutter-macros.h',
+  'gi-stub-gen/header-overrides/clutter-main.h',
+  'gi-stub-gen/header-overrides/clutter-pango.h',
+  'gi-stub-gen/header-overrides/pango/clutter-actor-pango.h',
+  'gi-stub-gen/header-overrides/pango/clutter-text.h',
+  'gi-stub-gen/header-overrides/pango/clutter-text-buffer.h',
+  'gi-stub-gen/header-overrides/pango/clutter-text-node.h',
+)
 stage_clutter_headers = custom_target(
   'clutter-rpc-headers',
   output: 'clutter-headers.stamp',
+  input: [clutter_headers_config] + clutter_header_override_files,
   command: [
     'sh', '-c',
     'mkdir -p "$2" && "$1" --typelib-dir="$3" --outdir="$2" --headers-config="$4" emit-headers Clutter 16 && touch "$5"',
@@ -510,7 +532,9 @@ pkg.generate(
   ] + mutter_clutter_dep_cflags,
 )
 
-mutter_clutter_rpc_client_dep = declare_dependency(
+# Link-only: Meta Vala .c uses mutter-clutter-rpc-16.h (vala_header) for Clutter*.
+# Do not put clutter-include on that compile line — it fights the Vala blob.
+mutter_clutter_rpc_link_dep = declare_dependency(
   link_with: mutter_clutter_rpc_lib,
   dependencies: [
     ocrpc_dep,
@@ -520,6 +544,11 @@ mutter_clutter_rpc_client_dep = declare_dependency(
     dependency('atk'),
     dependency('pango'),
   ],
+)
+
+# St / Shell clients: generated clutter/ tree only (0.7.4).
+mutter_clutter_rpc_client_dep = declare_dependency(
+  dependencies: [mutter_clutter_rpc_link_dep],
   compile_args: [
     '-I' + mutter_clutter_rpc_incdir,
     '-I' + meson.current_source_dir() / 'gi-stub',
@@ -528,18 +557,31 @@ mutter_clutter_rpc_client_dep = declare_dependency(
 )
 
 # Client Meta stubs (RPC); Clutter + Runtime + Shared/Ui wire types are in clutter-rpc.
+# c-meta-shell-gaps includes stock meta/*.h → needs stock clutter/ on -I, and must
+# NOT see -include mutter-clutter-rpc-16.h (Vala) or generated clutter-include.
+gsr_meta_shell_gaps = static_library(
+  'gsr-meta-shell-gaps',
+  'gi-stub/c-meta-shell-gaps.c',
+  c_args: [
+    '-I' + mutter_includedir,
+  ] + mutter_clutter_stock_inc + mutter_clutter_dep_cflags,
+  dependencies: [
+    dependency('glib-2.0'),
+    dependency('x11'),
+  ],
+)
+
 mutter_rpc_lib = shared_library('mutter-rpc-16',
   meta_window_generated,
   files(
     'gi-stub/namespace.vala',
     'gi-stub/PaintedContent.vala',
     'gi-stub/MetaSettingsAbi.vala',
-    'gi-stub/c-meta-shell-gaps.c',
   ),
   mutter_vapi_stamp,
   dependencies: [
     ocrpc_dep,
-    mutter_clutter_rpc_client_dep,
+    mutter_clutter_rpc_link_dep,
     dependency('gio-2.0'),
     dependency('cairo'),
     dependency('atk'),
@@ -549,6 +591,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     dependency('mutter-mtk-16'),
     dependency('x11'),
   ],
+  link_whole: gsr_meta_shell_gaps,
   vala_args: ocrpc_vala_args + [
     '--pkg=posix',
     '--pkg=gdesktopenums-3.0',
@@ -566,7 +609,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
   c_args: [
     '-I' + mutter_includedir,
     '-I' + meson.current_source_dir() / 'gi-stub',
-    # Meta header uses Clutter* before its own #include of clutter-rpc.
+    # Vala Clutter types for Meta .c — not the generated clutter-include tree.
     '-include', 'mutter-clutter-rpc-16.h',
   ] + mutter_clutter_cflags,
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),

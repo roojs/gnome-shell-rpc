@@ -4,6 +4,14 @@ Written for **AI agents**. Human contributors may treat this as a helpful guide.
 
 Plan files live in **`docs/plans/`**. Completed work is archived under **`docs/plans/done/`**.
 
+## Agent rule: the only product goal is shell boot
+
+**🔷 CRITICAL.** The user cares about **one thing**: nested **gnome-shell boots** (`mutter-rpc` + `gnome-shell-rpc` through `init.js` / real shell chrome).
+
+- Treat every other metric (header %, stock parity, full Clutter API, perfect stubs) as **means** — only pursue them when they unblock boot.
+- Put this reminder at the **top of every plan** (after the title). Do not bury it.
+- Prefer fix-forward on the nested boot path over speculative completeness.
+
 ## Checklist
 
 - Concrete **Remove** / **Replace with** / **Add** fences live in the **same section** that discusses that work.

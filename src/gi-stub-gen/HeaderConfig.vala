@@ -54,6 +54,13 @@ namespace GnomeShellRpc.GiStubGen
 			new Gee.HashMap<string, string>();
 
 		/**
+		 * Absolute dir of {@code {Type}.h} body overrides (macros / opaque
+		 * unions GIR cannot express). Relative paths in {@code *.headers}
+		 * resolve against that file’s directory.
+		 */
+		public string header_override_dir = "";
+
+		/**
 		 * Defaults from GI namespace name only (no fixed/extra lists).
 		 */
 		public static HeaderConfig from_namespace(string ns)
@@ -127,6 +134,9 @@ namespace GnomeShellRpc.GiStubGen
 					/* c_type GObject.InitiallyUnownedClass GInitiallyUnownedClass */
 					HeaderConfig.parse_c_type(path, rest, cfg);
 					break;
+				case "header_override_dir":
+					cfg.header_override_dir = rest;
+					break;
 				default:
 					throw new GLib.IOError.FAILED(
 						@"$(path): unknown key $(key)");
@@ -138,6 +148,12 @@ namespace GnomeShellRpc.GiStubGen
 				|| cfg.inside_macro == "" || cfg.umbrella == "") {
 				throw new GLib.IOError.FAILED(
 					@"$(path): require subdir, file_prefix, inside_macro, umbrella");
+			}
+			if (cfg.header_override_dir != ""
+				&& !GLib.Path.is_absolute(cfg.header_override_dir)) {
+				cfg.header_override_dir = GLib.Path.build_filename(
+					GLib.Path.get_dirname(path),
+					cfg.header_override_dir);
 			}
 			return cfg;
 		}
