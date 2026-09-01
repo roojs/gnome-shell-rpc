@@ -19,7 +19,7 @@ namespace Meta
 				"Meta-Backend.get_core_idle_monitor", this);
 			var monitor = new IdleMonitor();
 			monitor.set_data_full(
-				"gsr-lease-id",
+				"rpc-lid",
 				(void*) response.args.get(0).get_uint64(),
 				null
 			);

@@ -25,7 +25,7 @@
 		{
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			var lease = (uint64) pad.get_data<void*>("rpc-lid");
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -42,7 +42,7 @@
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			var lease = (uint64) pad.get_data<void*>("rpc-lid");
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -62,7 +62,7 @@
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			var lease = (uint64) pad.get_data<void*>("rpc-lid");
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -75,48 +75,15 @@
 			return response.retval.get_string();
 		}
 
+		/**
+		 * Stock {@code meta_display_get_startup_notification} is
+		 * {@code introspectable="0"} — not in the typelib walk.
+		 */
 		public StartupNotification get_startup_notification()
 		{
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Display.get_startup_notification", this);
 			return (StartupNotification) response.retval.get_object();
-		}
-
-		/**
-		 * Lease handle in {@code args[0]} — Ui.Display packs uint64, not
-		 * {@code retval} (live GObject rows arrive with handle 0).
-		 */
-		public Context get_context()
-		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
-				"Meta-Display.get_context", this);
-			var ctx = new Context();
-			if (response.args.size > 0) {
-				ctx.set_data_full(
-					"gsr-lease-id",
-					(void*) response.args.get(0).get_uint64(),
-					null
-				);
-			}
-			return ctx;
-		}
-
-		/**
-		 * Lease handle in {@code args[0]} — same packing as {@link get_context}.
-		 */
-		public Compositor get_compositor()
-		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
-				"Meta-Display.get_compositor", this);
-			var compositor = new Compositor();
-			if (response.args.size > 0) {
-				compositor.set_data_full(
-					"gsr-lease-id",
-					(void*) response.args.get(0).get_uint64(),
-					null
-				);
-			}
-			return compositor;
 		}
 
 		/**

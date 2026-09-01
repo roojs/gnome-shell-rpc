@@ -16,7 +16,7 @@ namespace Meta
 				"Meta-Context.get_backend", this);
 			var backend = new Backend();
 			backend.set_data_full(
-				"gsr-lease-id",
+				"rpc-lid",
 				(void*) response.args.get(0).get_uint64(),
 				null
 			);

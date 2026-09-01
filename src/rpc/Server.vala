@@ -31,8 +31,6 @@ namespace GnomeShellRpc.Rpc
 			Ui.Workspace.rpc_register();
 			Ui.Display.rpc_register();
 			Ui.Compositor.rpc_register();
-			Ui.Backend.rpc_register();
-			Ui.Context.rpc_register();
 			Rpc.Daemon.rpc_register();
 			Rpc.Bootstrap.rpc_register();
 
@@ -45,23 +43,41 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Request.register_live("Meta-Display", this.ui_display);
 			OLLMrpc.Request.register_live("Meta-Compositor",
 				new Ui.Compositor(display.get_compositor()));
-			OLLMrpc.Request.register_live("Meta-Backend",
-				new Ui.Backend(display.get_context().get_backend()));
-			OLLMrpc.Request.register_live("Meta-Context",
-				new Ui.Context(display.get_context()));
 
-			try {
-				GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
-				OLLMrpc.Gi.register("Meta", "16");
-				OLLMrpc.Gi.register("Clutter", "16");
-				OLLMrpc.Bin.register_alias("Meta-Compositor",
-					display.get_compositor().get_type());
-				OLLMrpc.Bin.register_alias("Meta-Context",
-					display.get_context().get_type());
-				OLLMrpc.Bin.register_alias("Meta-Backend",
-					display.get_context().get_backend().get_type());
-			} catch (GLib.Error e) {
-				GLib.error("%s", e.message);
+			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
+			OLLMrpc.Gi.register("Meta", "16");
+			OLLMrpc.Gi.register("Clutter", "16");
+			OLLMrpc.Bin.register_alias("Meta-Compositor",
+				display.get_compositor().get_type());
+			OLLMrpc.Bin.register_alias("Meta-Context",
+				display.get_context().get_type());
+			OLLMrpc.Bin.register_alias("Meta-Backend",
+				display.get_context().get_backend().get_type());
+			var sn = display.get_startup_notification();
+			if (sn != null) {
+				this.alias_live("Meta-StartupNotification", sn.get_type());
+			}
+			var player = display.get_sound_player();
+			if (player != null) {
+				this.alias_live("Meta-SoundPlayer", player.get_type());
+			}
+			var idle = display.get_context().get_backend()
+				.get_core_idle_monitor();
+			if (idle != null) {
+				this.alias_live("Meta-IdleMonitor", idle.get_type());
+			}
+			var stage = display.get_context().get_backend().get_stage();
+			if (stage != null) {
+				this.alias_live("Clutter-Stage", stage.get_type());
+				var ctx = stage.get_context();
+				if (ctx != null) {
+					this.alias_live("Clutter-Context", ctx.get_type());
+					var clutter_backend = ctx.get_backend();
+					if (clutter_backend != null) {
+						this.alias_live(
+							"Clutter-Backend", clutter_backend.get_type());
+					}
+				}
 			}
 			GLib.debug("Gi.register Meta-16 ok (%u types)",
 				OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0);
@@ -229,6 +245,15 @@ namespace GnomeShellRpc.Rpc
 				this.rpc_socket_path,
 				wayland_display ?? "(unset)"
 			);
+		}
+
+		private void alias_live(string alias, GLib.Type gtype)
+		{
+			try {
+				OLLMrpc.Bin.register_alias(alias, gtype);
+			} catch (GLib.Error e) {
+				GLib.debug("alias %s for %s: %s", alias, gtype.name(), e.message);
+			}
 		}
 
 		private uint64? lease_handle_for(

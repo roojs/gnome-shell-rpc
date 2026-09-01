@@ -31,15 +31,8 @@
 		if (display_singleton != null) {
 			return display_singleton;
 		}
-		display_singleton = new Display();
 		var response = GnomeShellRpc.GiStub.Runtime.call_values(
 			"RPC-Bootstrap.get_display");
-		if (response.args.size > 0) {
-			display_singleton.set_data_full(
-				"gsr-lease-id",
-				(void*) response.args.get(0).get_uint64(),
-				null
-			);
-		}
+		display_singleton = (Display) response.retval.get_object();
 		return display_singleton;
 	}

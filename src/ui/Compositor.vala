@@ -21,7 +21,6 @@ namespace GnomeShellRpc.Ui
 			OLLMrpc.Request.add_class(
 				"Meta-Compositor", typeof(Compositor),
 				"get_window_actors", "",
-				"get_backend", "",
 				null
 			);
 		}
@@ -36,10 +35,8 @@ namespace GnomeShellRpc.Ui
 		/**
 		 * ''Meta-Compositor.get_window_actors'' — lease id per window actor.
 		 *
-		 * Same packing as {@link Display.get_compositor}: uint64 handles in
-		 * {@link OLLMrpc.Response.args}. Live GObject rows in
-		 * {@link OLLMrpc.Response.retval} arrive with handle 0, which
-		 * then SIGSEGVs libocrpc {@code reply_error} on Clutter RPC.
+		 * List packing stays hand-rolled (uint64 args); single live GObject
+		 * getters use typelib {@link OLLMrpc.Gi}.
 		 *
 		 * @param request inbound RPC
 		 */
@@ -55,23 +52,6 @@ namespace GnomeShellRpc.Ui
 			}
 			GLib.debug("window actors=%d", response.args.size);
 			request.reply(response);
-		}
-
-		/**
-		 * ''Meta-Compositor.get_backend'' — lease id of the backend.
-		 *
-		 * Same packing as {@link Display.get_compositor}.
-		 *
-		 * @param request inbound RPC
-		 */
-		public void get_backend(OLLMrpc.Request request)
-		{
-			var backend = this.meta_compositor.get_backend();
-			var handle = (uint64) request.connection.export(backend);
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				args = OLLMrpc.args("t", handle),
-			});
 		}
 	}
 }

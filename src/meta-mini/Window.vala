@@ -4,7 +4,7 @@ namespace Meta
 	 * Client stub for one leased compositor window.
 	 *
 	 * Callers assign {@link title} / {@link wm_class}, then
-	 * {@code set_data("gsr-lease-id", …)} for the plugin handle.
+	 * {@code set_data("rpc-lid", …)} for the plugin handle.
 	 * Mutators use typelib FFI ({@code Meta-Window.*} + lease_id).
 	 *
 	 * == Example ==
@@ -14,7 +14,7 @@ namespace Meta
 	 *     title = snap.title,
 	 *     wm_class = snap.wm_class,
 	 * };
-	 * win.set_data_full("gsr-lease-id", (void*) snap.id, null);
+	 * win.set_data_full("rpc-lid", (void*) snap.id, null);
 	 * win.minimize();
 	 * win.unminimize();
 	 * }}}
@@ -116,7 +116,7 @@ namespace Meta
 			uint64 device_lease = 0;
 			var device_name = "";
 			if (device != null) {
-				var lease = (uint64) device.get_data<void*>("gsr-lease-id");
+				var lease = (uint64) device.get_data<void*>("rpc-lid");
 				if (lease != 0) {
 					device_lease = lease;
 				} else {

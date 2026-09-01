@@ -36,14 +36,10 @@ Background.set_file
 Context.terminate_with_error
 Context.terminate
 Context.run_main_loop
-Context.get_backend
 IdleMonitor.add_idle_watch
 IdleMonitor.add_user_active_watch
 Display.add_keybinding
-Display.get_context
-Display.get_compositor
-Backend.get_stage
-Backend.get_core_idle_monitor
+Display.get_startup_notification
 keybindings_set_custom_handler
 Window.foreach_transient
 Window.foreach_ancestor

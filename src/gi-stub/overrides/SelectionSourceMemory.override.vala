@@ -11,8 +11,8 @@
 				OLLMrpc.args("say", mimetype, content));
 			var stub = (SelectionSourceMemory) response.retval.get_object();
 			this.set_data_full(
-				"gsr-lease-id",
-				stub.get_data<void*>("gsr-lease-id"),
+				"rpc-lid",
+				stub.get_data<void*>("rpc-lid"),
 				null
 			);
 		}

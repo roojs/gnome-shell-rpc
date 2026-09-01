@@ -15,7 +15,7 @@ namespace Meta
 			for (var i = 0; i < response.args.size; i++) {
 				var actor = new WindowActor();
 				actor.set_data_full(
-					"gsr-lease-id",
+					"rpc-lid",
 					(void*) response.args.get(i).get_uint64(),
 					null
 				);
@@ -30,7 +30,7 @@ namespace Meta
 				"Meta-Compositor.get_backend", this);
 			var backend = new Backend();
 			backend.set_data_full(
-				"gsr-lease-id",
+				"rpc-lid",
 				(void*) response.args.get(0).get_uint64(),
 				null
 			);

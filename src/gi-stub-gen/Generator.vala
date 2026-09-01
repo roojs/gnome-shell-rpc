@@ -180,24 +180,43 @@ namespace $(ns)
 	{
 ");
 			var vfunc_names = new Gee.HashSet<string>();
+			var method_names = new Gee.HashSet<string>();
+			var prop_accessors = new Gee.HashSet<string>();
 			var methods = 0;
 			if (this.type_policy("Namespace", "emit_class_slots") == "1") {
 				methods += this.emit_object_class_slots(
 					stream, ns, oi, vfunc_names);
 			}
+			foreach (var vn in vfunc_names) {
+				if (!(vn in this.deny)
+					&& !((class_name + "." + vn) in this.deny)) {
+					method_names.add(vn);
+				}
+			}
+			var props = this.emit_object_properties(
+				stream, ns, oi, prop_accessors, vfunc_names);
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				var fi = oi.get_method(m);
 				if (vfunc_names.contains(fi.get_name())) {
 					continue;
 				}
-				methods += this.emit_callable(
+				if (prop_accessors.contains(fi.get_name())) {
+					continue;
+				}
+				var n = this.emit_callable(
 					stream, ns, class_name, fi, "class", false);
+				if (n > 0) {
+					method_names.add(fi.get_name());
+				}
+				methods += n;
 			}
+			var signals = this.emit_object_signals(
+				stream, ns, oi, method_names);
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
 			this.splice_class_override(stream, class_name);
 			stream.puts("	}\n");
-			return 1 + methods;
+			return 1 + methods + props + signals;
 		}
 
 		/**
@@ -578,6 +597,7 @@ namespace $(ns)
 	public interface $(iface_name) : GLib.Object
 	{
 ");
+			var props = this.emit_interface_properties(stream, ns, ii);
 			var vfunc_names = new Gee.HashSet<string>();
 			var methods = 0;
 			if (this.type_policy("Namespace", "emit_iface_slots") == "1") {
@@ -593,7 +613,283 @@ namespace $(ns)
 					stream, ns, iface_name, fi, "iface", false);
 			}
 			stream.puts("	}\n");
-			return 1 + methods;
+			return 1 + methods + props;
+		}
+
+		/**
+		 * GIR interface properties (e.g. {@code InhibitShortcutsDialog.window}
+		 * for GJS {@code ParamSpec.override}).
+		 */
+		private int emit_interface_properties(
+			GLib.FileStream stream,
+			string ns,
+			GI.InterfaceInfo ii
+		) {
+			var iface_name = ii.get_name();
+			var emitted = 0;
+			for (var p = 0; p < ii.get_n_properties(); p++) {
+				var pi = ii.get_property(p);
+				var pname = pi.get_name();
+				var denied = pname in this.deny
+					|| (iface_name + "." + pname) in this.deny;
+				if (denied) {
+					continue;
+				}
+				var vt = this.type_vala(ns, pi.get_type());
+				if (vt == "") {
+					this.gaps.add(new Gap() {
+						symbol = @"$(iface_name).$(pname)",
+						reason = "unmapped_field",
+						detail = "iface property",
+					});
+					continue;
+				}
+				var flags = pi.get_flags();
+				var readable = (flags & GLib.ParamFlags.READABLE) != 0;
+				var writable = (flags & GLib.ParamFlags.WRITABLE) != 0;
+				var construct_only =
+					(flags & GLib.ParamFlags.CONSTRUCT_ONLY) != 0;
+				var construct = (flags & GLib.ParamFlags.CONSTRUCT) != 0
+					|| construct_only;
+				if (!readable && !writable) {
+					continue;
+				}
+				var vala_name = this.vala_ident(pname.replace("-", "_"));
+				string accessors;
+				if (construct_only) {
+					accessors = "get; construct;";
+				} else if (construct && writable) {
+					accessors = "get; set construct;";
+				} else if (writable && readable) {
+					accessors = "get; set;";
+				} else if (writable) {
+					accessors = "set;";
+				} else {
+					accessors = "get;";
+				}
+				stream.puts(@"
+		public abstract $(vt) $(vala_name) { $(accessors) }
+");
+				emitted++;
+			}
+			return emitted;
+		}
+
+		/**
+		 * GIR object properties → Vala properties with RPC get/set.
+		 * Skip when: denied, unmapped, OUT-arg accessors, class-slot vfunc
+		 * already owns the getter name, or a signal uses the same Vala name
+		 * (e.g. Display.focus_window). Non-emitted accessors stay as methods.
+		 */
+		private int emit_object_properties(
+			GLib.FileStream stream,
+			string ns,
+			GI.ObjectInfo oi,
+			Gee.HashSet<string> prop_accessors,
+			Gee.HashSet<string> vfunc_names
+		) {
+			var class_name = oi.get_name();
+			var signal_names = new Gee.HashSet<string>();
+			for (var s = 0; s < oi.get_n_signals(); s++) {
+				signal_names.add(
+					this.vala_ident(oi.get_signal(s).get_name().replace("-", "_"))
+				);
+			}
+			var emitted = 0;
+			for (var p = 0; p < oi.get_n_properties(); p++) {
+				var pi = oi.get_property(p);
+				var pname = pi.get_name();
+				var vala_name = this.vala_ident(pname.replace("-", "_"));
+				if (pname in this.deny
+					|| vala_name in this.deny
+					|| (class_name + "." + pname) in this.deny
+					|| (class_name + "." + vala_name) in this.deny) {
+					continue;
+				}
+				if (signal_names.contains(vala_name)) {
+					continue;
+				}
+				var vt = this.type_vala(ns, pi.get_type());
+				if (vt == "") {
+					continue;
+				}
+				var flags = pi.get_flags();
+				var readable = (flags & GLib.ParamFlags.READABLE) != 0;
+				var writable = (flags & GLib.ParamFlags.WRITABLE) != 0;
+				if (!readable && !writable) {
+					continue;
+				}
+				GI.FunctionInfo? getter = null;
+				GI.FunctionInfo? setter = null;
+				if (readable) {
+					getter = pi.get_getter();
+					if (getter == null
+						|| vfunc_names.contains(getter.get_name())
+						|| this.has_out_values(getter)
+						|| !this.callable_wireable(getter, ns)) {
+						continue;
+					}
+					{
+						var L = this.dbus_letter(ns, getter.get_return_type());
+						/* ay/v need OUT/blob paths that break inside property get. */
+						if (L == "" || L == "ay" || L == "v") {
+							continue;
+						}
+					}
+				}
+				if (writable) {
+					setter = pi.get_setter();
+					if (setter == null
+						|| vfunc_names.contains(setter.get_name())
+						|| this.has_out_values(setter)
+						|| !this.callable_wireable(setter, ns)) {
+						continue;
+					}
+					var bad_in = false;
+					for (var a = 0; a < setter.get_n_args(); a++) {
+						var arg = setter.get_arg(a);
+						if (arg.is_skip()
+							|| arg.get_direction() != GI.Direction.IN) {
+							continue;
+						}
+						var L = this.dbus_letter(ns, arg.get_type());
+						if (L == "" || L == "ay" || L == "v") {
+							bad_in = true;
+							break;
+						}
+					}
+					if (bad_in) {
+						continue;
+					}
+				}
+
+				stream.puts(@"		public $(vt) $(vala_name) {
+");
+				if (readable && getter != null) {
+					var rpc = @"$(ns)-$(class_name).$(getter.get_name())";
+					var csym = getter.get_symbol();
+					if (csym != null && csym != "") {
+						stream.puts(@"			[CCode (cname = \"$(csym)\")]
+");
+					}
+					stream.puts("			get {\n");
+					this.emit_call_values_body(
+						stream, ns, "\t\t\t\t", rpc, "this", getter, vt, false
+					);
+					stream.puts("			}\n");
+					prop_accessors.add(getter.get_name());
+				}
+				if (writable && setter != null) {
+					var csym = setter.get_symbol();
+					if (csym != null && csym != "") {
+						stream.puts(@"			[CCode (cname = \"$(csym)\")]
+");
+					}
+					stream.puts("			set {\n");
+					for (var a = 0; a < setter.get_n_args(); a++) {
+						var arg = setter.get_arg(a);
+						if (arg.is_skip()
+							|| arg.get_direction() != GI.Direction.IN) {
+							continue;
+						}
+						var aname = this.vala_ident(arg.get_name());
+						if (aname != "value" && aname != "@value") {
+							stream.puts(@"				var $(aname) = value;
+");
+						}
+					}
+					var rpc = @"$(ns)-$(class_name).$(setter.get_name())";
+					this.emit_call_values_body(
+						stream, ns, "\t\t\t\t", rpc, "this", setter, "void", false
+					);
+					stream.puts("			}\n");
+					prop_accessors.add(setter.get_name());
+				}
+				stream.puts("		}\n");
+				emitted++;
+			}
+			return emitted;
+		}
+
+		/**
+		 * GIR object signals so client {@code g_signal_connect} / GJS
+		 * {@code .connect()} find the name. Emission / Live.Subscribe
+		 * forwarding is separate — declare only.
+		 *
+		 * Skips when a method of the same name was emitted (name clash).
+		 * Denied methods leave room for the signal (e.g. Actor.destroy).
+		 */
+		private int emit_object_signals(
+			GLib.FileStream stream,
+			string ns,
+			GI.ObjectInfo oi,
+			Gee.HashSet<string> method_names
+		) {
+			var class_name = oi.get_name();
+			var emitted = 0;
+			for (var s = 0; s < oi.get_n_signals(); s++) {
+				var si = oi.get_signal(s);
+				var sname = si.get_name();
+				var vala_name = this.vala_ident(sname.replace("-", "_"));
+				var symbol = class_name + "." + sname;
+				/* Deny list is for methods/callables. Same name on deny
+				 * (e.g. Actor.destroy) means keep the signal, emit method
+				 * elsewhere under a different Vala name. */
+				if (("signal:" + class_name + "." + sname) in this.deny
+					|| ("signal:" + class_name + "." + vala_name) in this.deny) {
+					continue;
+				}
+				if (method_names.contains(sname)
+					|| method_names.contains(vala_name)) {
+					this.gaps.add(new Gap() {
+						symbol = symbol,
+						reason = "signal_method_clash",
+						detail = "method won; deny the method to keep the signal",
+					});
+					continue;
+				}
+				var ret = this.type_vala(ns, si.get_return_type());
+				if (ret == "") {
+					this.gaps.add(new Gap() {
+						symbol = symbol,
+						reason = "signal",
+						detail = "unmapped return",
+					});
+					continue;
+				}
+				var arg_list = new Gee.ArrayList<string>();
+				var skip = false;
+				for (var a = 0; a < si.get_n_args(); a++) {
+					var arg = si.get_arg(a);
+					if (arg.is_skip()) {
+						continue;
+					}
+					var at = this.type_vala(ns, arg.get_type());
+					if (at == "") {
+						this.gaps.add(new Gap() {
+							symbol = symbol,
+							reason = "signal",
+							detail = "unmapped arg " + arg.get_name(),
+						});
+						skip = true;
+						break;
+					}
+					arg_list.add(this.arg_decl(arg, at));
+				}
+				if (skip) {
+					continue;
+				}
+				var args = string.joinv(", ", arg_list.to_array());
+				if (ret == "void") {
+					stream.puts(@"		public signal void $(vala_name)($(args));
+");
+				} else {
+					stream.puts(@"		public signal $(ret) $(vala_name)($(args));
+");
+				}
+				emitted++;
+			}
+			return emitted;
 		}
 
 		/**
@@ -814,30 +1110,30 @@ namespace $(ns)
 				return "";
 			}
 			switch (ret) {
-			case "bool":
-				return @"$(indent)return false;\n";
-			case "float":
-				return @"$(indent)return 0.0f;\n";
-			case "double":
-				return @"$(indent)return 0.0;\n";
-			case "GLib.Type":
-				return @"$(indent)return 0;\n";
-			case "int":
-			case "int8":
-			case "int16":
-			case "int32":
-			case "int64":
-			case "uint":
-			case "uint8":
-			case "uint16":
-			case "uint32":
-			case "uint64":
-				return @"$(indent)return 0;\n";
-			case "string":
-				return @"$(indent)return null;\n";
-			default:
-				/* Enums / structs / objects — avoid invalid {@code null} casts. */
-				return @"$(indent)GLib.error(\"gi-stub: vfunc $(ret) unset\");\n";
+				case "bool":
+					return @"$(indent)return false;\n";
+				case "float":
+					return @"$(indent)return 0.0f;\n";
+				case "double":
+					return @"$(indent)return 0.0;\n";
+				case "GLib.Type":
+					return @"$(indent)return 0;\n";
+				case "int":
+				case "int8":
+				case "int16":
+				case "int32":
+				case "int64":
+				case "uint":
+				case "uint8":
+				case "uint16":
+				case "uint32":
+				case "uint64":
+					return @"$(indent)return 0;\n";
+				case "string":
+					return @"$(indent)return null;\n";
+				default:
+					/* Enums / structs / objects — avoid invalid {@code null} casts. */
+					return @"$(indent)GLib.error(\"gi-stub: vfunc $(ret) unset\");\n";
 			}
 		}
 
@@ -1332,7 +1628,7 @@ $(tab)}
 						stream.puts(indent + @"var _stub = ($(ret_vala)) response.retval.get_object();
 ");
 						stream.puts(
-							indent + @"this.set_data_full(\"gsr-lease-id\", _stub.get_data<void*>(\"gsr-lease-id\"), null);
+							indent + @"this.set_data_full(\"rpc-lid\", _stub.get_data<void*>(\"rpc-lid\"), null);
 "
 						);
 						return;
@@ -1345,15 +1641,16 @@ $(tab)}
 					stream.puts(indent + @"var __ret = ($(ret_vala)) response.retval.get_object();
 ");
 				} else {
-					var ret_letter = this.dbus_letter(ns, fi.get_return_type());
 					if (!has_outs) {
 						this.emit_value_get(
-							stream, indent, ret_vala, ret_letter, 0, true
+							stream, indent, ns, ret_vala,
+							fi.get_return_type(), 0, true
 						);
 						return;
 					}
 					this.emit_value_get(
-						stream, indent, ret_vala, ret_letter, 0, false
+						stream, indent, ns, ret_vala,
+						fi.get_return_type(), 0, false
 					);
 				}
 			}
@@ -1370,7 +1667,7 @@ $(tab)}
 				var arg_name = arg.get_name();
 				var at = this.type_vala(ns, arg.get_type());
 				this.emit_value_get(
-					stream, indent, at, this.dbus_letter(ns, arg.get_type()),
+					stream, indent, ns, at, arg.get_type(),
 					value_idx, false, arg_name
 				);
 				value_idx++;
@@ -1381,16 +1678,21 @@ $(tab)}
 			}
 		}
 
+		/**
+		 * Unpack a {@link GLib.Value} from the GI type (not via wire tags).
+		 * {@link dbus_letter} is only for {@link OLLMrpc.args} format strings.
+		 */
 		private void emit_value_get(
 			GLib.FileStream stream,
 			string indent,
+			string ns,
 			string vala_type,
-			string letter,
+			GI.TypeInfo ti,
 			int value_idx,
 			bool is_return,
 			string assign_name = ""
 		) {
-			if (letter == "ay") {
+			if (this.type_is_boxed_blob(ns, ti)) {
 				this.emit_value_get_boxed(
 					stream, indent, vala_type, value_idx, is_return, assign_name
 				);
@@ -1398,17 +1700,60 @@ $(tab)}
 			}
 
 			var get = "";
-			switch (letter) {
-				case "b": get = "boolean"; break;
-				case "i": get = "int"; break;
-				case "y": get = "uchar"; break;
-				case "u": get = "uint"; break;
-				case "x": get = "int64"; break;
-				case "t": get = "uint64"; break;
-				case "f": get = "float"; break;
-				case "d": get = "double"; break;
-				case "s": get = "string"; break;
-				case "as": get = "boxed"; break;
+			switch (ti.get_tag()) {
+				case GI.TypeTag.BOOLEAN:
+					get = "boolean";
+					break;
+				case GI.TypeTag.INT8:
+				case GI.TypeTag.INT16:
+				case GI.TypeTag.INT32:
+					get = "int";
+					break;
+				case GI.TypeTag.UINT8:
+					get = "uchar";
+					break;
+				case GI.TypeTag.UINT16:
+				case GI.TypeTag.UINT32:
+				case GI.TypeTag.UNICHAR:
+					get = "uint";
+					break;
+				case GI.TypeTag.INT64:
+					get = "int64";
+					break;
+				case GI.TypeTag.UINT64:
+					get = "uint64";
+					break;
+				case GI.TypeTag.FLOAT:
+					get = "float";
+					break;
+				case GI.TypeTag.DOUBLE:
+					get = "double";
+					break;
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					get = "string";
+					break;
+				case GI.TypeTag.ARRAY:
+					switch (ti.get_param_type(0).get_tag()) {
+						case GI.TypeTag.UTF8:
+						case GI.TypeTag.FILENAME:
+							get = "boxed";
+							break;
+						default:
+							break;
+					}
+					break;
+				case GI.TypeTag.INTERFACE:
+					var info = ti.get_interface();
+					if (info != null && info.get_type() == GI.InfoType.ENUM) {
+						get = "int";
+					} else if (info != null
+						&& info.get_type() == GI.InfoType.FLAGS) {
+						get = "uint";
+					}
+					break;
+				default:
+					break;
 			}
 			var expr = @"($(vala_type)) response.retval.get_$(get)()";
 			if (!is_return && assign_name != "") {
@@ -1770,10 +2115,8 @@ $(tab)}
 		}
 
 		/**
-		 * GI type → {@link OLLMrpc.args} letter (D-Bus / GVariant tags, plus
-		 * ''f'' for float, ''as'' for UTF8/FILENAME arrays and utf8 lists,
-		 * ''ay'' for boxed blobs, and ''v'' for GObject / boxed GLIST/GSLIST
-		 * as Variant ''at'' / ''aay'').
+		 * GI type → format tag for {@link OLLMrpc.args} only (pack side).
+		 * Unpack uses {@link emit_value_get} from the GI type directly.
 		 */
 		private string dbus_letter(string ns, GI.TypeInfo ti)
 		{

@@ -32,7 +32,7 @@
 			uint64 device_lease = 0;
 			var device_name = "";
 			if (device != null) {
-				var lease = (uint64) device.get_data<void*>("gsr-lease-id");
+				var lease = (uint64) device.get_data<void*>("rpc-lid");
 				if (lease != 0) {
 					device_lease = lease;
 				} else {

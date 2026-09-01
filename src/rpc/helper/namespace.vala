@@ -32,8 +32,6 @@ namespace GnomeShellRpc.Rpc.Helper
 		ShapedTexture.rpc_register();
 		ShaderEffect.rpc_register();
 		ClutterThreads.rpc_register();
-		ClutterActor.rpc_register();
-		ClutterContext.rpc_register();
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();
 	}

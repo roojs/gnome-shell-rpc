@@ -41,16 +41,12 @@ PaintNode.add_texture_rectangles noop
 ActorBox.from_vertices noop
 Actor.get_abs_allocation_vertices noop
 
-# Method name clashes with GObject signal "event" (st_focus_manager).
+# Method name clashes with GIR signal "event" (generator emits the signal).
 Actor.event
 
-# Method name clashes with GObject signal "destroy" (st_theme_context).
+# Method name clashes with GIR signal "destroy" (generator emits the signal).
 # C ABI: Actor.override destroy_rpc [CCode cname = clutter_actor_destroy].
 Actor.destroy
-
-# retval live handles arrive as 0 — pack uint64 in args (same as Meta Ui.*).
-Actor.get_context
-Context.get_backend
 
 # Vala auto-emits free/dup when struct has methods — skip GIR copies.
 ActorBox.free

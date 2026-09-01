@@ -22,25 +22,6 @@
 		}
 
 		/**
-		 * Lease handle in {@code args[0]} — Ui.Context packs uint64, not
-		 * {@code retval} (live GObject rows arrive with handle 0).
-		 */
-		public Backend get_backend()
-		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
-				"Meta-Context.get_backend", this);
-			var backend = new Backend();
-			if (response.args.size > 0) {
-				backend.set_data_full(
-					"gsr-lease-id",
-					(void*) response.args.get(0).get_uint64(),
-					null
-				);
-			}
-			return backend;
-		}
-
-		/**
 		 * Client GLib loop — compositor main loop stays in mutter-rpc.
 		 * Stock returns gboolean / throws; GJS ignores the return.
 		 *

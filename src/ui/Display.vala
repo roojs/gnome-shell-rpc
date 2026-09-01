@@ -6,7 +6,8 @@ namespace GnomeShellRpc.Ui
 	 *
 	 * Wire prefix {@code Meta-Display}. {@link OLLMrpc.Request.register_live}
 	 * keeps this singleton as {@code this}; {@code lease_id} is not the
-	 * handler.
+	 * handler. Live GObject getters ({@code get_compositor}, …) fall through
+	 * to typelib {@link OLLMrpc.Gi} on the leased {@link Meta.Display}.
 	 *
 	 * == Example ==
 	 *
@@ -26,9 +27,7 @@ namespace GnomeShellRpc.Ui
 				"list_windows", "",
 				"get_window", "i",
 				"get_focused_window", "",
-				"get_compositor", "",
-				"get_context", "",
-				"get_sound_player", "",
+				"get_startup_notification", "",
 				"minimize_window", "i",
 				"unminimize_window", "i",
 				"activate_window", "i",
@@ -131,51 +130,20 @@ namespace GnomeShellRpc.Ui
 		}
 
 		/**
-		 * ''Meta-Display.get_compositor'' — lease id of the compositor.
+		 * ''Meta-Display.get_startup_notification'' — live object in retval.
+		 *
+		 * Typelib marks the stock method non-introspectable, so Gi cannot
+		 * dispatch it; hand handler exports and returns the real object.
 		 *
 		 * @param request inbound RPC
 		 */
-		public void get_compositor(OLLMrpc.Request request)
+		public void get_startup_notification(OLLMrpc.Request request)
 		{
-			var compositor = this.meta_display.get_compositor();
-			var handle = (uint64) request.connection.export(compositor);
+			var sn = this.meta_display.get_startup_notification();
+			request.connection.export(sn);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("t", handle),
-			});
-		}
-
-		/**
-		 * ''Meta-Display.get_context'' — lease id of the meta context.
-		 *
-		 * Same packing as {@link get_compositor}: uint64 handle in
-		 * {@link OLLMrpc.Response.args} (live {@link OLLMrpc.Response.retval}
-		 * objects arrive with handle 0 on the client).
-		 *
-		 * @param request inbound RPC
-		 */
-		public void get_context(OLLMrpc.Request request)
-		{
-			var context = this.meta_display.get_context();
-			var handle = (uint64) request.connection.export(context);
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				args = OLLMrpc.args("t", handle),
-			});
-		}
-
-		/**
-		 * ''Meta-Display.get_sound_player'' — lease id of the sound player.
-		 *
-		 * @param request inbound RPC
-		 */
-		public void get_sound_player(OLLMrpc.Request request)
-		{
-			var player = this.meta_display.get_sound_player();
-			var handle = (uint64) request.connection.export(player);
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				args = OLLMrpc.args("t", handle),
+				retval = OLLMrpc.val("o", sn),
 			});
 		}
 

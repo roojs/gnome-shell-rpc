@@ -29,12 +29,11 @@ namespace GnomeShellRpc.Rpc
 
 		public void get_display(OLLMrpc.Request request)
 		{
-			var handle = (uint64) request.connection.export(this.meta_display);
-			var response = new OLLMrpc.Response() {
+			request.connection.export(this.meta_display);
+			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("t", handle),
-			};
-			request.reply(response);
+				retval = OLLMrpc.val("o", this.meta_display),
+			});
 		}
 	}
 }

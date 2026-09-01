@@ -6,7 +6,7 @@
  * with {@link register}.
  *
  * Positional args use {@link OLLMrpc.Request.args} (GIR order, no direction
- * on the wire). Instance stubs carry {@code gsr-lease-id} data →
+ * on the wire). Instance stubs carry libocrpc {@code rpc-lid} qdata →
  * {@link OLLMrpc.Request.lease_id}. The C return lands in
  * {@link OLLMrpc.Response.retval}. OUT / INOUT scalars land in
  * {@link OLLMrpc.Response.args}.
@@ -184,31 +184,12 @@ namespace GnomeShellRpc.GiStub
 			return builder.end();
 		}
 
-		/**
-		 * Copy the live proxy id onto {@code gsr-lease-id} when decode left it unset.
-		 *
-		 * @param obj object from {@link OLLMrpc.Response.retval}
-		 */
-		public static void attach_lease(GLib.Object obj)
-		{
-			var lease = (uint64) obj.get_data<void*>("gsr-lease-id");
-			if (lease != 0) {
-				return;
-			}
-			foreach (var entry in Runtime.client.proxies) {
-				if (entry.value == obj) {
-					obj.set_data_full("gsr-lease-id", (void*) entry.key, null);
-					return;
-				}
-			}
-		}
-
 		private static uint64 lease_id_of(GLib.Object obj)
 		{
-			var lease = (uint64) obj.get_data<void*>("gsr-lease-id");
+			var lease = (uint64) obj.get_data<void*>("rpc-lid");
 			if (lease == 0) {
 				GLib.error(
-					"RPC lease_ids_at: no gsr-lease-id on %s",
+					"RPC lease_ids_at: no rpc-lid on %s",
 					obj.get_type().name()
 				);
 			}
@@ -219,7 +200,7 @@ namespace GnomeShellRpc.GiStub
 		 * Sync call with positional {@link GLib.Value}s and optional instance.
 		 *
 		 * @param method wire method (e.g. {@code Meta-Window.minimize})
-		 * @param instance leased stub; {@code gsr-lease-id} data → {@link OLLMrpc.Request.lease_id}
+		 * @param instance leased stub; {@code rpc-lid} → {@link OLLMrpc.Request.lease_id}
 		 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
 		 * @throws GLib.Error the error from the remote function or RPC
 		 */
@@ -230,9 +211,9 @@ namespace GnomeShellRpc.GiStub
 		) throws GLib.Error {
 			uint64 lease_id = 0;
 			if (instance != null) {
-				lease_id = (uint64) instance.get_data<void*>("gsr-lease-id");
+				lease_id = (uint64) instance.get_data<void*>("rpc-lid");
 				if (lease_id == 0) {
-					GLib.error("RPC %s: no gsr-lease-id on %s",
+					GLib.error("RPC %s: no rpc-lid on %s",
 						method, instance.get_type().name());
 				}
 			}
@@ -255,7 +236,7 @@ namespace GnomeShellRpc.GiStub
 					req.args.add(zero);
 					continue;
 				}
-				var lease = (uint64) obj.get_data<void*>("gsr-lease-id");
+				var lease = (uint64) obj.get_data<void*>("rpc-lid");
 				if (lease == 0) {
 					GLib.error("RPC %s: cannot serialize %s (not a leased stub)",
 						method, val.type().name());
@@ -343,17 +324,6 @@ namespace GnomeShellRpc.GiStub
 			if (call_error != null) {
 				throw call_error;
 			}
-			if (response.retval.type() == GLib.Type.INVALID) {
-				return response;
-			}
-			if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
-				var rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
-				for (var i = 0; i < rows.size; i++) {
-					Runtime.attach_lease(rows.get(i));
-				}
-				return response;
-			}
-			Runtime.attach_lease(response.retval.get_object());
 			return response;
 		}
 	}

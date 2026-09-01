@@ -41,7 +41,7 @@ namespace Meta
 					title = snap.title,
 					wm_class = snap.wm_class,
 				};
-				win.set_data_full("gsr-lease-id", (void*) snap.id, null);
+				win.set_data_full("rpc-lid", (void*) snap.id, null);
 				list.append(win);
 			}
 			return list;
@@ -65,7 +65,7 @@ namespace Meta
 				title = snap.title,
 				wm_class = snap.wm_class,
 			};
-			win.set_data_full("gsr-lease-id", (void*) snap.id, null);
+			win.set_data_full("rpc-lid", (void*) snap.id, null);
 			return win;
 		}
 
@@ -86,7 +86,7 @@ namespace Meta
 				"Meta-Display.get_compositor", this);
 			var compositor = new Compositor();
 			compositor.set_data_full(
-				"gsr-lease-id",
+				"rpc-lid",
 				(void*) response.args.get(0).get_uint64(),
 				null
 			);
@@ -102,7 +102,7 @@ namespace Meta
 				"Meta-Display.get_sound_player", this);
 			var player = new SoundPlayer();
 			player.set_data_full(
-				"gsr-lease-id",
+				"rpc-lid",
 				(void*) response.args.get(0).get_uint64(),
 				null
 			);
@@ -143,7 +143,7 @@ namespace Meta
 		{
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			var lease = (uint64) pad.get_data<void*>("rpc-lid");
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -163,7 +163,7 @@ namespace Meta
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			var lease = (uint64) pad.get_data<void*>("rpc-lid");
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -186,7 +186,7 @@ namespace Meta
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("gsr-lease-id");
+			var lease = (uint64) pad.get_data<void*>("rpc-lid");
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -218,7 +218,7 @@ namespace Meta
 			);
 			if (response.args.size > 0) {
 				display_singleton.set_data_full(
-					"gsr-lease-id",
+					"rpc-lid",
 					(void*) response.args.get(0).get_uint64(),
 					null
 				);
