@@ -71,10 +71,10 @@ config_h = configure_file(
   configuration: cdata,
 )
 
-# Link Meta (libmutter-rpc-16) + Clutter (libmutter-clutter-rpc-16).
+# Link Meta (libmutter-rpc-16) + Clutter (libmutter-clutter-rpc-16) + St RPC (st_register).
 # Clutter C headers: generated clutter-include via mutter_clutter_rpc_client_dep.
 mutter_rpc_client_dep = declare_dependency(
-  link_with: mutter_rpc_lib,
+  link_with: [mutter_rpc_lib, st_rpc_lib],
   dependencies: [mutter_clutter_rpc_client_dep, mtk_dep, cogl_dep, atk_dep, pango_dep],
   compile_args: ['-I' + mutter_includedir],
 )
@@ -230,31 +230,8 @@ st_gir_sources = st_source_files + st_header_files + st_enums
 mutter_gir_dir = mutter_typelib_dir
 meta_gir_dir = meson.project_source_root() / 'src' / 'meta-mini'
 
-libst_gir = gnome.generate_gir(
-  libst,
-  sources: st_gir_sources,
-  nsversion: mutter_api_version,
-  namespace: 'St',
-  includes: [
-    'Clutter-' + mutter_api_version,
-    'GdkPixbuf-2.0',
-    'Meta-' + mutter_api_version,
-  ],
-  dependencies: [mutter_rpc_client_dep, gdk_pixbuf_dep],
-  include_directories: st_inc,
-  extra_args: [
-    '-DST_COMPILATION',
-    '--quiet',
-    '--add-include-path=' + mutter_gir_dir,
-    '--add-include-path=' + meta_gir_dir,
-    '-I' + vendor_src_dir,
-    '-I' + vendor_st_dir,
-    '-I' + meson.current_build_dir(),
-  ],
-  install: true,
-  install_dir_gir: mutter_rpc_client_install_dir,
-  install_dir_typelib: mutter_rpc_client_install_dir,
-)
+# St typelib comes from libst-rpc-16 in build/src (0.7.6 Phase C/E).
+# Skip vendored libst GIR — introspection link needs st_register from libst-rpc.
 
 gnome_shell_client_libdir = client_libdir
 gnome_shell_client_typelibdir = client_libdir
@@ -433,7 +410,7 @@ libshell_gir_includes = [
   'PolkitAgent-1.0',
   'GdkPixbuf-2.0',
   'Gvc-1.0',
-  libst_gir[0],
+  'St-' + mutter_api_version,
 ]
 
 libshell_gir = gnome.generate_gir(
@@ -449,6 +426,8 @@ libshell_gir = gnome.generate_gir(
     '--add-include-path=' + mutter_gir_dir,
     '--add-include-path=' + meta_gir_dir,
     '--add-include-path=' + gvc_gir_dir,
+    '--add-include-path=' + gnome_shell_girdir,
+    '--add-include-path=' + (meson.project_build_root() / 'src'),
     '-I' + vendor_src_dir,
     '-I' + vendor_st_dir,
     '-I' + meson.current_build_dir(),
@@ -459,3 +438,57 @@ libshell_gir = gnome.generate_gir(
 )
 
 message('gnome-shell client libs: libshell-16 linked to libmutter-rpc-16')
+
+# Product shell host — after libshell/libst so link_depends resolve.
+src_dir = meson.project_source_root() / 'src'
+build_src_dir = meson.project_build_root() / 'src'
+gnome_shell_rpc_host_inc = include_directories('../../src/shell-client')
+
+gnome_shell_rpc_host_c_args = [
+  '-I' + mutter_includedir,
+  '-I' + gnome_shell_vendor_root / 'src',
+  '-I' + gnome_shell_vendor_root / 'src/st',
+  '-I' + client_libdir,
+  '-I' + client_libdir / 'st',
+] + mutter_clutter_cflags
+
+gnome_shell_rpc_host_vala_args = gjs_shell_vala_args + ocrpc_vala_args + [
+  '--pkg=mutter-rpc-16',
+  '--pkg=gsr-clutter-effect-abi',
+  '--pkg=gdesktopenums-3.0',
+  '--pkg=atk',
+  '--pkg=pango',
+  '--pkg=mutter-cogl-16',
+  '--vapidir', src_dir / 'gi-stub',
+  '--vapidir', build_src_dir,
+  '--vapidir', meson.project_build_root() / 'vapi',
+  '--vapidir', meson.project_source_root() / 'vapi',
+]
+
+gnome_shell_rpc_host_rpath = client_libdir + ':' + build_src_dir + ':' + ocrpc_rpath
+
+gnome_shell_rpc = executable('gnome-shell-rpc',
+  files(
+    src_dir / 'ApplicationInterface.vala',
+    src_dir / 'shell-client/namespace.vala',
+    src_dir / 'shell-client/ShellApplication.vala',
+  ),
+  src_dir / 'shell-client/bootstrap.c',
+  dependencies: gjs_shell_deps + [
+    ocrpc_dep,
+    mutter_rpc_client_dep,
+    dependency('gdk-pixbuf-2.0'),
+  ],
+  vala_args: gnome_shell_rpc_host_vala_args,
+  c_args: gnome_shell_rpc_host_c_args,
+  include_directories: gnome_shell_rpc_host_inc,
+  link_args: [
+    '-L' + client_libdir,
+    '-lshell-16',
+    '-lst-16',
+    '-L' + build_src_dir,
+  ],
+  link_depends: [libshell, libst, mutter_rpc_lib, st_rpc_lib],
+  build_rpath: gnome_shell_rpc_host_rpath,
+  install: false,
+)

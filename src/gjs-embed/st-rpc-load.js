@@ -47,25 +47,20 @@ function assertStRpcSharedLibrary() {
 }
 
 /**
- * Client stub reaches mutter-rpc (server may not implement every St symbol yet).
+ * St namespace RPC round-trip (server runs linked libst-16.so).
  */
-function assertStRpcConnects() {
-	try {
-		St.icon_theme_error_quark();
-		smokeLog('St.icon_theme_error_quark ok');
-	} catch (e) {
-		const msg = e.message ? '' + e.message : '' + e;
-		smokeLog('St RPC invoke: ' + msg);
-		if (msg.indexOf('Connection refused') >= 0 || msg.indexOf('connect') >= 0) {
-			throw e;
-		}
+function assertStRpcRoundTrip() {
+	const quark = St.icon_theme_error_quark();
+	smokeLog('St.icon_theme_error_quark=' + quark);
+	if (typeof quark !== 'number' || quark === 0) {
+		throw new Error('Phase C: St.icon_theme_error_quark returned ' + quark);
 	}
 }
 
 function main() {
 	smokeLog('load St via libst-rpc-16');
 	assertStRpcSharedLibrary();
-	assertStRpcConnects();
+	assertStRpcRoundTrip();
 	smokeLog('ok');
 }
 

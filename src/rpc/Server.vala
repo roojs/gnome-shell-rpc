@@ -46,14 +46,6 @@ namespace GnomeShellRpc.Rpc
 
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
-			try {
-				GLib.Module.open(
-					GLib.Path.build_filename(GNOME_SHELL_PKGLIBDIR, "libst-16.so"),
-					GLib.ModuleFlags.BIND_LAZY | GLib.ModuleFlags.BIND_LOCAL
-				);
-			} catch (GLib.Error e) {
-				GLib.warning("libst preload: %s", e.message);
-			}
 			OLLMrpc.Gi.register("Meta", "16");
 			OLLMrpc.Gi.register("Clutter", "16");
 			OLLMrpc.Gi.register("St", "16");
@@ -173,6 +165,10 @@ namespace GnomeShellRpc.Rpc
 			}
 			var bindir = GLib.Path.get_dirname(self_exe);
 			var shell_bin = GLib.Path.build_filename(bindir, "gnome-shell-rpc");
+			if (!GLib.FileUtils.test(shell_bin, GLib.FileTest.IS_EXECUTABLE)) {
+				shell_bin = GLib.Path.build_filename(
+					bindir, "..", "gnome-shell", "client-libs", "gnome-shell-rpc");
+			}
 			if (!GLib.FileUtils.test(shell_bin, GLib.FileTest.IS_EXECUTABLE)) {
 				GLib.warning("gnome-shell-rpc missing at %s — skip client spawn", shell_bin);
 				return;

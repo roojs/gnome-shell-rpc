@@ -74,6 +74,16 @@ gnome_shell_client_typelibdir = get_option('gnome_shell_client_libs').enabled() 
 gnome_shell_pkglibdir = '/usr/lib/gnome-shell'
 gnome_shell_girdir = '/usr/share/gnome-shell'
 
+# Stock libst for mutter-rpc Gi.register("St") — same pkglibdir as typelib.
+# Link by absolute path so --no-as-needed is not split from -lst-16 by the linker.
+gnome_shell_st_lib = gnome_shell_pkglibdir / 'libst-16.so'
+gnome_shell_st_link_args = [
+  '-Wl,--push-state',
+  '-Wl,--no-as-needed',
+  gnome_shell_st_lib,
+  '-Wl,--pop-state',
+]
+
 rpc_config = configure_file(
   input: 'rpc/Config.vala.in',
   output: 'Config.vala',
@@ -606,18 +616,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
   install: true,
 )
 
-mutter_rpc_client_dep = declare_dependency(
-  link_with: mutter_rpc_lib,
-  dependencies: [
-    mutter_clutter_rpc_client_dep,
-    dependency('mutter-mtk-16'),
-    dependency('mutter-cogl-16'),
-    dependency('atk'),
-    dependency('pango'),
-  ],
-  # Meta C headers; Clutter Cflags come from mutter_clutter_rpc_client_dep.
-  compile_args: ['-I' + mutter_includedir],
-)
+# mutter_rpc_client_dep is declared after st_rpc_lib (Clutter Runtime needs st_register).
 
 # Stock Meta GIR, shared-library → our stub .so (same pattern as Clutter).
 # Hand meta-mini/Meta-16.gir stays for docs / early smokes; typelib must list
@@ -672,6 +671,7 @@ st_generated = custom_target('St_generated.vala',
     'emit', 'St', '16',
   ],
   input: [st_deny_file, st_overrides_file] + files(
+    'gi-stub/overrides-st/Widget.override.vala',
     'gi-stub/overrides-st/ThemeContext.override.vala',
     'gi-stub/overrides-st/FocusManager.override.vala',
   ),
@@ -716,6 +716,18 @@ st_rpc_lib = shared_library(
   vala_header: 'st-rpc-16.h',
   vala_vapi: 'st-rpc-16.vapi',
   install: true,
+)
+
+mutter_rpc_client_dep = declare_dependency(
+  link_with: [mutter_rpc_lib, st_rpc_lib],
+  dependencies: [
+    mutter_clutter_rpc_client_dep,
+    dependency('mutter-mtk-16'),
+    dependency('mutter-cogl-16'),
+    dependency('atk'),
+    dependency('pango'),
+  ],
+  compile_args: ['-I' + mutter_includedir],
 )
 
 st_gir = gnome_shell_girdir / 'St-16.gir'
@@ -866,60 +878,8 @@ fake_shell = executable('fake-shell',
 )
 
 if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != ''
-  gnome_shell_rpc_host_inc = include_directories('shell-client')
-
-  gnome_shell_rpc_host_c_args = [
-    '-I' + mutter_includedir,
-    '-I' + gnome_shell_vendor_root / 'src',
-    '-I' + gnome_shell_vendor_root / 'src/st',
-    '-I' + gnome_shell_client_libdir,
-    '-I' + gnome_shell_client_libdir / 'st',
-  ] + mutter_clutter_cflags
-
-  gnome_shell_rpc_host_vala_args = gjs_shell_vala_args + ocrpc_vala_args + [
-    '--pkg=mutter-rpc-16',
-    '--pkg=gsr-clutter-effect-abi',
-    '--pkg=gdesktopenums-3.0',
-    '--pkg=atk',
-    '--pkg=pango',
-    '--pkg=mutter-cogl-16',
-    '--vapidir', meson.current_source_dir() / 'gi-stub',
-    '--vapidir', meson.current_build_dir(),
-    '--vapidir', meson.project_build_root() / 'vapi',
-    '--vapidir', meson.project_source_root() / 'vapi',
-  ]
-
-  gnome_shell_rpc_host_rpath = gnome_shell_client_libdir + ':' + meson.current_build_dir() + ':' + ocrpc_rpath
-
-  gnome_shell_rpc = executable('gnome-shell-rpc',
-    files(
-      'ApplicationInterface.vala',
-      'shell-client/namespace.vala',
-      'shell-client/ShellApplication.vala',
-    ),
-    'shell-client/bootstrap.c',
-    dependencies: gjs_shell_deps + [
-      ocrpc_dep,
-      mutter_rpc_client_dep,
-      dependency('gdk-pixbuf-2.0'),
-    ],
-    vala_args: gnome_shell_rpc_host_vala_args,
-    c_args: gnome_shell_rpc_host_c_args,
-    include_directories: gnome_shell_rpc_host_inc,
-    link_args: [
-      '-L' + gnome_shell_client_libdir,
-      '-lshell-16',
-      '-lst-16',
-      '-L' + meson.current_build_dir(),
-    ],
-    link_depends: [
-      gnome_shell_client_libdir / 'libshell-16.so',
-      gnome_shell_client_libdir / 'libst-16.so',
-      mutter_rpc_lib,
-    ],
-    build_rpath: gnome_shell_rpc_host_rpath,
-    install: false,
-  )
+  # gnome-shell-rpc (ShellApplication + libshell) is built from
+  # gnome-shell/client-libs/meson.build after libshell-16.so exists.
 else
   gnome_shell_rpc = executable('gnome-shell-rpc',
     gjs_shell_sources,
@@ -934,9 +894,13 @@ mutter_rpc = executable('mutter-rpc',
   compositor_sources,
   rpc_config,
   mutter_vapi_stamp,
-  dependencies: [mutter_dep, ocrpc_dep, dependency('gobject-introspection-1.0')],
+  dependencies: [
+    mutter_dep,
+    ocrpc_dep,
+    dependency('gobject-introspection-1.0'),
+  ],
   vala_args: mutter_vala_args + ocrpc_vala_args,
-  link_args: ['-L' + gnome_shell_pkglibdir, '-lst-16'],
+  link_args: gnome_shell_st_link_args,
   build_rpath: compositor_rpath,
   export_dynamic: true,
   install: false,

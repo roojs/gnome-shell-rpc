@@ -390,7 +390,7 @@ namespace $(ns)
 			}
 ");
 			stream.puts(@"			var response = $(RUNTIME).call_values(\"$(rpc)\", null$(args_arg));
-			var _stub = ($(class_name)) response.retval.get_object();
+			var _stub = response.retval.get_object() as OLLMrpc.Live.Handle;
 			this.rpc_lid = _stub.rpc_lid;
 		}
 ");
@@ -1804,7 +1804,7 @@ $(tab)}
 					);
 				if (ret_is_gobj) {
 					if (is_constructor) {
-						stream.puts(indent + @"var _stub = ($(ret_vala)) response.retval.get_object();
+						stream.puts(indent + @"var _stub = response.retval.get_object() as OLLMrpc.Live.Handle;
 ");
 						stream.puts(indent + "this.rpc_lid = _stub.rpc_lid;\n");
 						return;
