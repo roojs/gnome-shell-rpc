@@ -741,6 +741,10 @@ shell_gi_lib = shared_library(
     'shell-gi/Util.vala',
     'shell-gi/App.vala',
     'shell-gi/GLSLEffect.vala',
+    'shell-gi/SquareBin.vala',
+    'shell-gi/WindowPreview.vala',
+    'shell-gi/WorkspaceBackground.vala',
+    'shell-gi/Screenshot.vala',
     'shell-gi/Global.vala',
   ),
   dependencies: [
@@ -770,6 +774,7 @@ shell_gi_lib = shared_library(
     '--pkg=mutter-mtk-16',
     '--pkg=atk',
     '--pkg=pango',
+    '--pkg=graphene-gobject-1.0',
     '--vapidir', meson.current_source_dir() / 'gi-stub',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.project_build_root() / 'vapi',

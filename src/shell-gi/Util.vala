@@ -1,7 +1,8 @@
 /**
- * Minimal {@code Shell.util_*} for environment.js GLib.spawn_* wrappers (0.7.7 S1).
+ * {@code Shell.util_*} — spawn (S1) + systemd user-manager async (0.7.7 A).
  *
- * Stock also resets RLIMIT_NOFILE in a child setup; we use GLib.Process only.
+ * Systemd helpers mirror stock {@code shell-util.c}: session-bus
+ * {@code org.freedesktop.systemd1.Manager} StartUnit / StopUnit / GetUnit.
  */
 namespace Shell
 {
@@ -73,5 +74,48 @@ namespace Shell
 			stdin_fd, stdout_fd, stderr_fd, source_fds, target_fds,
 			out pid, out standard_input, out standard_output, out standard_error);
 		return pid;
+	}
+
+	static async void systemd_call(
+		string method,
+		GLib.Variant params,
+		GLib.Cancellable? cancellable
+	) throws GLib.Error
+	{
+		var bus = yield GLib.Bus.@get(GLib.BusType.SESSION, cancellable);
+		yield bus.call("org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+			"org.freedesktop.systemd1.Manager", method, params, null,
+			GLib.DBusCallFlags.NONE, -1, cancellable);
+	}
+
+	public async bool util_systemd_unit_exists(
+		string unit,
+		GLib.Cancellable? cancellable = null
+	) throws GLib.Error
+	{
+		yield systemd_call("GetUnit", new GLib.Variant("(s)", unit), cancellable);
+		return true;
+	}
+
+	public async bool util_start_systemd_unit(
+		string unit,
+		string mode,
+		GLib.Cancellable? cancellable = null
+	) throws GLib.Error
+	{
+		yield systemd_call(
+			"StartUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
+		return true;
+	}
+
+	public async bool util_stop_systemd_unit(
+		string unit,
+		string mode,
+		GLib.Cancellable? cancellable = null
+	) throws GLib.Error
+	{
+		yield systemd_call(
+			"StopUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
+		return true;
 	}
 }

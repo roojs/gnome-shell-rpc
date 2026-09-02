@@ -12,6 +12,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public static void rpc_register()
 		{
+			OLLMrpc.Bin.register("Shell-GLSLEffect", typeof(GLSLEffect));
 			OLLMrpc.Request.add_class(
 				"Helper-GLSLEffect", typeof(GLSLEffect),
 				"create", "",
@@ -29,7 +30,6 @@ namespace GnomeShellRpc.Rpc.Helper
 			var clutter_ctx = ((Clutter.Actor) stage).get_context();
 			cogl_context = clutter_ctx.get_backend().get_cogl_context();
 			OLLMrpc.Request.register_live("Helper-GLSLEffect", new GLSLEffect());
-			OLLMrpc.Bin.register_alias("Shell-GLSLEffect", typeof(GLSLEffect));
 		}
 
 		construct {
