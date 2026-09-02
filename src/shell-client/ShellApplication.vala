@@ -1,14 +1,17 @@
+/**
+ * gnome-shell-rpc thin host — no libshell (0.7.7).
+ *
+ * {@code Runtime.register()} → {@link Shell.Global.bind_display} → own
+ * {@link Gjs.Context} → eval {@code init.js} (default) or SCRIPT.js.
+ */
 namespace GnomeShellRpc.ShellClient
 {
-	/**
-	 * gnome-shell-rpc: libshell bootstrap + upstream init.js entry.
-	 *
-	 * Requires {@code MUTTER_RPC_SOCKET}, client typelibs on
-	 * {@code GI_TYPELIB_PATH}, and a running {@code mutter-rpc} compositor.
-	 */
 	public class Application : GLib.Application, GnomeShellRpc.ApplicationInterface
 	{
 		private const string APPLICATION_ID = "org.gnome.ShellRpc";
+		private const string INIT_MODULE =
+			"resource:///org/gnome/shell/ui/init.js";
+
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
 
@@ -19,6 +22,9 @@ namespace GnomeShellRpc.ShellClient
 				"Treat critical warnings as errors", null },
 			{ null }
 		};
+
+		[CCode (cname = "shell_js_resources_get_resource")]
+		private static extern GLib.Resource shell_js_resources_get_resource();
 
 		public Application()
 		{
@@ -41,7 +47,7 @@ namespace GnomeShellRpc.ShellClient
 			Application.opt_debug_critical = false;
 
 			var args = command_line.get_arguments();
-			var opt_context = new GLib.OptionContext("SCRIPT.js");
+			var opt_context = new GLib.OptionContext("[SCRIPT.js]");
 			opt_context.set_help_enabled(true);
 			opt_context.add_main_entries(Application.options, null);
 
@@ -58,22 +64,38 @@ namespace GnomeShellRpc.ShellClient
 				Application.opt_debug_critical;
 
 			prepend_typelib_paths();
+			GLib.resources_register(shell_js_resources_get_resource());
 
-			shell_bootstrap_connected();
+			GnomeShellRpc.GiStub.Runtime.register();
+			Shell.Global.bind_display(Meta.get_display());
 
-			var ctx = get_gjs_context();
-			var script = resolve_script(remaining, command_line);
-			if (script == null) {
-				return 1;
+			var script = resolve_script(remaining);
+			string[] search_path = {
+				"resource:///org/gnome/shell",
+			};
+			var js_dir = GLib.Environment.get_variable("GNOME_SHELL_JS_DIR");
+			if (js_dir != null && js_dir.length > 0) {
+				search_path += js_dir;
+				GLib.debug("gnome-shell JS search-path %s", js_dir);
 			}
+			if (!script.has_prefix("resource://")) {
+				search_path += GLib.Path.get_dirname(script);
+			}
+			search_path += ".";
 
 			GLib.debug("shell script %s", script);
+			var ctx = new Gjs.Context.with_search_path(search_path);
 			var status = 0;
 			var ok = false;
 			try {
-				uint8 module_status = 0;
-				ok = ctx.eval_module_file(script, out module_status);
-				status = module_status;
+				if (script.has_prefix("resource://")
+					|| script.contains("/ui/init.js")) {
+					uint8 module_status = 0;
+					ok = ctx.eval_module_file(script, out module_status);
+					status = module_status;
+				} else {
+					ok = ctx.eval_file(script, out status);
+				}
 			} catch (GLib.Error e) {
 				command_line.printerr("%s\n", e.message);
 				return 1;
@@ -93,26 +115,14 @@ namespace GnomeShellRpc.ShellClient
 				GI.Repository.prepend_search_path(typelib_dir);
 				GLib.debug("typelib prepend %s", typelib_dir);
 			}
-
-			foreach (var var_name in new string[] {
-				"GI_TYPELIB_PATH",
-				"LD_LIBRARY_PATH",
-			}) {
-				/* spawn sets these; nothing to do here for GI.Repository */
-			}
 		}
 
-		private string? resolve_script(
-			unowned string[] remaining,
-			GLib.ApplicationCommandLine command_line
-		)
+		private string resolve_script(unowned string[] remaining)
 		{
 			if (remaining.length >= 2) {
 				return remaining[1];
 			}
-
-			GLib.debug("no script arg — default init.js resource");
-			return "resource:///org/gnome/shell/ui/init.js";
+			return INIT_MODULE;
 		}
 	}
 

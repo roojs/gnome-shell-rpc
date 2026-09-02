@@ -1,4 +1,4 @@
-		public FocusManager get_for_stage(Clutter.Stage stage)
+		public static FocusManager get_for_stage(Clutter.Stage stage)
 		{
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"St-FocusManager.get_for_stage", null,

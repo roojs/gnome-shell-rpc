@@ -22,6 +22,12 @@ Texture
 Texture2D
   .new_from_data skip=false
 
+// GIR types value as gfloat* without array length — Vala needs float[]
+Pipeline
+  .set_uniform_float.value type="float[]"
+  .set_uniform_matrix.value type="float[]"
+  .set_uniform_int.value type="int[]"
+
 Texture.error_quark parent="Cogl.TextureError" name="quark"
 
 RendererError errordomain

@@ -1,5 +1,5 @@
 /* C GTypes from c-clutter-effect-abi.c; method bodies in ClutterEffectRelay.vala. */
-[CCode (cprefix = "Clutter", lower_case_cprefix = "clutter_", cheader_filename = "gsr-clutter-effect-abi.h")]
+[CCode (cprefix = "Clutter", lower_case_cprefix = "clutter_", cheader_filename = "gsr-clutter-effect-abi.h", gir_namespace = "Clutter", gir_version = "16")]
 namespace Clutter {
 	[CCode (type_id = "CLUTTER_TYPE_ACTOR_META")]
 	public class ActorMeta : GLib.InitiallyUnowned {

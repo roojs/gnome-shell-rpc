@@ -338,24 +338,9 @@ foreach h : libshell_public_headers + libshell_private_headers
   libshell_header_files += vendor_src_dir / h
 endforeach
 
-shell_global_rpc_append = meson.project_source_root() / 'src/shell-client/shell-global-rpc-append.c'
-shell_global_patched = custom_target(
-  'shell-global-patched.c',
-  input: [vendor_src_dir / 'shell-global.c', shell_global_rpc_append],
-  output: 'shell-global-patched.c',
-  command: [
-    'sh', '-c', 'cat "$1" "$2" > "$3"', 'sh',
-    '@INPUT0@', '@INPUT1@', '@OUTPUT@',
-  ],
-)
-
 libshell_source_files = []
 foreach s : libshell_sources
-  if s == 'shell-global.c'
-    libshell_source_files += shell_global_patched
-  else
-    libshell_source_files += vendor_src_dir / s
-  endif
+  libshell_source_files += vendor_src_dir / s
 endforeach
 
 libshell_enums = gnome.mkenums_simple('shell-enum-types',
@@ -437,58 +422,5 @@ libshell_gir = gnome.generate_gir(
   install_dir_typelib: mutter_rpc_client_install_dir,
 )
 
-message('gnome-shell client libs: libshell-16 linked to libmutter-rpc-16')
+message('gnome-shell client libs: libshell-16 linked to libmutter-rpc-16 (legacy; thin host is src/gnome-shell-rpc)')
 
-# Product shell host — after libshell/libst so link_depends resolve.
-src_dir = meson.project_source_root() / 'src'
-build_src_dir = meson.project_build_root() / 'src'
-gnome_shell_rpc_host_inc = include_directories('../../src/shell-client')
-
-gnome_shell_rpc_host_c_args = [
-  '-I' + mutter_includedir,
-  '-I' + gnome_shell_vendor_root / 'src',
-  '-I' + gnome_shell_vendor_root / 'src/st',
-  '-I' + client_libdir,
-  '-I' + client_libdir / 'st',
-] + mutter_clutter_cflags
-
-gnome_shell_rpc_host_vala_args = gjs_shell_vala_args + ocrpc_vala_args + [
-  '--pkg=mutter-rpc-16',
-  '--pkg=gsr-clutter-effect-abi',
-  '--pkg=gdesktopenums-3.0',
-  '--pkg=atk',
-  '--pkg=pango',
-  '--pkg=mutter-cogl-16',
-  '--vapidir', src_dir / 'gi-stub',
-  '--vapidir', build_src_dir,
-  '--vapidir', meson.project_build_root() / 'vapi',
-  '--vapidir', meson.project_source_root() / 'vapi',
-]
-
-gnome_shell_rpc_host_rpath = client_libdir + ':' + build_src_dir + ':' + ocrpc_rpath
-
-gnome_shell_rpc = executable('gnome-shell-rpc',
-  files(
-    src_dir / 'ApplicationInterface.vala',
-    src_dir / 'shell-client/namespace.vala',
-    src_dir / 'shell-client/ShellApplication.vala',
-  ),
-  src_dir / 'shell-client/bootstrap.c',
-  dependencies: gjs_shell_deps + [
-    ocrpc_dep,
-    mutter_rpc_client_dep,
-    dependency('gdk-pixbuf-2.0'),
-  ],
-  vala_args: gnome_shell_rpc_host_vala_args,
-  c_args: gnome_shell_rpc_host_c_args,
-  include_directories: gnome_shell_rpc_host_inc,
-  link_args: [
-    '-L' + client_libdir,
-    '-lshell-16',
-    '-lst-16',
-    '-L' + build_src_dir,
-  ],
-  link_depends: [libshell, libst, mutter_rpc_lib, st_rpc_lib],
-  build_rpath: gnome_shell_rpc_host_rpath,
-  install: false,
-)

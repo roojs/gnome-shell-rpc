@@ -19,6 +19,7 @@ IconTheme.get_icon_sizes noop
 ThemeContext.get_for_stage
 FocusManager.get_for_stage
 FocusManager.navigate_from_event noop
+Settings.get
 
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new

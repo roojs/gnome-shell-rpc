@@ -30,5 +30,17 @@ namespace Meta
 			backend.rpc_lid = response.args.get(0).get_uint64();
 			return backend;
 		}
+
+		public void disable_unredirect()
+		{
+			GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Compositor.disable_unredirect", this);
+		}
+
+		public void enable_unredirect()
+		{
+			GnomeShellRpc.GiStub.Runtime.call_values(
+				"Meta-Compositor.enable_unredirect", this);
+		}
 	}
 }

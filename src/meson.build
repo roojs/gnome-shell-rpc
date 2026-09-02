@@ -32,6 +32,7 @@ compositor_sources = files(
   'rpc/helper/SelectionSourceMemory.vala',
   'rpc/helper/ShapedTexture.vala',
   'rpc/helper/ShaderEffect.vala',
+  'rpc/helper/GLSLEffect.vala',
   'rpc/helper/ClutterThreads.vala',
   'rpc/helper/ClutterActor.vala',
   'rpc/helper/ClutterStage.vala',
@@ -674,6 +675,7 @@ st_generated = custom_target('St_generated.vala',
     'gi-stub/overrides-st/Widget.override.vala',
     'gi-stub/overrides-st/ThemeContext.override.vala',
     'gi-stub/overrides-st/FocusManager.override.vala',
+    'gi-stub/overrides-st/Settings.override.vala',
   ),
   depends: [gi_stub_gen],
   build_by_default: true,
@@ -730,6 +732,88 @@ mutter_rpc_client_dep = declare_dependency(
   compile_args: ['-I' + mutter_includedir],
 )
 
+# 0.7.7 — owned Shell-16 facade (not libshell). GIR from Vala (vala_gir).
+shell_gi_lib = shared_library(
+  'shell-gi-16',
+  files(
+    'shell-gi/namespace.vala',
+    'shell-gi/ActionMode.vala',
+    'shell-gi/Util.vala',
+    'shell-gi/App.vala',
+    'shell-gi/GLSLEffect.vala',
+    'shell-gi/Global.vala',
+  ),
+  dependencies: [
+    ocrpc_dep,
+    declare_dependency(
+      link_with: [mutter_rpc_lib, st_rpc_lib],
+      dependencies: [
+        mutter_clutter_rpc_client_dep,
+        dependency('mutter-mtk-16'),
+        dependency('mutter-cogl-16'),
+        dependency('atk'),
+        dependency('pango'),
+        dependency('gdk-pixbuf-2.0'),
+      ],
+      compile_args: ['-I' + mutter_includedir],
+    ),
+  ],
+  vala_args: ocrpc_vala_args + [
+    '--pkg=gio-2.0',
+    '--pkg=gdesktopenums-3.0',
+    '--pkg=gsr-clutter-effect-abi',
+    '--pkg=gdk-pixbuf-2.0',
+    '--pkg=mutter-rpc-16',
+    '--pkg=mutter-clutter-rpc-16',
+    '--pkg=st-rpc-16',
+    '--pkg=mutter-cogl-16',
+    '--pkg=mutter-mtk-16',
+    '--pkg=atk',
+    '--pkg=pango',
+    '--vapidir', meson.current_source_dir() / 'gi-stub',
+    '--vapidir', meson.current_build_dir(),
+    '--vapidir', meson.project_build_root() / 'vapi',
+    '--vapidir', meson.project_source_root() / 'vapi',
+  ],
+  c_args: [
+    '-I' + mutter_includedir,
+    '-I' + meson.current_source_dir() / 'gi-stub',
+    '-I' + meson.current_build_dir(),
+    '-include', 'mutter-clutter-rpc-16.h',
+  ] + mutter_clutter_cflags,
+  build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
+  vala_header: 'shell-gi-16.h',
+  vala_vapi: 'shell-gi-16.vapi',
+  vala_gir: 'Shell-16.gir',
+  install: false,
+)
+
+shell_gi_typelib = custom_target(
+  'Shell-16.typelib',
+  input: meson.current_build_dir() / 'Shell-16.gir',
+  output: 'Shell-16.typelib',
+  command: [
+    g_ir_compiler,
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libshell-gi-16.so',
+    '--includedir', mutter_typelib_dir,
+    '--includedir', gnome_shell_girdir,
+    '--includedir', meson.current_build_dir(),
+    '@INPUT@',
+  ],
+  depends: [shell_gi_lib],
+  build_by_default: true,
+  install: false,
+)
+
+# 0.7.7 S1 — JS gresource (vendor tree + substituted misc/config.js).
+gnome = import('gnome')
+vendor_js_dir = gnome_shell_vendor_root / 'js'
+vendor_data_dir = gnome_shell_vendor_root / 'data'
+generate_app_list = find_program(
+  gnome_shell_vendor_root / 'meson' / 'generate-app-list.py',
+)
+subdir('shell-js')
 st_gir = gnome_shell_girdir / 'St-16.gir'
 st_rpc_typelib = custom_target('St-16.typelib',
   output: 'St-16.typelib',
@@ -745,6 +829,63 @@ st_rpc_typelib = custom_target('St-16.typelib',
   build_by_default: true,
   install: true,
   install_dir: mutter_rpc_typelib_install_dir,
+)
+
+# Thin gnome-shell-rpc host (no libshell / no client libst).
+# Link st-rpc for Runtime.st_register without --pkg/st vapi (Gdk noise).
+gnome_shell_rpc = executable('gnome-shell-rpc',
+  files(
+    'ApplicationInterface.vala',
+    'shell-client/namespace.vala',
+    'shell-client/ShellApplication.vala',
+  ) + shell_js_resources,
+  dependencies: gjs_shell_deps + [
+    ocrpc_dep,
+    dependency('gdk-pixbuf-2.0'),
+    declare_dependency(
+      link_with: [mutter_rpc_lib, mutter_clutter_rpc_lib, shell_gi_lib],
+      dependencies: [
+        dependency('mutter-mtk-16'),
+        dependency('mutter-cogl-16'),
+        dependency('atk'),
+        dependency('pango'),
+      ],
+      compile_args: ['-I' + mutter_includedir],
+    ),
+  ],
+  vala_args: gjs_shell_vala_args + ocrpc_vala_args + [
+    '--pkg=gdesktopenums-3.0',
+    '--pkg=gsr-clutter-effect-abi',
+    '--pkg=gdk-pixbuf-2.0',
+    '--pkg=mutter-rpc-16',
+    '--pkg=mutter-clutter-rpc-16',
+    '--pkg=st-rpc-16',
+    '--pkg=shell-gi-16',
+    '--pkg=mutter-cogl-16',
+    '--pkg=mutter-mtk-16',
+    '--pkg=atk',
+    '--pkg=pango',
+    '--vapidir', meson.current_build_dir(),
+    '--vapidir', meson.current_source_dir() / 'gi-stub',
+    '--vapidir', meson.project_build_root() / 'vapi',
+    '--vapidir', meson.project_source_root() / 'vapi',
+  ],
+  c_args: [
+    '-I' + mutter_includedir,
+    '-I' + meson.current_source_dir() / 'gi-stub',
+    '-I' + meson.current_build_dir(),
+    '-include', 'mutter-clutter-rpc-16.h',
+  ] + mutter_clutter_cflags,
+  link_args: ['-L' + meson.current_build_dir(), '-lst-rpc-16'],
+  link_depends: [
+    st_rpc_lib,
+    shell_gi_typelib,
+    mutter_rpc_typelib,
+    clutter_rpc_typelib,
+    st_rpc_typelib,
+  ],
+  build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
+  install: false,
 )
 
 configure_file(
@@ -878,16 +1019,7 @@ fake_shell = executable('fake-shell',
 )
 
 if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != ''
-  # gnome-shell-rpc (ShellApplication + libshell) is built from
-  # gnome-shell/client-libs/meson.build after libshell-16.so exists.
-else
-  gnome_shell_rpc = executable('gnome-shell-rpc',
-    gjs_shell_sources,
-    gnome_shell_rpc_config,
-    dependencies: gjs_shell_deps,
-    vala_args: gjs_shell_vala_args,
-    install: false,
-  )
+  # Legacy vendored libshell/libst — optional comparison only (0.7.7 default host is thin).
 endif
 
 mutter_rpc = executable('mutter-rpc',

@@ -61,6 +61,10 @@ Text
 LayoutManager
 	.create_child_meta skip=false
 
+// introspectable="0" in Clutter-16.gir — needed to subclass OffscreenEffect in Vala
+OffscreenEffect
+	.create_pipeline#virtual_method skip=false
+
 // We can use static strings
 PaintNode
 	.set_static_name skip=false
