@@ -184,101 +184,6 @@ namespace GnomeShellRpc.GiStub
 			return builder.end();
 		}
 
-		private static string gobject_prop_from_member(string member)
-		{
-			var sb = new GLib.StringBuilder();
-			for (var i = 0; i < member.length; i++) {
-				var c = member[i];
-				if (c == '_') {
-					sb.append_c('-');
-				} else {
-					sb.append_c(c);
-				}
-			}
-			return sb.str;
-		}
-
-		private static Gee.HashMap<ulong, Gee.HashMap<string, GLib.Value?>>? local_props = null;
-
-		private static Gee.HashMap<string, GLib.Value?> local_props_for(GLib.Object instance)
-		{
-			if (Runtime.local_props == null) {
-				Runtime.local_props =
-					new Gee.HashMap<ulong, Gee.HashMap<string, GLib.Value?>>();
-			}
-			var key = (ulong) instance;
-			if (!Runtime.local_props.has_key(key)) {
-				Runtime.local_props.set(
-					key, new Gee.HashMap<string, GLib.Value?>());
-			}
-			return Runtime.local_props.get(key);
-		}
-
-		private static GLib.Value wire_retval(GLib.Value val, GLib.ParamSpec pspec)
-		{
-			if (val.type().is_a(GLib.Type.ENUM) || val.type().is_a(GLib.Type.FLAGS)) {
-				var wire = GLib.Value(GLib.Type.INT);
-				wire.set_int(val.get_enum());
-				return wire;
-			}
-			if (pspec.value_type.is_a(GLib.Type.ENUM)
-					|| pspec.value_type.is_a(GLib.Type.FLAGS)) {
-				var wire = GLib.Value(GLib.Type.INT);
-				wire.set_int(val.get_enum());
-				return wire;
-			}
-			return val;
-		}
-
-		/**
-		 * TEMP: local GJS / St actors without a lease — shadow GObject props
-		 * (get_/set_/is_). Boot probe; not the long-term model.
-		 */
-		private static OLLMrpc.Response call_local(
-			GLib.Object instance,
-			string method,
-			Gee.ArrayList<GLib.Value?>? args
-		) {
-			var dot = method.last_index_of(".");
-			if (dot < 0) {
-				GLib.error(
-					"RPC %s: local %s — bad method",
-					method, instance.get_type().name());
-			}
-			var member = method.substring(dot + 1);
-			var response = new OLLMrpc.Response();
-			var bag = Runtime.local_props_for(instance);
-
-			if (member.has_prefix("set_") && args != null && args.size >= 1) {
-				var prop_name = Runtime.gobject_prop_from_member(
-					member.substring(4));
-				bag.set(prop_name, args[0]);
-				return response;
-			}
-			if (member.has_prefix("get_") || member.has_prefix("is_")) {
-				var start = member.has_prefix("get_") ? 4 : 3;
-				var prop_name = Runtime.gobject_prop_from_member(
-					member.substring(start));
-				var pspec = instance.get_class().find_property(prop_name);
-				if (pspec == null) {
-					GLib.error(
-						"RPC %s: local %s — no property %s",
-						method, instance.get_type().name(), prop_name);
-				}
-				if (bag.has_key(prop_name)) {
-					response.retval = Runtime.wire_retval(
-						bag.get(prop_name), pspec);
-					return response;
-				}
-				response.retval = Runtime.wire_retval(
-					pspec.get_default_value(), pspec);
-				return response;
-			}
-			GLib.error(
-				"RPC %s: local %s — unhandled member",
-				method, instance.get_type().name());
-		}
-
 		private static uint64 lease_id_of(GLib.Object obj, string? context = null)
 		{
 			var handle = obj as OLLMrpc.Live.Handle;
@@ -311,10 +216,6 @@ namespace GnomeShellRpc.GiStub
 		) throws GLib.Error {
 			uint64 lease_id = 0;
 			if (instance != null) {
-				var handle = instance as OLLMrpc.Live.Handle;
-			if (handle != null && handle.rpc_lid == 0) {
-				return Runtime.call_local(instance, method, args);
-			}
 				lease_id = Runtime.lease_id_of(instance, method);
 			}
 			var req = new OLLMrpc.Request() {
@@ -331,13 +232,6 @@ namespace GnomeShellRpc.GiStub
 				}
 				var obj = val.get_object();
 				if (obj == null) {
-					var zero = GLib.Value(GLib.Type.UINT64);
-					zero.set_uint64(0);
-					req.args.add(zero);
-					continue;
-				}
-				var arg_handle = obj as OLLMrpc.Live.Handle;
-				if (arg_handle != null && arg_handle.rpc_lid == 0) {
 					var zero = GLib.Value(GLib.Type.UINT64);
 					zero.set_uint64(0);
 					req.args.add(zero);
