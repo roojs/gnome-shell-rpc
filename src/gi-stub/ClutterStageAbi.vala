@@ -11,7 +11,7 @@ namespace GnomeShellRpc.GiStub
 		 * ''Clutter-PaintContext.get_stage_view'' — lease in args[0].
 		 *
 		 * @param paint_context leased stub PaintContext
-		 * @return StageView stub with {@code rpc-lid}, or null
+		 * @return StageView stub with {@link Clutter.StageView.rpc_lid}, or null
 		 */
 		[CCode (cname = "clutter_paint_context_get_stage_view")]
 		public static Clutter.StageView? get_stage_view(
@@ -28,7 +28,7 @@ namespace GnomeShellRpc.GiStub
 					return null;
 				}
 				var view = new Clutter.StageView();
-				view.set_data_full("rpc-lid", (void*) handle, null);
+				view.rpc_lid = handle;
 				return view;
 			} catch (GLib.Error e) {
 				GLib.warning("get_stage_view: %s", e.message);
@@ -42,7 +42,7 @@ namespace GnomeShellRpc.GiStub
 		 * @param stage leased stub Stage
 		 * @param x stage X
 		 * @param y stage Y
-		 * @return StageView stub with {@code rpc-lid}, or null
+		 * @return StageView stub with {@link Clutter.StageView.rpc_lid}, or null
 		 */
 		[CCode (cname = "clutter_stage_get_view_at")]
 		public static Clutter.StageView? get_view_at(
@@ -62,7 +62,7 @@ namespace GnomeShellRpc.GiStub
 					return null;
 				}
 				var view = new Clutter.StageView();
-				view.set_data_full("rpc-lid", (void*) handle, null);
+				view.rpc_lid = handle;
 				return view;
 			} catch (GLib.Error e) {
 				GLib.warning("get_view_at: %s", e.message);

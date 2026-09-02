@@ -3,7 +3,7 @@
  *
  * Wire prefix ''Helper-Background''. {@code create} returns lease id in
  * {@link OLLMrpc.Response.args} — not {@code retval} — so the client
- * {@code construct} can set {@code rpc-lid} without re-entering
+ * {@code construct} can set {@code rpc_lid} without re-entering
  * {@code Background} construction via a live retval decode.
  */
 namespace GnomeShellRpc.Rpc.Helper

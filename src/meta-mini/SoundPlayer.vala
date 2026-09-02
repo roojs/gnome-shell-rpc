@@ -5,8 +5,10 @@ namespace Meta
 	 *
 	 * Bodies match ''SoundPlayer.override.vala'' (helper RPC + cancellable id).
 	 */
-	public class SoundPlayer : GLib.Object
+	public class SoundPlayer : GLib.Object, OLLMrpc.Live.Handle
 	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
+
 		public void play_from_file(
 			GLib.File file,
 			string description,

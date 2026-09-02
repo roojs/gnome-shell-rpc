@@ -13,8 +13,10 @@ namespace Meta
 	 * var launcher = display.get_startup_notification().create_launcher();
 	 * }}}
 	 */
-	public class Display : GLib.Object
+	public class Display : GLib.Object, OLLMrpc.Live.Handle
 	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
+
 		private StartupNotification startup_notification =
 			new StartupNotification();
 
@@ -41,7 +43,7 @@ namespace Meta
 					title = snap.title,
 					wm_class = snap.wm_class,
 				};
-				win.set_data_full("rpc-lid", (void*) snap.id, null);
+				win.rpc_lid = snap.id;
 				list.append(win);
 			}
 			return list;
@@ -65,7 +67,7 @@ namespace Meta
 				title = snap.title,
 				wm_class = snap.wm_class,
 			};
-			win.set_data_full("rpc-lid", (void*) snap.id, null);
+			win.rpc_lid = snap.id;
 			return win;
 		}
 
@@ -85,11 +87,7 @@ namespace Meta
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Display.get_compositor", this);
 			var compositor = new Compositor();
-			compositor.set_data_full(
-				"rpc-lid",
-				(void*) response.args.get(0).get_uint64(),
-				null
-			);
+			compositor.rpc_lid = response.args.get(0).get_uint64();
 			return compositor;
 		}
 
@@ -101,11 +99,7 @@ namespace Meta
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Meta-Display.get_sound_player", this);
 			var player = new SoundPlayer();
-			player.set_data_full(
-				"rpc-lid",
-				(void*) response.args.get(0).get_uint64(),
-				null
-			);
+			player.rpc_lid = response.args.get(0).get_uint64();
 			return player;
 		}
 
@@ -143,7 +137,7 @@ namespace Meta
 		{
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("rpc-lid");
+			var lease = pad.rpc_lid;
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -163,7 +157,7 @@ namespace Meta
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("rpc-lid");
+			var lease = pad.rpc_lid;
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -186,7 +180,7 @@ namespace Meta
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("rpc-lid");
+			var lease = pad.rpc_lid;
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -217,11 +211,7 @@ namespace Meta
 				"RPC-Bootstrap.get_display"
 			);
 			if (response.args.size > 0) {
-				display_singleton.set_data_full(
-					"rpc-lid",
-					(void*) response.args.get(0).get_uint64(),
-					null
-				);
+				display_singleton.rpc_lid = response.args.get(0).get_uint64();
 			}
 		}
 		return display_singleton;

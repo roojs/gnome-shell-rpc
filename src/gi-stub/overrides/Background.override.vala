@@ -5,17 +5,12 @@
 		public Display meta_display { get; construct; }
 
 		construct {
-			var lease = (uint64) this.meta_display.get_data<void*>("rpc-lid");
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-Background.create",
 				null,
-				OLLMrpc.args("t", lease)
+				OLLMrpc.args("t", this.meta_display.rpc_lid)
 			);
-			this.set_data_full(
-				"rpc-lid",
-				(void*) response.args.get(0).get_uint64(),
-				null
-			);
+			this.rpc_lid = response.args.get(0).get_uint64();
 		}
 
 		public void set_file(GLib.File file, GDesktop.BackgroundStyle style)

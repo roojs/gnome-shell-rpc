@@ -10,9 +10,5 @@
 				"Helper-SelectionSourceMemory.create", null,
 				OLLMrpc.args("say", mimetype, content));
 			var stub = (SelectionSourceMemory) response.retval.get_object();
-			this.set_data_full(
-				"rpc-lid",
-				stub.get_data<void*>("rpc-lid"),
-				null
-			);
+			this.rpc_lid = stub.rpc_lid;
 		}

@@ -4,7 +4,7 @@ namespace Meta
 	 * Client stub for one leased compositor window.
 	 *
 	 * Callers assign {@link title} / {@link wm_class}, then
-	 * {@code set_data("rpc-lid", …)} for the plugin handle.
+	 * {@link rpc_lid} for the plugin handle.
 	 * Mutators use typelib FFI ({@code Meta-Window.*} + lease_id).
 	 *
 	 * == Example ==
@@ -14,13 +14,15 @@ namespace Meta
 	 *     title = snap.title,
 	 *     wm_class = snap.wm_class,
 	 * };
-	 * win.set_data_full("rpc-lid", (void*) snap.id, null);
+	 * win.rpc_lid = snap.id;
 	 * win.minimize();
 	 * win.unminimize();
 	 * }}}
 	 */
-	public class Window : GLib.Object
+	public class Window : GLib.Object, OLLMrpc.Live.Handle
 	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
+
 		public string title { get; set; default = ""; }
 		public string wm_class { get; set; default = ""; }
 
@@ -116,7 +118,7 @@ namespace Meta
 			uint64 device_lease = 0;
 			var device_name = "";
 			if (device != null) {
-				var lease = (uint64) device.get_data<void*>("rpc-lid");
+				var lease = device.rpc_lid;
 				if (lease != 0) {
 					device_lease = lease;
 				} else {

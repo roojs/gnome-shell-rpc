@@ -25,7 +25,7 @@
 		{
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("rpc-lid");
+			var lease = pad.rpc_lid;
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -42,7 +42,7 @@
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("rpc-lid");
+			var lease = pad.rpc_lid;
 			if (lease != 0) {
 				device_lease = lease;
 			} else {
@@ -62,7 +62,7 @@
 		) {
 			uint64 device_lease = 0;
 			var device_name = "";
-			var lease = (uint64) pad.get_data<void*>("rpc-lid");
+			var lease = pad.rpc_lid;
 			if (lease != 0) {
 				device_lease = lease;
 			} else {

@@ -174,11 +174,20 @@ namespace $(ns)
 			if (oi.get_parent() != null) {
 				parent = this.info_name(ns, oi.get_parent());
 			}
-
-			stream.puts(@"
+			/* Declare Handle on hierarchy roots only; descendants inherit. */
+			if (this.should_emit_live_handle(ns, parent)) {
+				stream.puts(@"
+	public class $(class_name) : $(parent), OLLMrpc.Live.Handle
+	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
+");
+			} else {
+				stream.puts(@"
 	public class $(class_name) : $(parent)
 	{
 ");
+			}
+			this.emit_lease_construct(stream, ns, class_name, oi);
 			var vfunc_names = new Gee.HashSet<string>();
 			var method_names = new Gee.HashSet<string>();
 			var prop_accessors = new Gee.HashSet<string>();
@@ -246,8 +255,9 @@ namespace $(ns)
 			}
 
 			stream.puts(@"
-	public class $(class_name) : GLib.Object
+	public class $(class_name) : GLib.Object, OLLMrpc.Live.Handle
 	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
 			var methods = 0;
 			for (var m = 0; m < ui.get_n_methods(); m++) {
@@ -265,6 +275,125 @@ namespace $(ns)
 			this.splice_class_override(stream, class_name);
 			stream.puts("	}\n");
 			return 1 + methods;
+		}
+
+		/**
+		 * Whether this class should declare {@link OLLMrpc.Live.Handle}.
+		 *
+		 * Declare on {@code GLib.Object}/{@code InitiallyUnowned} roots and
+		 * on the first stub under a denied/C parent (e.g. {@code ActorMeta}).
+		 * Same-ns GIR parents and our Clutter stubs already carry it.
+		 * Stock foreign parents (Atk, Gio, non-root GLib, …) do not — emit here.
+		 */
+		private bool should_emit_live_handle(string ns, string parent)
+		{
+			if (parent == "GLib.Object"
+				|| parent == "GLib.InitiallyUnowned") {
+				return true;
+			}
+			if ("." in parent && !parent.has_prefix(ns + ".")) {
+				/* Meta → Clutter.* stubs already implement Handle. */
+				if (parent.has_prefix("Clutter.")) {
+					return false;
+				}
+				return true;
+			}
+			var simple = parent;
+			if (parent.has_prefix(ns + ".")) {
+				simple = parent.substring(ns.length + 1);
+			}
+			if (simple in this.deny) {
+				return true;
+			}
+			var info = GI.Repository.get_default().find_by_name(ns, simple);
+			if (info != null && info.get_type() == GI.InfoType.OBJECT) {
+				return false;
+			}
+			return true;
+		}
+
+		/**
+		 * {@code construct} that creates a server peer and copies
+		 * {@code rpc_lid}. Emits on every class with a wireable {@code new}
+		 * (0- or n-arg with defaultable IN args), including leaves that
+		 * inherit Handle. Skip when args cannot be defaulted.
+		 *
+		 * @param oi object info, or null
+		 */
+		private void emit_lease_construct(
+			GLib.FileStream stream,
+			string ns,
+			string class_name,
+			GI.ObjectInfo? oi
+		) {
+			if (oi == null) {
+				return;
+			}
+			var new_fi = oi.find_method("new");
+			if (new_fi == null
+				|| (new_fi.get_flags() & GI.FunctionInfoFlags.IS_CONSTRUCTOR) == 0
+				|| !this.callable_wireable(new_fi, ns)) {
+				return;
+			}
+			var sig = "";
+			var packed = "";
+			for (var a = 0; a < new_fi.get_n_args(); a++) {
+				var arg = new_fi.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
+				if (arg.get_direction() != GI.Direction.IN) {
+					return;
+				}
+				var letter = this.dbus_letter(ns, arg.get_type());
+				string expr;
+				switch (letter) {
+					case "o":
+						/* g_object_new sets props after construct — cannot RPC null. */
+						return;
+					case "b":
+						expr = "false";
+						break;
+					case "s": case "g":
+						expr = "\"\"";
+						break;
+					case "f": case "d":
+						expr = "0.0";
+						break;
+					case "i": case "y": case "x": case "t":
+						expr = "0";
+						break;
+					case "u":
+						expr = "(uint) 0";
+						break;
+					default:
+						return;
+				}
+				sig += letter;
+				if (packed != "") {
+					packed += ", ";
+				}
+				packed += expr;
+			}
+			var rpc = @"$(ns)-$(class_name).new";
+			var args_arg = "";
+			if (packed != "") {
+				args_arg = @", OLLMrpc.args(\"$(sig)\", $(packed))";
+			}
+			stream.puts(@"		construct {
+			if (this.rpc_lid != 0) {
+				return;
+			}
+");
+			stream.puts(@"			if (this.get_type() != typeof($(class_name))) {
+				return;
+			}
+");
+			stream.puts(@"			var response = $(RUNTIME).call_values(\"$(rpc)\", null$(args_arg));
+			var _stub = ($(class_name)) response.retval.get_object();
+			this.rpc_lid = _stub.rpc_lid;
+		}
+");
 		}
 
 		/**
@@ -463,6 +592,18 @@ namespace $(ns)
 			if (si.is_gtype_struct()) {
 				return 0;
 			}
+			/*
+			 * Opaque *Private GIR records share C names with Vala instance
+			 * private (rpc_lid). Skip — same as deny ActorPrivate etc.
+			 */
+			if (si.get_name().has_suffix("Private") && si.get_size() == 0) {
+				this.gaps.add(new Gap() {
+					symbol = si.get_name(),
+					reason = "denied",
+					detail = "opaque_private",
+				});
+				return 0;
+			}
 			if (si.get_name() in this.deny) {
 				this.gaps.add(new Gap() {
 					symbol = si.get_name(),
@@ -553,8 +694,9 @@ namespace $(ns)
 		) {
 			var class_name = si.get_name();
 			stream.puts(@"
-	public class $(class_name) : GLib.Object
+	public class $(class_name) : GLib.Object, OLLMrpc.Live.Handle
 	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
 			var methods = 0;
 			for (var m = 0; m < si.get_n_methods(); m++) {
@@ -734,6 +876,17 @@ namespace $(ns)
 						/* ay/v need OUT/blob paths that break inside property get. */
 						if (L == "" || L == "ay" || L == "v") {
 							continue;
+						}
+					}
+					/* Unset Response.retval = null object (libocrpc). */
+					if (getter.may_return_null() && !vt.has_suffix("?")) {
+						var iface = getter.get_return_type().get_interface();
+						if (iface != null
+							&& (
+								iface.get_type() == GI.InfoType.OBJECT
+								|| this.union_as_gobject(ns, iface)
+							)) {
+							vt = vt + "?";
 						}
 					}
 				}
@@ -1271,6 +1424,17 @@ namespace $(ns)
 				ret = type_name;
 			} else {
 				ret = this.type_vala(ns, fi.get_return_type());
+				/* Unset Response.retval = null object (libocrpc). */
+				if (ret != "" && fi.may_return_null() && !ret.has_suffix("?")) {
+					var iface = fi.get_return_type().get_interface();
+					if (iface != null
+						&& (
+							iface.get_type() == GI.InfoType.OBJECT
+							|| this.union_as_gobject(ns, iface)
+						)) {
+						ret = ret + "?";
+					}
+				}
 			}
 			if (ret == "") {
 				this.gaps.add(new Gap() {
@@ -1371,6 +1535,21 @@ $(tab)public abstract $(ret) $(vala_name)($(arglist))$(throws_clause);
 			/* Struct methods are C ABI only — no GObject lease wire. */
 			if (kind != "struct" && this.callable_wireable(fi, ns)) {
 				if (is_constructor) {
+					/*
+					 * Default {@code new}(): Object() only — lease create
+					 * lives in {@code construct} ({@link OLLMrpc.Live.Handle}).
+					 */
+					if (name == "new" && args.length == 0) {
+						stream.puts(
+							tab + @"public $(this.constructor_decl(type_name, name))()
+$(tab){
+$(indent)Object();
+$(tab)}
+"
+						);
+						this.wired_callables++;
+						return 1;
+					}
 					stream.puts(
 						tab + @"public $(this.constructor_decl(type_name, name))($(arglist))$(throws_clause)
 $(tab){
@@ -1627,19 +1806,36 @@ $(tab)}
 					if (is_constructor) {
 						stream.puts(indent + @"var _stub = ($(ret_vala)) response.retval.get_object();
 ");
-						stream.puts(
-							indent + @"this.set_data_full(\"rpc-lid\", _stub.get_data<void*>(\"rpc-lid\"), null);
-"
-						);
+						stream.puts(indent + "this.rpc_lid = _stub.rpc_lid;\n");
 						return;
 					}
+					var cast = ret_vala.has_suffix("?")
+						? ret_vala.substring(0, ret_vala.length - 1)
+						: ret_vala;
+					var null_ok = ret_vala.has_suffix("?");
 					if (!has_outs) {
-						stream.puts(indent + @"return ($(ret_vala)) response.retval.get_object();
+						if (null_ok) {
+							stream.puts(indent + @"if (response.retval.type() == GLib.Type.INVALID) {
+");
+							stream.puts(indent + "\treturn null;\n");
+							stream.puts(indent + "}\n");
+						}
+						stream.puts(indent + @"return ($(cast)) response.retval.get_object();
 ");
 						return;
 					}
-					stream.puts(indent + @"var __ret = ($(ret_vala)) response.retval.get_object();
+					if (null_ok) {
+						stream.puts(indent + @"$(ret_vala) __ret = null;
 ");
+						stream.puts(indent + @"if (response.retval.type() != GLib.Type.INVALID) {
+");
+						stream.puts(indent + @"	__ret = ($(cast)) response.retval.get_object();
+");
+						stream.puts(indent + "}\n");
+					} else {
+						stream.puts(indent + @"var __ret = ($(cast)) response.retval.get_object();
+");
+					}
 				} else {
 					if (!has_outs) {
 						this.emit_value_get(

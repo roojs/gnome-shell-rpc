@@ -366,6 +366,8 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/Clutter.override.vala',
   'gi-stub/overrides-clutter/Stage.override.vala',
   'gi-stub/overrides-clutter/Actor.override.vala',
+  'gi-stub/overrides-clutter/ActorIter.override.vala',
+  'gi-stub/overrides-clutter/BindConstraint.override.vala',
   'gi-stub/overrides-clutter/Backend.override.vala',
   'gi-stub/overrides-clutter/PipelineNode.override.vala',
   'gi-stub/overrides-clutter/PaintContext.override.vala',

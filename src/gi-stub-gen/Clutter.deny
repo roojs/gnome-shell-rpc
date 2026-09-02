@@ -7,6 +7,12 @@ Effect
 OffscreenEffect
 ActorMetaPrivate
 
+# Opaque GIR privates — C name clashes with Vala GObject instance private
+# (e.g. ClutterActorPrivate) when the class has fields like rpc_lid.
+ActorPrivate
+PaintNodePrivate
+ActorAccessiblePrivate
+
 # GString return — generator maps poorly (GLib.String).
 FrameClock.get_max_render_time_debug_info
 
@@ -51,3 +57,21 @@ Actor.destroy
 # Vala auto-emits free/dup when struct has methods — skip GIR copies.
 ActorBox.free
 ActorBox.copy
+
+# Bodies in overrides-clutter/Actor.override.vala (local ATK vs RPC split).
+Actor.get_accessible
+Actor.get_accessible_type
+Actor.add_child
+Actor.remove_child
+Actor.add_constraint
+
+# Bodies in overrides-clutter/ActorIter.override.vala (child walk via Actor RPC).
+ActorIter.destroy
+ActorIter.init
+ActorIter.is_valid
+ActorIter.next
+ActorIter.prev
+ActorIter.remove
+
+# Lease in overrides-clutter/BindConstraint.override.vala (constructed, after props).
+BindConstraint.new

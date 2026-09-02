@@ -6,15 +6,10 @@
 		public int monitor { get; construct; }
 
 		construct {
-			var lease = (uint64) this.meta_display.get_data<void*>("rpc-lid");
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(
 				"Helper-BackgroundActor.create",
 				null,
-				OLLMrpc.args("ti", lease, this.monitor)
+				OLLMrpc.args("ti", this.meta_display.rpc_lid, this.monitor)
 			);
-			this.set_data_full(
-				"rpc-lid",
-				(void*) response.args.get(0).get_uint64(),
-				null
-			);
+			this.rpc_lid = response.args.get(0).get_uint64();
 		}
