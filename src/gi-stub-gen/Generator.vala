@@ -2072,9 +2072,6 @@ $(tab)}
 					return false;
 				}
 				if (is_object) {
-					if (info.get_namespace() != ns) {
-						return false;
-					}
 					if (dir != GI.Direction.IN) {
 						return false;
 					}
@@ -2357,8 +2354,7 @@ $(tab)}
 					if (info.get_type() == GI.InfoType.FLAGS) {
 						return "u";
 					}
-					if (info.get_type() == GI.InfoType.OBJECT
-						&& info.get_namespace() == ns) {
+					if (info.get_type() == GI.InfoType.OBJECT) {
 						return "o";
 					}
 					if (this.union_as_gobject(ns, info)) {
@@ -2444,6 +2440,10 @@ $(tab)}
 
 				case "GDesktopEnums":
 					vala_ns = "GDesktop";
+					break;
+
+				case "GdkPixbuf":
+					vala_ns = "Gdk";
 					break;
 			}
 			return vala_ns + "." + info.get_name();

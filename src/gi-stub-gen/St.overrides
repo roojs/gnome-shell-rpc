@@ -1,0 +1,3 @@
+# gi-stub-gen overrides for St-16 (Type.method key=value).
+
+Widget.get_focus_chain list_elem=Widget

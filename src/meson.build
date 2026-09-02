@@ -66,11 +66,13 @@ meta_mini_vala_args = [
   '--vapidir', meson.project_source_root() / 'vapi',
 ]
 
-# Client St/Shell: sources/meson in gnome-shell/client-libs/; nested uses that
-# build dir. Install goes to ${libdir}/mutter-rpc-16/ (never /usr/lib/gnome-shell/).
+# Legacy client Shell/St from vendor; disabled by default (Phase C uses St RPC stubs).
 mutter_rpc_gir_name = 'mutter-rpc-16'
 gnome_shell_client_libdir = meson.project_build_root() / 'gnome-shell' / 'client-libs'
 gnome_shell_client_typelibdir = get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != '' ? gnome_shell_client_libdir : ''
+
+gnome_shell_pkglibdir = '/usr/lib/gnome-shell'
+gnome_shell_girdir = '/usr/share/gnome-shell'
 
 rpc_config = configure_file(
   input: 'rpc/Config.vala.in',
@@ -78,23 +80,11 @@ rpc_config = configure_file(
   configuration: configuration_data({
     'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
     'GNOME_SHELL_CLIENT_TYPELIB_DIR': gnome_shell_client_typelibdir,
-    # Distro Gvc typelib + libgvc.so (same pkglibdir as stock gnome-shell).
-    'GNOME_SHELL_PKGLIBDIR': '/usr/lib/gnome-shell',
+    'GNOME_SHELL_PKGLIBDIR': gnome_shell_pkglibdir,
   }),
 )
 
-compositor_rpath = mutter_typelib_dir + ':' + ocrpc_rpath
-
-mutter_rpc = executable('mutter-rpc',
-  compositor_sources,
-  rpc_config,
-  mutter_vapi_stamp,
-  dependencies: [mutter_dep, ocrpc_dep, dependency('gobject-introspection-1.0')],
-  vala_args: mutter_vala_args + ocrpc_vala_args,
-  build_rpath: compositor_rpath,
-  export_dynamic: true,
-  install: false,
-)
+compositor_rpath = mutter_typelib_dir + ':' + gnome_shell_pkglibdir + ':' + ocrpc_rpath
 
 rpc_client_sources = files(
   'ApplicationInterface.vala',
@@ -666,6 +656,115 @@ clutter_rpc_typelib = custom_target('Clutter-16.typelib',
   install_dir: mutter_rpc_typelib_install_dir,
 )
 
+st_deny_file = files('gi-stub-gen/St.deny')
+st_overrides_file = files('gi-stub-gen/St.overrides')
+st_override_dir = meson.current_source_dir() / 'gi-stub/overrides-st'
+st_generated = custom_target('St_generated.vala',
+  output: 'St_generated.vala',
+  command: [
+    gi_stub_gen,
+    '--out=@OUTPUT@',
+    '--missing-out=' + meson.current_build_dir() / 'St_generated.missing.md',
+    '--typelib-dir=' + gnome_shell_pkglibdir + ':' + mutter_typelib_dir,
+    '--deny-file=@INPUT0@',
+    '--overrides-file=@INPUT1@',
+    '--override-path=' + st_override_dir,
+    'emit', 'St', '16',
+  ],
+  input: [st_deny_file, st_overrides_file] + files(
+    'gi-stub/overrides-st/ThemeContext.override.vala',
+    'gi-stub/overrides-st/FocusManager.override.vala',
+  ),
+  depends: [gi_stub_gen],
+  build_by_default: true,
+)
+
+st_rpc_gir_name = 'st-rpc-16'
+st_rpc_lib = shared_library(
+  'st-rpc-16',
+  st_generated,
+  files('gi-stub/namespace.vala'),
+  dependencies: [
+    ocrpc_dep,
+    mutter_clutter_rpc_link_dep,
+    dependency('gio-2.0'),
+    dependency('gdk-pixbuf-2.0'),
+    dependency('cairo'),
+    dependency('graphene-gobject-1.0'),
+    dependency('mutter-cogl-16'),
+    dependency('mutter-mtk-16'),
+  ],
+  vala_args: ocrpc_vala_args + [
+    '--pkg=posix',
+    '--pkg=gdk-pixbuf-2.0',
+    '--pkg=mutter-cogl-16',
+    '--pkg=mutter-mtk-16',
+    '--pkg=mutter-clutter-rpc-16',
+    '--vapidir', meson.current_source_dir() / 'gi-stub',
+    '--pkg=gsr-clutter-effect-abi',
+    '--vapidir', meson.current_build_dir(),
+    '--vapidir', meson.project_build_root() / 'vapi',
+    '--vapidir', meson.project_source_root() / 'vapi',
+  ],
+  c_args: [
+    '-I' + meson.current_source_dir() / 'gi-stub',
+    '-include', 'mutter-clutter-rpc-16.h',
+  ],
+  link_args: ['-L' + meson.current_build_dir(), '-lmutter-rpc-16'],
+  link_depends: [mutter_clutter_rpc_lib, mutter_rpc_lib],
+  build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
+  vala_header: 'st-rpc-16.h',
+  vala_vapi: 'st-rpc-16.vapi',
+  install: true,
+)
+
+st_gir = gnome_shell_girdir / 'St-16.gir'
+st_rpc_typelib = custom_target('St-16.typelib',
+  output: 'St-16.typelib',
+  command: [
+    g_ir_compiler,
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libst-rpc-16.so',
+    '--includedir', mutter_typelib_dir,
+    '--includedir', gnome_shell_girdir,
+    st_gir,
+  ],
+  depends: [st_rpc_lib],
+  build_by_default: true,
+  install: true,
+  install_dir: mutter_rpc_typelib_install_dir,
+)
+
+configure_file(
+  input: 'libst-rpc-16.pc.in',
+  output: 'libst-rpc-16.pc',
+  configuration: {
+    'prefix': meson.project_build_root(),
+    'libdir': meson.current_build_dir(),
+    'typelibdir': meson.current_build_dir(),
+    'girdir': gnome_shell_girdir,
+    'version': meson.project_version(),
+  },
+)
+
+pkg.generate(
+  st_rpc_lib,
+  filebase: 'libst-rpc-16',
+  name: 'libst-rpc',
+  description: 'St-shaped RPC client (Vala stubs)',
+  requires: [
+    'gio-2.0',
+    'gobject-2.0',
+    'mutter-cogl-16',
+    'mutter-mtk-16',
+    'libmutter-clutter-rpc-16',
+  ],
+  variables: [
+    'typelibdir=${libdir}/' + mutter_rpc_gir_name,
+    'girdir=${libdir}/' + mutter_rpc_gir_name,
+  ],
+)
+
 install_data(
   files('meta-mini/Meta-16.gir'),
   install_dir: mutter_rpc_typelib_install_dir,
@@ -830,3 +929,15 @@ else
     install: false,
   )
 endif
+
+mutter_rpc = executable('mutter-rpc',
+  compositor_sources,
+  rpc_config,
+  mutter_vapi_stamp,
+  dependencies: [mutter_dep, ocrpc_dep, dependency('gobject-introspection-1.0')],
+  vala_args: mutter_vala_args + ocrpc_vala_args,
+  link_args: ['-L' + gnome_shell_pkglibdir, '-lst-16'],
+  build_rpath: compositor_rpath,
+  export_dynamic: true,
+  install: false,
+)

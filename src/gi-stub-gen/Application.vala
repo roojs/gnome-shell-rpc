@@ -47,8 +47,8 @@ Examples:
 				"Enable debug output", null },
 			{ "debug-critical", 0, 0, GLib.OptionArg.NONE, ref opt_debug_critical,
 				"Treat critical warnings as errors", null },
-			{ "typelib-dir", 0, 0, GLib.OptionArg.FILENAME, ref opt_typelib_dir,
-				"Prepend typelib search path", "DIR" },
+			{ "typelib-dir", 0, 0, GLib.OptionArg.STRING, ref opt_typelib_dir,
+				"Prepend typelib search path(s), colon-separated", "DIR[:DIR…]" },
 			{ "deny-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_deny_file,
 				"Deny list (one symbol per line; optional noop flag)", "FILE" },
 			{ "overrides-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_overrides_file,
@@ -173,8 +173,13 @@ Examples:
 			}
 
 			if (Application.opt_typelib_dir != "") {
-				GI.Repository.prepend_search_path(Application.opt_typelib_dir);
-				GLib.debug("typelib prepend %s", Application.opt_typelib_dir);
+				foreach (var dir in Application.opt_typelib_dir.split(":")) {
+					if (dir.length == 0) {
+						continue;
+					}
+					GI.Repository.prepend_search_path(dir);
+					GLib.debug("typelib prepend %s", dir);
+				}
 			}
 
 			try {

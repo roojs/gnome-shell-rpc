@@ -30,6 +30,9 @@ namespace GnomeShellRpc.GiStub
 		[CCode (cname = "meta_register", cheader_filename = "meta-register.h")]
 		private static extern void meta_register_bins();
 
+		[CCode (cname = "st_register", cheader_filename = "st-register.h")]
+		private static extern void st_register_bins();
+
 		public delegate Gee.ArrayList<GLib.Value?>? 
 			InvokeHandler(OLLMrpc.Live.Invoke call);
 
@@ -56,6 +59,7 @@ namespace GnomeShellRpc.GiStub
 			OLLMrpc.Daemon.rpc_register();
 			Clutter.register();
 			meta_register_bins();
+			st_register_bins();
 			OLLMrpc.Bin.register("Clutter-ActorMeta", typeof(Clutter.ActorMeta));
 			OLLMrpc.Bin.register("Clutter-Effect", typeof(Clutter.Effect));
 			OLLMrpc.Bin.register(

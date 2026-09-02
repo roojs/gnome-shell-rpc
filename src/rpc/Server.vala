@@ -45,8 +45,18 @@ namespace GnomeShellRpc.Rpc
 				new Ui.Compositor(display.get_compositor()));
 
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
+			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
+			try {
+				GLib.Module.open(
+					GLib.Path.build_filename(GNOME_SHELL_PKGLIBDIR, "libst-16.so"),
+					GLib.ModuleFlags.BIND_LAZY | GLib.ModuleFlags.BIND_LOCAL
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("libst preload: %s", e.message);
+			}
 			OLLMrpc.Gi.register("Meta", "16");
 			OLLMrpc.Gi.register("Clutter", "16");
+			OLLMrpc.Gi.register("St", "16");
 			OLLMrpc.Bin.register_alias("Meta-Compositor",
 				display.get_compositor().get_type());
 			OLLMrpc.Bin.register_alias("Meta-Context",
@@ -193,14 +203,9 @@ namespace GnomeShellRpc.Rpc
 
 			var tip = GLib.Environment.get_variable("GI_TYPELIB_PATH");
 			var client_tl = GNOME_SHELL_CLIENT_TYPELIB_DIR;
-			var shell_pkg = GNOME_SHELL_PKGLIBDIR;
-			string[] tip_parts = { bindir };
+			string[] tip_parts = { bindir, MUTTER_TYPELIB_DIR };
 			if (client_tl.length > 0) {
 				tip_parts += client_tl;
-			}
-			tip_parts += MUTTER_TYPELIB_DIR;
-			if (shell_pkg.length > 0) {
-				tip_parts += shell_pkg;
 			}
 			if (tip != null && tip.length > 0) {
 				tip_parts += tip;
@@ -211,9 +216,6 @@ namespace GnomeShellRpc.Rpc
 			string[] ld_parts = { bindir };
 			if (client_tl.length > 0) {
 				ld_parts += client_tl;
-			}
-			if (shell_pkg.length > 0) {
-				ld_parts += shell_pkg;
 			}
 			if (ld != null && ld.length > 0) {
 				ld_parts += ld;

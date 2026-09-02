@@ -8,8 +8,8 @@ option(
 option(
   'vendor_gnome_shell',
   type: 'feature',
-  value: 'enabled',
-  description: 'Fetch and validate vendored upstream gnome-shell under vendor/gnome-shell/',
+  value: 'disabled',
+  description: 'Fetch vendored upstream gnome-shell under vendor/gnome-shell/ (legacy client-libs only)',
 )
 
 option(
@@ -36,8 +36,8 @@ option(
 option(
   'gnome_shell_client_libs',
   type: 'feature',
-  value: 'enabled',
-  description: 'Build client Shell/St from vendor sources linked to libmutter-rpc-16 (Phase 4)',
+  value: 'disabled',
+  description: 'Legacy: build client Shell/St from vendor sources linked to libmutter-rpc-16 (superseded by St RPC stubs)',
 )
 
 option(

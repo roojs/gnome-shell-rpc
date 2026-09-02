@@ -41,8 +41,8 @@ sudo apt install \
 - **gjs** / **libgjs-dev** — `gjs-embed` and smoke scripts
 - **libgee-0.8-dev**, **libjson-glib-dev**, **libsoup-3.0-dev** — `libocrpc` headers at compile time
 - **libgtk-4-dev** — `fake-shell` test client
-- **libpolkit-agent-1-dev**, **libgcr-4-dev** — vendor **`libshell-16`** client-lib build (`-Dgnome_shell_client_libs=enabled`, default)
-- **gnome-shell** — **`Gvc-1.0.gir`** at `/usr/share/gnome-shell/` (Shell typelib compile); runtime JS path is separate
+- **gnome-shell** — stock **`libst-16.so`**, **`St-16.typelib`**, **`Gvc-1.0.gir`** under `/usr/lib/gnome-shell/` and `/usr/share/gnome-shell/`; runtime JS path is separate
+- **libpolkit-agent-1-dev**, **libgcr-4-dev** — only if enabling legacy vendored client-lib build (`-Dgnome_shell_client_libs=enabled`)
 - **dbus-x11** — `dbus-run-session` for nested compositor runs
 
 Build OLLMchat **libocrpc** first, then pass its output directory to meson:
@@ -52,12 +52,12 @@ meson setup build -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc
 ninja -C build
 ```
 
-First **`meson setup`** may clone upstream gnome-shell into **`vendor/gnome-shell/`** (gitignored) for **build/CI reference** — not installed, not shipped. Runtime JS comes from the **installed `gnome-shell` package** (`Depends:` in our packages). Later rebuilds reuse the vendor tree unless you refresh:
+Vendor checkout is **off by default** (`-Dvendor_gnome_shell=disabled`). Enable only for legacy client-lib experiments:
 
 ```bash
-meson setup build -Dgnome_shell_vendor_refresh=true --reconfigure   # pull latest main
-./scripts/gnome-shell-fetch.sh --refresh                                       # same, manual
-meson setup build -Dvendor_gnome_shell=disabled --reconfigure         # smokes-only, skip vendor
+meson setup build -Dvendor_gnome_shell=enabled -Dgnome_shell_client_libs=enabled --reconfigure
+meson setup build -Dgnome_shell_vendor_refresh=true --reconfigure   # refresh vendor pin
+./scripts/gnome-shell-fetch.sh --refresh                             # same, manual
 ```
 
 See [`gnome-shell/README.md`](../gnome-shell/README.md). Meson prints **`gnome-shell runtime JS dir:`** at configure (from distro layout, not vendor). Override: **`-Dgnome_shell_js_dir=…`** or runtime **`GNOME_SHELL_JS_DIR`**.
@@ -71,7 +71,9 @@ Main artifacts under `build/src/`:
 | `gjs-embed` | **Temporary** test GJS host (manual smokes only) |
 | `libmutter-rpc-16.so` | Client Meta stubs (RPC to plugin) |
 | `Meta-16.typelib` | GI typelib → `libmutter-rpc-16.so` |
-| `build/gnome-shell/client-libs/libst-16.so` | Client St (linked to `libmutter-rpc-16`) |
+| `libst-rpc-16.so` | Client St stubs (RPC to server libst) |
+| `St-16.typelib` | GI typelib → `libst-rpc-16.so` |
+| `build/gnome-shell/client-libs/libst-16.so` | Legacy client St (when `-Dgnome_shell_client_libs=enabled`) |
 | `build/gnome-shell/client-libs/libshell-16.so` | Client Shell C lib (same) |
 
 Install puts St/Shell next to Meta typelibs under **`${libdir}/mutter-rpc-16/`** — never `/usr/lib/gnome-shell/`. Nested runs use the client-libs build dir via `GI_TYPELIB_PATH` / rpath.
