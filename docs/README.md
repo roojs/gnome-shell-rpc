@@ -11,4 +11,6 @@ User-facing docs (no plan numbers):
 
 Agent / design history: [`plans/`](plans/) (see [`guide-to-writing-plans.md`](guide-to-writing-plans.md)).
 
+Open investigations: [`bugs/`](bugs/).
+
 Mutter C reference tree follows upstream `doc/coding-style.md`.

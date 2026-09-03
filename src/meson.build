@@ -738,13 +738,17 @@ shell_gi_lib = shared_library(
   files(
     'shell-gi/namespace.vala',
     'shell-gi/ActionMode.vala',
+    'shell-gi/AppState.vala',
     'shell-gi/Util.vala',
     'shell-gi/App.vala',
+    'shell-gi/AppSystem.vala',
     'shell-gi/GLSLEffect.vala',
     'shell-gi/SquareBin.vala',
     'shell-gi/WindowPreview.vala',
     'shell-gi/WorkspaceBackground.vala',
     'shell-gi/Screenshot.vala',
+    'shell-gi/WindowTracker.vala',
+    'shell-gi/AppUsage.vala',
     'shell-gi/Global.vala',
   ),
   dependencies: [

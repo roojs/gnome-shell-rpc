@@ -175,16 +175,21 @@ namespace $(ns)
 			if (oi.get_parent() != null) {
 				parent = this.info_name(ns, oi.get_parent());
 			}
+			var ifaces = this.emit_object_implements(ns, oi);
+			var bases = parent;
+			if (ifaces != "") {
+				bases = parent + ", " + ifaces;
+			}
 			/* Declare Handle on hierarchy roots only; descendants inherit. */
 			if (this.should_emit_live_handle(ns, parent)) {
 				stream.puts(@"
-	public class $(class_name) : $(parent), OLLMrpc.Live.Handle
+	public class $(class_name) : $(bases), OLLMrpc.Live.Handle
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
 			} else {
 				stream.puts(@"
-	public class $(class_name) : $(parent)
+	public class $(class_name) : $(bases)
 	{
 ");
 			}
@@ -395,6 +400,59 @@ namespace $(ns)
 			this.rpc_lid = _stub.rpc_lid;
 		}
 ");
+		}
+
+		/**
+		 * Same-namespace GIR {@code implements} when
+		 * {@code Namespace emit_implements=1} (St.overrides). Skip ifaces on
+		 * {@link deny}, foreign namespaces, or already on a parent stub.
+		 */
+		private string emit_object_implements(string ns, GI.ObjectInfo oi)
+		{
+			if (this.type_policy("Namespace", "emit_implements") != "1") {
+				return "";
+			}
+			string[] names = {};
+			for (var i = 0; i < oi.get_n_interfaces(); i++) {
+				var ii = oi.get_interface(i);
+				if (ii.get_namespace() != ns) {
+					continue;
+				}
+				var iname = ii.get_name();
+				if (iname in this.deny) {
+					continue;
+				}
+				if (this.parent_stub_implements(ns, oi, iname)) {
+					continue;
+				}
+				names += iname;
+			}
+			return string.joinv(", ", names);
+		}
+
+		/**
+		 * True when an ancestor stub class already lists {@code iname}.
+		 */
+		private bool parent_stub_implements(
+			string ns,
+			GI.ObjectInfo oi,
+			string iname
+		) {
+			var parent = oi.get_parent();
+			while (parent != null && parent.get_namespace() == ns) {
+				if (parent.get_type() != GI.InfoType.OBJECT) {
+					break;
+				}
+				var po = (GI.ObjectInfo) parent;
+				for (var i = 0; i < po.get_n_interfaces(); i++) {
+					var ii = po.get_interface(i);
+					if (ii.get_namespace() == ns && ii.get_name() == iname) {
+						return true;
+					}
+				}
+				parent = po.get_parent();
+			}
+			return false;
 		}
 
 		/**
@@ -1468,7 +1526,7 @@ namespace $(ns)
 					});
 					return 0;
 				}
-				args += this.arg_decl(arg, at);
+				args += this.arg_decl(arg, at, fi);
 			}
 
 			var tab = kind == "ns" ? "	" : "		";
@@ -2406,9 +2464,22 @@ $(tab)}
 			return true;
 		}
 
-		private string arg_decl(GI.ArgInfo arg, string type_name)
+		private string arg_decl(GI.ArgInfo arg, string type_name, GI.FunctionInfo? fi = null)
 		{
-			switch (arg.get_direction()) {
+			var dir = arg.get_direction();
+			/*
+			 * Stock St.Scrollable.get_adjustments GIR omits direction="out" on
+			 * StAdjustment** (same in typelib). Treat object/iface args on that
+			 * method as out so Vala matches the C vfunc GJS expects.
+			 */
+			if (dir == GI.Direction.IN && fi != null
+					&& fi.get_name() == "get_adjustments") {
+				var tag = arg.get_type().get_tag();
+				if (tag == GI.TypeTag.INTERFACE) {
+					dir = GI.Direction.OUT;
+				}
+			}
+			switch (dir) {
 				case GI.Direction.OUT:
 					return "out " + type_name + " " + arg.get_name();
 				case GI.Direction.INOUT:

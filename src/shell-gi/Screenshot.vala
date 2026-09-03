@@ -27,7 +27,7 @@ namespace Shell
 			}
 			stride = width * 4;
 			pixels = new uint8[stride * height];
-			var rect = new Mtk.Rectangle(0, 0, width, height);
+			Mtk.Rectangle rect = { 0, 0, width, height };
 			GnomeShellRpc.GiStub.ClutterStageAbi.paint_to_buffer(
 				stage, rect, 1f, pixels, stride,
 				Cogl.PixelFormat.RGBA_8888, Clutter.PaintFlag.none);
@@ -38,8 +38,7 @@ namespace Shell
 			int height,
 			int stride,
 			uint8[] pixels
-		) throws GLib.Error
-		{
+		) throws GLib.Error {
 			var pb = new Gdk.Pixbuf.from_data(
 				pixels, Gdk.Colorspace.RGB, true, 8,
 				width, height, stride, null);
@@ -66,12 +65,11 @@ namespace Shell
 			bool include_cursor,
 			GLib.OutputStream stream,
 			out Mtk.Rectangle area
-		) throws GLib.Error
-		{
+		) throws GLib.Error {
 			int width, height, stride;
 			uint8[] pixels;
 			stage_pixels(out width, out height, out stride, out pixels);
-			area = new Mtk.Rectangle(0, 0, width, height);
+			area = { 0, 0, width, height };
 			var pb = pixbuf_from_rgba(width, height, stride, pixels);
 			pb.save_to_stream(stream, "png", null);
 			return true;
@@ -93,7 +91,7 @@ namespace Shell
 				throw new GLib.IOError.INVALID_ARGUMENT(
 					"Shell.Screenshot.screenshot_area: out of range");
 			}
-			area = new Mtk.Rectangle(x, y, width, height);
+			area = { x, y, width, height };
 			var cropped = new uint8[width * 4 * height];
 			for (var row = 0; row < height; row++) {
 				var src = (y + row) * stride + x * 4;
@@ -112,8 +110,7 @@ namespace Shell
 			bool include_cursor,
 			GLib.OutputStream stream,
 			out Mtk.Rectangle area
-		) throws GLib.Error
-		{
+		) throws GLib.Error {
 			/* Nested: no focused-window grab yet — full stage. */
 			return yield this.screenshot(include_cursor, stream, out area);
 		}
@@ -123,8 +120,7 @@ namespace Shell
 			out Clutter.Content? cursor_content,
 			out Graphene.Point cursor_point,
 			out float cursor_scale
-		) throws GLib.Error
-		{
+		) throws GLib.Error {
 			int width, height, stride;
 			uint8[] pixels;
 			stage_pixels(out width, out height, out stride, out pixels);
@@ -149,8 +145,7 @@ namespace Shell
 			int cursor_y,
 			float cursor_scale,
 			GLib.OutputStream stream
-		) throws GLib.Error
-		{
+		) throws GLib.Error {
 			/* Client stubs have no Cogl texture download; composite from stage. */
 			int sw, sh, stride;
 			uint8[] pixels;

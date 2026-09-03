@@ -17,8 +17,7 @@ namespace Shell
 			if (t != typeof(WindowPreview) && !t.name().has_prefix("Gjs_")) {
 				return;
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
-				"St-Widget.new", null);
+			var response = GnomeShellRpc.GiStub.Runtime.call_values("St-Widget.new", null);
 			var stub = response.retval.get_object() as OLLMrpc.Live.Handle;
 			this.rpc_lid = stub.rpc_lid;
 		}
@@ -33,8 +32,7 @@ namespace Shell
 				natural_width_p = 0;
 				return;
 			}
-			this.window_container.get_preferred_width(
-				for_height, out min_width_p, out natural_width_p);
+			this.window_container.get_preferred_width(for_height, out min_width_p, out natural_width_p);
 		}
 
 		public override void get_preferred_height(
@@ -47,8 +45,7 @@ namespace Shell
 				natural_height_p = 0;
 				return;
 			}
-			this.window_container.get_preferred_height(
-				for_width, out min_height_p, out natural_height_p);
+			this.window_container.get_preferred_height(for_width, out min_height_p, out natural_height_p);
 		}
 	}
 }

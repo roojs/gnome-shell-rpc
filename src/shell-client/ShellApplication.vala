@@ -89,7 +89,8 @@ namespace GnomeShellRpc.ShellClient
 			var ok = false;
 			try {
 				if (script.has_prefix("resource://")
-					|| script.contains("/ui/init.js")) {
+					|| script.contains("/ui/init.js")
+					|| script.contains("/gjs-embed/")) {
 					uint8 module_status = 0;
 					ok = ctx.eval_module_file(script, out module_status);
 					status = module_status;
