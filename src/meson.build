@@ -39,6 +39,11 @@ compositor_sources = files(
   'rpc/helper/shader-uniform-apply.c',
 )
 
+rpc_gdb_spawn = get_option('rpc_gdb_spawn')
+if rpc_gdb_spawn
+  compositor_sources += files('rpc/GdbSpawnWrap.vala')
+endif
+
 mutter_vala_args = [
   '--pkg=libmutter-16',
   '--pkg=mutter-clutter-16',
@@ -287,6 +292,28 @@ if get_option('legacy_gi_rpc_smoke')
     ),
     dependencies: [ocrpc_dep],
     vala_args: ocrpc_vala_args,
+    build_rpath: ocrpc_rpath,
+    export_dynamic: true,
+    install: false,
+  )
+endif
+
+if get_option('gi_rpc_mock')
+  gi_rpc_mock = executable('gi-rpc-mock',
+    rpc_config,
+    files(
+      'ApplicationInterface.vala',
+      'rpc/namespace.vala',
+      'rpc/Daemon.vala',
+      'rpc/Listen.vala',
+      'gi-rpc-mock/namespace.vala',
+      'gi-rpc-mock/HelperMock.vala',
+      'gi-rpc-mock/Application.vala',
+    ),
+    dependencies: [ocrpc_dep, dependency('gobject-introspection-1.0')],
+    vala_args: ocrpc_vala_args + [
+      '--pkg=gobject-introspection-1.0',
+    ],
     build_rpath: ocrpc_rpath,
     export_dynamic: true,
     install: false,
@@ -676,6 +703,7 @@ st_generated = custom_target('St_generated.vala',
     'gi-stub/overrides-st/ThemeContext.override.vala',
     'gi-stub/overrides-st/FocusManager.override.vala',
     'gi-stub/overrides-st/Settings.override.vala',
+    'gi-stub/overrides-st/Viewport.override.vala',
   ),
   depends: [gi_stub_gen],
   build_by_default: true,
@@ -1031,6 +1059,11 @@ if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root !
   # Legacy vendored libshell/libst — optional comparison only (0.7.7 default host is thin).
 endif
 
+mutter_rpc_vala_args = mutter_vala_args + ocrpc_vala_args
+if rpc_gdb_spawn
+  mutter_rpc_vala_args += '--define=GSR_GDB_SPAWN'
+endif
+
 mutter_rpc = executable('mutter-rpc',
   compositor_sources,
   rpc_config,
@@ -1040,7 +1073,7 @@ mutter_rpc = executable('mutter-rpc',
     ocrpc_dep,
     dependency('gobject-introspection-1.0'),
   ],
-  vala_args: mutter_vala_args + ocrpc_vala_args,
+  vala_args: mutter_rpc_vala_args,
   link_args: gnome_shell_st_link_args,
   build_rpath: compositor_rpath,
   export_dynamic: true,

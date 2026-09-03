@@ -2,7 +2,6 @@
 
 # Emit GIR implements on stub classes (Viewport → Scrollable). Deny an iface
 # name to skip it; Clutter/Meta leave this off until Animatable/etc. are ready.
-# Bisect stable boot: emit_implements off while Viewport.override disabled
-# Namespace emit_implements=1
+Namespace emit_implements=1
 
 Widget.get_focus_chain list_elem=Widget

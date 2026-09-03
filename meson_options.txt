@@ -41,8 +41,22 @@ option(
 )
 
 option(
+  'gi_rpc_mock',
+  type: 'boolean',
+  value: true,
+  description: 'Build gi-rpc-mock (fast import smokes without nested mutter; 0.7.8)',
+)
+
+option(
   'legacy_gi_rpc_smoke',
   type: 'boolean',
   value: false,
   description: 'Build 0.5 GiRpcSmoke toy (libgirpcsmoke, gi-rpc-echo) and meta-override-client scaffold',
+)
+
+option(
+  'rpc_gdb_spawn',
+  type: 'boolean',
+  value: false,
+  description: 'Compile Rpc.GdbSpawnWrap into mutter-rpc (GI_META_GDB env at runtime)',
 )

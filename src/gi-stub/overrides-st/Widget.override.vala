@@ -1,21 +1,17 @@
 		/**
-		 * Lease a server StWidget for {@code new St.Widget()} and GJS
-		 * subclasses ({@code Gjs_*}) — not for stock St types that extend
-		 * Widget and run their own {@code St-* .new} in {@code construct}.
+		 * Fallback lease when no more-derived {@code St.*} construct ran first.
 		 *
-		 * Construct properties (e.g. {@code name}) apply after this block, so
-		 * their setters see a valid {@code rpc_lid}. Skip when already leased
-		 * (wire deserialization / {@code Object(rpc_lid: …)}).
+		 * Vala {@code construct} runs derived → base. Types with a wired
+		 * {@code St-* .new} (generator {@code emit_lease_construct}) lease there
+		 * for every {@code is_a} match — stock {@code new St.BoxLayout()} and
+		 * {@code Gjs_*} subclasses alike. This block runs only if {@code rpc_lid}
+		 * is still zero (direct {@code St.Widget} / {@code Gjs_* extends Widget}).
 		 */
 		construct {
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var t = this.get_type();
-			if (!t.is_a(typeof(Widget))) {
-				return;
-			}
-			if (t != typeof(Widget) && !t.name().has_prefix("Gjs_")) {
+			if (!this.get_type().is_a(typeof(Widget))) {
 				return;
 			}
 			var response = GnomeShellRpc.GiStub.Runtime.call_values(

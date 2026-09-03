@@ -390,8 +390,7 @@ namespace $(ns)
 			if (this.rpc_lid != 0) {
 				return;
 			}
-");
-			stream.puts(@"			if (this.get_type() != typeof($(class_name))) {
+			if (!this.get_type().is_a(typeof($(class_name)))) {
 				return;
 			}
 ");

@@ -198,6 +198,10 @@ namespace GnomeShellRpc.Rpc
 				argv = { shell_bin, "--debug", script };
 			}
 
+#if GSR_GDB_SPAWN
+			argv = GdbSpawnWrap.maybe_wrap_argv(argv);
+#endif
+
 			/* bindir first (our Meta/St/Shell). PKGLIBDIR after — Gvc only lives
 			 * there (0.7.3 row 6); stock Shell/St typelibs must not shadow ours. */
 			var tip = GLib.Environment.get_variable("GI_TYPELIB_PATH");
@@ -236,18 +240,19 @@ namespace GnomeShellRpc.Rpc
 			try {
 				this.smoke_client = new Meta.WaylandClient(
 					this.display.get_context(), launcher);
-				this.smoke_client.spawnv(this.display, argv);
+				var proc = this.smoke_client.spawnv(this.display, argv);
+				GLib.debug(
+					"spawned %s pid=%s MUTTER_RPC_SOCKET=%s WAYLAND_DISPLAY=%s via Meta.WaylandClient",
+					string.joinv(" ", argv),
+					proc.get_identifier().to_string(),
+					this.rpc_socket_path,
+					wayland_display ?? "(unset)"
+				);
 			} catch (GLib.Error e) {
 				GLib.warning("client spawn failed: %s", e.message);
 				this.smoke_client = null;
 				return;
 			}
-			GLib.debug(
-				"spawned %s MUTTER_RPC_SOCKET=%s WAYLAND_DISPLAY=%s via Meta.WaylandClient",
-				string.joinv(" ", argv),
-				this.rpc_socket_path,
-				wayland_display ?? "(unset)"
-			);
 		}
 
 		private void alias_live(string alias, GLib.Type gtype)
