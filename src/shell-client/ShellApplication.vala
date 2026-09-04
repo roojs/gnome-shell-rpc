@@ -10,7 +10,6 @@ namespace GnomeShellRpc.ShellClient
 	{
 		private const string APPLICATION_ID = "org.gnome.ShellRpc";
 		private const string INIT_MODULE = "resource:///org/gnome/shell/ui/init.js";
-		private const string SHELL_RESOURCE_PREFIX = "resource:///org/gnome/shell/";
 
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
@@ -66,6 +65,12 @@ namespace GnomeShellRpc.ShellClient
 			prepend_typelib_paths();
 			GLib.resources_register(shell_js_resources_get_resource());
 
+			var override_dir = GLib.Environment.get_variable("GI_RPC_JS_OVERRIDE_DIR");
+			override_dir = override_dir != null ? override_dir : "";
+			if (override_dir.length > 0) {
+				this.install_js_override_overlay(override_dir);
+			}
+
 			GnomeShellRpc.GiStub.Runtime.register();
 			Shell.Global.bind_display(Meta.get_display());
 
@@ -89,13 +94,6 @@ namespace GnomeShellRpc.ShellClient
 
 			GLib.debug("shell script %s", script);
 			var ctx = new Gjs.Context.with_search_path(search_path);
-			var override_dir = GLib.Environment.get_variable("GI_RPC_JS_OVERRIDE_DIR");
-			override_dir = override_dir != null ? override_dir : "";
-			var vendor_dir = GLib.Environment.get_variable("GI_RPC_JS_VENDOR_DIR");
-			vendor_dir = vendor_dir != null ? vendor_dir : "";
-			if (override_dir.length > 0 || vendor_dir.length > 0) {
-				this.register_js_overrides(ctx, vendor_dir, override_dir);
-			}
 			var status = 0;
 			var ok = false;
 			try {
@@ -160,110 +158,138 @@ namespace GnomeShellRpc.ShellClient
 		}
 
 		/**
-		 * Debug: map resource:///org/gnome/shell/… modules to disk files.
-		 * Walks the embedded gresource tree; {@code override_dir} wins over
-		 * {@code vendor_dir} for each bundled {@code .js} path.
+		 * Debug: overlay bundled {@code resource:///org/gnome/shell/…} paths with
+		 * disk files from {@code override_dir}. Later {@link GLib.Resource}
+		 * registrations win on lookup — JS pulls them during normal import.
 		 *
-		 * @param ctx GJS context
-		 * @param vendor_dir upstream JS tree (e.g. vendor/gnome-shell/js)
 		 * @param override_dir sparse edits mirroring org/gnome/shell paths
 		 */
-		private void register_js_overrides(
-			Gjs.Context ctx,
-			string vendor_dir,
-			string override_dir
-		)
+		private void install_js_override_overlay(string override_dir)
 		{
-			var modules = new Gee.HashMap<string, string>();
-			this.collect_js_resource_modules(vendor_dir, override_dir, modules);
-			if (modules.size == 0) {
+			string temp;
+			try {
+				temp = GLib.DirUtils.make_tmp("gnome-shell-rpc-js-XXXXXX");
+			} catch (GLib.Error e) {
+				GLib.warning("js override overlay: temp dir failed: %s", e.message);
 				return;
 			}
-			foreach (var rel in modules.keys) {
-				var resource_uri = SHELL_RESOURCE_PREFIX + rel;
-				var file_uri = modules.get(rel);
-				try {
-					ctx.register_module(resource_uri, file_uri);
-					GLib.debug("js module %s <- %s", resource_uri, file_uri);
-				} catch (GLib.Error e) {
-					GLib.warning("js module register failed %s <- %s: %s",
-						resource_uri, file_uri, e.message);
-				}
+			var staging = GLib.Path.build_filename(temp, "staging");
+			try {
+				GLib.File.new_for_path(staging).make_directory_with_parents(null);
+			} catch (GLib.Error e) {
+				GLib.warning("js override overlay: mkdir failed: %s", e.message);
+				return;
 			}
-		}
 
-		/**
-		 * Collect bundled {@code .js} paths and matching disk files.
-		 *
-		 * @param vendor_dir upstream JS tree
-		 * @param override_dir sparse override tree
-		 * @param modules relative path → file URI; override wins over vendor
-		 */
-		private void collect_js_resource_modules(
-			string vendor_dir,
-			string override_dir,
-			Gee.HashMap<string, string> modules
-		)
-		{
-			var resource = shell_js_resources_get_resource();
-			var root = "/org/gnome/shell";
-			var prefix = root + "/";
-			string[] stack = { root };
+			var root = GLib.File.new_for_path(override_dir);
+			string[] rel_paths = {};
+			GLib.File[] stack = { root };
 
 			while (stack.length > 0) {
-				var dir_path = stack[stack.length - 1];
+				var dir = stack[stack.length - 1];
 				stack.length -= 1;
 
-				string[] children;
+				GLib.FileEnumerator enumerator;
 				try {
-					children = resource.enumerate_children(
-						dir_path,
-						GLib.ResourceLookupFlags.NONE
+					enumerator = dir.enumerate_children(
+						"standard::name,standard::type",
+						GLib.FileQueryInfoFlags.NONE
 					);
 				} catch (GLib.Error e) {
-					GLib.warning("js module scan: cannot read %s: %s",
-						dir_path, e.message);
+					GLib.warning("js override overlay: cannot read %s: %s",
+						dir.get_path(), e.message);
 					continue;
 				}
 
-				foreach (var entry in children) {
-					var name = entry.strip();
-					if (name.length == 0) {
-						continue;
-					}
-					if (name.has_prefix("/")) {
-						name = name.substring(1);
-					}
-					if (name.has_suffix("/")) {
-						name = name.substring(0, name.length - 1);
-					}
-					var child = GLib.Path.build_filename(dir_path, name);
-					if (!name.has_suffix(".js")) {
+				GLib.FileInfo info;
+				while ((info = enumerator.next_file()) != null) {
+					var child = dir.get_child(info.get_name());
+					if (info.get_file_type() == GLib.FileType.DIRECTORY) {
 						stack += child;
 						continue;
 					}
-					var rel = child.substring(prefix.length);
-					var file_path = "";
-					if (override_dir.length > 0) {
-						var override_path = GLib.Path.build_filename(
-							override_dir, rel);
-						if (GLib.FileUtils.test(override_path, GLib.FileTest.EXISTS)) {
-							file_path = override_path;
-						}
-					}
-					if (file_path.length == 0 && vendor_dir.length > 0) {
-						var vendor_path = GLib.Path.build_filename(
-							vendor_dir, rel);
-						if (GLib.FileUtils.test(vendor_path, GLib.FileTest.EXISTS)) {
-							file_path = vendor_path;
-						}
-					}
-					if (file_path.length == 0) {
+					if (!info.get_name().has_suffix(".js")) {
 						continue;
 					}
-					modules.set(rel, GLib.File.new_for_path(file_path).get_uri());
+					var rel = root.get_relative_path(child);
+					if (rel == null) {
+						continue;
+					}
+					rel = rel.replace("\\", "/");
+					var dest = GLib.Path.build_filename(staging, rel);
+					try {
+						GLib.File.new_for_path(
+							GLib.Path.get_dirname(dest)
+						).make_directory_with_parents(null);
+						child.copy(
+							GLib.File.new_for_path(dest),
+							GLib.FileCopyFlags.OVERWRITE,
+							null
+						);
+					} catch (GLib.Error e) {
+						GLib.warning("js override overlay: copy failed %s: %s",
+							rel, e.message);
+						continue;
+					}
+					rel_paths += rel;
 				}
 			}
+
+			if (rel_paths.length == 0) {
+				return;
+			}
+
+			var xml_path = GLib.Path.build_filename(temp, "overlay.gresource.xml");
+			var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+				+ "<gresources>\n"
+				+ "  <gresource prefix=\"/org/gnome/shell\">\n";
+			foreach (var rel in rel_paths) {
+				xml += "    <file>" + rel + "</file>\n";
+			}
+			xml += "  </gresource>\n</gresources>\n";
+			GLib.FileUtils.set_contents(xml_path, xml);
+
+			var gresource_path = GLib.Path.build_filename(temp, "overlay.gresource");
+			string[] argv = {
+				"glib-compile-resources",
+				"--target=" + gresource_path,
+				"--sourcedir=" + staging,
+				xml_path,
+			};
+			string? spawn_out = null;
+			string? spawn_err = null;
+			int spawn_status = 0;
+			try {
+				GLib.Process.spawn_sync(
+					null,
+					argv,
+					null,
+					GLib.SpawnFlags.SEARCH_PATH,
+					null,
+					out spawn_out,
+					out spawn_err,
+					out spawn_status
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("js override overlay: compile failed: %s", e.message);
+				return;
+			}
+			if (spawn_status != 0) {
+				GLib.warning("js override overlay: glib-compile-resources exit %d",
+					spawn_status);
+				return;
+			}
+
+			GLib.Resource overlay;
+			try {
+				overlay = GLib.Resource.load(gresource_path);
+			} catch (GLib.Error e) {
+				GLib.warning("js override overlay: load failed: %s", e.message);
+				return;
+			}
+			GLib.resources_register(overlay);
+			GLib.debug("js override overlay %d files from %s",
+				rel_paths.length, override_dir);
 		}
 	}
 
