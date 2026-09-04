@@ -78,6 +78,11 @@ namespace GnomeShellRpc.ShellClient
 				search_path += js_dir;
 				GLib.debug("gnome-shell JS search-path %s", js_dir);
 			}
+			var embed_dir = GLib.Environment.get_variable("GI_RPC_GJS_EMBED_DIR");
+			if (embed_dir != null && embed_dir.length > 0) {
+				search_path += embed_dir;
+				GLib.debug("gjs-embed search-path %s", embed_dir);
+			}
 			if (!script.has_prefix("resource://")) {
 				search_path += GLib.Path.get_dirname(script);
 			}
@@ -88,6 +93,24 @@ namespace GnomeShellRpc.ShellClient
 			var status = 0;
 			var ok = false;
 			try {
+				var trace = GLib.Environment.get_variable("GI_RPC_REGISTER_CLASS_TRACE");
+				if (trace != null && trace.length > 0 && trace != "0" && trace != "false"
+						&& (script == INIT_MODULE || script.has_suffix("/ui/init.js"))) {
+					if (embed_dir == null || embed_dir.length == 0) {
+						command_line.printerr(
+							"GI_RPC_REGISTER_CLASS_TRACE requires GI_RPC_GJS_EMBED_DIR\n"
+						);
+						return 1;
+					}
+					var preload = GLib.Path.build_filename(
+						embed_dir, "register-class-trace-preload.js");
+					uint8 preload_status = 0;
+					ok = ctx.eval_module_file(preload, out preload_status);
+					status = preload_status;
+					if (!ok) {
+						return 1;
+					}
+				}
 				if (script.has_prefix("resource://")
 					|| script.contains("/ui/init.js")
 					|| script.contains("/gjs-embed/")) {

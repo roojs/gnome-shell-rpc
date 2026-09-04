@@ -11,10 +11,18 @@
 		}
 
 		/**
-		 * Quit the client loop only — never tear down mutter-rpc.
+		 * {@code Meta-Context.terminate} on the server, then quit the
+		 * client loop. Live compositor acks and keeps running; mock exits.
 		 */
 		public void terminate()
 		{
+			try {
+				GnomeShellRpc.GiStub.Runtime.call_values(
+					"Meta-Context.terminate", this);
+			} catch (GLib.Error e) {
+				GLib.warning(
+					"Meta.Context.terminate: %s", e.message);
+			}
 			var loop = this.get_data<GLib.MainLoop>("gsr-client-main-loop");
 			if (loop != null && loop.is_running()) {
 				loop.quit();

@@ -60,3 +60,11 @@ option(
   value: false,
   description: 'Compile Rpc.GdbSpawnWrap into mutter-rpc (GI_META_GDB env at runtime)',
 )
+
+option(
+  'gi_rpc_js_overlay_message_list',
+  type: 'combo',
+  choices: ['disabled', 'exit'],
+  value: 'disabled',
+  description: 'Overlay vendor ui/messageList.js in embedded gresource (exit = terminate before registerClass)',
+)

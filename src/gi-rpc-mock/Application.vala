@@ -11,8 +11,10 @@ namespace GnomeShellRpc.GiRpcMock
 	 *   ./build/src/gnome-shell-rpc --debug src/gjs-embed/register-class-trace-smoke.js
 	 * }}}
 	 */
-	public class Application : GLib.Application, GnomeShellRpc.ApplicationInterface
+	public class Application : GLib.Object, GnomeShellRpc.ApplicationInterface
 	{
+		private const string APP_ID = "org.gnome.ShellRpc.GiRpcMock";
+
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
 
@@ -24,30 +26,23 @@ namespace GnomeShellRpc.GiRpcMock
 			{ null }
 		};
 
+		private GnomeShellRpc.Rpc.Listen? listen = null;
+
 		public Application()
 		{
-			GLib.Object(
-				application_id: "org.gnome.ShellRpc.GiRpcMock",
-				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
-					| GLib.ApplicationFlags.NON_UNIQUE
-			);
-
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
 				GnomeShellRpc.ApplicationInterface.debug_log(
-					this.get_application_id(), dom, lvl, msg
+					Application.APP_ID, dom, lvl, msg
 				);
 			});
 		}
 
-		protected override int command_line(GLib.ApplicationCommandLine command_line)
+		public int run(string[] args)
 		{
 			Application.opt_debug = false;
 			Application.opt_debug_critical = false;
 
-			var args = command_line.get_arguments();
-			var opt_context = new GLib.OptionContext(
-				this.get_application_id()
-			);
+			var opt_context = new GLib.OptionContext(Application.APP_ID);
 			opt_context.set_help_enabled(true);
 			opt_context.add_main_entries(Application.options, null);
 
@@ -55,11 +50,7 @@ namespace GnomeShellRpc.GiRpcMock
 			try {
 				opt_context.parse(ref remaining);
 			} catch (GLib.OptionError e) {
-				command_line.printerr("error: %s\n", e.message);
-				command_line.printerr(
-					"Run '%s --help' to see a full list of available command line options.\n",
-					args[0]
-				);
+				GLib.stderr.printf("error: %s\n", e.message);
 				return 1;
 			}
 
@@ -71,10 +62,11 @@ namespace GnomeShellRpc.GiRpcMock
 
 			OLLMrpc.rpc_register(true);
 			GnomeShellRpc.Rpc.Daemon.rpc_register();
-			OLLMrpc.Request.register(
-				"RPC-Daemon",
-				new GnomeShellRpc.Rpc.Daemon()
-			);
+			GnomeShellRpc.GiRpcMock.Bootstrap.rpc_register();
+			var daemon = new GnomeShellRpc.Rpc.Daemon() {
+				server = "gi-rpc-mock",
+			};
+			OLLMrpc.Request.register("RPC-Daemon", daemon);
 
 			try {
 				OLLMrpc.Gi.register("Meta", "16");
@@ -84,6 +76,15 @@ namespace GnomeShellRpc.GiRpcMock
 				GLib.error("Gi.register: %s", e.message);
 			}
 
+			OLLMrpc.Bin.register(
+				"Shell-GLSLEffect",
+				typeof(MockShellGLSLEffect)
+			);
+
+			OLLMrpc.Request.register(
+				"RPC-Bootstrap",
+				GnomeShellRpc.GiRpcMock.Bootstrap.bind()
+			);
 			OLLMrpc.Request.register_mock(new HelperMock());
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
@@ -98,15 +99,15 @@ namespace GnomeShellRpc.GiRpcMock
 				}
 			}
 
-			var listen = new GnomeShellRpc.Rpc.Listen(socket_path) {
+			this.listen = new GnomeShellRpc.Rpc.Listen(socket_path) {
 				live_handles = true,
 			};
-			if (!listen.start()) {
+			if (!this.listen.start()) {
 				GLib.error("failed to listen on %s", socket_path);
 			}
-			command_line.print("listening on %s\n", socket_path);
+			GLib.print("listening on %s\n", socket_path);
 
-			this.hold();
+			new GLib.MainLoop().run();
 			return 0;
 		}
 
