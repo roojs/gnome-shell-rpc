@@ -21,12 +21,6 @@ shell_js_conf.set('libexecdir', '/usr/libexec/gnome-shell')
 
 subdir('misc')
 
-shell_js_resource_deps = [shell_js_config]
-if get_option('gi_rpc_js_overlay_message_list') != 'disabled'
-  subdir('ui')
-  shell_js_resource_deps += message_list_overlay
-endif
-
 shell_js_build_dir = meson.current_build_dir()
 
 # Build dir first so substituted misc/config.js wins over vendor (only .in).
@@ -35,5 +29,5 @@ shell_js_resources = gnome.compile_resources(
   vendor_js_dir / 'js-resources.gresource.xml',
   source_dir: [shell_js_build_dir, vendor_js_dir],
   c_name: 'shell_js_resources',
-  dependencies: shell_js_resource_deps,
+  dependencies: [shell_js_config],
 )

@@ -1,5 +1,7 @@
 /build/
 /builddir/
+/bisect-js/
+/js-override/
 /vendor/gnome-shell/
 *.o
 *.vala.c

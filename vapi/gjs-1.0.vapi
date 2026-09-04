@@ -8,6 +8,8 @@ namespace Gjs {
 		public bool eval_file(string filename, out int exit_status) throws GLib.Error;
 		[CCode (cname = "gjs_context_eval_module_file")]
 		public bool eval_module_file(string filename, out uint8 exit_status) throws GLib.Error;
+		[CCode (cname = "gjs_context_register_module")]
+		public bool register_module(string identifier, string uri) throws GLib.Error;
 		[CCode (array_length = false, array_null_terminated = true)]
 		public string[] search_path { get; construct; }
 		public string program_name { get; construct; }

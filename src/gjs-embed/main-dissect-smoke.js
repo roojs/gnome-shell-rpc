@@ -7,7 +7,12 @@
 import GLib from 'gi://GLib';
 
 import 'resource:///org/gnome/shell/ui/environment.js';
+import { installRegisterClassTrace } from './register-class-trace-hook.js';
 import { runSmokeIdle } from './smoke-exit.js';
+
+const trace = GLib.getenv('GI_RPC_REGISTER_CLASS_TRACE');
+if (trace != null && trace.length > 0 && trace !== '0' && trace !== 'false')
+	installRegisterClassTrace();
 
 const moduleName = GLib.getenv('GI_MAIN_SMOKE_MODULE');
 if (moduleName == null || moduleName.length === 0) {

@@ -35,6 +35,9 @@ Usage: $(basename "$0") server
 
 Default client: stock init.js (full gnome-shell boot — same as gnome-shell-rpc with no SCRIPT).
 Common env:
+  GNOME_SHELL_JS_DIR=...        optional full JS tree boot from disk
+  GI_RPC_JS_OVERRIDE_DIR=...    debug: sparse dir (e.g. src/shell-js/ui/messageList.js)
+  GI_RPC_JS_VENDOR_DIR=...      vendor JS tree (default: vendor/gnome-shell/js when override set)
   GI_RPC_REGISTER_CLASS_TRACE=1   log registerClass during init.js boot
   GI_MAIN_SMOKE_MODULE=panel.js     module-only trace (register-class-trace-smoke.js)
   GI_RPC_SMOKE_BUILD=$BUILD
@@ -60,6 +63,14 @@ client_env() {
 	export LD_LIBRARY_PATH="$BINDIR:$GNOME_SHELL_PKGLIBDIR:${OCRPC_LIBDIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 	export MUTTER_RPC_SOCKET="$SOCKET"
 	export GI_RPC_GJS_EMBED_DIR="$ROOT/src/gjs-embed"
+	if [[ -n "${GI_RPC_JS_OVERRIDE_DIR:-}" && -z "${GI_RPC_JS_VENDOR_DIR:-}" ]]; then
+		export GI_RPC_JS_VENDOR_DIR="$ROOT/vendor/gnome-shell/js"
+	fi
+	if [[ -n "${GI_RPC_JS_OVERRIDE_DIR:-}${GI_RPC_JS_VENDOR_DIR:-}" ]]; then
+		mkdir -p "${GI_RPC_JS_VENDOR_DIR:-$ROOT/vendor/gnome-shell/js}/misc"
+		ln -sf "$BUILD/src/shell-js/misc/config.js" \
+			"${GI_RPC_JS_VENDOR_DIR:-$ROOT/vendor/gnome-shell/js}/misc/config.js"
+	fi
 }
 
 require_bins() {
