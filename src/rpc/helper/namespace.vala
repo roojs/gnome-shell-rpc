@@ -33,6 +33,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		ShaderEffect.rpc_register();
 		GLSLEffect.rpc_register();
 		ClutterThreads.rpc_register();
+		Constraint.rpc_register();
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();
 	}

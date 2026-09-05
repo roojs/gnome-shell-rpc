@@ -29,3 +29,12 @@
 			}
 		}
 	}
+
+	/**
+	 * Client-local — GIR has {@code get_accessible}/{@code set_accessible}
+	 * (denied in Clutter.deny). Generator would RPC them; BarLevel's peer is
+	 * a client-only {@link St.GenericAccessible} with no {@code rpc_lid}, so
+	 * wire set would fail. Role / name / state stay on the leased actor RPC.
+	 * Vala accessors match the GIR method names.
+	 */
+	public Atk.Object? accessible { get; set; }

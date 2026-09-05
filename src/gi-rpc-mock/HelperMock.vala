@@ -245,6 +245,13 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
+				case "Helper-Constraint":
+					if (name == "create") {
+						this.reply_args_lease(request, "Clutter-BindConstraint");
+						return true;
+					}
+					break;
+
 				case "Helper-Display":
 					switch (name) {
 						case "add_keybinding":
@@ -356,6 +363,25 @@ namespace GnomeShellRpc.GiRpcMock
 					if (name == "get_stage_view") {
 						this.reply_args_lease_null(request);
 						return true;
+					}
+					return false;
+
+				/*
+				 * Actor child walks: GiMock mints a new Actor for every
+				 * nullable object return, so get_next_sibling never ends
+				 * (ActorIter hang). One fake child, then null siblings.
+				 */
+				case "Clutter-Actor":
+					switch (name) {
+						case "get_first_child":
+						case "get_last_child":
+							this.reply_retval_leased(request,
+								HelperMock.mint("Clutter-Actor"));
+							return true;
+						case "get_next_sibling":
+						case "get_previous_sibling":
+							this.reply_void(request);
+							return true;
 					}
 					return false;
 

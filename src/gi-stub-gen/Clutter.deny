@@ -59,6 +59,8 @@ PickContext.unref
 PaintNode.add_rectangles noop
 PaintNode.add_texture_rectangles noop
 ActorBox.from_vertices noop
+# Local field math — ActorBox.override.vala (MonitorConstraint).
+ActorBox.init_rect
 Actor.get_abs_allocation_vertices noop
 
 # Client-local content store — Actor.override.vala (Content not on wire).
@@ -67,6 +69,10 @@ Actor.set_content
 
 # GJS construct literal on St.Widget — Actor.override.vala (clashes with get_constraints).
 Actor.get_constraints
+
+# Client-local a11y peer — Actor.override.vala (GenericAccessible / BarLevel).
+Actor.get_accessible
+Actor.set_accessible
 
 # Signal/method clash: generator prefers GIR signal; RPC body under destroy_rpc
 # (Actor.override — [CCode cname = clutter_actor_destroy]).

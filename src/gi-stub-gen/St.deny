@@ -42,5 +42,8 @@ Settings.get
 Label.get_text
 Label.set_text
 
+# Client-owned a11y proxy — GenericAccessible.override.vala (BarLevel/Slider).
+GenericAccessible.new_for_actor
+
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new
