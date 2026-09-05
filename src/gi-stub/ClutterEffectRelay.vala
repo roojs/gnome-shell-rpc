@@ -9,7 +9,7 @@ namespace Clutter
 	[CCode (cname = "clutter_actor_meta_get_actor")]
 	public Actor actor_meta_get_actor(ActorMeta self)
 	{
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Clutter-ActorMeta.get_actor", self);
 		return (Actor) response.retval.get_object();
 	}
@@ -17,7 +17,7 @@ namespace Clutter
 	[CCode (cname = "clutter_actor_meta_get_enabled")]
 	public bool actor_meta_get_enabled(ActorMeta self)
 	{
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Clutter-ActorMeta.get_enabled", self);
 		return response.retval.get_boolean();
 	}
@@ -25,7 +25,7 @@ namespace Clutter
 	[CCode (cname = "clutter_actor_meta_get_name")]
 	public unowned string actor_meta_get_name(ActorMeta self)
 	{
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Clutter-ActorMeta.get_name", self);
 		return response.retval.get_string();
 	}
@@ -33,7 +33,7 @@ namespace Clutter
 	[CCode (cname = "clutter_actor_meta_set_enabled")]
 	public void actor_meta_set_enabled(ActorMeta self, bool is_enabled)
 	{
-		GnomeShellRpc.GiStub.Runtime.call_values(
+		GnomeShellRpc.call_value(
 			"Clutter-ActorMeta.set_enabled", self,
 			OLLMrpc.args("b", is_enabled));
 	}
@@ -41,7 +41,7 @@ namespace Clutter
 	[CCode (cname = "clutter_actor_meta_set_name")]
 	public void actor_meta_set_name(ActorMeta self, string name)
 	{
-		GnomeShellRpc.GiStub.Runtime.call_values(
+		GnomeShellRpc.call_value(
 			"Clutter-ActorMeta.set_name", self,
 			OLLMrpc.args("s", name));
 	}
@@ -49,7 +49,7 @@ namespace Clutter
 	[CCode (cname = "clutter_effect_queue_repaint")]
 	public void effect_queue_repaint(Effect self)
 	{
-		GnomeShellRpc.GiStub.Runtime.call_values(
+		GnomeShellRpc.call_value(
 			"Clutter-Effect.queue_repaint", self);
 	}
 
@@ -66,7 +66,7 @@ namespace Clutter
 	[CCode (cname = "clutter_offscreen_effect_get_pipeline")]
 	public Cogl.Pipeline offscreen_effect_get_pipeline(OffscreenEffect effect)
 	{
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Clutter-OffscreenEffect.get_pipeline", effect);
 		return (Cogl.Pipeline) response.retval.get_object();
 	}
@@ -77,7 +77,7 @@ namespace Clutter
 		out float width,
 		out float height
 	) {
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Clutter-OffscreenEffect.get_target_size", effect);
 		var ret = response.retval.get_boolean();
 		width = response.args.get(0).get_float();
@@ -88,7 +88,7 @@ namespace Clutter
 	[CCode (cname = "clutter_offscreen_effect_get_texture")]
 	public Cogl.Texture offscreen_effect_get_texture(OffscreenEffect effect)
 	{
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Clutter-OffscreenEffect.get_texture", effect);
 		return (Cogl.Texture) response.retval.get_object();
 	}

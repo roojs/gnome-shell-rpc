@@ -11,7 +11,7 @@
 			handler(display, window, null, KeyBinding());
 			return null;
 		});
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Helper-Display.keybindings_set_custom_handler", null,
 			OLLMrpc.args("st", name, callback_id));
 		return response.retval.get_boolean();
@@ -31,7 +31,7 @@
 		if (display_singleton != null) {
 			return display_singleton;
 		}
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"RPC-Bootstrap.get_display");
 		display_singleton = (Display) response.retval.get_object();
 		return display_singleton;

@@ -19,6 +19,13 @@ namespace Shell
 		public Meta.Context context { get; construct; }
 		public Meta.Compositor compositor { get; construct; }
 
+		public Meta.WorkspaceManager workspace_manager { get; private set; }
+		public Clutter.Actor window_group { get; private set; }
+		public Clutter.Actor top_window_group { get; private set; }
+
+		public int screen_width { get; private set; }
+		public int screen_height { get; private set; }
+
 		public string datadir { get; construct; }
 		public string userdatadir { get; construct; }
 		public string session_mode { get; construct; }
@@ -80,6 +87,16 @@ namespace Shell
 			);
 		}
 
+		construct {
+			this.workspace_manager = this.display.get_workspace_manager();
+			this.window_group = this.compositor.get_window_group();
+			this.top_window_group = this.compositor.get_top_window_group();
+			this.refresh_screen_size();
+			this.stage.notify["width"].connect(this.on_stage_size_changed);
+			this.stage.notify["height"].connect(this.on_stage_size_changed);
+			this.update_scaling_factor();
+		}
+
 		/**
 		 * Fill leases from the compositor display (host only).
 		 *
@@ -109,6 +126,40 @@ namespace Shell
 		public uint32 get_current_time()
 		{
 			return 0;
+		}
+
+		private void on_stage_size_changed()
+		{
+			this.refresh_screen_size();
+		}
+
+		private void refresh_screen_size()
+		{
+			int width, height;
+			this.display.get_size(out width, out height);
+			if (this.screen_width != width) {
+				this.screen_width = width;
+			}
+			if (this.screen_height != height) {
+				this.screen_height = height;
+			}
+		}
+
+		private void update_scaling_factor()
+		{
+			int factor;
+			try {
+				var response = GnomeShellRpc.call_value(
+					"Helper-Settings.get_ui_scaling_factor", null);
+				factor = response.retval.get_int();
+			} catch (GLib.Error e) {
+				GLib.warning("update_scaling_factor: %s", e.message);
+				factor = 1;
+			}
+			if (factor < 1) {
+				factor = 1;
+			}
+			St.ThemeContext.get_for_stage(this.stage).scale_factor = factor;
 		}
 	}
 }

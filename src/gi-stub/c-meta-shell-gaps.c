@@ -54,6 +54,13 @@ meta_backend_get_settings (MetaBackend *backend)
   return (MetaSettings *) settings_link_stub;
 }
 
+/* Vala bridge — avoid clashing prototypes in generated C. */
+gpointer
+gsr_meta_backend_get_settings_vala (MetaBackend *backend)
+{
+  return meta_backend_get_settings (backend);
+}
+
 /* meta_settings_get_ui_scaling_factor — Vala MetaSettingsAbi.vala (Helper RPC) */
 
 MetaX11Display *

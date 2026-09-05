@@ -27,8 +27,7 @@ namespace GnomeShellRpc.GiStub
 			foreach (var f in values) {
 				builder.add("f", f);
 			}
-			Runtime.call_values(
-				"Helper-ShaderEffect.set_uniform", effect,
+			GnomeShellRpc.call_value("Helper-ShaderEffect.set_uniform", effect,
 				OLLMrpc.args("ssv", name, type_name, builder.end()));
 		}
 	}

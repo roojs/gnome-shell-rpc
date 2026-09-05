@@ -4,6 +4,22 @@
 # Phase C: GIR class/iface struct → Vala virtual/abstract slots (ABI vs headers).
 Namespace emit_class_slots=1
 Namespace emit_iface_slots=1
+# Slot/signal clash → keep GIR signal (rename slot *_vfunc). Exact names.
+Namespace signal_prefer=event
+Namespace signal_prefer=button_press_event
+Namespace signal_prefer=button_release_event
+Namespace signal_prefer=scroll_event
+Namespace signal_prefer=key_press_event
+Namespace signal_prefer=key_release_event
+Namespace signal_prefer=motion_event
+Namespace signal_prefer=enter_event
+Namespace signal_prefer=leave_event
+Namespace signal_prefer=captured_event
+Namespace signal_prefer=touch_event
+Namespace signal_prefer=clicked
+Namespace signal_prefer=long_press
+Namespace signal_prefer=key_focus_in
+Namespace signal_prefer=key_focus_out
 
 # GIR union → GObject class + instance methods (Vala null, Meta key handlers).
 Event emit=union-as-class

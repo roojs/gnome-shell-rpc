@@ -1,3 +1,9 @@
+	[CCode (cname = "clutter_get_default_text_direction")]
+	public static TextDirection get_default_text_direction()
+	{
+		return TextDirection.ltr;
+	}
+
 	/**
 	 * Opaque sequence handle; {@link get_slot} stub until Clutter Event RPC exists.
 	 */
@@ -69,7 +75,7 @@
 		var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 			return OLLMrpc.args("b", func(data));
 		});
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Helper-ClutterThreads.threads_add_repaint_func", null,
 			OLLMrpc.args("ut", (uint) flags, callback_id));
 		return (uint32) response.retval.get_uint();

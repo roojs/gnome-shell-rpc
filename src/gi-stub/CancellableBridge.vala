@@ -24,7 +24,7 @@ namespace GnomeShellRpc.GiStub
 			}
 			var id = CancellableBridge.next_id++;
 			var watch = cancellable.connect((c) => {
-				GnomeShellRpc.GiStub.Runtime.call_values(
+				GnomeShellRpc.call_value(
 					"RPC-Cancellable.cancel",
 					null,
 					OLLMrpc.args("t", id)

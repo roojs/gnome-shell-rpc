@@ -12,7 +12,7 @@
 		) throws GLib.Error {
 			var cancel_id = GnomeShellRpc.GiStub.CancellableBridge.register(
 				cancellable);
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Selection.transfer", this,
 				OLLMrpc.args("isxt", (int) selection_type, mimetype,
 					(int64) size, cancel_id));

@@ -17,7 +17,7 @@
 		public void terminate()
 		{
 			try {
-				GnomeShellRpc.GiStub.Runtime.call_values(
+				GnomeShellRpc.call_value(
 					"Meta-Context.terminate", this);
 			} catch (GLib.Error e) {
 				GLib.warning(

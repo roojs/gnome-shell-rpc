@@ -13,7 +13,7 @@
 				clip_width = clip.width;
 				clip_height = clip.height;
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-ShapedTexture.get_image", this,
 				OLLMrpc.args("biiii", has_clip, clip_x, clip_y,
 					clip_width, clip_height));

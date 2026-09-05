@@ -6,7 +6,7 @@
 			throws GLib.Error
 		{
 			Object();
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-SelectionSourceMemory.create", null,
 				OLLMrpc.args("say", mimetype, content));
 			var stub = (SelectionSourceMemory) response.retval.get_object();

@@ -17,7 +17,7 @@ namespace Meta
 
 		public IdleMonitor get_core_idle_monitor()
 		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Meta-Backend.get_core_idle_monitor", this);
 			var monitor = new IdleMonitor();
 			monitor.rpc_lid = response.args.get(0).get_uint64();

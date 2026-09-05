@@ -72,6 +72,8 @@ meta_mini_vala_args = [
   '--vapidir', meson.project_source_root() / 'vapi',
 ]
 
+gi_stub_vala_args = ['--define=GSR_GI_STUB']
+
 # Legacy client Shell/St from vendor; disabled by default (Phase C uses St RPC stubs).
 mutter_rpc_gir_name = 'mutter-rpc-16'
 gnome_shell_client_libdir = meson.project_build_root() / 'gnome-shell' / 'client-libs'
@@ -176,7 +178,6 @@ gi_stub_gen = executable('gi-stub-gen',
   files(
     'ApplicationInterface.vala',
     'gi-stub-gen/namespace.vala',
-    'gi-stub-gen/TypelibWalk.vala',
     'gi-stub-gen/HeaderConfig.vala',
     'gi-stub-gen/Generator.vala',
     'gi-stub-gen/HeaderGenerator.vala',
@@ -239,6 +240,7 @@ if get_option('legacy_gi_rpc_smoke')
     girpcsmoke_generated,
     files(
       'gi-rpc-smoke/namespace.vala',
+      'namespace.vala',
       'gi-stub/namespace.vala',
       'gi-stub/Runtime.vala',
       'meta-mini/namespace.vala',
@@ -261,7 +263,7 @@ if get_option('legacy_gi_rpc_smoke')
       'rpc/namespace.vala',
     ),
     dependencies: [ocrpc_dep] + meta_mini_deps,
-    vala_args: ocrpc_vala_args + meta_mini_vala_args,
+    vala_args: ocrpc_vala_args + gi_stub_vala_args + meta_mini_vala_args,
     build_rpath: ocrpc_rpath,
     install: false,
   )
@@ -314,7 +316,7 @@ if get_option('gi_rpc_mock')
       'gi-rpc-mock/Application.vala',
     ),
     dependencies: [ocrpc_dep, dependency('gobject-introspection-1.0')],
-    vala_args: ocrpc_vala_args + [
+    vala_args: ocrpc_vala_args + gi_stub_vala_args + [
       '--pkg=gobject-introspection-1.0',
     ],
     build_rpath: ocrpc_rpath,
@@ -338,8 +340,12 @@ meta_override_files = files(
   'gi-stub/overrides/SoundPlayer.override.vala',
   'gi-stub/overrides/Background.override.vala',
   'gi-stub/overrides/BackgroundActor.override.vala',
+  'gi-stub/overrides/BackgroundImageCache.override.vala',
   'gi-stub/overrides/Context.override.vala',
+  'gi-stub/overrides/Backend.override.vala',
+  'gi-stub/overrides/Settings.override.vala',
   'gi-stub/overrides/IdleMonitor.override.vala',
+  'gi-stub/overrides/Laters.override.vala',
   'gi-stub/overrides/Display.override.vala',
   'gi-stub/overrides/Window.override.vala',
   'gi-stub/overrides/Meta.override.vala',
@@ -395,6 +401,8 @@ clutter_overrides_file = files('gi-stub-gen/Clutter.overrides')
 clutter_override_dir = meson.current_source_dir() / 'gi-stub/overrides-clutter'
 clutter_override_files = files(
   'gi-stub/overrides-clutter/Clutter.override.vala',
+  'gi-stub/overrides-clutter/BindConstraint.override.vala',
+  'gi-stub/overrides-clutter/ClickAction.override.vala',
   'gi-stub/overrides-clutter/Stage.override.vala',
   'gi-stub/overrides-clutter/Actor.override.vala',
   'gi-stub/overrides-clutter/ActorIter.override.vala',
@@ -428,6 +436,7 @@ mutter_clutter_rpc_lib = shared_library(
   'mutter-clutter-rpc-16',
   clutter_generated,
   files(
+    'namespace.vala',
     'gi-stub/namespace.vala',
     'gi-stub/Runtime.vala',
     'gi-stub/CancellableBridge.vala',
@@ -453,7 +462,7 @@ mutter_clutter_rpc_lib = shared_library(
     dependency('mutter-cogl-16'),
     dependency('mutter-mtk-16'),
   ],
-  vala_args: ocrpc_vala_args + [
+  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
     '--pkg=posix',
     '--pkg=gdesktopenums-3.0',
     '--pkg=atk',
@@ -600,12 +609,13 @@ gsr_meta_shell_gaps = static_library(
 )
 
 mutter_rpc_lib = shared_library('mutter-rpc-16',
-  meta_window_generated,
   files(
     'gi-stub/namespace.vala',
     'gi-stub/PaintedContent.vala',
+    'gi-stub/BackgroundContent.vala',
     'gi-stub/MetaSettingsAbi.vala',
   ),
+  meta_window_generated,
   mutter_vapi_stamp,
   dependencies: [
     ocrpc_dep,
@@ -620,7 +630,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     dependency('x11'),
   ],
   link_whole: gsr_meta_shell_gaps,
-  vala_args: ocrpc_vala_args + [
+  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
     '--pkg=posix',
     '--pkg=gdesktopenums-3.0',
     '--pkg=atk',
@@ -703,7 +713,9 @@ st_generated = custom_target('St_generated.vala',
   ],
   input: [st_deny_file, st_overrides_file] + files(
     'gi-stub/overrides-st/Widget.override.vala',
+    'gi-stub/overrides-st/Theme.override.vala',
     'gi-stub/overrides-st/ThemeContext.override.vala',
+    'gi-stub/overrides-st/Adjustment.override.vala',
     'gi-stub/overrides-st/FocusManager.override.vala',
     'gi-stub/overrides-st/Settings.override.vala',
     'gi-stub/overrides-st/Viewport.override.vala',
@@ -727,7 +739,7 @@ st_rpc_lib = shared_library(
     dependency('mutter-cogl-16'),
     dependency('mutter-mtk-16'),
   ],
-  vala_args: ocrpc_vala_args + [
+  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
     '--pkg=posix',
     '--pkg=gdk-pixbuf-2.0',
     '--pkg=mutter-cogl-16',
@@ -797,7 +809,7 @@ shell_gi_lib = shared_library(
       compile_args: ['-I' + mutter_includedir],
     ),
   ],
-  vala_args: ocrpc_vala_args + [
+  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
     '--pkg=gio-2.0',
     '--pkg=gdesktopenums-3.0',
     '--pkg=gsr-clutter-effect-abi',
@@ -1006,6 +1018,7 @@ pkg.generate(
 if get_option('legacy_gi_rpc_smoke')
   meta_override_client = static_library('meta-override-client',
     files(
+      'namespace.vala',
       'gi-stub/namespace.vala',
       'gi-stub/Runtime.vala',
       'meta-mini/namespace.vala',
@@ -1028,7 +1041,7 @@ if get_option('legacy_gi_rpc_smoke')
       'rpc/namespace.vala',
     ),
     dependencies: [ocrpc_dep] + meta_mini_deps,
-    vala_args: ocrpc_vala_args + meta_mini_vala_args,
+    vala_args: ocrpc_vala_args + gi_stub_vala_args + meta_mini_vala_args,
     build_rpath: ocrpc_rpath,
     install: false,
   )
@@ -1051,7 +1064,7 @@ fake_shell = executable('fake-shell',
     'fake-shell/TopBar.vala',
   ),
   dependencies: [ocrpc_dep, gtk4_dep],
-  vala_args: ocrpc_vala_args + [
+  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
     '--pkg=gtk4',
   ],
   build_rpath: ocrpc_rpath,

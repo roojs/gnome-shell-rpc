@@ -15,7 +15,7 @@
 				handler(display, window, null, KeyBinding());
 				return null;
 			});
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Display.add_keybinding", this,
 				OLLMrpc.args("ssut", name, settings.schema_id, (uint) flags, callback_id));
 			return response.retval.get_uint();
@@ -31,7 +31,7 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-Display.request_pad_osd", this,
 				OLLMrpc.args("tsb", device_lease, device_name, edition_mode));
 		}
@@ -48,7 +48,7 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Display.get_pad_button_label", this,
 				OLLMrpc.args("tsi", device_lease, device_name, button_number));
 			return response.retval.get_string();
@@ -68,7 +68,7 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Display.get_pad_feature_label", this,
 				OLLMrpc.args("tsiui", device_lease, device_name,
 					(int) feature, (uint) direction, feature_number));
@@ -81,7 +81,7 @@
 		 */
 		public StartupNotification get_startup_notification()
 		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Meta-Display.get_startup_notification", this);
 			return (StartupNotification) response.retval.get_object();
 		}

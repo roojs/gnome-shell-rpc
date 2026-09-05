@@ -14,7 +14,7 @@ namespace Meta
 
 		public Backend get_backend()
 		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Meta-Context.get_backend", this);
 			var backend = new Backend();
 			backend.rpc_lid = response.args.get(0).get_uint64();

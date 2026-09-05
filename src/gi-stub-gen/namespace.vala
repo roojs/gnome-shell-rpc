@@ -1,8 +1,7 @@
 /**
  * Typelib → stub / header generator for 0.5–0.7.4 (libgirepository).
  *
- * {@link TypelibWalk} — shared deny/overrides + info walk.
- * {@link Generator} — Vala stubs.
+ * {@link Generator} — Vala stubs (deny / overrides / signal_prefer).
  * {@link HeaderConfig} / {@code *.headers} — include-tree layout for emit-headers.
  * {@link HeaderGenerator} — stock-shaped {@code <subdir>/*.h} (0.7.4).
  * {@link Application} — CLI ({@code emit} / {@code emit-headers}).

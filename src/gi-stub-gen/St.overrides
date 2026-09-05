@@ -4,4 +4,21 @@
 # name to skip it; Clutter/Meta leave this off until Animatable/etc. are ready.
 Namespace emit_implements=1
 
+# Class vfunc slots (Button.clicked/transition, Widget.get_focus_chain, …).
+Namespace emit_class_slots=1
+# Slot/signal clash → keep GIR signal (rename slot *_vfunc). Exact names.
+Namespace signal_prefer=clicked
+Namespace signal_prefer=long_press
+Namespace signal_prefer=repaint
+Namespace signal_prefer=popup_menu
+Namespace signal_prefer=style_changed
+Namespace signal_prefer=primary_icon_clicked
+Namespace signal_prefer=secondary_icon_clicked
+
+# Client-local GObject props (GJS new Adjustment({ value, … }) — no RPC).
+Adjustment props=local
+
+# Same for Label.text round-trip without wire.
+Label.text local=1
+
 Widget.get_focus_chain list_elem=Widget

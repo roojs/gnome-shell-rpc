@@ -10,6 +10,21 @@ ThemeContextPrivate
 
 # Gio.File list / raw pixmap bytes — not on RPC wire yet.
 Theme.get_custom_stylesheets noop
+
+# Client-owned Adjustment — props from GIR via props=local; hand transitions.
+Adjustment.new
+Adjustment.add_transition
+Adjustment.remove_transition
+Adjustment.get_transition
+
+# Client-owned theme files for loadTheme (Theme.override.vala).
+Theme.new
+Theme.get_application_stylesheet
+Theme.get_default_stylesheet
+Theme.get_theme_stylesheet
+Theme.load_stylesheet
+Theme.unload_stylesheet
+
 ImageContent.set_data noop
 
 # int[] return — generator maps poorly.
@@ -17,9 +32,15 @@ IconTheme.get_icon_sizes noop
 
 # Class singleton getters + Event blob — hand overrides / not on wire yet.
 ThemeContext.get_for_stage
+ThemeContext.get_theme
+ThemeContext.set_theme
 FocusManager.get_for_stage
 FocusManager.navigate_from_event noop
 Settings.get
+
+# Client-owned label text — Label.text local=1 in St.overrides.
+Label.get_text
+Label.set_text
 
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new

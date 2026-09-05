@@ -2,8 +2,8 @@
  * Sync RPC client for GI stubs (plan 0.5 Meta mini).
  *
  * {@link register} is idempotent (wire types + {@code MUTTER_RPC_SOCKET}).
- * {@link call_values}, {@link call_object}, and {@link call_list} always start
- * with {@link register}.
+ * {@link GnomeShellRpc.call_value}, {@link call_object}, and {@link call_list}
+ * always start with {@link register}.
  *
  * Positional args use {@link OLLMrpc.Request.args} (GIR order, no direction
  * on the wire). Instance stubs implement {@link OLLMrpc.Live.Handle};
@@ -17,7 +17,7 @@
  * GnomeShellRpc.GiStub.Runtime.register();
  * var rows = GnomeShellRpc.GiStub.Runtime.call_list("Meta-Display.list_windows",
  *     typeof(GnomeShellRpc.Ui.Window));
- * GnomeShellRpc.GiStub.Runtime.call_values("Meta-Window.minimize", win);
+ * GnomeShellRpc.call_value("Meta-Window.minimize", win);
  * }}}
  */
 namespace GnomeShellRpc.GiStub
@@ -62,8 +62,7 @@ namespace GnomeShellRpc.GiStub
 			st_register_bins();
 			OLLMrpc.Bin.register("Clutter-ActorMeta", typeof(Clutter.ActorMeta));
 			OLLMrpc.Bin.register("Clutter-Effect", typeof(Clutter.Effect));
-			OLLMrpc.Bin.register(
-				"Clutter-OffscreenEffect", typeof(Clutter.OffscreenEffect));
+			OLLMrpc.Bin.register("Clutter-OffscreenEffect", typeof(Clutter.OffscreenEffect));
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {
@@ -90,7 +89,7 @@ namespace GnomeShellRpc.GiStub
 				var reply_id = (uint64) call.reply_id;
 				GLib.Idle.add(() => {
 					if (extra == null) {
-						Runtime.call_values("RPC-Live-Callback.reply", null,
+						GnomeShellRpc.call_value("RPC-Live-Callback.reply", null,
 							OLLMrpc.args("t", reply_id));
 						return GLib.Source.REMOVE;
 					}
@@ -98,7 +97,7 @@ namespace GnomeShellRpc.GiStub
 					foreach (var v in extra) {
 						reply.add(v);
 					}
-					Runtime.call_values("RPC-Live-Callback.reply", null, reply);
+					GnomeShellRpc.call_value("RPC-Live-Callback.reply", null, reply);
 					return GLib.Source.REMOVE;
 				});
 			});
@@ -148,7 +147,7 @@ namespace GnomeShellRpc.GiStub
 			if (Runtime.handlers == null) {
 				Runtime.handlers = new Gee.HashMap<int, InvokeRow>();
 			}
-			var response = Runtime.call_values("RPC-Live-Callback.register", null);
+			var response = GnomeShellRpc.call_value("RPC-Live-Callback.register", null);
 			var id = (int) response.args.get(0).get_uint64();
 			var row = new InvokeRow();
 			row.handler = (owned) handler;
@@ -188,7 +187,7 @@ namespace GnomeShellRpc.GiStub
 			return builder.end();
 		}
 
-		private static uint64 lease_id_of(GLib.Object obj, string? context = null)
+		internal static uint64 lease_id_of(GLib.Object obj, string? context = null)
 		{
 			var handle = obj as OLLMrpc.Live.Handle;
 			if (handle == null || handle.rpc_lid == 0) {
@@ -205,51 +204,6 @@ namespace GnomeShellRpc.GiStub
 		}
 
 		/**
-		 * Sync call with positional {@link GLib.Value}s and optional instance.
-		 *
-		 * @param method wire method (e.g. {@code Meta-Window.minimize})
-		 * @param instance leased stub; {@link OLLMrpc.Live.Handle.rpc_lid}
-		 *     → {@link OLLMrpc.Request.lease_id}
-		 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
-		 * @throws GLib.Error the error from the remote function or RPC
-		 */
-		public static OLLMrpc.Response call_values(
-			string method,
-			GLib.Object? instance = null,
-			Gee.ArrayList<GLib.Value?>? args = null
-		) throws GLib.Error {
-			uint64 lease_id = 0;
-			if (instance != null) {
-				lease_id = Runtime.lease_id_of(instance, method);
-			}
-			var req = new OLLMrpc.Request() {
-				method = method,
-				lease_id = lease_id,
-			};
-			if (args == null) {
-				return Runtime.do_call(req);
-			}
-			foreach (var val in args) {
-				if (!val.type().is_a(GLib.Type.OBJECT)) {
-					req.args.add(val);
-					continue;
-				}
-				var obj = val.get_object();
-				if (obj == null) {
-					var zero = GLib.Value(GLib.Type.UINT64);
-					zero.set_uint64(0);
-					req.args.add(zero);
-					continue;
-				}
-				var lease = Runtime.lease_id_of(obj, method);
-				var wire = GLib.Value(GLib.Type.UINT64);
-				wire.set_uint64(lease);
-				req.args.add(wire);
-			}
-			return Runtime.do_call(req);
-		}
-
-		/**
 		 * Sync call; {@link OLLMrpc.Response.retval} object, or null.
 		 *
 		 * @param method wire method
@@ -263,7 +217,7 @@ namespace GnomeShellRpc.GiStub
 			GLib.Type expected,
 			Gee.ArrayList<GLib.Value?>? args = null
 		) throws GLib.Error {
-			var response = Runtime.call_values(method, null, args);
+			var response = GnomeShellRpc.call_value(method, null, args);
 			if (response.retval.type() == GLib.Type.INVALID) {
 				return null;
 			}
@@ -289,7 +243,7 @@ namespace GnomeShellRpc.GiStub
 			GLib.Type elem,
 			Gee.ArrayList<GLib.Value?>? args = null
 		) throws GLib.Error {
-			var response = Runtime.call_values(method, null, args);
+			var response = GnomeShellRpc.call_value(method, null, args);
 			var list = new GLib.List<GLib.Object>();
 			if (response.retval.type() == GLib.Type.INVALID) {
 				return list;
@@ -306,7 +260,7 @@ namespace GnomeShellRpc.GiStub
 			return list;
 		}
 
-		private static OLLMrpc.Response do_call(OLLMrpc.Request request) throws GLib.Error
+		internal static OLLMrpc.Response do_call(OLLMrpc.Request request) throws GLib.Error
 		{
 			Runtime.register();
 

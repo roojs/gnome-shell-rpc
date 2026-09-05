@@ -84,7 +84,7 @@ namespace Meta
 		 */
 		public Compositor get_compositor()
 		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Meta-Display.get_compositor", this);
 			var compositor = new Compositor();
 			compositor.rpc_lid = response.args.get(0).get_uint64();
@@ -96,7 +96,7 @@ namespace Meta
 		 */
 		public SoundPlayer get_sound_player()
 		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Meta-Display.get_sound_player", this);
 			var player = new SoundPlayer();
 			player.rpc_lid = response.args.get(0).get_uint64();
@@ -124,7 +124,7 @@ namespace Meta
 				callback(display, window);
 				return null;
 			});
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Display.add_keybinding", this,
 				OLLMrpc.args("ssut", name, settings.schema_id, (uint) flags, callback_id));
 			return response.retval.get_uint();
@@ -143,7 +143,7 @@ namespace Meta
 			} else {
 				device_name = pad.get_device_name();
 			}
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-Display.request_pad_osd", this,
 				OLLMrpc.args("tsb", device_lease, device_name, edition_mode));
 		}
@@ -163,7 +163,7 @@ namespace Meta
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Display.get_pad_button_label", this,
 				OLLMrpc.args("tsi", device_lease, device_name, button_number));
 			return response.retval.get_string();
@@ -186,7 +186,7 @@ namespace Meta
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Display.get_pad_feature_label", this,
 				OLLMrpc.args("tsiui", device_lease, device_name,
 					(int) feature, (uint) direction, feature_number));
@@ -207,7 +207,7 @@ namespace Meta
 	{
 		if (display_singleton == null) {
 			display_singleton = new Display();
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"RPC-Bootstrap.get_display"
 			);
 			if (response.args.size > 0) {
@@ -233,7 +233,7 @@ namespace Meta
 			callback(display, window);
 			return null;
 		});
-		var response = GnomeShellRpc.GiStub.Runtime.call_values(
+		var response = GnomeShellRpc.call_value(
 			"Helper-Display.keybindings_set_custom_handler", null,
 			OLLMrpc.args("st", name, callback_id));
 		return response.retval.get_boolean();

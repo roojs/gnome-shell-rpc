@@ -34,13 +34,13 @@ namespace Meta
 		/** Minimize this window on the nested compositor. */
 		public void minimize()
 		{
-			GnomeShellRpc.GiStub.Runtime.call_values("Meta-Window.minimize", this);
+			GnomeShellRpc.call_value("Meta-Window.minimize", this);
 		}
 
 		/** Unminimize this window on the nested compositor. */
 		public void unminimize()
 		{
-			GnomeShellRpc.GiStub.Runtime.call_values("Meta-Window.unminimize", this);
+			GnomeShellRpc.call_value("Meta-Window.unminimize", this);
 		}
 
 		/**
@@ -50,7 +50,7 @@ namespace Meta
 		 */
 		public void activate(uint32 current_time = 0)
 		{
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Meta-Window.activate",
 				this,
 				OLLMrpc.args("u", current_time)
@@ -64,7 +64,7 @@ namespace Meta
 		 */
 		public void delete(uint32 timestamp = 0)
 		{
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Meta-Window.delete",
 				this,
 				OLLMrpc.args("u", timestamp)
@@ -82,7 +82,7 @@ namespace Meta
 					(int) call.args.get(0).get_uint64());
 				return OLLMrpc.args("b", func(win));
 			});
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-Window.foreach_transient", this,
 				OLLMrpc.args("t", callback_id));
 		}
@@ -98,7 +98,7 @@ namespace Meta
 					(int) call.args.get(0).get_uint64());
 				return OLLMrpc.args("b", func(win));
 			});
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-Window.foreach_ancestor", this,
 				OLLMrpc.args("t", callback_id));
 		}
@@ -135,7 +135,7 @@ namespace Meta
 				pos_x = pos_hint.x;
 				pos_y = pos_hint.y;
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Window.begin_grab_op", this,
 				OLLMrpc.args("utsiubff", (uint) op, device_lease, device_name,
 					sequence_slot, timestamp, has_pos, pos_x, pos_y));

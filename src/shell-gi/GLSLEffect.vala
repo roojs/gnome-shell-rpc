@@ -14,7 +14,7 @@ namespace Shell
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-GLSLEffect.create", null);
 			this.rpc_lid = response.args.get(0).get_uint64();
 			this.build_pipeline();
@@ -33,14 +33,14 @@ namespace Shell
 			string code,
 			bool is_replace
 		) {
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-GLSLEffect.add_glsl_snippet", this,
 				OLLMrpc.args("issb", (int) hook, declarations, code, is_replace));
 		}
 
 		public int get_uniform_location(string name)
 		{
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-GLSLEffect.get_uniform_location", this,
 				OLLMrpc.args("s", name));
 			return response.retval.get_int();
@@ -55,7 +55,7 @@ namespace Shell
 			foreach (var f in value) {
 				builder.add("d", (double) f);
 			}
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-GLSLEffect.set_uniform_float", this,
 				OLLMrpc.args("iiv", uniform, n_components, builder.end()));
 		}
@@ -70,7 +70,7 @@ namespace Shell
 			foreach (var f in value) {
 				builder.add("d", (double) f);
 			}
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-GLSLEffect.set_uniform_matrix", this,
 				OLLMrpc.args(
 					"ibiiv", uniform, transpose, dimensions, value.length, builder.end()));

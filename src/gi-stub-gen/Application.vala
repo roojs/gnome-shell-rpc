@@ -166,7 +166,8 @@ Examples:
 			}
 
 			Gee.HashMap<string, Gee.HashMap<string, string>> overrides;
-			string? ov_err = this.load_overrides(out overrides);
+			Gee.HashSet<string> signal_prefer;
+			string? ov_err = this.load_overrides(out overrides, out signal_prefer);
 			if (ov_err != null) {
 				command_line.printerr("%s", ov_err);
 				return 1;
@@ -183,14 +184,15 @@ Examples:
 			}
 
 			try {
+				GI.Repository.get_default().require(ns, version, 0);
 				if (cmd == "emit") {
 					var gen = new Generator() {
 						deny = deny,
 						noop = noop,
 						overrides = overrides,
+						signal_prefer = signal_prefer,
 						missing_out_path = Application.opt_missing_out,
 					};
-					gen.require_typelib(ns, version);
 					gen.emit(ns, Application.opt_out);
 				} else {
 					HeaderConfig cfg;
@@ -200,14 +202,9 @@ Examples:
 					} else {
 						cfg = HeaderConfig.from_namespace(ns);
 					}
-					var gen = new HeaderGenerator() {
-						deny = deny,
-						noop = noop,
-						overrides = overrides,
+					new HeaderGenerator() {
 						config = cfg,
-					};
-					gen.require_typelib(ns, version);
-					gen.emit_headers(ns, Application.opt_outdir);
+					}.emit_headers(ns, Application.opt_outdir);
 				}
 			} catch (GLib.Error e) {
 				command_line.printerr("%s\n", e.message);
@@ -264,9 +261,11 @@ Examples:
 		}
 
 		private string? load_overrides(
-			out Gee.HashMap<string, Gee.HashMap<string, string>> overrides
+			out Gee.HashMap<string, Gee.HashMap<string, string>> overrides,
+			out Gee.HashSet<string> signal_prefer
 		) {
 			overrides = new Gee.HashMap<string, Gee.HashMap<string, string>>();
+			signal_prefer = new Gee.HashSet<string>();
 			if (Application.opt_overrides_file == "") {
 				return null;
 			}
@@ -296,6 +295,10 @@ Examples:
 				}
 				var key = rest.substring(0, eq).strip();
 				var val = rest.substring(eq + 1).strip();
+				if (key == "signal_prefer") {
+					signal_prefer.add(val);
+					continue;
+				}
 				if (!overrides.has_key(symbol)) {
 					overrides.set(symbol, new Gee.HashMap<string, string>());
 				}

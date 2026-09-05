@@ -18,7 +18,7 @@ namespace GnomeShellRpc.GiStub
 			Clutter.PaintContext paint_context
 		) {
 			try {
-				var response = Runtime.call_values(
+				var response = GnomeShellRpc.call_value(
 					"Clutter-PaintContext.get_stage_view", paint_context);
 				if (response.args.size == 0) {
 					return null;
@@ -51,7 +51,7 @@ namespace GnomeShellRpc.GiStub
 			float y
 		) {
 			try {
-				var response = Runtime.call_values(
+				var response = GnomeShellRpc.call_value(
 					"Clutter-Stage.get_view_at", stage,
 					OLLMrpc.args("ff", x, y));
 				if (response.args.size == 0) {
@@ -98,7 +98,7 @@ namespace GnomeShellRpc.GiStub
 				image_height = 1;
 			}
 			var n_bytes = stride * image_height;
-			var response = Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Clutter-Stage.paint_to_buffer", stage,
 				OLLMrpc.args(
 					"iiiifiiuu",

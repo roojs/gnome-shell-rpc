@@ -118,4 +118,12 @@ namespace Shell
 			"StopUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
 		return true;
 	}
+
+	/** Nested Wayland — no X11 display extension probe. */
+	public static bool util_has_x11_display_extension(
+		Meta.Display display,
+		string extension
+	) {
+		return false;
+	}
 }

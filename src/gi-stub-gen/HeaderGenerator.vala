@@ -5,9 +5,25 @@ namespace GnomeShellRpc.GiStubGen
 	 * Phase A–B: shells / types. Phase C: class vfuncs + method prototypes.
 	 * Layout from {@link HeaderConfig}.
 	 */
-	public class HeaderGenerator : TypelibWalk
+	public class HeaderGenerator : GLib.Object
 	{
 		public HeaderConfig config = new HeaderConfig();
+
+		/**
+		 * GIR type name → stock-ish kebab file stem ({@code ActorMeta} →
+		 * {@code actor-meta}).
+		 */
+		private static string to_kebab(string name)
+		{
+			try {
+				return new GLib.Regex("([A-Z]+)([A-Z][a-z])").replace(
+					new GLib.Regex("([a-z0-9])([A-Z])").replace(
+						name, -1, 0, "\\1-\\2"),
+					-1, 0, "\\1-\\2").down();
+			} catch (GLib.RegexError e) {
+				assert_not_reached();
+			}
+		}
 
 		/**
 		 * Write {@code outdir/<subdir>/…}. {@code outdir} is the {@code -I} root.
@@ -30,10 +46,12 @@ namespace GnomeShellRpc.GiStubGen
 			var enums = new Gee.ArrayList<GI.EnumInfo>();
 			var flags = new Gee.ArrayList<GI.EnumInfo>();
 
-			this.foreach_info(ns, (info) => {
+			var n_infos = GI.Repository.get_default().get_n_infos(ns);
+			for (var i = 0; i < n_infos; i++) {
+				var info = GI.Repository.get_default().get_info(ns, i);
 				var name = info.get_name();
 				if (name == null || name == "") {
-					return;
+					continue;
 				}
 				switch (info.get_type()) {
 				case GI.InfoType.OBJECT:
@@ -45,11 +63,11 @@ namespace GnomeShellRpc.GiStubGen
 				case GI.InfoType.STRUCT:
 					var si = (GI.StructInfo) info;
 					if (si.is_gtype_struct()) {
-						return;
+						break;
 					}
 					/* Skip GObject private blobs as standalone headers. */
 					if (name.has_suffix("Private")) {
-						return;
+						break;
 					}
 					records.add(si);
 					break;
@@ -65,7 +83,7 @@ namespace GnomeShellRpc.GiStubGen
 				default:
 					break;
 				}
-			});
+			}
 
 			foreach (var suffix in cfg.fixed) {
 				switch (suffix) {
@@ -194,21 +212,21 @@ namespace GnomeShellRpc.GiStubGen
 				this.order_object_walk(cfg, oi, ordered, seen);
 			}
 			foreach (var ii in interfaces) {
-				var stem = cfg.stem(TypelibWalk.to_kebab(ii.get_name()));
+				var stem = cfg.stem(to_kebab(ii.get_name()));
 				if (!seen.contains(stem)) {
 					seen.add(stem);
 					ordered.add(stem);
 				}
 			}
 			foreach (var si in records) {
-				var stem = cfg.stem(TypelibWalk.to_kebab(si.get_name()));
+				var stem = cfg.stem(to_kebab(si.get_name()));
 				if (!seen.contains(stem)) {
 					seen.add(stem);
 					ordered.add(stem);
 				}
 			}
 			foreach (var ui in unions) {
-				var stem = cfg.stem(TypelibWalk.to_kebab(ui.get_name()));
+				var stem = cfg.stem(to_kebab(ui.get_name()));
 				if (!seen.contains(stem)) {
 					seen.add(stem);
 					ordered.add(stem);
@@ -223,7 +241,7 @@ namespace GnomeShellRpc.GiStubGen
 			Gee.ArrayList<string> ordered,
 			Gee.HashSet<string> seen
 		) {
-			var stem = cfg.stem(TypelibWalk.to_kebab(oi.get_name()));
+			var stem = cfg.stem(to_kebab(oi.get_name()));
 			if (seen.contains(stem)) {
 				return;
 			}
@@ -481,7 +499,7 @@ namespace GnomeShellRpc.GiStubGen
 			HeaderConfig cfg,
 			GI.EnumInfo ei
 		) {
-			var kebab = TypelibWalk.to_kebab(ei.get_name()).replace("-", "_");
+			var kebab = to_kebab(ei.get_name()).replace("-", "_");
 			var func = @"$(cfg.file_prefix)_$(kebab)_get_type";
 			var type_macro = this.type_macro_from_func(func);
 			stream.printf("#define %s (%s ())\n", type_macro, func);
@@ -494,7 +512,7 @@ namespace GnomeShellRpc.GiStubGen
 			GI.ObjectInfo oi
 		) throws GLib.Error {
 			var name = oi.get_name();
-			var filename = cfg.stem(TypelibWalk.to_kebab(name)) + ".h";
+			var filename = cfg.stem(to_kebab(name)) + ".h";
 			var stream = this.open_h(ns_dir, filename);
 			this.write_banner(stream, cfg);
 
@@ -528,7 +546,7 @@ namespace GnomeShellRpc.GiStubGen
 					stream.printf(
 						"#include \"%s\"\n",
 						cfg.include_path(
-							cfg.stem(TypelibWalk.to_kebab(parent.get_name()))
+							cfg.stem(to_kebab(parent.get_name()))
 							+ ".h"));
 				} else {
 					this.add_foreign_ns(cfg, foreign, pns);
@@ -603,7 +621,7 @@ namespace GnomeShellRpc.GiStubGen
 			GI.InterfaceInfo ii
 		) throws GLib.Error {
 			var name = ii.get_name();
-			var filename = cfg.stem(TypelibWalk.to_kebab(name)) + ".h";
+			var filename = cfg.stem(to_kebab(name)) + ".h";
 			var stream = this.open_h(ns_dir, filename);
 			this.write_banner(stream, cfg);
 			stream.puts("#include <glib-object.h>\n");
@@ -664,7 +682,7 @@ namespace GnomeShellRpc.GiStubGen
 			GI.StructInfo si
 		) throws GLib.Error {
 			var name = si.get_name();
-			var filename = cfg.stem(TypelibWalk.to_kebab(name)) + ".h";
+			var filename = cfg.stem(to_kebab(name)) + ".h";
 			var stream = this.open_h(ns_dir, filename);
 			this.write_banner(stream, cfg);
 
@@ -705,7 +723,7 @@ struct _$(tn) { guint8 _gsr_opaque; };
 				}
 			}
 
-			var kebab = TypelibWalk.to_kebab(name).replace("-", "_");
+			var kebab = to_kebab(name).replace("-", "_");
 			var func = @"$(cfg.file_prefix)_$(kebab)_get_type";
 			if (override_body == ""
 				|| !override_body.contains(@"GType $(func)")) {
@@ -744,7 +762,7 @@ struct _$(tn) { guint8 _gsr_opaque; };
 			GI.UnionInfo ui
 		) throws GLib.Error {
 			var name = ui.get_name();
-			var filename = cfg.stem(TypelibWalk.to_kebab(name)) + ".h";
+			var filename = cfg.stem(to_kebab(name)) + ".h";
 			var stream = this.open_h(ns_dir, filename);
 			this.write_banner(stream, cfg);
 
@@ -776,7 +794,7 @@ struct _$(tn) { guint8 _gsr_opaque; };
 				}
 			}
 
-			var kebab = TypelibWalk.to_kebab(name).replace("-", "_");
+			var kebab = to_kebab(name).replace("-", "_");
 			var func = @"$(cfg.file_prefix)_$(kebab)_get_type";
 			/* Skip only if override already declared the prototype (not
 			 * merely mentioned the symbol in CLUTTER_TYPE_*). */
@@ -1100,9 +1118,24 @@ struct _$(tn) { guint8 _gsr_opaque; };
 
 		private string field_c_type(HeaderConfig cfg, GI.TypeInfo ti)
 		{
-			var scalar = this.type_c_scalar(ti);
-			if (scalar != "") {
-				return scalar;
+			switch (ti.get_tag()) {
+				case GI.TypeTag.VOID:
+					return ti.is_pointer() ? "gpointer" : "void";
+				case GI.TypeTag.BOOLEAN:  return "gboolean";
+				case GI.TypeTag.INT8:     return "gint8";
+				case GI.TypeTag.UINT8:    return "guint8";
+				case GI.TypeTag.INT16:    return "gint16";
+				case GI.TypeTag.UINT16:   return "guint16";
+				case GI.TypeTag.INT32:    return "gint32";
+				case GI.TypeTag.UINT32:   return "guint32";
+				case GI.TypeTag.INT64:    return "gint64";
+				case GI.TypeTag.UINT64:   return "guint64";
+				case GI.TypeTag.FLOAT:    return "gfloat";
+				case GI.TypeTag.DOUBLE:   return "gdouble";
+				case GI.TypeTag.GTYPE:    return "GType";
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME: return "gchar *";
+				default: break;
 			}
 			if (ti.get_tag() != GI.TypeTag.INTERFACE) {
 				return ti.is_pointer() ? "gpointer" : "guint8";

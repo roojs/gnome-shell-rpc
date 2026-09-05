@@ -2,13 +2,10 @@
 # Bare name or Type.method: omit the stub (not a gap).
 # Trailing "noop": emit an empty stub (void) / return true (bool) / return 0.
 
-# BackgroundActor already creates the wallpaper ClutterContent and
-# attaches it as actor.content. Callers (gnome-shell, our Plugin) only
-# cast that and call set_background / vignette — they never construct a
-# second BackgroundContent. A client stub for .new would look like you
-# can make wallpaper out-of-process, but that object would not be on the
-# stage. No call sites in gnome-shell or this tree either.
-BackgroundContent.new
+# Client owns attach: BackgroundActor.override sets actor.content.
+# Full class: src/gi-stub/BackgroundContent.vala (implements Clutter.Content).
+# Meta.overrides: register=hand → Bin.register inline in Meta.register().
+BackgroundContent
 # Bodies use construct props + construct {} in overrides (GJS g_object_new).
 Background.new
 BackgroundActor.new
@@ -33,11 +30,16 @@ unsigned_long_hash noop
 SoundPlayer.play_from_file
 SoundPlayer.play_from_theme
 Background.set_file
+# GLib.File not on wire — URI string in BackgroundImageCache.override.vala.
+BackgroundImageCache.load
 Context.terminate_with_error
 Context.terminate
 Context.run_main_loop
 IdleMonitor.add_idle_watch
 IdleMonitor.add_user_active_watch
+# Client-local — GSourceFunc not RPC-marshallable (see Laters.override.vala).
+Laters.add
+Laters.remove
 Display.add_keybinding
 Display.get_startup_notification
 keybindings_set_custom_handler
@@ -58,8 +60,10 @@ ShapedTexture.get_image
 WindowActor.get_image
 WaylandCompositor.get_wayland_display
 
-# C ABI for libshell: src/gi-stub/MetaSettingsAbi.vala (Helper RPC). Deny the
-# generated method so Vala does not also emit meta_settings_get_ui_scaling_factor.
+# C ABI for libshell: src/gi-stub/MetaSettingsAbi.vala + c-meta-shell-gaps.c.
+# introspectable=0 — override body in Backend.override.vala.
+Backend.get_settings
+# Opaque MetaSettings record — MetaSettingsAbi.vala (Helper RPC).
 Settings.get_ui_scaling_factor
 
 # ---------------------------------------------------------------------------
@@ -68,10 +72,9 @@ Settings.get_ui_scaling_factor
 # extension or future shell needs them. Constructors are omitted (deny), not
 # noop — empty ctor cannot return a real GObject (same as BackgroundContent.new).
 # ---------------------------------------------------------------------------
-BackgroundImageCache.load noop
+# BackgroundImageCache.load — used by background.js (T-030 phase 4); not E.
 BackgroundImageCache.purge noop
 Background.set_blend noop
-Laters.add noop
 ShapedTexture.set_mask_texture noop
 MultiTexture.new
 MultiTexture.new_simple

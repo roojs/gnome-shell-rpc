@@ -6,10 +6,12 @@
 		public int monitor { get; construct; }
 
 		construct {
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-BackgroundActor.create",
 				null,
 				OLLMrpc.args("ti", this.meta_display.rpc_lid, this.monitor)
 			);
 			this.rpc_lid = response.args.get(0).get_uint64();
+			/* Stock meta_background_actor_new attaches MetaBackgroundContent. */
+			this.content = new BackgroundContent();
 		}

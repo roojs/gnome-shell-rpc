@@ -1,5 +1,19 @@
 # Clutter generate/compile deny list.
 
+# layout.js JSObject construct props — BindConstraint.override.vala.
+BindConstraint.source
+BindConstraint.coordinate
+BindConstraint.offset
+BindConstraint.get_source
+BindConstraint.set_source
+BindConstraint.get_coordinate
+BindConstraint.set_coordinate
+BindConstraint.get_offset
+BindConstraint.set_offset
+
+# Stock C symbol in header-overrides/clutter-main.h — Clutter.override.vala.
+get_default_text_direction
+
 # Header-sized GTypes in c-clutter-effect-abi.c + gsr-clutter-effect-abi.vapi
 # (Vala priv* makes OffscreenEffect 48B; stock/libshell expect 24B).
 ActorMeta
@@ -47,11 +61,15 @@ PaintNode.add_texture_rectangles noop
 ActorBox.from_vertices noop
 Actor.get_abs_allocation_vertices noop
 
-# Method name clashes with GIR signal "event" (generator emits the signal).
-Actor.event
+# Client-local content store — Actor.override.vala (Content not on wire).
+Actor.get_content
+Actor.set_content
 
-# Method name clashes with GIR signal "destroy" (generator emits the signal).
-# C ABI: Actor.override destroy_rpc [CCode cname = clutter_actor_destroy].
+# GJS construct literal on St.Widget — Actor.override.vala (clashes with get_constraints).
+Actor.get_constraints
+
+# Signal/method clash: generator prefers GIR signal; RPC body under destroy_rpc
+# (Actor.override — [CCode cname = clutter_actor_destroy]).
 Actor.destroy
 
 # Vala auto-emits free/dup when struct has methods — skip GIR copies.

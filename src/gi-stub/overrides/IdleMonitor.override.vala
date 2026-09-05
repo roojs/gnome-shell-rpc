@@ -7,7 +7,7 @@
 					(uint32) call.args.get(1).get_uint());
 				return null;
 			});
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-IdleMonitor.add_idle_watch",
 				this,
 				OLLMrpc.args("tt", interval_msec, callback_id));
@@ -23,7 +23,7 @@
 					(uint32) call.args.get(1).get_uint());
 				return null;
 			});
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-IdleMonitor.add_user_active_watch",
 				this,
 				OLLMrpc.args("t", callback_id));

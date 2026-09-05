@@ -5,7 +5,7 @@
 		public Display meta_display { get; construct; }
 
 		construct {
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Background.create",
 				null,
 				OLLMrpc.args("t", this.meta_display.rpc_lid)
@@ -15,7 +15,7 @@
 
 		public void set_file(GLib.File file, GDesktop.BackgroundStyle style)
 		{
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-Background.set_file",
 				this,
 				OLLMrpc.args(

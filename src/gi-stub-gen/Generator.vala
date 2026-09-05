@@ -16,15 +16,32 @@ namespace GnomeShellRpc.GiStubGen
 	 * gen.emit("GiRpcSmoke", "GiRpcSmoke_generated.vala");
 	 * }}}
 	 */
-	public class Generator : TypelibWalk
+	public class Generator : GLib.Object
 	{
+		/** Denylisted symbols omitted on emit; {@code Type.method} or bare name. */
+		public string[] deny = {};
+
+		/** Same names as {@link deny}, but emit an empty / dummy-return stub. */
+		public string[] noop = {};
+
+		/**
+		 * {@code Type.method} or bare {@code Type} → override keys
+		 * (e.g. {@code list_elem=WindowActor}, {@code emit=union-as-class}).
+		 */
+		public Gee.HashMap<string, Gee.HashMap<string, string>> overrides =
+			new Gee.HashMap<string, Gee.HashMap<string, string>>();
+
+		/**
+		 * Slot names that keep the GIR signal ({@code Namespace signal_prefer=…}
+		 * lines in overrides). Exact match only.
+		 */
+		public Gee.HashSet<string> signal_prefer = new Gee.HashSet<string>();
+
 		/** Current {@code Type.method} while emitting (for {@link overrides}). */
 		private string emit_symbol = "";
 
 		/** When set, write a gap summary markdown file after emit. */
 		public string missing_out_path = "";
-
-		private const string RUNTIME = "GnomeShellRpc.GiStub.Runtime";
 
 		private class Gap : GLib.Object
 		{
@@ -47,7 +64,10 @@ namespace GnomeShellRpc.GiStubGen
 				|| info.get_namespace() != ns) {
 				return false;
 			}
-			return this.type_policy(info.get_name(), "wire_as") == "gobject";
+			var uname = info.get_name();
+			return this.overrides.has_key(uname)
+				&& this.overrides.get(uname).has_key("wire_as")
+				&& this.overrides.get(uname).get("wire_as") == "gobject";
 		}
 
 		/**
@@ -117,7 +137,7 @@ namespace $(ns)
 						continue;
 				}
 			}
-			this.emit_namespace_register(stream);
+			this.emit_namespace_register(stream, ns);
 			this.splice_class_override(stream, ns);
 			stream.puts("}\n");
 			stream = null;
@@ -168,6 +188,15 @@ namespace $(ns)
 					reason = "denied",
 					detail = "class",
 				});
+				/*
+				 * Hand-written class (deny body emit) that still exposes
+				 * Type.register() — include in namespace Meta.register().
+				 */
+				if (this.overrides.has_key(class_name)
+					&& this.overrides.get(class_name).has_key("register")
+					&& this.overrides.get(class_name).get("register") == "hand") {
+					this.object_classes.add(class_name);
+				}
 				return 0;
 			}
 
@@ -197,19 +226,29 @@ namespace $(ns)
 			var vfunc_names = new Gee.HashSet<string>();
 			var method_names = new Gee.HashSet<string>();
 			var prop_accessors = new Gee.HashSet<string>();
+			var signal_names = new Gee.HashSet<string>();
+			for (var s = 0; s < oi.get_n_signals(); s++) {
+				signal_names.add(this.vala_ident(
+						oi.get_signal(s).get_name().replace("-", "_")));
+			}
 			var methods = 0;
-			if (this.type_policy("Namespace", "emit_class_slots") == "1") {
+			if (this.overrides.has_key("Namespace")
+				&& this.overrides.get("Namespace").has_key("emit_class_slots")
+				&& this.overrides.get("Namespace").get("emit_class_slots") == "1") {
 				methods += this.emit_object_class_slots(
-					stream, ns, oi, vfunc_names);
+					stream, ns, oi, vfunc_names, signal_names);
 			}
 			foreach (var vn in vfunc_names) {
-				if (!(vn in this.deny)
-					&& !((class_name + "." + vn) in this.deny)) {
-					method_names.add(vn);
+				if (vn in this.deny
+					|| (class_name + "." + vn) in this.deny
+					|| (vn in signal_names && vn in this.signal_prefer)) {
+					/* Renamed to *_vfunc — leave Vala name free for the signal. */
+					continue;
 				}
+				method_names.add(vn);
 			}
 			var props = this.emit_object_properties(
-				stream, ns, oi, prop_accessors, vfunc_names);
+				stream, ns, oi, prop_accessors, vfunc_names, signal_names);
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				var fi = oi.get_method(m);
 				if (vfunc_names.contains(fi.get_name())) {
@@ -218,6 +257,12 @@ namespace $(ns)
 				if (prop_accessors.contains(fi.get_name())) {
 					continue;
 				}
+				/*
+				 * Ordinary methods that share a GIR signal name still need the
+				 * callable (GJS actor.hide()). Prefer signal only for class
+				 * slots (*_vfunc rename above). Method/signal pairs like
+				 * destroy stay on the deny list + hand rename (destroy_rpc).
+				 */
 				var n = this.emit_callable(
 					stream, ns, class_name, fi, "class", false);
 				if (n > 0) {
@@ -243,7 +288,9 @@ namespace $(ns)
 			GI.UnionInfo ui
 		) {
 			var class_name = ui.get_name();
-			if (this.type_policy(class_name, "emit") != "union-as-class") {
+			if (!(this.overrides.has_key(class_name)
+				&& this.overrides.get(class_name).has_key("emit")
+				&& this.overrides.get(class_name).get("emit") == "union-as-class")) {
 				this.gaps.add(new Gap() {
 					symbol = class_name,
 					reason = "unhandled_info",
@@ -341,6 +388,9 @@ namespace $(ns)
 				|| !this.callable_wireable(new_fi, ns)) {
 				return;
 			}
+			if ((class_name + ".new") in this.deny) {
+				return;
+			}
 			var sig = "";
 			var packed = "";
 			for (var a = 0; a < new_fi.get_n_args(); a++) {
@@ -355,8 +405,9 @@ namespace $(ns)
 				string expr;
 				switch (letter) {
 					case "o":
-						/* g_object_new sets props after construct — cannot RPC null. */
-						return;
+						/* GJS construct props land after construct — wire null. */
+						expr = "null";
+						break;
 					case "b":
 						expr = "false";
 						break;
@@ -394,7 +445,7 @@ namespace $(ns)
 				return;
 			}
 ");
-			stream.puts(@"			var response = $(RUNTIME).call_values(\"$(rpc)\", null$(args_arg));
+			stream.puts(@"			var response = GnomeShellRpc.call_value(\"$(rpc)\", null$(args_arg));
 			var _stub = response.retval.get_object() as OLLMrpc.Live.Handle;
 			this.rpc_lid = _stub.rpc_lid;
 		}
@@ -408,7 +459,9 @@ namespace $(ns)
 		 */
 		private string emit_object_implements(string ns, GI.ObjectInfo oi)
 		{
-			if (this.type_policy("Namespace", "emit_implements") != "1") {
+			if (!(this.overrides.has_key("Namespace")
+				&& this.overrides.get("Namespace").has_key("emit_implements")
+				&& this.overrides.get("Namespace").get("emit_implements") == "1")) {
 				return "";
 			}
 			string[] names = {};
@@ -472,14 +525,25 @@ namespace $(ns)
 
 		/**
 		 * Emit namespace {@code register()} that calls every object {@code register()}.
+		 * Hand classes ({@code Type register=hand}) get an inline
+		 * {@code Bin.register} — no stub {@code Type.register()} method.
 		 */
-		private void emit_namespace_register(GLib.FileStream stream)
+		private void emit_namespace_register(GLib.FileStream stream, string ns)
 		{
 			if (this.object_classes.size == 0) {
 				return;
 			}
 			stream.puts("\n	public void register()\n	{\n");
 			foreach (var class_name in this.object_classes) {
+				if (this.overrides.has_key(class_name)
+					&& this.overrides.get(class_name).has_key("register")
+					&& this.overrides.get(class_name).get("register") == "hand") {
+					stream.printf(
+						"\t\tOLLMrpc.Bin.register(\"%s-%s\", typeof(%s));\n",
+						ns, class_name, class_name
+					);
+					continue;
+				}
 				stream.puts(@"		$(class_name).register();
 ");
 			}
@@ -670,9 +734,12 @@ namespace $(ns)
 				});
 				return 0;
 			}
+			var sname = si.get_name();
 			if (si.get_size() == 0
 				&& si.get_n_methods() > 0
-				&& this.type_policy(si.get_name(), "emit") == "opaque-as-class") {
+				&& this.overrides.has_key(sname)
+				&& this.overrides.get(sname).has_key("emit")
+				&& this.overrides.get(sname).get("emit") == "opaque-as-class") {
 				return this.emit_opaque_struct_as_object(stream, ns, si);
 			}
 			stream.puts(@"
@@ -800,7 +867,9 @@ namespace $(ns)
 			var props = this.emit_interface_properties(stream, ns, ii);
 			var vfunc_names = new Gee.HashSet<string>();
 			var methods = 0;
-			if (this.type_policy("Namespace", "emit_iface_slots") == "1") {
+			if (this.overrides.has_key("Namespace")
+				&& this.overrides.get("Namespace").has_key("emit_iface_slots")
+				&& this.overrides.get("Namespace").get("emit_iface_slots") == "1") {
 				methods += this.emit_iface_struct_slots(
 					stream, ns, ii, vfunc_names);
 			}
@@ -886,15 +955,10 @@ namespace $(ns)
 			string ns,
 			GI.ObjectInfo oi,
 			Gee.HashSet<string> prop_accessors,
-			Gee.HashSet<string> vfunc_names
+			Gee.HashSet<string> vfunc_names,
+			Gee.HashSet<string> signal_names
 		) {
 			var class_name = oi.get_name();
-			var signal_names = new Gee.HashSet<string>();
-			for (var s = 0; s < oi.get_n_signals(); s++) {
-				signal_names.add(
-					this.vala_ident(oi.get_signal(s).get_name().replace("-", "_"))
-				);
-			}
 			var emitted = 0;
 			for (var p = 0; p < oi.get_n_properties(); p++) {
 				var pi = oi.get_property(p);
@@ -911,6 +975,15 @@ namespace $(ns)
 				}
 				var vt = this.type_vala(ns, pi.get_type());
 				if (vt == "") {
+					continue;
+				}
+				/*
+				 * Client-local auto-prop ({@code Type props=local} or
+				 * {@code Type.prop local=1}) — GJS construct literals without RPC.
+				 */
+				if (this.property_is_local(class_name, pname, vala_name)) {
+					emitted += this.emit_object_property_local(
+						stream, pi, vt, vala_name, prop_accessors);
 					continue;
 				}
 				var flags = pi.get_flags();
@@ -1023,12 +1096,118 @@ namespace $(ns)
 		}
 
 		/**
+		 * {@code Type props=local} or {@code Type.prop local=1} in overrides.
+		 */
+		private bool property_is_local(
+			string class_name,
+			string pname,
+			string vala_name
+		) {
+			if (this.overrides.has_key(class_name)
+				&& this.overrides.get(class_name).has_key("props")
+				&& this.overrides.get(class_name).get("props") == "local") {
+				return true;
+			}
+			string[] keys = {
+				class_name + "." + pname,
+				class_name + "." + vala_name,
+			};
+			foreach (var key in keys) {
+				if (!this.overrides.has_key(key)) {
+					continue;
+				}
+				if (this.overrides.get(key).has_key("local")) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/**
+		 * Emit a client-owned auto-property (no RPC) from GIR flags / defaults.
+		 */
+		private int emit_object_property_local(
+			GLib.FileStream stream,
+			GI.PropertyInfo pi,
+			string vt,
+			string vala_name,
+			Gee.HashSet<string> prop_accessors
+		) {
+			var flags = pi.get_flags();
+			var readable = (flags & GLib.ParamFlags.READABLE) != 0;
+			var writable = (flags & GLib.ParamFlags.WRITABLE) != 0;
+			var construct_only =
+				(flags & GLib.ParamFlags.CONSTRUCT_ONLY) != 0;
+			var construct = (flags & GLib.ParamFlags.CONSTRUCT) != 0
+				|| construct_only;
+			if (!readable && !writable) {
+				return 0;
+			}
+			string accessors;
+			if (construct_only) {
+				accessors = "get; construct;";
+			} else if (construct && writable) {
+				accessors = "get; set construct;";
+			} else if (writable && readable) {
+				accessors = "get; set;";
+			} else if (writable) {
+				accessors = "set;";
+			} else {
+				accessors = "get;";
+			}
+			var def = "";
+			switch (vt) {
+				case "bool":
+					def = "false";
+					break;
+				case "string":
+					def = "\"\"";
+					break;
+				case "float":
+				case "double":
+				case "int":
+				case "int32":
+				case "uint":
+				case "uint32":
+				case "int64":
+				case "uint64":
+					def = "0";
+					break;
+				default:
+					if (vt.has_suffix("?")) {
+						def = "null";
+					}
+					break;
+			}
+			var prop_name = vala_name == "value" ? "@value" : vala_name;
+			if (def != "") {
+				stream.puts(@"
+		public $(vt) $(prop_name) { $(accessors) default = $(def); }
+");
+			} else {
+				stream.puts(@"
+		public $(vt) $(prop_name) { $(accessors) }
+");
+			}
+			var getter = pi.get_getter();
+			if (getter != null) {
+				prop_accessors.add(getter.get_name());
+			}
+			var setter = pi.get_setter();
+			if (setter != null) {
+				prop_accessors.add(setter.get_name());
+			}
+			return 1;
+		}
+
+		/**
 		 * GIR object signals so client {@code g_signal_connect} / GJS
 		 * {@code .connect()} find the name. Emission / Live.Subscribe
 		 * forwarding is separate — declare only.
 		 *
-		 * Skips when a method of the same name was emitted (name clash).
-		 * Denied methods leave room for the signal (e.g. Actor.destroy).
+		 * Skips when a method of the same name was emitted (rare — class
+		 * slots / methods that clash with signals are renamed or omitted
+		 * first so GJS keeps the signal).
 		 */
 		private int emit_object_signals(
 			GLib.FileStream stream,
@@ -1043,11 +1222,21 @@ namespace $(ns)
 				var sname = si.get_name();
 				var vala_name = this.vala_ident(sname.replace("-", "_"));
 				var symbol = class_name + "." + sname;
-				/* Deny list is for methods/callables. Same name on deny
-				 * (e.g. Actor.destroy) means keep the signal, emit method
-				 * elsewhere under a different Vala name. */
 				if (("signal:" + class_name + "." + sname) in this.deny
 					|| ("signal:" + class_name + "." + vala_name) in this.deny) {
+					continue;
+				}
+				/*
+				 * Vala forbids method + signal with the same name. If GIR has
+				 * both and we kept the method (hide/show/…), skip the signal.
+				 * Connect-style slots (*_event, clicked, …) were renamed to
+				 * *_vfunc so the signal may be emitted.
+				 */
+				var fi = oi.find_method(vala_name);
+				if (fi != null
+					&& !(vala_name in this.signal_prefer)
+					&& !(vala_name in this.deny)
+					&& !((class_name + "." + vala_name) in this.deny)) {
 					continue;
 				}
 				if (method_names.contains(sname)
@@ -1055,7 +1244,7 @@ namespace $(ns)
 					this.gaps.add(new Gap() {
 						symbol = symbol,
 						reason = "signal_method_clash",
-						detail = "method won; deny the method to keep the signal",
+						detail = "method won",
 					});
 					continue;
 				}
@@ -1111,7 +1300,8 @@ namespace $(ns)
 			GLib.FileStream stream,
 			string ns,
 			GI.ObjectInfo oi,
-			Gee.HashSet<string> vfunc_names
+			Gee.HashSet<string> vfunc_names,
+			Gee.HashSet<string> signal_names
 		) {
 			var cs = oi.get_class_struct();
 			if (cs == null) {
@@ -1150,13 +1340,21 @@ namespace $(ns)
 				var cb = (GI.CallbackInfo) iface;
 				var denied = fname in this.deny
 					|| (class_name + "." + fname) in this.deny;
+				/*
+				 * Prefer GIR signal for connect-style slots (*_event, clicked,
+				 * …): rename to *_vfunc. Leave hide/show/realize/… as methods
+				 * so GJS can call them (Vala cannot use the same name for
+				 * both a method and a signal).
+				 */
+				var rename = denied
+					|| (fname in signal_names && fname in this.signal_prefer);
 				var fi = oi.find_method(fname);
-				if (fi != null && !denied) {
+				if (fi != null && !rename) {
 					emitted += this.emit_callable(
 						stream, ns, class_name, fi, "class", true);
 				} else {
 					emitted += this.emit_virtual_from_callback(
-						stream, ns, class_name, fname, cb, denied);
+						stream, ns, class_name, fname, cb, rename);
 				}
 			}
 			return emitted;
@@ -1207,9 +1405,9 @@ namespace $(ns)
 		}
 
 		/**
-		 * Class slot from a GIR callback. When {@code denied}, Vala name is
-		 * {@code name_vfunc} with {@code cname = name} so override signals can
-		 * keep the stock signal name.
+		 * Class slot from a GIR callback. When {@code rename}, Vala name is
+		 * {@code name_vfunc} with {@code cname = name} so a same-named GIR
+		 * signal (or deny) can own the stock Vala identifier.
 		 */
 		private int emit_virtual_from_callback(
 			GLib.FileStream stream,
@@ -1217,7 +1415,7 @@ namespace $(ns)
 			string class_name,
 			string fname,
 			GI.CallbackInfo cb,
-			bool denied
+			bool rename
 		) {
 			string ret;
 			string[] args;
@@ -1230,9 +1428,17 @@ namespace $(ns)
 				return 0;
 			}
 			var vala_name = this.vala_ident(fname);
-			if (denied) {
+			if (rename) {
+				/*
+				 * Keep Vala name free for the GIR signal. Do not use bare
+				 * cname=fname — that collides across libs (St.Button.clicked
+				 * vs Clutter.ClickAction.clicked) when both headers are
+				 * included. Prefixed stub name; class_struct order still
+				 * comes from emit order.
+				 */
+				var c_sym = @"gsr_$(class_name.down())_$(fname)_vfunc";
 				stream.puts(@"
-		[CCode (cname = \"$(fname)\")]
+		[CCode (cname = \"$(c_sym)\")]
 		public virtual $(ret) $(vala_name)_vfunc($(string.joinv(", ", args))) {
 ");
 			} else {
@@ -1445,6 +1651,7 @@ namespace $(ns)
 
 			var flags = fi.get_flags();
 			var is_constructor = (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0;
+			var is_instance = (flags & GI.FunctionInfoFlags.IS_METHOD) != 0;
 			var throws_clause = "";
 			if ((flags & GI.FunctionInfoFlags.THROWS) != 0) {
 				throws_clause = " throws GLib.Error";
@@ -1472,6 +1679,10 @@ namespace $(ns)
 			}
 
 			var vis = as_virtual ? "public virtual" : "public";
+			/* GIR class {@code <function>} (e.g. get_default) — not IS_METHOD. */
+			if (!as_virtual && !is_constructor && kind == "class" && !is_instance) {
+				vis = "public static";
+			}
 
 			this.emit_symbol = "";
 			if (type_name != "") {
@@ -1483,13 +1694,15 @@ namespace $(ns)
 			} else {
 				ret = this.type_vala(ns, fi.get_return_type());
 				/* Unset Response.retval = null object (libocrpc). */
-				if (ret != "" && fi.may_return_null() && !ret.has_suffix("?")) {
-					var iface = fi.get_return_type().get_interface();
+				if (ret != "" && !ret.has_suffix("?")) {
+					var ret_type = fi.get_return_type();
+					var iface = ret_type.get_interface();
 					if (iface != null
 						&& (
 							iface.get_type() == GI.InfoType.OBJECT
 							|| this.union_as_gobject(ns, iface)
-						)) {
+						)
+						&& (fi.may_return_null() || ret_type.is_pointer())) {
 						ret = ret + "?";
 					}
 				}
@@ -1587,7 +1800,7 @@ $(tab)public abstract $(ret) $(vala_name)($(arglist))$(throws_clause);
 			}
 
 			var instance = "null";
-			if (!is_constructor && kind == "class") {
+			if (!is_constructor && kind == "class" && is_instance) {
 				instance = "this";
 			}
 			/* Struct methods are C ABI only — no GObject lease wire. */
@@ -1824,7 +2037,7 @@ $(tab)}
 			if (packed != "") {
 				args_arg = @", OLLMrpc.args(\"$(sig)\", $(packed))";
 			}
-			var call = @"$(RUNTIME).call_values(\"$(rpc)\", $(instance)$(args_arg))";
+			var call = @"GnomeShellRpc.call_value(\"$(rpc)\", $(instance)$(args_arg))";
 
 			var need_response = ret_vala != "void"
 				|| this.has_out_values(fi);
@@ -2226,7 +2439,7 @@ $(tab)}
 				helper = "lease_ids_at_slist";
 			}
 			stream.puts(
-				indent + @"var $(arg_name)_at = $(RUNTIME).$(helper)(($(list_type)<GLib.Object>) $(arg_name));
+				indent + @"var $(arg_name)_at = GnomeShellRpc.GiStub.Runtime.$(helper)(($(list_type)<GLib.Object>) $(arg_name));
 "
 			);
 		}

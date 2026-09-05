@@ -5,7 +5,7 @@
 					(int) call.args.get(0).get_uint64());
 				return OLLMrpc.args("b", func(win));
 			});
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-Window.foreach_transient", this,
 				OLLMrpc.args("t", callback_id));
 		}
@@ -17,7 +17,7 @@
 					(int) call.args.get(0).get_uint64());
 				return OLLMrpc.args("b", func(win));
 			});
-			GnomeShellRpc.GiStub.Runtime.call_values(
+			GnomeShellRpc.call_value(
 				"Helper-Window.foreach_ancestor", this,
 				OLLMrpc.args("t", callback_id));
 		}
@@ -49,7 +49,7 @@
 				pos_x = pos_hint.x;
 				pos_y = pos_hint.y;
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"Helper-Window.begin_grab_op", this,
 				OLLMrpc.args("utsiubff", (uint) op, device_lease, device_name,
 					sequence_slot, timestamp, has_pos, pos_x, pos_y));

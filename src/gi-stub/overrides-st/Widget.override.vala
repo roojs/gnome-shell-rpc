@@ -14,7 +14,7 @@
 			if (!this.get_type().is_a(typeof(Widget))) {
 				return;
 			}
-			var response = GnomeShellRpc.GiStub.Runtime.call_values(
+			var response = GnomeShellRpc.call_value(
 				"St-Widget.new", null);
 			var _stub = response.retval.get_object() as OLLMrpc.Live.Handle;
 			this.rpc_lid = _stub.rpc_lid;

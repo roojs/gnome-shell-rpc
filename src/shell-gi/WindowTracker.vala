@@ -40,7 +40,9 @@ namespace Shell
 				this.track_window(window);
 			}
 			display.window_created.connect(this.on_window_created);
-			display.notify["focus-window"].connect(this.update_focus_app);
+			display.focus_window.connect((win, timestamp) => {
+				this.update_focus_app();
+			});
 			this.update_focus_app();
 			Global.get().shutdown.connect(this.on_shutdown);
 		}

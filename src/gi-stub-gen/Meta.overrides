@@ -3,3 +3,9 @@
 
 # GIR returns GList<Clutter.Actor>; runtime elements are Meta.WindowActor.
 Compositor.get_window_actors list_elem=WindowActor
+
+# Opaque MetaSettings record — GObject class + Settings.override.vala (0.7.1).
+Settings emit=opaque-as-class
+
+# Hand class (Meta.deny) — Meta.register() emits Bin.register inline.
+BackgroundContent register=hand
