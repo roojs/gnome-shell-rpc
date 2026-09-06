@@ -103,8 +103,7 @@ namespace Shell
 		GLib.Cancellable? cancellable = null
 	) throws GLib.Error
 	{
-		yield systemd_call(
-			"StartUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
+		yield systemd_call("StartUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
 		return true;
 	}
 
@@ -114,16 +113,90 @@ namespace Shell
 		GLib.Cancellable? cancellable = null
 	) throws GLib.Error
 	{
-		yield systemd_call(
-			"StopUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
+		yield systemd_call( "StopUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
 		return true;
 	}
 
 	/** Nested Wayland — no X11 display extension probe. */
-	public static bool util_has_x11_display_extension(
-		Meta.Display display,
-		string extension
-	) {
+	public static bool util_has_x11_display_extension( Meta.Display display, string extension )
+	{
 		return false;
+	}
+
+	/**
+	 * Stock {@code shell_util_get_week_start} — first weekday 0=Sun…6=Sat.
+	 * Copied from gtkcalendar / {@code shell-util.c} (glibc {@code nl_langinfo}).
+	 */
+	public int util_get_week_start()
+	{
+		/*
+		 * glibc returns the YYYYMMDD week origin as the pointer value of
+		 * nl_langinfo(_NL_TIME_WEEK_1STDAY); stock C reads it via a
+		 * char* / uint union on that return.
+		 */
+		unowned string origin_s = Posix.NLTime.WEEK_1STDAY.to_string();
+		var week_origin = (uint) (uint64) ((void*) origin_s);
+
+		if (week_origin != 19971130 && week_origin != 19971201) {
+			GLib.warning("Unknown value of _NL_TIME_WEEK_1STDAY.");
+		}
+
+		return ((week_origin == 19971201 ? 1 : 0)
+			+ (int) Posix.NLTime.FIRST_WEEKDAY.to_string().data[0]
+			- 1) % 7;
+	}
+
+	/**
+	 * Stock {@code shell_util_translate_time_string}: look up {@code str} in
+	 * the LC_MESSAGES catalogue using the locale from {@code LC_TIME}
+	 * (optional {@code \\004} msgctxt via {@code g_dpgettext}).
+	 *
+	 * Stock uses thread-local {@code uselocale}; thin host is single-threaded
+	 * GJS so {@code setlocale(LC_MESSAGES)} matches older stock and is enough.
+	 */
+	public unowned string util_translate_time_string(string str)
+	{
+		var locale = GLib.Environment.get_variable("LC_TIME");
+		string? prev = null;
+		if (locale != null && locale.length > 0) {
+			prev = GLib.Intl.setlocale(GLib.LocaleCategory.MESSAGES, null);
+			GLib.Intl.setlocale(GLib.LocaleCategory.MESSAGES, locale);
+		}
+
+		var sep = str.index_of_char((char) 4);
+		var offset = sep >= 0 ? sep + 1 : 0;
+		unowned string res = GLib.dpgettext(null, str, (size_t) offset);
+
+		if (locale != null && locale.length > 0) {
+			GLib.Intl.setlocale(GLib.LocaleCategory.MESSAGES, prev != null ? prev : "");
+		}
+		return res;
+	}
+
+	/**
+	 * Stock {@code shell_util_set_hidden_from_pick} — connect {@code pick}
+	 * and stop emission so the actor is skipped even under PICK_ALL.
+	 */
+	public void util_set_hidden_from_pick(Clutter.Actor actor, bool hidden)
+	{
+		const string key = "shell-stop-pick";
+		if (hidden) {
+			if (actor.get_data<void*>(key) != null) {
+				return;
+			}
+			actor.pick.connect(stop_pick);
+			actor.set_data(key, (void*) 0x1);
+		} else {
+			if (actor.get_data<void*>(key) == null) {
+				return;
+			}
+			actor.pick.disconnect(stop_pick);
+			actor.set_data(key, null);
+		}
+	}
+
+	static void stop_pick(Clutter.Actor actor, Clutter.PickContext pick_context)
+	{
+		GLib.Signal.stop_emission_by_name(actor, "pick");
 	}
 }

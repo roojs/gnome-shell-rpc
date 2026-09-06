@@ -1,6 +1,15 @@
 # Clutter generate/compile deny list.
+#
+# Every entry needs a reason and permanence:
+#   TEMPORARY — corridor/mock stand-in; undeny + wire when that work lands
+#   PERMANENT — GIR/Vala/ABI clash or non-marshallable; not a deferred RPC
+# Prefer TEMPORARY unless the symbol cannot go on the wire.
+#
+# ************************************************************************
+# TEMPORARY — revisit / undeny when implementing (keep this block together)
+# ************************************************************************
 
-# layout.js JSObject construct props — BindConstraint.override.vala.
+# BindConstraint.override — client-local construct props until lease props safe.
 BindConstraint.source
 BindConstraint.coordinate
 BindConstraint.offset
@@ -11,78 +20,99 @@ BindConstraint.set_coordinate
 BindConstraint.get_offset
 BindConstraint.set_offset
 
+# SnapConstraint.override — from/to_edge only (GIR uses get/set_edges OUTs;
+# generator skips those props). source/offset stay generated.
+SnapConstraint.from_edge
+SnapConstraint.to_edge
+SnapConstraint.get_edges
+SnapConstraint.set_edges
+
+# Generator: GString returns (GLib.String maps poorly).
+FrameClock.get_max_render_time_debug_info
+
+# Array wire mapping missing (noop keeps C symbol).
+PaintNode.add_rectangles noop
+PaintNode.add_texture_rectangles noop
+ActorBox.from_vertices noop
+Actor.get_abs_allocation_vertices noop
+
+# ActorBox.override — local field math until ActorBox RPC matters.
+ActorBox.init_rect
+
+# MUST IMPLEMENT: Content = actor paint delegate. Client-local for mock boot
+# (BackgroundContent attach/props only). Undeny + RPC get/set_content when
+# live nested paint needs compositor-owned Content. Actor.override + BackgroundContent.
+Actor.get_content
+Actor.set_content
+
+# Actor.override — construct default / constraints timing vs lease.
+Actor.visible
+Actor.constraints
+Actor.get_constraints
+
+# Actor.override — GJS LayoutManager subclasses have no rpc_lid.
+Actor.layout_manager
+Actor.get_layout_manager
+Actor.set_layout_manager
+
+# Mock a11y: GenericAccessible has no rpc_lid. Undeny when Atk peers leased.
+Actor.get_accessible
+Actor.set_accessible
+
+# Backend.override — GJS InputMethod has no rpc_lid (client-owned).
+Backend.get_input_method
+Backend.set_input_method
+
+# ************************************************************************
+# PERMANENT — not deferred RPC work
+# ************************************************************************
+
 # Stock C symbol in header-overrides/clutter-main.h — Clutter.override.vala.
 get_default_text_direction
 
-# Header-sized GTypes in c-clutter-effect-abi.c + gsr-clutter-effect-abi.vapi
-# (Vala priv* makes OffscreenEffect 48B; stock/libshell expect 24B).
+# Header-sized GTypes (Vala priv* vs stock 24B OffscreenEffect).
 ActorMeta
 Effect
 OffscreenEffect
 ActorMetaPrivate
 
-# Opaque GIR privates — C name clashes with Vala GObject instance private
-# (e.g. ClutterActorPrivate) when the class has fields like rpc_lid.
+# Opaque GIR privates — clash with Vala GObject instance private + rpc_lid.
 ActorPrivate
 PaintNodePrivate
 ActorAccessiblePrivate
 
-# GString return — generator maps poorly (GLib.String).
-FrameClock.get_max_render_time_debug_info
-
-# Replace with parameterless override so ColorNode/TextureNode can Object().
+# GIR ctor shape vs Vala Object() for node subclasses.
 PipelineNode.new
 
 # GLib.Closure is not a memcpy blob.
 BindingPool.install_closure
 BindingPool.override_closure
 
-# Handed in overrides-clutter/Clutter.override.vala (needs get_slot).
+# Opaque event sequence handle — Clutter.override.vala.
 EventSequence
 
-# Live callback (IdleMonitor-style); GSourceFunc is not DBus-marshallable.
+# GSourceFunc not DBus-marshallable; Helper / Live.Callback instead.
 threads_add_repaint_func
 
-# Nested <function>s on the Event union; ns already emits event_{add,remove}_filter / event_get
-# with the same clutter_event_* cnames — skip class duplicates.
+# Nested Event <function>s duplicate ns clutter_event_* cnames.
 Event.add_filter
 Event.get
 Event.remove_filter
 
-# Opaque paint records emitted as GObject — skip boxed ref/unref (clash with GObject).
+# Boxed ref/unref clash with GObject.
 PaintContext.ref
 PaintContext.unref
 PickContext.ref
 PickContext.unref
 
-# float[] / Point3D[] not mapped unless noop; St only needs the C symbols.
-PaintNode.add_rectangles noop
-PaintNode.add_texture_rectangles noop
-ActorBox.from_vertices noop
-# Local field math — ActorBox.override.vala (MonitorConstraint).
-ActorBox.init_rect
-Actor.get_abs_allocation_vertices noop
-
-# Client-local content store — Actor.override.vala (Content not on wire).
-Actor.get_content
-Actor.set_content
-
-# GJS construct literal on St.Widget — Actor.override.vala (clashes with get_constraints).
-Actor.get_constraints
-
-# Client-local a11y peer — Actor.override.vala (GenericAccessible / BarLevel).
-Actor.get_accessible
-Actor.set_accessible
-
-# Signal/method clash: generator prefers GIR signal; RPC body under destroy_rpc
-# (Actor.override — [CCode cname = clutter_actor_destroy]).
+# Signal vs method name clash — destroy_rpc in Actor.override.
 Actor.destroy
 
-# Vala auto-emits free/dup when struct has methods — skip GIR copies.
+# Vala auto-emits free/dup when struct has methods.
 ActorBox.free
 ActorBox.copy
 
-# Bodies in overrides-clutter/ActorIter.override.vala (child walk via Actor RPC).
+# Struct methods hand-implemented (ActorIter.override) via sibling RPC.
 ActorIter.destroy
 ActorIter.init
 ActorIter.is_valid

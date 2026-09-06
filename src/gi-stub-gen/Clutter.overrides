@@ -20,6 +20,10 @@ Namespace signal_prefer=clicked
 Namespace signal_prefer=long_press
 Namespace signal_prefer=key_focus_in
 Namespace signal_prefer=key_focus_out
+Namespace signal_prefer=child_added
+Namespace signal_prefer=child_removed
+Namespace signal_prefer=parent_set
+Namespace signal_prefer=pick
 
 # GIR union → GObject class + instance methods (Vala null, Meta key handlers).
 Event emit=union-as-class
@@ -34,3 +38,11 @@ PickContext emit=opaque-as-class
 # Ctors are malloc0-only stubs — see missing.md "Struct ctor alloc stubs (audit)".
 ActorBox emit=struct-methods
 ActorIter emit=struct-methods
+
+# GIR pivot-point is Graphene.Point but getter/setter are float OUTs — generator
+# skips the property. GJS construct literals (ScreenShield, Panel, …) need it.
+Actor.pivot_point local=1
+
+# AlignConstraint: GIR pivot-point getter is OUT Graphene.Point — same skip.
+# ScreenshotUI close-button AlignConstraint construct literals.
+AlignConstraint.pivot_point local=1

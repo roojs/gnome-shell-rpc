@@ -24,6 +24,25 @@ namespace GnomeShellRpc.GiRpcMock
 	 */
 	public class HelperMock : GLib.Object, OLLMrpc.MockDispatch
 	{
+		/**
+		 * Child actor lease → parent object (from {@code add_child} / insert).
+		 * Keys are connection lease ids ({@code int}, same as
+		 * {@link OLLMrpc.Connection.leases}).
+		 */
+		private Gee.HashMap<int, GLib.Object> actor_parents {
+			get; set; default = new Gee.HashMap<int, GLib.Object>();
+		}
+
+		/**
+		 * Sink parent for actors never seen in {@code add_child}. GiMock
+		 * {@code get_parent} mints forever; always-null breaks ScreenshotUI
+		 * {@code close()} which needs a non-null parent to {@code remove_child}.
+		 * The sink's own {@code get_parent} returns null (see
+		 * {@link orphan_parent_id}).
+		 */
+		private GLib.Object? orphan_parent { get; set; default = null; }
+		private int orphan_parent_id { get; set; default = 0; }
+
 		public bool dispatch(OLLMrpc.Request request)
 		{
 			var method = request.method;
@@ -76,6 +95,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_retval_empty_object_list(request);
 							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "Meta-Compositor":
@@ -93,6 +113,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_retval_leased(request, boot.laters);
 							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "Meta-WorkspaceManager":
@@ -111,6 +132,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_retval_i(request, 1);
 							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "Meta-Backend":
@@ -140,6 +162,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_void(request);
 							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "Meta-Context":
@@ -155,6 +178,7 @@ namespace GnomeShellRpc.GiRpcMock
 							});
 							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "St-Settings":
@@ -162,6 +186,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_retval_leased(request, boot.st_settings);
 						return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "St-ThemeContext":
@@ -173,6 +198,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_retval_i(request, 1);
 							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "St-FocusManager":
@@ -180,6 +206,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_retval_leased(request, boot.focus_manager);
 						return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				/* —— BackgroundImageCache cluster (phase 4a–4c) —— */
@@ -193,6 +220,7 @@ namespace GnomeShellRpc.GiRpcMock
 								HelperMock.mint("Meta-BackgroundImage"));
 							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "Meta-BackgroundImage":
@@ -201,6 +229,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_retval_b(request, true);
 						return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				/* —— Helper-* (non-GIR) —— */
@@ -213,6 +242,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_void(request);
 							return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-BackgroundActor":
@@ -220,6 +250,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_args_lease(request, "Meta-BackgroundActor");
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-Context":
@@ -227,6 +258,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_void(request);
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-Settings":
@@ -234,6 +266,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_retval_i(request, 1);
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-IdleMonitor":
@@ -243,6 +276,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_retval_u(request, 1);
 							return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-Constraint":
@@ -250,6 +284,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_args_lease(request, "Clutter-BindConstraint");
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-Display":
@@ -268,6 +303,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_retval_s(request, "");
 							return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-Window":
@@ -280,6 +316,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_retval_b(request, true);
 							return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-WindowActor":
@@ -289,6 +326,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_void(request);
 							return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-SoundPlayer":
@@ -298,6 +336,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_void(request);
 							return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-Selection":
@@ -305,6 +344,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_args_bool(request, false);
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-SelectionSource":
@@ -312,6 +352,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_args_bool(request, false);
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-SelectionSourceMemory":
@@ -319,6 +360,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_retval_leased(request, HelperMock.mint("Meta-SelectionSource"));
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-ShapedTexture":
@@ -326,6 +368,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_void(request);
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-ShaderEffect":
@@ -333,6 +376,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_void(request);
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-GLSLEffect":
@@ -349,6 +393,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_retval_i(request, -1);
 							return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				case "Helper-ClutterThreads":
@@ -356,6 +401,7 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_retval_u(request, 1);
 						return true;
 					}
+					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
 				/* —— OUT shapes GiMock does not pack —— */
@@ -364,12 +410,15 @@ namespace GnomeShellRpc.GiRpcMock
 						this.reply_args_lease_null(request);
 						return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				/*
 				 * Actor child walks: GiMock mints a new Actor for every
 				 * nullable object return, so get_next_sibling never ends
 				 * (ActorIter hang). One fake child, then null siblings.
+				 * get_parent: track from add_child — mint forever walks to
+				 * root; always-null breaks ScreenshotUI.close.
 				 */
 				case "Clutter-Actor":
 					switch (name) {
@@ -382,7 +431,72 @@ namespace GnomeShellRpc.GiRpcMock
 						case "get_previous_sibling":
 							this.reply_void(request);
 							return true;
+						case "get_parent":
+							{
+								var child_id = (int) request.lease_id;
+								if (child_id == this.orphan_parent_id) {
+									this.reply_void(request);
+									return true;
+								}
+								if (this.actor_parents.has_key(child_id)) {
+									this.reply_retval_leased(request,
+										this.actor_parents.get(child_id));
+									return true;
+								}
+								if (this.orphan_parent == null) {
+									this.orphan_parent =
+										HelperMock.mint("Clutter-Actor");
+									this.orphan_parent_id = (int)
+										request.connection.export(
+											this.orphan_parent);
+								}
+								this.reply_retval_leased(
+									request, this.orphan_parent);
+								return true;
+							}
+						case "add_child":
+						case "insert_child_at_index":
+						case "insert_child_above":
+						case "insert_child_below":
+							this.note_actor_parent(request);
+							this.reply_void(request);
+							return true;
+						case "remove_child":
+							this.clear_actor_parent(request);
+							this.reply_void(request);
+							return true;
+						/* Singleton — GiMock would mint a new Context each call. */
+						case "get_context":
+							this.reply_retval_leased(request, boot.clutter_context);
+							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
+					return false;
+
+				case "Clutter-Context":
+					/* Singleton Clutter.Backend (not Meta-Backend). */
+					if (name == "get_backend") {
+						this.reply_retval_leased(request, boot.clutter_backend);
+						return true;
+					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
+					return false;
+
+				case "Clutter-Backend":
+					/* Singleton Seat — GiMock would mint a new one each call. */
+					if (name == "get_default_seat") {
+						this.reply_retval_leased(request, boot.clutter_seat);
+						return true;
+					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
+					return false;
+
+				case "Clutter-Seat":
+					if (name == "get_context") {
+						this.reply_retval_leased(request, boot.clutter_context);
+						return true;
+					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
 				case "Clutter-Stage":
@@ -394,6 +508,7 @@ namespace GnomeShellRpc.GiRpcMock
 							this.reply_args_empty_bytes(request);
 							return true;
 					}
+					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 			}
 
@@ -416,6 +531,53 @@ namespace GnomeShellRpc.GiRpcMock
 			} catch (GLib.Error e) {
 				GLib.error("HelperMock: %s", e.message);
 			}
+		}
+
+		private void note_actor_parent(OLLMrpc.Request request)
+		{
+			if (request.args.size < 1) {
+				return;
+			}
+			var child_obj = request.args.get(0).get_object();
+			if (child_obj == null) {
+				return;
+			}
+			var parent_id = (int) request.lease_id;
+			if (parent_id == 0 || !request.connection.leases.has_key(parent_id)) {
+				return;
+			}
+			/*
+			 * Prefer Handle.rpc_lid (wire id). export() on a decode-time
+			 * proxy would mint a second lease and miss get_parent's id.
+			 */
+			var child_id = 0;
+			var live = child_obj as OLLMrpc.Live.Handle;
+			if (live != null && live.rpc_lid != 0) {
+				child_id = (int) live.rpc_lid;
+			} else {
+				child_id = (int) request.connection.export(child_obj);
+			}
+			if (child_id == 0) {
+				return;
+			}
+			this.actor_parents.set(
+				child_id, request.connection.leases.get(parent_id));
+		}
+
+		private void clear_actor_parent(OLLMrpc.Request request)
+		{
+			if (request.args.size < 1) {
+				return;
+			}
+			var child_obj = request.args.get(0).get_object();
+			if (child_obj == null) {
+				return;
+			}
+			var live = child_obj as OLLMrpc.Live.Handle;
+			var child_id = (live != null && live.rpc_lid != 0)
+				? (int) live.rpc_lid
+				: (int) request.connection.export(child_obj);
+			this.actor_parents.unset(child_id);
 		}
 
 		private void reply_void(OLLMrpc.Request request)

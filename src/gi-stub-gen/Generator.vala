@@ -1023,27 +1023,39 @@ namespace $(ns)
 				}
 				if (writable) {
 					setter = pi.get_setter();
-					if (setter == null
-						|| vfunc_names.contains(setter.get_name())
+					if (setter == null) {
+						/*
+						 * Construct-only: GIR marks writable + construct-only
+						 * with a getter and no setter. Skipping left only the
+						 * method (e.g. get_context) so GJS {@code .context}
+						 * was undefined. Emit as readable-only instead.
+						 */
+						if (readable && getter != null) {
+							writable = false;
+						} else {
+							continue;
+						}
+					} else if (vfunc_names.contains(setter.get_name())
 						|| this.has_out_values(setter)
 						|| !this.callable_wireable(setter, ns)) {
 						continue;
-					}
-					var bad_in = false;
-					for (var a = 0; a < setter.get_n_args(); a++) {
-						var arg = setter.get_arg(a);
-						if (arg.is_skip()
-							|| arg.get_direction() != GI.Direction.IN) {
+					} else {
+						var bad_in = false;
+						for (var a = 0; a < setter.get_n_args(); a++) {
+							var arg = setter.get_arg(a);
+							if (arg.is_skip()
+								|| arg.get_direction() != GI.Direction.IN) {
+								continue;
+							}
+							var L = this.dbus_letter(ns, arg.get_type());
+							if (L == "" || L == "ay" || L == "v") {
+								bad_in = true;
+								break;
+							}
+						}
+						if (bad_in) {
 							continue;
 						}
-						var L = this.dbus_letter(ns, arg.get_type());
-						if (L == "" || L == "ay" || L == "v") {
-							bad_in = true;
-							break;
-						}
-					}
-					if (bad_in) {
-						continue;
 					}
 				}
 
@@ -1280,6 +1292,14 @@ namespace $(ns)
 					continue;
 				}
 				var args = string.joinv(", ", arg_list.to_array());
+				/*
+				 * GIR detailed="1" → G_SIGNAL_DETAILED. Without Vala's
+				 * [Signal (detailed = true)], GJS cannot connect
+				 * "name::detail" (e.g. captured-event::touchpad).
+				 */
+				if ((si.get_flags() & GLib.SignalFlags.DETAILED) != 0) {
+					stream.puts("		[Signal (detailed = true)]\n");
+				}
 				if (ret == "void") {
 					stream.puts(@"		public signal void $(vala_name)($(args));
 ");
@@ -2691,13 +2711,27 @@ $(tab)}
 					dir = GI.Direction.OUT;
 				}
 			}
+			var tn = type_name;
+			/*
+			 * GIR allow-none / nullable — same as return-side may_return_null.
+			 * Without this, object IN params stay non-null and reject null
+			 * (e.g. Clutter.Backend.set_input_method(null)).
+			 */
+			if (arg.may_be_null() && !tn.has_suffix("?")) {
+				var tag = arg.get_type().get_tag();
+				if (tag == GI.TypeTag.INTERFACE
+					|| tag == GI.TypeTag.UTF8
+					|| tag == GI.TypeTag.FILENAME) {
+					tn = tn + "?";
+				}
+			}
 			switch (dir) {
 				case GI.Direction.OUT:
-					return "out " + type_name + " " + arg.get_name();
+					return "out " + tn + " " + arg.get_name();
 				case GI.Direction.INOUT:
-					return "ref " + type_name + " " + arg.get_name();
+					return "ref " + tn + " " + arg.get_name();
 				default:
-					return type_name + " " + arg.get_name();
+					return tn + " " + arg.get_name();
 			}
 		}
 

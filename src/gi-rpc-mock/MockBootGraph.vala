@@ -27,6 +27,10 @@ namespace GnomeShellRpc.GiRpcMock
 		public GLib.Object focus_manager { get; private set; }
 		public GLib.Object laters { get; private set; }
 		public GLib.Object background_image_cache { get; private set; }
+		/** Clutter (not Meta) — {@code global.stage.context.get_backend()}. */
+		public GLib.Object clutter_context { get; private set; }
+		public GLib.Object clutter_backend { get; private set; }
+		public GLib.Object clutter_seat { get; private set; }
 
 		private MockBootGraph()
 		{
@@ -47,6 +51,9 @@ namespace GnomeShellRpc.GiRpcMock
 			this.focus_manager = HelperMock.mint("St-FocusManager");
 			this.laters = HelperMock.mint("Meta-Laters");
 			this.background_image_cache = HelperMock.mint("Meta-BackgroundImageCache");
+			this.clutter_context = HelperMock.mint("Clutter-Context");
+			this.clutter_backend = HelperMock.mint("Clutter-Backend");
+			this.clutter_seat = HelperMock.mint("Clutter-Seat");
 		}
 
 		public static MockBootGraph get()

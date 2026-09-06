@@ -408,8 +408,9 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/ClickAction.override.vala',
   'gi-stub/overrides-clutter/Stage.override.vala',
   'gi-stub/overrides-clutter/Actor.override.vala',
-  'gi-stub/overrides-clutter/ActorIter.override.vala',
   'gi-stub/overrides-clutter/Backend.override.vala',
+  'gi-stub/overrides-clutter/SnapConstraint.override.vala',
+  'gi-stub/overrides-clutter/ActorIter.override.vala',
   'gi-stub/overrides-clutter/PipelineNode.override.vala',
   'gi-stub/overrides-clutter/PaintContext.override.vala',
   'gi-stub/overrides-clutter/PaintNode.override.vala',
@@ -796,6 +797,7 @@ shell_gi_lib = shared_library(
     'shell-gi/Screenshot.vala',
     'shell-gi/WindowTracker.vala',
     'shell-gi/AppUsage.vala',
+    'shell-gi/WM.vala',
     'shell-gi/Global.vala',
   ),
   dependencies: [
@@ -814,6 +816,7 @@ shell_gi_lib = shared_library(
     ),
   ],
   vala_args: ocrpc_vala_args + gi_stub_vala_args + [
+    '--pkg=posix',
     '--pkg=gio-2.0',
     '--pkg=gdesktopenums-3.0',
     '--pkg=gsr-clutter-effect-abi',
@@ -836,6 +839,8 @@ shell_gi_lib = shared_library(
     '-I' + meson.current_source_dir() / 'gi-stub',
     '-I' + meson.current_build_dir(),
     '-include', 'mutter-clutter-rpc-16.h',
+    # Vala GLib.dpgettext pulls gi18n-lib.h (needs GETTEXT_PACKAGE).
+    '-DGETTEXT_PACKAGE="gnome-shell"',
   ] + mutter_clutter_cflags,
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
   vala_header: 'shell-gi-16.h',

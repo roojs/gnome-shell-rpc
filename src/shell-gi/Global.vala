@@ -22,6 +22,7 @@ namespace Shell
 		public Meta.WorkspaceManager workspace_manager { get; private set; }
 		public Clutter.Actor window_group { get; private set; }
 		public Clutter.Actor top_window_group { get; private set; }
+		public WM window_manager { get; private set; }
 
 		public int screen_width { get; private set; }
 		public int screen_height { get; private set; }
@@ -91,6 +92,7 @@ namespace Shell
 			this.workspace_manager = this.display.get_workspace_manager();
 			this.window_group = this.compositor.get_window_group();
 			this.top_window_group = this.compositor.get_top_window_group();
+			this.window_manager = new WM(new Meta.Plugin());
 			this.refresh_screen_size();
 			this.stage.notify["width"].connect(this.on_stage_size_changed);
 			this.stage.notify["height"].connect(this.on_stage_size_changed);
@@ -126,6 +128,24 @@ namespace Shell
 		public uint32 get_current_time()
 		{
 			return 0;
+		}
+
+		/**
+		 * Stock {@code shell_global_get_pointer} — coords + mods via
+		 * {@link Meta.CursorTracker.get_pointer}.
+		 */
+		public void get_pointer(
+			out int x,
+			out int y,
+			out Clutter.ModifierType mods
+		) {
+			Graphene.Point point;
+			Clutter.ModifierType raw_mods;
+			this.backend.get_cursor_tracker().get_pointer(out point, out raw_mods);
+			x = (int) point.x;
+			y = (int) point.y;
+			mods = (Clutter.ModifierType) (
+				(uint) raw_mods & (uint) Clutter.ModifierType.modifier_mask);
 		}
 
 		private void on_stage_size_changed()
