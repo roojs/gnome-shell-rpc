@@ -247,7 +247,14 @@ namespace GnomeShellRpc.GiRpcMock
 
 				case "Helper-BackgroundActor":
 					if (name == "create") {
-						this.reply_args_lease(request, "Meta-BackgroundActor");
+						var actor = HelperMock.mint("Meta-BackgroundActor");
+						var content = HelperMock.mint("Meta-BackgroundContent");
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							args = OLLMrpc.args("tt",
+								(uint64) request.connection.export(actor),
+								(uint64) request.connection.export(content)),
+						});
 						return true;
 					}
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
@@ -465,6 +472,20 @@ namespace GnomeShellRpc.GiRpcMock
 							this.clear_actor_parent(request);
 							this.reply_void(request);
 							return true;
+						/*
+						 * ease_property('@constraints.N.prop') /
+						 * '@effects.N.prop' needs a non-null target.
+						 * Identity with add_* is irrelevant for mock boot;
+						 * GiMock null/empty here → TypeError: obj is null.
+						 */
+						case "get_constraint":
+							this.reply_retval_leased(request,
+								HelperMock.mint("Clutter-AlignConstraint"));
+							return true;
+						case "get_effect":
+							this.reply_retval_leased(request,
+								HelperMock.mint("Clutter-OffscreenEffect"));
+							return true;
 						/* Singleton — GiMock would mint a new Context each call. */
 						case "get_context":
 							this.reply_retval_leased(request, boot.clutter_context);
@@ -533,31 +554,69 @@ namespace GnomeShellRpc.GiRpcMock
 			}
 		}
 
+		/**
+		 * Object arg: live {@link GLib.Object} or wire lease id ({@code uint64}).
+		 * Out param {@code lease_id} is the connection lease (prefer wire id).
+		 */
+		private GLib.Object? arg_object(
+			OLLMrpc.Request request,
+			int index,
+			out int lease_id
+		) {
+			lease_id = 0;
+			var val = request.args.get(index);
+			if (val.type() == GLib.Type.UINT64) {
+				lease_id = (int) val.get_uint64();
+				if (lease_id != 0
+						&& request.connection.leases.has_key(lease_id)) {
+					return request.connection.leases.get(lease_id);
+				}
+				return null;
+			}
+			if (val.type().is_a(GLib.Type.OBJECT)) {
+				var obj = val.get_object();
+				if (obj == null) {
+					return null;
+				}
+				lease_id = this.object_lease_id(request, obj);
+				return obj;
+			}
+			return null;
+		}
+
+		private int object_lease_id(OLLMrpc.Request request, GLib.Object obj)
+		{
+			/*
+			 * GiMock mints are plain GObject — no Live.Handle.rpc_lid.
+			 * Prefer the connection pointer map so we do not export() a
+			 * second lease and lose ActorMeta.set_name tracking.
+			 */
+			var ptr = (uint64) (void*) obj;
+			var hi = (int) (ptr >> 32);
+			var lo = (int) ptr;
+			if (request.connection.lease_ids.has_key(hi)
+					&& request.connection.lease_ids.get(hi).has_key(lo)) {
+				return request.connection.lease_ids.get(hi).get(lo);
+			}
+			var live = obj as OLLMrpc.Live.Handle;
+			if (live != null && live.rpc_lid != 0) {
+				return (int) live.rpc_lid;
+			}
+			return (int) request.connection.export(obj);
+		}
+
 		private void note_actor_parent(OLLMrpc.Request request)
 		{
 			if (request.args.size < 1) {
 				return;
 			}
-			var child_obj = request.args.get(0).get_object();
-			if (child_obj == null) {
+			int child_id;
+			var child_obj = this.arg_object(request, 0, out child_id);
+			if (child_obj == null || child_id == 0) {
 				return;
 			}
 			var parent_id = (int) request.lease_id;
 			if (parent_id == 0 || !request.connection.leases.has_key(parent_id)) {
-				return;
-			}
-			/*
-			 * Prefer Handle.rpc_lid (wire id). export() on a decode-time
-			 * proxy would mint a second lease and miss get_parent's id.
-			 */
-			var child_id = 0;
-			var live = child_obj as OLLMrpc.Live.Handle;
-			if (live != null && live.rpc_lid != 0) {
-				child_id = (int) live.rpc_lid;
-			} else {
-				child_id = (int) request.connection.export(child_obj);
-			}
-			if (child_id == 0) {
 				return;
 			}
 			this.actor_parents.set(
@@ -569,14 +628,11 @@ namespace GnomeShellRpc.GiRpcMock
 			if (request.args.size < 1) {
 				return;
 			}
-			var child_obj = request.args.get(0).get_object();
-			if (child_obj == null) {
+			int child_id;
+			var child_obj = this.arg_object(request, 0, out child_id);
+			if (child_obj == null || child_id == 0) {
 				return;
 			}
-			var live = child_obj as OLLMrpc.Live.Handle;
-			var child_id = (live != null && live.rpc_lid != 0)
-				? (int) live.rpc_lid
-				: (int) request.connection.export(child_obj);
 			this.actor_parents.unset(child_id);
 		}
 

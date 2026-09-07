@@ -21,4 +21,9 @@ Adjustment props=local
 # Same for Label.text round-trip without wire.
 Label.text local=1
 
+# GLib.Icon not marshallable on wire yet (get/set_gicon are gaps) — GJS still
+# needs the GObject props (Search ProviderInfo / overview).
+Icon.gicon local=1
+Icon.fallback_gicon local=1
+
 Widget.get_focus_chain list_elem=Widget

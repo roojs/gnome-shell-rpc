@@ -45,5 +45,9 @@ Label.set_text
 # Client-owned a11y proxy — GenericAccessible.override.vala (BarLevel/Slider).
 GenericAccessible.new_for_actor
 
+# ScrollView.override — child prop (Scrollable); generated get/set were unwired.
+ScrollView.get_child
+ScrollView.set_child
+
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new

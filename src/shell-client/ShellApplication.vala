@@ -63,6 +63,16 @@ namespace GnomeShellRpc.ShellClient
 				Application.opt_debug_critical;
 
 			prepend_typelib_paths();
+			/*
+			 * Leased stubs implement OLLMrpc.Live.Handle. GJS walks GObject
+			 * interfaces via find_by_name; without a loaded typelib that
+			 * asserts and segfaults (Panel / DateMenu).
+			 */
+			try {
+				GI.Repository.get_default().require("OLLMrpc", "1.0", 0);
+			} catch (GLib.Error e) {
+				GLib.warning("OLLMrpc typelib require failed: %s", e.message);
+			}
 			GLib.resources_register(shell_js_resources_get_resource());
 
 			var override_dir = GLib.Environment.get_variable("GI_RPC_JS_OVERRIDE_DIR");

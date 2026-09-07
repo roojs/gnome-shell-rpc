@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!--
+  Minimal typelib so GJS can walk OLLMrpc.Live.Handle on leased stubs.
+  libocrpc has no vala_gir; without this, g_object_info_find_method_using_interfaces
+  hits find_by_name(OLLMrpc, LiveHandle) with typelib==NULL and segfaults.
+-->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="OLLMrpc"
+             version="1.0"
+             shared-library="libocrpc.so"
+             c:identifier-prefixes="OLLMrpc"
+             c:symbol-prefixes="oll_mrpc">
+    <interface name="LiveHandle"
+               glib:type-name="OLLMrpcLiveHandle"
+               glib:get-type="oll_mrpc_live_handle_get_type"
+               c:type="OLLMrpcLiveHandle"
+               c:symbol-prefix="oll_mrpc_live_handle">
+      <prerequisite name="GObject.Object"/>
+      <property name="rpc-lid"
+                writable="1"
+                construct="1"
+                transfer-ownership="none">
+        <type name="guint64" c:type="guint64"/>
+      </property>
+    </interface>
+  </namespace>
+</repository>

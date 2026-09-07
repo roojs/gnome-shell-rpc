@@ -1,22 +1,60 @@
 		/**
-		 * Fallback lease for JS {@code extends Clutter.Constraint}
-		 * ({@code layout.js} {@code MonitorConstraint}, Overview / OSD / …).
+		 * ActorMeta props — parent is a size-locked C GType (no Vala props).
+		 * GJS: {@code new AlignConstraint({ name: 'align', … })}.
+		 */
+		private string priv_name;
+		private bool priv_enabled = true;
+
+		public string name {
+			get {
+				return this.priv_name;
+			}
+			set construct {
+				this.priv_name = value;
+			}
+		}
+
+		public bool enabled {
+			get {
+				return this.priv_enabled;
+			}
+			set construct {
+				this.priv_enabled = value;
+			}
+		}
+
+		private void sync_actor_meta_name()
+		{
+			if (this.rpc_lid == 0
+					|| this.priv_name == null
+					|| this.priv_name.length == 0) {
+				return;
+			}
+			GnomeShellRpc.call_value("Clutter-ActorMeta.set_name", this,
+				OLLMrpc.args("s", this.priv_name));
+		}
+
+		private void sync_actor_meta_enabled()
+		{
+			if (this.rpc_lid == 0) {
+				return;
+			}
+			GnomeShellRpc.call_value("Clutter-ActorMeta.set_enabled", this,
+				OLLMrpc.args("b", this.priv_enabled));
+		}
+
+		/**
+		 * Stock Align/Bind/Snap and JS subclasses lease via
+		 * {@code Helper-Constraint.create} → server {@link ConstraintRelay}
+		 * (or Align/Bind/Snap subclass). Leaf {@code Clutter-*.new} is not
+		 * Ffi-owned (GObject {@code *_new} clash); Helper matches other overrides.
 		 *
-		 * Vala {@code construct} runs derived → base. Stock leaves
-		 * ({@link BindConstraint}, {@link AlignConstraint}, {@link SnapConstraint})
-		 * lease via their own {@code *.new} first. This runs only when
-		 * {@code rpc_lid} is still zero.
-		 *
-		 * Server peer is {@code Helper-Constraint.create} →
-		 * {@code ConstraintRelay}: allocation {@code Hook.emit}s so the
-		 * client GJS {@code vfunc_update_allocation} runs and returns the box
-		 * (same Live.Callback splice as IdleMonitor / Window foreach).
+		 * name/enabled setters only store; sync after lease. Syncing from
+		 * setters nested-RPCs during wire decode of {@code get_constraint}
+		 * replies (logged: construct with rpc_lid set must not call out).
 		 */
 		construct {
 			if (this.rpc_lid != 0) {
-				return;
-			}
-			if (!this.get_type().is_a(typeof(Constraint))) {
 				return;
 			}
 			var self = this;
@@ -38,4 +76,6 @@
 				null,
 				OLLMrpc.args("t", callback_id));
 			this.rpc_lid = response.args.get(0).get_uint64();
+			this.sync_actor_meta_name();
+			this.sync_actor_meta_enabled();
 		}

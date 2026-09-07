@@ -37,9 +37,16 @@ namespace GnomeShellRpc.Rpc.Helper
 			);
 			var actor = new Meta.BackgroundActor(display, monitor);
 			var handle = (uint64) request.connection.export(actor);
+			/* Stock attach MetaBackgroundContent — client facade needs its
+			 * lease so content.background / set_vignette RPC to the peer. */
+			var content = actor.get_content();
+			uint64 content_handle = 0;
+			if (content != null) {
+				content_handle = (uint64) request.connection.export(content);
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("t", handle),
+				args = OLLMrpc.args("tt", handle, content_handle),
 			});
 		}
 	}

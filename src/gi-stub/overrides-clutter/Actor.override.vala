@@ -18,10 +18,56 @@
 	}
 
 	/**
-	 * Generator gap: GIR getter is {@code is_visible}, and construct default
-	 * is needed for GJS literals — deny generated {@code visible}, hand this.
+	 * Generator gap: GIR getter is {@code is_visible}, no setter symbol
+	 * (writable via {@code show}/{@code hide}). Denied generated prop; relay.
 	 */
-	public bool visible { get; set construct; default = true; }
+	public bool visible {
+		get {
+			return this.is_visible();
+		}
+		set {
+			if (value) {
+				this.show();
+			} else {
+				this.hide();
+			}
+		}
+	}
+
+	/**
+	 * Generator gap: GIR {@code scale-x}/{@code scale-y} have no dedicated
+	 * accessors (only {@code get_scale}/{@code set_scale}) — skipped. Relay
+	 * like {@code opacity}/{@code scale_z}; set one axis preserves the other.
+	 */
+	public double scale_x {
+		get {
+			double sx;
+			double sy;
+			this.get_scale(out sx, out sy);
+			return sx;
+		}
+		set {
+			double sx;
+			double sy;
+			this.get_scale(out sx, out sy);
+			this.set_scale(value, sy);
+		}
+	}
+
+	public double scale_y {
+		get {
+			double sx;
+			double sy;
+			this.get_scale(out sx, out sy);
+			return sy;
+		}
+		set {
+			double sx;
+			double sy;
+			this.get_scale(out sx, out sy);
+			this.set_scale(sx, value);
+		}
+	}
 
 	/**
 	 * GIR: write-only, not construct. Keep non-construct so GObject applies
@@ -32,6 +78,18 @@
 		set {
 			if (value != null) {
 				this.add_constraint(value);
+			}
+		}
+	}
+
+	/**
+	 * GIR write-only {@code effect} (no setter symbol) — same timing as
+	 * {@link constraints}. GJS: {@code new St.Viewport({ effect: … })}.
+	 */
+	public Effect? effect {
+		set {
+			if (value != null) {
+				this.add_effect(value);
 			}
 		}
 	}

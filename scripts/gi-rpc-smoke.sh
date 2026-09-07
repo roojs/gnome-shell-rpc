@@ -58,7 +58,9 @@ client_env() {
 	if [[ -n "$MUTTER_TL" ]]; then
 		tip="$tip:$MUTTER_TL"
 	fi
-	export GI_TYPELIB_PATH="${GI_TYPELIB_PATH:+$GI_TYPELIB_PATH:}$tip"
+	# Stubs first — a pre-set GI_TYPELIB_PATH with mutter ahead of
+	# $BINDIR loads real Meta-16 and double-registers MetaDisplay.
+	export GI_TYPELIB_PATH="$tip${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
 	export LD_LIBRARY_PATH="$BINDIR:$GNOME_SHELL_PKGLIBDIR:${OCRPC_LIBDIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 	export MUTTER_RPC_SOCKET="$SOCKET"
 	export GI_RPC_GJS_EMBED_DIR="$ROOT/src/gjs-embed"

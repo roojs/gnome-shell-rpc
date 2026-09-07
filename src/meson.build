@@ -35,6 +35,7 @@ compositor_sources = files(
   'rpc/helper/GLSLEffect.vala',
   'rpc/helper/ClutterThreads.vala',
   'rpc/helper/Constraint.vala',
+  'rpc/helper/St.vala',
   'rpc/helper/ClutterActor.vala',
   'rpc/helper/ClutterStage.vala',
   'rpc/helper/shader-uniform-apply.c',
@@ -403,9 +404,11 @@ clutter_override_dir = meson.current_source_dir() / 'gi-stub/overrides-clutter'
 clutter_override_files = files(
   'gi-stub/overrides-clutter/Clutter.override.vala',
   'gi-stub/overrides-clutter/BindConstraint.override.vala',
+  'gi-stub/overrides-clutter/BrightnessContrastEffect.override.vala',
   'gi-stub/overrides-clutter/Constraint.override.vala',
   'gi-stub/overrides-clutter/ActorBox.override.vala',
   'gi-stub/overrides-clutter/ClickAction.override.vala',
+  'gi-stub/overrides-clutter/GestureAction.override.vala',
   'gi-stub/overrides-clutter/Stage.override.vala',
   'gi-stub/overrides-clutter/Actor.override.vala',
   'gi-stub/overrides-clutter/Backend.override.vala',
@@ -716,13 +719,13 @@ st_generated = custom_target('St_generated.vala',
     'emit', 'St', '16',
   ],
   input: [st_deny_file, st_overrides_file] + files(
-    'gi-stub/overrides-st/Widget.override.vala',
     'gi-stub/overrides-st/Theme.override.vala',
     'gi-stub/overrides-st/ThemeContext.override.vala',
     'gi-stub/overrides-st/Adjustment.override.vala',
     'gi-stub/overrides-st/FocusManager.override.vala',
     'gi-stub/overrides-st/Settings.override.vala',
     'gi-stub/overrides-st/Viewport.override.vala',
+    'gi-stub/overrides-st/ScrollView.override.vala',
     'gi-stub/overrides-st/GenericAccessible.override.vala',
   ),
   depends: [gi_stub_gen],
@@ -863,6 +866,22 @@ shell_gi_typelib = custom_target(
     '@INPUT@',
   ],
   depends: [shell_gi_lib],
+  build_by_default: true,
+  install: false,
+)
+
+# GJS walks GObject interfaces on leased stubs; without OLLMrpc typelib,
+# find_by_name(OLLMrpc, LiveHandle) asserts and segfaults (Panel/DateMenu).
+ollmrpc_typelib = custom_target(
+  'OLLMrpc-1.0.typelib',
+  input: meson.current_source_dir() / 'gi-stub' / 'OLLMrpc-1.0.gir',
+  output: 'OLLMrpc-1.0.typelib',
+  command: [
+    g_ir_compiler,
+    '--output', '@OUTPUT@',
+    '--shared-library', ocrpc_lib,
+    '@INPUT@',
+  ],
   build_by_default: true,
   install: false,
 )

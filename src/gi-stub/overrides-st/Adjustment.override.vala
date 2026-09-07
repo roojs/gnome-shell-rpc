@@ -16,6 +16,12 @@
 			this.transitions.set(name, transition);
 		}
 
+		[CCode (cname = "st_adjustment_get_transition")]
+		public Clutter.Transition? get_transition(string name)
+		{
+			return this.transitions.get(name);
+		}
+
 		public void remove_transition(string name)
 		{
 			this.transitions.unset(name);

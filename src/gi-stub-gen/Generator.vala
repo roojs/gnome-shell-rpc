@@ -391,65 +391,33 @@ namespace $(ns)
 			if ((class_name + ".new") in this.deny) {
 				return;
 			}
-			var sig = "";
-			var packed = "";
-			for (var a = 0; a < new_fi.get_n_args(); a++) {
-				var arg = new_fi.get_arg(a);
-				if (arg.is_skip()) {
-					continue;
-				}
-				if (arg.get_direction() != GI.Direction.IN) {
-					return;
-				}
-				var letter = this.dbus_letter(ns, arg.get_type());
-				string expr;
-				switch (letter) {
-					case "o":
-						/* GJS construct props land after construct — wire null. */
-						expr = "null";
-						break;
-					case "b":
-						expr = "false";
-						break;
-					case "s": case "g":
-						expr = "\"\"";
-						break;
-					case "f": case "d":
-						expr = "0.0";
-						break;
-					case "i": case "y": case "x": case "t":
-						expr = "0";
-						break;
-					case "u":
-						expr = "(uint) 0";
-						break;
-					default:
-						return;
-				}
-				sig += letter;
-				if (packed != "") {
-					packed += ", ";
-				}
-				packed += expr;
-			}
-			var rpc = @"$(ns)-$(class_name).new";
-			var args_arg = "";
-			if (packed != "") {
-				args_arg = @", OLLMrpc.args(\"$(sig)\", $(packed))";
-			}
-			stream.puts(@"		construct {
+			/*
+			 * ************************************************************************
+			 * LOCKED — do not change this emitted construct body again.
+			 * Design: docs/bugs/done/2026-09-06-lease-construct-base-steals-leaf.md
+			 * Skip when rpc-lid set (wire). Else walk get_type() parents via
+			 * Bin.gtype_to_alias and mint alias.new (leaf, not this class).
+			 * Gaps (no GIR ctor → Gi parent-walks to Actor.new) are server
+			 * Helpers / leaf overrides — not another emitter rewrite.
+			 * ************************************************************************
+			 */
+			stream.puts("""		construct {
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			if (!this.get_type().is_a(typeof($(class_name)))) {
+			var t = this.get_type();
+			while (t != GLib.Type.INVALID) {
+				if (OLLMrpc.Bin.gtype_to_alias == null || !OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
+					t = t.parent();
+					continue;
+				}
+				var response = GnomeShellRpc.call_value(OLLMrpc.Bin.gtype_to_alias.get(t) + ".new", null);
+				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
 				return;
 			}
-");
-			stream.puts(@"			var response = GnomeShellRpc.call_value(\"$(rpc)\", null$(args_arg));
-			var _stub = response.retval.get_object() as OLLMrpc.Live.Handle;
-			this.rpc_lid = _stub.rpc_lid;
+			GLib.error("lease construct: no Bin-registered ancestor for %s", this.get_type().name());
 		}
-");
+""");
 		}
 
 		/**

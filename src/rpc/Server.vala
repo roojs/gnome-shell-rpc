@@ -50,12 +50,19 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Gi.register("Meta", "16");
 			OLLMrpc.Gi.register("Clutter", "16");
 			OLLMrpc.Gi.register("St", "16");
-			OLLMrpc.Bin.register_alias("Meta-Compositor",
-				display.get_compositor().get_type());
-			OLLMrpc.Bin.register_alias("Meta-Context",
-				display.get_context().get_type());
-			OLLMrpc.Bin.register_alias("Meta-Backend",
-				display.get_context().get_backend().get_type());
+			OLLMrpc.Bin.register_alias("Meta-Compositor", display.get_compositor().get_type());
+			OLLMrpc.Bin.register_alias("Meta-Context", display.get_context().get_type());
+			OLLMrpc.Bin.register_alias("Meta-Backend", display.get_context().get_backend().get_type());
+			OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Rpc.Helper.ConstraintRelay));
+			OLLMrpc.Bin.register_alias("Clutter-AlignConstraint", typeof(Rpc.Helper.AlignConstraint));
+			OLLMrpc.Bin.register_alias("Clutter-BindConstraint", typeof(Rpc.Helper.BindConstraint));
+			OLLMrpc.Bin.register_alias("Clutter-SnapConstraint", typeof(Rpc.Helper.SnapConstraint));
+			var monitor_manager = display.get_context().get_backend().get_monitor_manager();
+			if (monitor_manager != null) {
+				/* Concrete subclass (e.g. Native) — Gi return encode needs
+				 * gtype_to_alias or get_monitor_manager replies -32602. */
+				this.alias_live("Meta-MonitorManager", monitor_manager.get_type());
+			}
 			var sn = display.get_startup_notification();
 			if (sn != null) {
 				this.alias_live("Meta-StartupNotification", sn.get_type());
@@ -77,8 +84,12 @@ namespace GnomeShellRpc.Rpc
 					this.alias_live("Clutter-Context", ctx.get_type());
 					var clutter_backend = ctx.get_backend();
 					if (clutter_backend != null) {
-						this.alias_live(
-							"Clutter-Backend", clutter_backend.get_type());
+						this.alias_live("Clutter-Backend", clutter_backend.get_type());
+						var seat = clutter_backend.get_default_seat();
+						if (seat != null) {
+							/* Concrete seat subclass — PadOsd main.js L233. */
+							this.alias_live("Clutter-Seat", seat.get_type());
+						}
 					}
 				}
 			}

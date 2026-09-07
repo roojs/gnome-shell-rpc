@@ -12,6 +12,11 @@
 				OLLMrpc.args("ti", this.meta_display.rpc_lid, this.monitor)
 			);
 			this.rpc_lid = response.args.get(0).get_uint64();
-			/* Stock meta_background_actor_new attaches MetaBackgroundContent. */
-			this.content = new BackgroundContent();
+			/* Stock meta_background_actor_new attaches MetaBackgroundContent.
+			 * Bind the client facade to that lease so content.background RPCs. */
+			var content = new BackgroundContent();
+			if (response.args.size > 1) {
+				content.rpc_lid = response.args.get(1).get_uint64();
+			}
+			this.content = content;
 		}
