@@ -288,10 +288,19 @@ namespace GnomeShellRpc.GiRpcMock
 
 				case "Helper-Constraint":
 					if (name == "create") {
-						this.reply_args_lease(request, "Clutter-BindConstraint");
+						this.reply_args_lease(request, "Clutter-Constraint");
 						return true;
 					}
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
+					break;
+
+				case "Clutter-AlignConstraint":
+				case "Clutter-BindConstraint":
+				case "Clutter-SnapConstraint":
+					if (name == "new") {
+						this.reply_args_lease(request, prefix);
+						return true;
+					}
 					break;
 
 				case "Helper-Display":

@@ -1,27 +1,53 @@
 /**
- * Server→client {@link Clutter.Constraint} vfunc relay (JS subclasses).
+ * Concrete {@link Clutter.Constraint} base for JS subclasses, plus Ffi
+ * {@code Clutter-AlignConstraint.new} / Bind / Snap (real mutter types).
  *
- * Peer hierarchy: {@link AlignConstraint} / {@link BindConstraint} /
- * {@link SnapConstraint} extend {@link ConstraintRelay} (wire aliases).
- * Mint stays on {@code Helper-Constraint.create} like other Helpers — Ffi
- * cannot register stock {@code Clutter-*.new} (clashes with GObject
- * {@code *_new}). {@link set_update_callback} attaches the client hook on
- * an existing lease when mint and bind are split.
+ * Hierarchy (no type switch in {@code create}):
+ * - {@code Helper-Constraint.create} → this class + client {@code update_allocation}
+ * - {@code Clutter-AlignConstraint.new} etc. → {@code g_object_new} of that type
+ *
+ * Leaf {@code *.new} cannot use stock GObject ctor symbols on Ffi — same
+ * cname pattern as {@link St}.
+ *
+ * @see docs/bugs/2026-09-07-align-constraint-relay-mint.md
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
-	/**
-	 * Concrete mutter {@link Clutter.Constraint} that Invokes the client
-	 * for allocation (abstract {@code Clutter.Constraint} cannot be minted).
-	 */
-	public class ConstraintRelay : Clutter.Constraint
+	public class Constraint : Clutter.Constraint
 	{
 		public OLLMrpc.Live.Hook update_hook;
+
+		public static void rpc_register()
+		{
+			var helper = new Constraint();
+			OLLMrpc.Request.add_class(
+				"Helper-Constraint", typeof(Constraint),
+				"create", "t",
+				"set_update_callback", "t",
+				null
+			);
+			OLLMrpc.Request.register_live("Helper-Constraint", helper);
+			OLLMrpc.Request.add_class("Clutter-AlignConstraint", typeof(Constraint), "new", "", null);
+			OLLMrpc.Request.register_live("Clutter-AlignConstraint", helper);
+			OLLMrpc.Request.add_class("Clutter-BindConstraint", typeof(Constraint), "new", "", null);
+			OLLMrpc.Request.register_live("Clutter-BindConstraint", helper);
+			OLLMrpc.Request.add_class("Clutter-SnapConstraint", typeof(Constraint), "new", "", null);
+			OLLMrpc.Request.register_live("Clutter-SnapConstraint", helper);
+		}
+
+		/* Distinct from mint cname {@code *_new} (Ffi leaf construct). */
+		[CCode (cname = "gnome_shell_rpc_rpc_helper_constraint_ctor")]
+		public Constraint()
+		{
+		}
 
 		public override void update_allocation(
 			Clutter.Actor actor,
 			Clutter.ActorBox allocation
 		) {
+			if (this.update_hook == null) {
+				return;
+			}
 			this.update_hook.emit(OLLMrpc.args("tdddd",
 				this.update_hook.connection.export(actor),
 				(double) allocation.x1, (double) allocation.y1,
@@ -34,32 +60,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			allocation.x2 = (float) this.update_hook.reply_args.get(2).get_double();
 			allocation.y2 = (float) this.update_hook.reply_args.get(3).get_double();
 		}
-	}
-
-	public class AlignConstraint : ConstraintRelay {}
-
-	public class BindConstraint : ConstraintRelay {}
-
-	public class SnapConstraint : ConstraintRelay {}
-
-	/**
-	 * Ffi handler for {@code Helper-Constraint.*} (not a Clutter peer).
-	 */
-	public class Constraint : GLib.Object
-	{
-		public static void rpc_register()
-		{
-			OLLMrpc.Request.add_class(
-				"Helper-Constraint", typeof(Constraint),
-				"create", "t",
-				"set_update_callback", "t",
-				null
-			);
-			OLLMrpc.Request.register_live("Helper-Constraint", new Constraint());
-		}
 
 		/**
-		 * Mint a {@link ConstraintRelay} bound to {@code callback_id}.
+		 * ''Helper-Constraint.create'' — JS / abstract Constraint peer.
 		 *
 		 * @param request live create
 		 * @param callback_id {@code RPC-Live-Callback.register} id
@@ -76,9 +79,10 @@ namespace GnomeShellRpc.Rpc.Helper
 				});
 				return;
 			}
-			var relay = new ConstraintRelay();
-			relay.update_hook = request.connection.callbacks.get((int) callback_id);
-			var handle = (uint64) request.connection.export(relay);
+			var created = new Constraint();
+			created.update_hook = request.connection.callbacks.get(
+				(int) callback_id);
+			var handle = (uint64) request.connection.export(created);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("t", handle),
@@ -86,9 +90,40 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * Attach {@code update_allocation} hook on an existing relay lease.
+		 * ''Clutter-AlignConstraint.new'' / Bind / Snap — real mutter GType.
 		 *
-		 * @param request lease is a {@link ConstraintRelay}
+		 * @param request inbound construct (no lease)
+		 */
+		[CCode (cname = "gnome_shell_rpc_rpc_helper_constraint_new")]
+		public void mint(OLLMrpc.Request request)
+		{
+			var dot = request.method.index_of_char('.');
+			if (dot < 1 || request.method.substring(dot + 1) != "new") {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND);
+				return;
+			}
+			var glib_name = request.method.substring(0, dot).replace("-", "");
+			var gtype = GLib.Type.from_name(glib_name);
+			if (gtype == GLib.Type.INVALID) {
+				GLib.critical("Helper.Constraint: GType %s not registered",
+					glib_name);
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR);
+				return;
+			}
+			var created = GLib.Object.new(gtype);
+			var handle = (uint64) request.connection.export(created);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t", handle),
+			});
+		}
+
+		/**
+		 * Attach {@code update_allocation} hook on an existing base lease.
+		 *
+		 * @param request lease is a {@link Constraint}
 		 * @param callback_id {@code RPC-Live-Callback.register} id
 		 */
 		public void set_update_callback(
@@ -116,18 +151,19 @@ namespace GnomeShellRpc.Rpc.Helper
 				});
 				return;
 			}
-			var relay = request.connection.leases.get(id) as ConstraintRelay;
-			if (relay == null) {
+			var base_constraint = request.connection.leases.get(id) as Constraint;
+			if (base_constraint == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"lease is not ConstraintRelay"
+						"lease is not Helper.Constraint"
 					),
 				});
 				return;
 			}
-			relay.update_hook = request.connection.callbacks.get((int) callback_id);
+			base_constraint.update_hook =
+				request.connection.callbacks.get((int) callback_id);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

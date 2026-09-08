@@ -53,10 +53,8 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Bin.register_alias("Meta-Compositor", display.get_compositor().get_type());
 			OLLMrpc.Bin.register_alias("Meta-Context", display.get_context().get_type());
 			OLLMrpc.Bin.register_alias("Meta-Backend", display.get_context().get_backend().get_type());
-			OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Rpc.Helper.ConstraintRelay));
-			OLLMrpc.Bin.register_alias("Clutter-AlignConstraint", typeof(Rpc.Helper.AlignConstraint));
-			OLLMrpc.Bin.register_alias("Clutter-BindConstraint", typeof(Rpc.Helper.BindConstraint));
-			OLLMrpc.Bin.register_alias("Clutter-SnapConstraint", typeof(Rpc.Helper.SnapConstraint));
+			OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Rpc.Helper.Constraint));
+			/* Align/Bind/Snap: real mutter GTypes from Gi.register — do not alias. */
 			var monitor_manager = display.get_context().get_backend().get_monitor_manager();
 			if (monitor_manager != null) {
 				/* Concrete subclass (e.g. Native) — Gi return encode needs

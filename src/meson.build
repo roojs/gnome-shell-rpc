@@ -403,6 +403,7 @@ clutter_overrides_file = files('gi-stub-gen/Clutter.overrides')
 clutter_override_dir = meson.current_source_dir() / 'gi-stub/overrides-clutter'
 clutter_override_files = files(
   'gi-stub/overrides-clutter/Clutter.override.vala',
+  'gi-stub/overrides-clutter/AlignConstraint.override.vala',
   'gi-stub/overrides-clutter/BindConstraint.override.vala',
   'gi-stub/overrides-clutter/BrightnessContrastEffect.override.vala',
   'gi-stub/overrides-clutter/Constraint.override.vala',

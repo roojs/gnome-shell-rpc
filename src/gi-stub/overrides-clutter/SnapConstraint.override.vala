@@ -5,9 +5,18 @@
 	 * getter has OUT args, so GJS {@code new SnapConstraint({ from_edge, … })}
 	 * would miss them. {@code source}/{@code offset} stay generated (real
 	 * get/set).
+	 *
+	 * Lease: {@code Clutter-SnapConstraint.new} → real mutter SnapConstraint.
 	 */
 	public SnapEdge from_edge { get; set construct; default = SnapEdge.top; }
 	public SnapEdge to_edge { get; set construct; default = SnapEdge.top; }
+
+	protected override void mint_server_lease()
+	{
+		var response = GnomeShellRpc.call_value(
+			"Clutter-SnapConstraint.new", null);
+		this.rpc_lid = response.args.get(0).get_uint64();
+	}
 
 	public void get_edges(out SnapEdge from_edge, out SnapEdge to_edge)
 	{

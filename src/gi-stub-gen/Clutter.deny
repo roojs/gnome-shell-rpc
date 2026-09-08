@@ -10,8 +10,7 @@
 # ************************************************************************
 
 # BindConstraint.override — client-local construct props until lease props safe.
-# Lease via Helper-Constraint (Constraint.override); deny leaf .new so always-mint
-# construct does not replace the relay.
+# Lease via Clutter-BindConstraint.new (Helper.Constraint Ffi mint).
 BindConstraint.new
 BindConstraint.source
 BindConstraint.coordinate
@@ -25,14 +24,14 @@ BindConstraint.set_offset
 
 # SnapConstraint.override — from/to_edge only (GIR uses get/set_edges OUTs;
 # generator skips those props). source/offset stay generated.
-# Lease via Helper-Constraint — same as BindConstraint.new.
+# Lease via Clutter-SnapConstraint.new (Helper.Constraint Ffi mint).
 SnapConstraint.new
 SnapConstraint.from_edge
 SnapConstraint.to_edge
 SnapConstraint.get_edges
 SnapConstraint.set_edges
 
-# AlignConstraint — Helper-Constraint relay; deny leaf .new (always-mint).
+# AlignConstraint.override — leaf mint via Clutter-AlignConstraint.new.
 AlignConstraint.new
 
 # Generator: GString returns (GLib.String maps poorly).
