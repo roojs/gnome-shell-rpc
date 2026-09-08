@@ -785,6 +785,8 @@ mutter_rpc_client_dep = declare_dependency(
 )
 
 # 0.7.7 — owned Shell-16 facade (not libshell). GIR from Vala (vala_gir).
+# libsystemd has no Vala vapi — assert found, link with -lsystemd only.
+dependency('libsystemd')
 shell_gi_lib = shared_library(
   'shell-gi-16',
   files(
@@ -803,6 +805,7 @@ shell_gi_lib = shared_library(
     'shell-gi/AppUsage.vala',
     'shell-gi/WM.vala',
     'shell-gi/Global.vala',
+    'shell-gi/TimeChangeSource.vala',
   ),
   dependencies: [
     ocrpc_dep,
@@ -819,6 +822,7 @@ shell_gi_lib = shared_library(
       compile_args: ['-I' + mutter_includedir],
     ),
   ],
+  link_args: ['-lsystemd'],
   vala_args: ocrpc_vala_args + gi_stub_vala_args + [
     '--pkg=posix',
     '--pkg=gio-2.0',
@@ -841,6 +845,7 @@ shell_gi_lib = shared_library(
   c_args: [
     '-I' + mutter_includedir,
     '-I' + meson.current_source_dir() / 'gi-stub',
+    '-I' + meson.current_source_dir() / 'shell-gi',
     '-I' + meson.current_build_dir(),
     '-include', 'mutter-clutter-rpc-16.h',
     # Vala GLib.dpgettext pulls gi18n-lib.h (needs GETTEXT_PACKAGE).

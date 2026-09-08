@@ -132,14 +132,90 @@ namespace Shell
 		}
 
 		/**
+		 * Stock {@code shell_global_create_app_launch_context} — Meta
+		 * startup-notification launcher + timestamp / workspace.
+		 */
+		public GLib.AppLaunchContext create_app_launch_context(uint32 timestamp, int workspace)
+		{
+			var sn = this.display.get_startup_notification();
+			var context = sn.create_launcher();
+			if (context == null) {
+				context = new Meta.LaunchContext();
+			}
+			if (timestamp == 0) {
+				timestamp = this.get_current_time();
+			}
+			context.set_timestamp(timestamp);
+			if (workspace > -1) {
+				var ws = this.workspace_manager.get_workspace_by_index(workspace);
+				if (ws != null) {
+					context.set_workspace(ws);
+				}
+			}
+			return context;
+		}
+
+		/**
+		 * Stock {@code shell_global_get_persistent_state} — typed GVariant
+		 * from {@link userdatadir}/@property_name.
+		 */
+		public GLib.Variant? get_persistent_state(string property_type, string property_name)
+		{
+			var path = GLib.File.new_for_path(this.userdatadir).get_child(property_name);
+			var pathstr = path.get_path();
+			if (pathstr == null) {
+				return null;
+			}
+			try {
+				var mfile = new GLib.MappedFile(pathstr, false);
+				return new GLib.Variant.from_bytes(
+					new GLib.VariantType(property_type), mfile.get_bytes(), false);
+			} catch (GLib.FileError.NOENT e) {
+				return null;
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to open persistent state: %s", e.message);
+				return null;
+			}
+		}
+
+		/**
+		 * Stock {@code shell_global_set_persistent_state}.
+		 */
+		public void set_persistent_state(string property_name, GLib.Variant? variant)
+		{
+			var path = GLib.File.new_for_path(this.userdatadir).get_child(property_name);
+			var parent = path.get_parent();
+			if (parent != null) {
+				try {
+					parent.make_directory_with_parents();
+				} catch (GLib.IOError.EXISTS e) {
+				} catch (GLib.Error e) {
+					GLib.warning("Could not create persistent state dir: %s", e.message);
+					return;
+				}
+			}
+			if (variant == null || variant.get_data() == null) {
+				try {
+					path.@delete();
+				} catch (GLib.Error e) {
+				}
+				return;
+			}
+			try {
+				string? new_etag;
+				path.replace_contents(variant.get_data_as_bytes().get_data(),
+					null, false, GLib.FileCreateFlags.REPLACE_DESTINATION, out new_etag);
+			} catch (GLib.Error e) {
+				GLib.warning("Could not replace persistent state file: %s", e.message);
+			}
+		}
+
+		/**
 		 * Stock {@code shell_global_get_pointer} — coords + mods via
 		 * {@link Meta.CursorTracker.get_pointer}.
 		 */
-		public void get_pointer(
-			out int x,
-			out int y,
-			out Clutter.ModifierType mods
-		) {
+		public void get_pointer(out int x, out int y, out Clutter.ModifierType mods)
+		{
 			Graphene.Point point;
 			Clutter.ModifierType raw_mods;
 			this.backend.get_cursor_tracker().get_pointer(out point, out raw_mods);

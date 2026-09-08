@@ -8,6 +8,7 @@ namespace Shell
 	public class App : GLib.Object
 	{
 		private GLib.List<Meta.Window> windows = new GLib.List<Meta.Window>();
+		private GLib.Icon? fallback_icon;
 
 		public GLib.DesktopAppInfo? app_info { get; construct; default = null; }
 
@@ -75,6 +76,41 @@ namespace Shell
 		public bool is_window_backed()
 		{
 			return this.app_info == null;
+		}
+
+		/**
+		 * Stock {@code shell_app_get_icon} / property {@code icon} —
+		 * desktop icon or themed fallback.
+		 */
+		public GLib.Icon icon {
+			owned get {
+				if (this.app_info != null) {
+					var from_info = this.app_info.get_icon();
+					if (from_info != null) {
+						return from_info;
+					}
+				}
+				if (this.fallback_icon == null) {
+					this.fallback_icon = new GLib.ThemedIcon("application-x-executable");
+				}
+				return this.fallback_icon;
+			}
+		}
+
+		/**
+		 * Stock {@code shell_app_create_icon_texture} — {@link St.Icon} bound to
+		 * {@link icon} at @size.
+		 */
+		public Clutter.Actor create_icon_texture(int size)
+		{
+			var ret = new St.Icon();
+			ret.icon_size = size;
+			ret.fallback_icon_name = "application-x-executable";
+			this.bind_property("icon", ret, "gicon", GLib.BindingFlags.SYNC_CREATE);
+			if (this.is_window_backed()) {
+				ret.add_style_class_name("fallback-app-icon");
+			}
+			return ret;
 		}
 
 		public GLib.List<weak Meta.Window> get_windows()

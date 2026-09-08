@@ -1,4 +1,11 @@
-		private Theme? active_theme;
+		/**
+		 * Client-owned themes keyed by ThemeContext lease.
+		 *
+		 * {@code get_for_stage} re-decodes a live handle into a **new** proxy
+		 * each time ({@code parse_object} does not reuse {@code proxies}), so
+		 * a per-instance field would reset to null after {@code loadTheme()}.
+		 */
+		private static Gee.HashMap<int, Theme>? themes_by_lid;
 
 		public static ThemeContext get_for_stage(Clutter.Stage stage)
 		{
@@ -13,10 +20,21 @@
 		 */
 		public Theme? get_theme()
 		{
-			return this.active_theme;
+			if (this.rpc_lid == 0 || themes_by_lid == null) {
+				return null;
+			}
+			return themes_by_lid.get((int) this.rpc_lid);
 		}
 
 		public void set_theme(Theme theme)
 		{
-			this.active_theme = theme;
+			if (this.rpc_lid == 0) {
+				GLib.warning("St.ThemeContext.set_theme: no rpc_lid");
+				return;
+			}
+			if (themes_by_lid == null) {
+				themes_by_lid = new Gee.HashMap<int, Theme>();
+			}
+			themes_by_lid.set((int) this.rpc_lid, theme);
+			this.changed();
 		}

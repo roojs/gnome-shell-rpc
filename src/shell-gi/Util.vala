@@ -199,4 +199,71 @@ namespace Shell
 	{
 		GLib.Signal.stop_emission_by_name(actor, "pick");
 	}
+
+	/**
+	 * Stock {@code shell_util_get_uid} — {@code getuid()} for JS.
+	 */
+	public int util_get_uid()
+	{
+		return (int) Posix.getuid();
+	}
+
+	[CCode (cname = "sd_notify", cheader_filename = "systemd/sd-daemon.h")]
+	private static extern int sd_notify(int unset_environment, string state);
+
+	/**
+	 * Stock {@code shell_util_sd_notify} — {@code READY=1}, unset NOTIFY_SOCKET.
+	 */
+	public void util_sd_notify()
+	{
+		sd_notify(1, "READY=1");
+	}
+
+	/**
+	 * Stock {@code shell_util_touch_file_async} — create file (and parents)
+	 * on a worker thread.
+	 */
+	public void util_touch_file_async(GLib.File file, owned GLib.AsyncReadyCallback? callback)
+	{
+		var task = new GLib.Task(file, null, (owned) callback);
+		task.run_in_thread((task, source_object, task_data, cancellable) => {
+			var f = (GLib.File) source_object;
+			var parent = f.get_parent();
+			if (parent != null) {
+				try {
+					parent.make_directory_with_parents(cancellable);
+				} catch (GLib.IOError.EXISTS e) {
+				} catch (GLib.Error e) {
+					task.return_error(e);
+					return;
+				}
+			}
+
+			GLib.FileOutputStream? stream = null;
+			try {
+				stream = f.create(GLib.FileCreateFlags.NONE, cancellable);
+			} catch (GLib.IOError.EXISTS e) {
+			} catch (GLib.Error e) {
+				task.return_error(e);
+				return;
+			}
+
+			if (stream != null) {
+				try {
+					stream.close(null);
+				} catch (GLib.Error e) {
+				}
+			}
+			task.return_boolean(stream != null);
+		});
+	}
+
+	/**
+	 * Stock {@code shell_util_touch_file_finish}.
+	 */
+	public bool util_touch_file_finish(GLib.File file, GLib.AsyncResult res)
+		throws GLib.Error
+	{
+		return ((GLib.Task) res).propagate_boolean();
+	}
 }
