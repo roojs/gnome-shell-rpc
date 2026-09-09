@@ -1,11 +1,217 @@
 	/**
-	 * TEMPORARY — MUST IMPLEMENT on wire for live paint.
-	 * {@link Content} is the actor paint delegate (not metadata). Denied
-	 * {@code get/set_content} so nested mock can attach
-	 * {@link Meta.BackgroundContent} client-locally; undeny + RPC when the
-	 * compositor must own Content.
+	 * Content = actor paint delegate. RPC when the Content has a lease
+	 * (e.g. {@link Meta.BackgroundContent}); client-only Content (no
+	 * {@code rpc_lid}) stays attached locally for GJS identity only.
 	 */
-	public Content? content { get; set; }
+	private Content? priv_content;
+
+	/**
+	 * While set, preferred/allocate came from a Helper-Actor hook. Vala
+	 * path (no JS vfunc) answers with a chain sentinel — server calls
+	 * base locally (no nested {@code call_sync}). JS vfuncs never hit
+	 * these methods unless they {@code super}.
+	 */
+	private static Actor? layout_relay_target;
+	private static bool layout_relay_chain;
+
+	public Content? content {
+		get {
+			if (this.priv_content != null) {
+				return this.priv_content;
+			}
+			var response = GnomeShellRpc.call_value(
+				"Clutter-Actor.get_content", this);
+			if (response.retval.type() == GLib.Type.INVALID
+					|| response.retval.get_object() == null) {
+				return null;
+			}
+			return (Content) response.retval.get_object();
+		}
+		set {
+			this.priv_content = value;
+			if (value == null) {
+				GnomeShellRpc.call_value(
+					"Clutter-Actor.set_content", this,
+					OLLMrpc.args("o", null));
+				return;
+			}
+			var handle = value as OLLMrpc.Live.Handle;
+			if (handle != null && handle.rpc_lid != 0) {
+				GnomeShellRpc.call_value(
+					"Clutter-Actor.set_content", this,
+					OLLMrpc.args("o", value));
+			}
+		}
+	}
+
+	/**
+	 * Lease like the generator parent-walk ({@code Actor.new} denied).
+	 * First Bin-registered ancestor; {@code St-Widget} →
+	 * {@link mint_layout_relay} (Helper-Actor + hooks).
+	 */
+	construct {
+		if (this.rpc_lid != 0) {
+			return;
+		}
+		var t = this.get_type();
+		while (t != GLib.Type.INVALID) {
+			if (OLLMrpc.Bin.gtype_to_alias == null
+					|| !OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
+				t = t.parent();
+				continue;
+			}
+			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
+			if (alias == "St-Widget") {
+				this.mint_layout_relay();
+				return;
+			}
+			var response = GnomeShellRpc.call_value(alias + ".new", null);
+			this.rpc_lid =
+				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
+			return;
+		}
+		GLib.error("lease construct: no Bin-registered ancestor for %s",
+			this.get_type().name());
+	}
+
+	public virtual void get_preferred_width(
+		float for_height,
+		out float min_width_p,
+		out float natural_width_p
+	) {
+		if (Actor.layout_relay_target == this) {
+			Actor.layout_relay_chain = true;
+			min_width_p = 0.0f;
+			natural_width_p = 0.0f;
+			return;
+		}
+		var response = GnomeShellRpc.call_value(
+			"Clutter-Actor.get_preferred_width", this,
+			OLLMrpc.args("f", (double) for_height));
+		min_width_p = (float) response.args.get(0).get_float();
+		natural_width_p = (float) response.args.get(1).get_float();
+	}
+
+	public virtual void get_preferred_height(
+		float for_width,
+		out float min_height_p,
+		out float natural_height_p
+	) {
+		if (Actor.layout_relay_target == this) {
+			Actor.layout_relay_chain = true;
+			min_height_p = 0.0f;
+			natural_height_p = 0.0f;
+			return;
+		}
+		var response = GnomeShellRpc.call_value(
+			"Clutter-Actor.get_preferred_height", this,
+			OLLMrpc.args("f", (double) for_width));
+		min_height_p = (float) response.args.get(0).get_float();
+		natural_height_p = (float) response.args.get(1).get_float();
+	}
+
+	public virtual void allocate(ActorBox box)
+	{
+		if (Actor.layout_relay_target == this) {
+			Actor.layout_relay_chain = true;
+			return;
+		}
+		uint8[] data = new uint8[sizeof(ActorBox)];
+		*((ActorBox*) data) = box;
+		GnomeShellRpc.call_value(
+			"Clutter-Actor.allocate", this,
+			OLLMrpc.args("ay", new GLib.Bytes(data)));
+	}
+
+	/**
+	 * Mint Helper-Actor with preferred/allocate hooks. Callbacks run JS
+	 * vfuncs when present; Vala fallthrough sets {@link layout_relay_chain}
+	 * so the server bases without a nested chain RPC.
+	 */
+	public void mint_layout_relay()
+	{
+		var self = this;
+		var preferred_width_id = GnomeShellRpc.GiStub.Runtime.callback_bind(
+			(call) => {
+				float min = 0.0f, nat = 0.0f;
+				Actor.layout_relay_chain = false;
+				Actor.layout_relay_target = self;
+				try {
+					self.get_preferred_width(
+						(float) call.args.get(1).get_double(),
+						out min, out nat);
+				} finally {
+					Actor.layout_relay_target = null;
+				}
+				if (Actor.layout_relay_chain) {
+					return null;
+				}
+				return OLLMrpc.args("dd", (double) min, (double) nat);
+			});
+		var preferred_height_id = GnomeShellRpc.GiStub.Runtime.callback_bind(
+			(call) => {
+				float min = 0.0f, nat = 0.0f;
+				Actor.layout_relay_chain = false;
+				Actor.layout_relay_target = self;
+				try {
+					self.get_preferred_height(
+						(float) call.args.get(1).get_double(),
+						out min, out nat);
+				} finally {
+					Actor.layout_relay_target = null;
+				}
+				if (Actor.layout_relay_chain) {
+					return null;
+				}
+				return OLLMrpc.args("dd", (double) min, (double) nat);
+			});
+		var allocate_id = GnomeShellRpc.GiStub.Runtime.callback_bind(
+			(call) => {
+				var box = ActorBox();
+				box.x1 = (float) call.args.get(1).get_double();
+				box.y1 = (float) call.args.get(2).get_double();
+				box.x2 = (float) call.args.get(3).get_double();
+				box.y2 = (float) call.args.get(4).get_double();
+				Actor.layout_relay_chain = false;
+				Actor.layout_relay_target = self;
+				try {
+					self.allocate(box);
+				} finally {
+					Actor.layout_relay_target = null;
+				}
+				if (Actor.layout_relay_chain) {
+					return OLLMrpc.args("b", true);
+				}
+				return OLLMrpc.args("b", false);
+			});
+		var response = GnomeShellRpc.call_value(
+			"Helper-Actor.create", null,
+			OLLMrpc.args("ttt",
+				preferred_width_id, preferred_height_id, allocate_id));
+		this.rpc_lid = response.args.get(0).get_uint64();
+	}
+
+	/**
+	 * GIR pivot-point getter uses float OUTs — generator skips the property
+	 * and we deny get/set_pivot_point (Vala would emit duplicate C symbols for
+	 * the property accessors). Inline RPC for GJS construct literals.
+	 */
+	public Graphene.Point pivot_point {
+		get {
+			var response = GnomeShellRpc.call_value(
+				"Clutter-Actor.get_pivot_point", this);
+			float x = (float) response.args.get(0).get_float();
+			float y = (float) response.args.get(1).get_float();
+			Graphene.Point point = {};
+			point.init(x, y);
+			return point;
+		}
+		set {
+			GnomeShellRpc.call_value(
+				"Clutter-Actor.set_pivot_point", this,
+				OLLMrpc.args("ff", (double) value.x, (double) value.y));
+		}
+	}
 
 	/**
 	 * Stock {@code clutter_actor_destroy} C ABI (method body denied —
@@ -95,6 +301,18 @@
 	}
 
 	/**
+	 * GIR write-only {@code actions} — same as {@link constraints}.
+	 * GJS: {@code new St.Widget({ actions: clickAction })}.
+	 */
+	public Action? actions {
+		set {
+			if (value != null) {
+				this.add_action(value);
+			}
+		}
+	}
+
+	/**
 	 * GJS {@link LayoutManager} subclasses (WorkspaceLayout, …) are
 	 * client-owned — no {@code rpc_lid}. RPC only when the manager is a
 	 * leased stock type ({@link BinLayout}, {@link BoxLayout}, …).
@@ -127,5 +345,20 @@
 	 * TEMPORARY — mock a11y only. GIR {@code get/set_accessible} denied;
 	 * BarLevel's {@link St.GenericAccessible} has no {@code rpc_lid}. Undeny
 	 * when server Atk peers are leased. Role / name / state stay RPC.
+	 *
+	 * Lazy-mint so GJS {@code get_accessible()} is never null (quickSettings
+	 * {@code add_relationship}, etc.). Explicit set (GenericAccessible) wins.
 	 */
-	public Atk.Object? accessible { get; set; }
+	private Atk.Object? priv_accessible;
+
+	public Atk.Object? accessible {
+		get {
+			if (this.priv_accessible == null) {
+				this.priv_accessible = Atk.GObjectAccessible.for_object(this);
+			}
+			return this.priv_accessible;
+		}
+		set {
+			this.priv_accessible = value;
+		}
+	}

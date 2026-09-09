@@ -19,6 +19,7 @@ namespace GnomeShellRpc.Rpc.Helper
 	{
 		SoundPlayer.rpc_register();
 		Background.rpc_register();
+		BackgroundImageCache.rpc_register();
 		BackgroundActor.rpc_register();
 		Context.rpc_register();
 		Settings.rpc_register();
@@ -35,6 +36,9 @@ namespace GnomeShellRpc.Rpc.Helper
 		ClutterThreads.rpc_register();
 		Constraint.rpc_register();
 		St.rpc_register();
+		ThemeContext.rpc_register();
+		Icon.rpc_register();
+		Actor.rpc_register();
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();
 	}

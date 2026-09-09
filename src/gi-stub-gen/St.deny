@@ -1,7 +1,8 @@
 # St generate/compile deny list.
 
-# Opaque GIR privates — C name clashes with Vala GObject instance private.
-BoxLayoutPrivate
+# No GIR ctor — Actor parent-walk mints Helper-Actor.create / St-*.new.
+Widget.new
+
 IconPrivate
 LabelPrivate
 WidgetPrivate
@@ -11,11 +12,20 @@ ThemeContextPrivate
 # Gio.File list / raw pixmap bytes — not on RPC wire yet.
 Theme.get_custom_stylesheets noop
 
-# Client-owned Adjustment — props from GIR via props=local; hand transitions.
+# Adjustment.new — GIR ctor needs actor + six doubles; override mints with zeros.
+# Transitions stay client-owned (Clutter.Transition not always leased).
 Adjustment.new
 Adjustment.add_transition
 Adjustment.remove_transition
 Adjustment.get_transition
+
+# GLib.Icon not on object wire — Icon.override via Helper-Icon string form.
+Icon.gicon
+Icon.get_gicon
+Icon.set_gicon
+Icon.fallback_gicon
+Icon.get_fallback_gicon
+Icon.set_fallback_gicon
 
 # Client-owned theme files for loadTheme (Theme.override.vala).
 Theme.new
@@ -37,10 +47,6 @@ ThemeContext.set_theme
 FocusManager.get_for_stage
 FocusManager.navigate_from_event noop
 Settings.get
-
-# Client-owned label text — Label.text local=1 in St.overrides.
-Label.get_text
-Label.set_text
 
 # Client-owned a11y proxy — GenericAccessible.override.vala (BarLevel/Slider).
 GenericAccessible.new_for_actor

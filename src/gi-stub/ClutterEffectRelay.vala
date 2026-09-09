@@ -23,11 +23,15 @@ namespace Clutter
 	}
 
 	[CCode (cname = "clutter_actor_meta_get_name")]
-	public unowned string actor_meta_get_name(ActorMeta self)
+	public owned string actor_meta_get_name(ActorMeta self)
 	{
 		var response = GnomeShellRpc.call_value(
 			"Clutter-ActorMeta.get_name", self);
-		return response.retval.get_string();
+		if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
+			return "";
+		}
+		unowned string? _s = response.retval.get_string();
+		return _s != null ? _s.dup() : "";
 	}
 
 	[CCode (cname = "clutter_actor_meta_set_enabled")]

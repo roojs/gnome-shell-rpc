@@ -19,6 +19,7 @@ compositor_sources = files(
   'rpc/helper/namespace.vala',
   'rpc/helper/SoundPlayer.vala',
   'rpc/helper/Background.vala',
+  'rpc/helper/BackgroundImageCache.vala',
   'rpc/helper/BackgroundActor.vala',
   'rpc/helper/Context.vala',
   'rpc/helper/Settings.vala',
@@ -36,6 +37,8 @@ compositor_sources = files(
   'rpc/helper/ClutterThreads.vala',
   'rpc/helper/Constraint.vala',
   'rpc/helper/St.vala',
+  'rpc/helper/ThemeContext.vala',
+  'rpc/helper/Icon.vala',
   'rpc/helper/ClutterActor.vala',
   'rpc/helper/ClutterStage.vala',
   'rpc/helper/shader-uniform-apply.c',
@@ -406,6 +409,7 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/AlignConstraint.override.vala',
   'gi-stub/overrides-clutter/BindConstraint.override.vala',
   'gi-stub/overrides-clutter/BrightnessContrastEffect.override.vala',
+  'gi-stub/overrides-clutter/DesaturateEffect.override.vala',
   'gi-stub/overrides-clutter/Constraint.override.vala',
   'gi-stub/overrides-clutter/ActorBox.override.vala',
   'gi-stub/overrides-clutter/ClickAction.override.vala',
@@ -723,6 +727,8 @@ st_generated = custom_target('St_generated.vala',
     'gi-stub/overrides-st/Theme.override.vala',
     'gi-stub/overrides-st/ThemeContext.override.vala',
     'gi-stub/overrides-st/Adjustment.override.vala',
+    'gi-stub/overrides-st/Icon.override.vala',
+    'gi-stub/overrides-st/Widget.override.vala',
     'gi-stub/overrides-st/FocusManager.override.vala',
     'gi-stub/overrides-st/Settings.override.vala',
     'gi-stub/overrides-st/Viewport.override.vala',
@@ -806,6 +812,7 @@ shell_gi_lib = shared_library(
     'shell-gi/WM.vala',
     'shell-gi/Global.vala',
     'shell-gi/TimeChangeSource.vala',
+    'shell-gi/CameraMonitor.vala',
   ),
   dependencies: [
     ocrpc_dep,
@@ -1109,7 +1116,9 @@ if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root !
   # Legacy vendored libshell/libst — optional comparison only (0.7.7 default host is thin).
 endif
 
-mutter_rpc_vala_args = mutter_vala_args + ocrpc_vala_args
+mutter_rpc_vala_args = mutter_vala_args + ocrpc_vala_args + [
+  '--pkg=st-widget-peer',
+]
 if rpc_gdb_spawn
   mutter_rpc_vala_args += '--define=GSR_GDB_SPAWN'
 endif
@@ -1124,6 +1133,9 @@ mutter_rpc = executable('mutter-rpc',
     dependency('gobject-introspection-1.0'),
   ],
   vala_args: mutter_rpc_vala_args,
+  c_args: [
+    '-I' + meson.project_source_root() / 'vapi',
+  ],
   link_args: gnome_shell_st_link_args,
   build_rpath: compositor_rpath,
   export_dynamic: true,

@@ -36,7 +36,7 @@
 				OLLMrpc.args("tsb", device_lease, device_name, edition_mode));
 		}
 
-		public string get_pad_button_label(
+		public owned string get_pad_button_label(
 			Clutter.InputDevice pad,
 			int button_number
 		) {
@@ -51,10 +51,14 @@
 			var response = GnomeShellRpc.call_value(
 				"Helper-Display.get_pad_button_label", this,
 				OLLMrpc.args("tsi", device_lease, device_name, button_number));
-			return response.retval.get_string();
+			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
+				return "";
+			}
+			unowned string? _s = response.retval.get_string();
+			return _s != null ? _s.dup() : "";
 		}
 
-		public string get_pad_feature_label(
+		public owned string get_pad_feature_label(
 			Clutter.InputDevice pad,
 			PadFeatureType feature,
 			PadDirection direction,
@@ -72,7 +76,11 @@
 				"Helper-Display.get_pad_feature_label", this,
 				OLLMrpc.args("tsiui", device_lease, device_name,
 					(int) feature, (uint) direction, feature_number));
-			return response.retval.get_string();
+			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
+				return "";
+			}
+			unowned string? _s = response.retval.get_string();
+			return _s != null ? _s.dup() : "";
 		}
 
 		/**

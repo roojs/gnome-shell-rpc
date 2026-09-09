@@ -36,5 +36,19 @@
 				themes_by_lid = new Gee.HashMap<int, Theme>();
 			}
 			themes_by_lid.set((int) this.rpc_lid, theme);
+			string application_uri;
+			string theme_uri;
+			string default_uri;
+			theme.construct_uris(
+				out application_uri, out theme_uri, out default_uri);
+			GnomeShellRpc.call_value(
+				"Helper-ThemeContext.set_theme",
+				this,
+				OLLMrpc.args(
+					"sssas",
+					application_uri,
+					theme_uri,
+					default_uri,
+					theme.stylesheet_uris()));
 			this.changed();
 		}

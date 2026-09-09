@@ -9,7 +9,7 @@
 # TEMPORARY — revisit / undeny when implementing (keep this block together)
 # ************************************************************************
 
-# BindConstraint.override — client-local construct props until lease props safe.
+# BindConstraint.override — hand construct props; sync set_* after mint.
 # Lease via Clutter-BindConstraint.new (Helper.Constraint Ffi mint).
 BindConstraint.new
 BindConstraint.source
@@ -31,8 +31,11 @@ SnapConstraint.to_edge
 SnapConstraint.get_edges
 SnapConstraint.set_edges
 
-# AlignConstraint.override — leaf mint via Clutter-AlignConstraint.new.
+# AlignConstraint.override — leaf mint + pivot_point Graphene.Point relay.
 AlignConstraint.new
+AlignConstraint.pivot_point
+AlignConstraint.get_pivot_point
+AlignConstraint.set_pivot_point
 
 # Generator: GString returns (GLib.String maps poorly).
 FrameClock.get_max_render_time_debug_info
@@ -62,17 +65,28 @@ ActorBox.scale
 ActorBox.interpolate
 ActorBox.union
 
-# MUST IMPLEMENT: Content = actor paint delegate. Client-local for mock boot
-# (BackgroundContent attach/props only). Undeny + RPC get/set_content when
-# live nested paint needs compositor-owned Content. Actor.override + BackgroundContent.
+# Actor.override — lease walk (St-Widget → Helper-Actor.create); layout relay.
+Actor.new
+Actor.get_preferred_width
+Actor.get_preferred_height
+Actor.allocate
+
+# Actor.override — content RPC when Content.rpc_lid set; else local identity.
 Actor.get_content
 Actor.set_content
 
-# Actor.override — visible via is_visible/show/hide; constraints timing vs lease.
+# Actor.override — pivot_point Graphene.Point (methods denied: C symbol clash
+# with GObject property accessors).
+Actor.pivot_point
+Actor.get_pivot_point
+Actor.set_pivot_point
+
+# Actor.override — visible via is_visible/show/hide; constraints/actions timing.
 Actor.visible
 Actor.constraints
 Actor.get_constraints
 Actor.effect
+Actor.actions
 
 # Actor.override — GJS LayoutManager subclasses have no rpc_lid.
 Actor.layout_manager
@@ -111,6 +125,12 @@ PipelineNode.new
 # GIR ctor returns Effect*; lease-on-construct is hand in
 # BrightnessContrastEffect.override (setters must not RPC during wire decode).
 BrightnessContrastEffect.new
+
+# DesaturateEffect.override — GIR new(factor); GJS uses empty / { name }.
+DesaturateEffect.new
+DesaturateEffect.factor
+DesaturateEffect.get_factor
+DesaturateEffect.set_factor
 
 # GLib.Closure is not a memcpy blob.
 BindingPool.install_closure

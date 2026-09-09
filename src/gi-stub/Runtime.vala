@@ -86,18 +86,32 @@ namespace GnomeShellRpc.GiStub
 				} else {
 					GLib.warning("Live.Invoke id=%d has no handler", call.id);
 				}
+				/*
+				 * Defer reply to Idle on the default context. Helper-Actor
+				 * allocate hooks are themselves idle-deferred on the server so
+				 * invoke usually arrives when the client is not inside
+				 * call_sync. Replying with call_sync from on_read during an
+				 * outer call_sync hits nested call_sync.
+				 */
 				var reply_id = (uint64) call.reply_id;
 				GLib.Idle.add(() => {
-					if (extra == null) {
-						GnomeShellRpc.call_value("RPC-Live-Callback.reply", null,
-							OLLMrpc.args("t", reply_id));
-						return GLib.Source.REMOVE;
+					try {
+						if (extra == null) {
+							GnomeShellRpc.call_value(
+								"RPC-Live-Callback.reply", null,
+								OLLMrpc.args("t", reply_id));
+						} else {
+							var reply = OLLMrpc.args("t", reply_id);
+							foreach (var v in extra) {
+								reply.add(v);
+							}
+							GnomeShellRpc.call_value(
+								"RPC-Live-Callback.reply", null, reply);
+						}
+					} catch (GLib.Error e) {
+						GLib.critical("Live.Invoke reply id=%d: %s",
+							call.id, e.message);
 					}
-					var reply = OLLMrpc.args("t", reply_id);
-					foreach (var v in extra) {
-						reply.add(v);
-					}
-					GnomeShellRpc.call_value("RPC-Live-Callback.reply", null, reply);
 					return GLib.Source.REMOVE;
 				});
 			});
@@ -263,23 +277,9 @@ namespace GnomeShellRpc.GiStub
 		internal static OLLMrpc.Response do_call(OLLMrpc.Request request) throws GLib.Error
 		{
 			Runtime.register();
-
-			OLLMrpc.Response? response = null;
-			GLib.Error? call_error = null;
-			var call_loop = new GLib.MainLoop();
-			Runtime.client.call.begin(request, (obj, res) => {
-				try {
-					response = Runtime.client.call.end(res);
-				} catch (GLib.Error e) {
-					call_error = e;
-				}
-				call_loop.quit();
-			});
-			call_loop.run();
-			if (call_error != null) {
-				throw call_error;
-			}
-			return response;
+			/* call_sync: private MainContext — do not nest default MainLoop
+			 * (that re-enters Gvc/Pulse mid-stub; volume.js _output race). */
+			return Runtime.client.call_sync(request);
 		}
 	}
 }

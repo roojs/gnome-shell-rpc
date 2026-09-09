@@ -40,3 +40,40 @@
 				this.custom_stylesheet_files.remove_at(index);
 			}
 		}
+
+		/**
+		 * Wire URIs for {@link GnomeShellRpc.Rpc.Helper.ThemeContext.set_theme}.
+		 */
+		public string[] stylesheet_uris()
+		{
+			string[] uris = {};
+			foreach (var file in this.custom_stylesheet_files) {
+				var uri = file.get_uri();
+				if (uri != null && uri != "") {
+					uris += uri;
+				}
+			}
+			return uris;
+		}
+
+		private static string file_uri(GLib.File? file)
+		{
+			if (file == null) {
+				return "";
+			}
+			var uri = file.get_uri();
+			return uri != null ? uri : "";
+		}
+
+		/**
+		 * Construct-prop URIs in Helper order: application, theme, default.
+		 */
+		public void construct_uris(
+			out string application_uri,
+			out string theme_uri,
+			out string default_uri
+		) {
+			application_uri = file_uri(this.application_stylesheet);
+			theme_uri = file_uri(this.theme_stylesheet);
+			default_uri = file_uri(this.default_stylesheet);
+		}

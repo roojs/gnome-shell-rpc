@@ -1036,7 +1036,16 @@ namespace $(ns)
 						stream.puts(@"			[CCode (cname = \"$(csym)\")]
 ");
 					}
-					stream.puts("			get {\n");
+					/* owned: get_string() must be copied before Response frees. */
+					var ret_tag = getter.get_return_type().get_tag();
+					if (
+						ret_tag == GI.TypeTag.UTF8
+						|| ret_tag == GI.TypeTag.FILENAME
+					) {
+						stream.puts("			owned get {\n");
+					} else {
+						stream.puts("			get {\n");
+					}
 					this.emit_call_values_body(
 						stream, ns, "\t\t\t\t", rpc, "this", getter, vt, false
 					);
@@ -1694,6 +1703,16 @@ namespace $(ns)
 						ret = ret + "?";
 					}
 				}
+				/* Copy UTF8 out of Response before it is freed (transfer-none cname). */
+				if (ret == "string") {
+					var rtag = fi.get_return_type().get_tag();
+					if (
+						rtag == GI.TypeTag.UTF8
+						|| rtag == GI.TypeTag.FILENAME
+					) {
+						ret = "owned string";
+					}
+				}
 			}
 			if (ret == "") {
 				this.gaps.add(new Gap() {
@@ -2154,6 +2173,52 @@ $(tab)}
 				return;
 			}
 
+			/*
+			 * libocrpc null UTF8/FILENAME OUT = int 0 (parallel to null
+			 * object → INVALID retval). Unpack before get_string().
+			 *
+			 * get_string() is unowned into Response; stock cnames are
+			 * transfer-none so Vala would return a dangling pointer after
+			 * Response is freed — dup into an owned string.
+			 */
+			if (
+				ti.get_tag() == GI.TypeTag.UTF8
+				|| ti.get_tag() == GI.TypeTag.FILENAME
+			) {
+				var src = "response.retval";
+				if (!is_return && assign_name != "") {
+					src = @"response.args.get($(value_idx.to_string()))";
+				}
+				if (is_return) {
+					stream.puts(indent + @"if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
+	return \"\";
+}
+unowned string? _s = $(src).get_string();
+return _s != null ? _s.dup() : \"\";
+");
+					return;
+				}
+				if (assign_name != "") {
+					stream.puts(indent + @"if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
+	$(assign_name) = \"\";
+} else {
+	unowned string? _s = $(src).get_string();
+	$(assign_name) = _s != null ? _s.dup() : \"\";
+}
+");
+					return;
+				}
+				stream.puts(indent + @"string __ret;
+if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
+	__ret = \"\";
+} else {
+	unowned string? _s = $(src).get_string();
+	__ret = _s != null ? _s.dup() : \"\";
+}
+");
+				return;
+			}
+
 			var get = "";
 			switch (ti.get_tag()) {
 				case GI.TypeTag.BOOLEAN:
@@ -2183,10 +2248,6 @@ $(tab)}
 					break;
 				case GI.TypeTag.DOUBLE:
 					get = "double";
-					break;
-				case GI.TypeTag.UTF8:
-				case GI.TypeTag.FILENAME:
-					get = "string";
 					break;
 				case GI.TypeTag.ARRAY:
 					switch (ti.get_param_type(0).get_tag()) {

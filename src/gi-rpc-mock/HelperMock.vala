@@ -201,6 +201,44 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
+				case "Helper-ThemeContext":
+					if (name == "set_theme") {
+						this.reply_void(request);
+						return true;
+					}
+					break;
+
+				case "Helper-Icon":
+					switch (name) {
+						case "set_gicon":
+						case "set_fallback_gicon":
+							this.reply_void(request);
+							return true;
+						case "get_gicon":
+						case "get_fallback_gicon":
+							this.reply_retval_s(request, "");
+							return true;
+					}
+					break;
+
+				case "Helper-Actor":
+					switch (name) {
+						case "create":
+							this.reply_args_lease(request, "St-Widget");
+							return true;
+						case "chain_allocate":
+							this.reply_void(request);
+							return true;
+						case "chain_get_preferred_width":
+						case "chain_get_preferred_height":
+							request.reply(new OLLMrpc.Response() {
+								id = request.id,
+								args = OLLMrpc.args("dd", 0.0, 0.0),
+							});
+							return true;
+					}
+					break;
+
 				case "St-FocusManager":
 					if (name == "get_for_stage") {
 						this.reply_retval_leased(request, boot.focus_manager);
@@ -243,6 +281,14 @@ namespace GnomeShellRpc.GiRpcMock
 							return true;
 					}
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
+					break;
+
+				case "Helper-BackgroundImageCache":
+					if (name == "load") {
+						this.reply_retval_leased(request,
+							HelperMock.mint("Meta-BackgroundImage"));
+						return true;
+					}
 					break;
 
 				case "Helper-BackgroundActor":

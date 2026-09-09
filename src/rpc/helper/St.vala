@@ -29,7 +29,9 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''St-*.new'' — {@code g_object_new} of the glib type for the wire prefix.
+		 * ''St-*.new'' — {@code g_object_new} of the glib type for the wire
+		 * prefix. GJS {@code St.Widget} subclasses mint
+		 * {@code Helper-Actor.create} from the client Actor parent-walk.
 		 *
 		 * @param request inbound construct (no lease)
 		 */
