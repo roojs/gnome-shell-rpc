@@ -151,3 +151,46 @@ For launch/minimize exercises against a running compositor, use `meta-smoke.js` 
 - **Do not** `meson install` to `/usr` on a machine where you rely on stock mutter.
 - **Do not** prepend our typelib path on the host `/usr/bin/gnome-shell`.
 - Nested work only: `dbus-run-session` + `./build/src/mutter-rpc --wayland --nested`.
+
+### Host desktop can still freeze
+
+`--nested` makes `mutter-rpc` a **Wayland client of your real GNOME Shell**.
+A hang / input grab / protocol storm in the nested compositor often wedges
+**host** input too — that is expected for this setup, not a separate “host
+shell crash” bug. There is no flag that fully isolates nested mutter from
+the session it nests in.
+
+**Cheap habits**
+
+```bash
+# Always bound the run (kills the tree if you can still schedule)
+timeout 45 dbus-run-session ./build/src/mutter-rpc --debug --wayland --nested
+```
+
+Keep an **SSH session** open (phone / other machine) before risky proves:
+
+```bash
+pkill -9 mutter-rpc; pkill -9 gnome-shell-rpc
+```
+
+**When the host UI is dead**
+
+1. **Ctrl+Alt+F3** (or F4…) — leave the graphical VT.
+2. Log in on the text VT (or use the SSH session).
+3. `pkill -9 mutter-rpc; pkill -9 gnome-shell-rpc`
+4. **Ctrl+Alt+F2** (or whatever VT GDM/GNOME uses) — back to the desktop.
+
+If the graphical VT itself is wedged past that, reboot from the text VT /
+SSH (`sudo reboot`).
+
+**Stronger isolation (when nested under GNOME keeps biting)**
+
+| Approach | Isolation | Cost |
+|----------|-----------|------|
+| Second user on another VT, full `mutter --wayland` session (not nested) | High — own DRM seat | Need a second seat / login; not the same as `--nested` |
+| VM (Boxes / QEMU) with the tree mounted | Highest | Slower; 3D may be ugly |
+| Nest under a minimal host (e.g. Weston) instead of GNOME | Medium — GNOME stays out of the path | Different host compositor |
+
+There is no easy “run nested GNOME under GNOME but never freeze the host”
+option. Prefer `timeout` + SSH/VT kill; use a VM when you need the desktop
+to stay usable no matter what the prove does.

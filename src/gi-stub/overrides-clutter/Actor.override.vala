@@ -143,7 +143,13 @@
 				} finally {
 					Actor.layout_relay_target = null;
 				}
-				if (Actor.layout_relay_chain) {
+				var chain = Actor.layout_relay_chain;
+				GLib.message(
+					"DBG layout_relay preferred_width type=%s name=%s chain=%s min=%.1f nat=%.1f",
+					self.get_type().name(),
+					self.get_name() ?? "(null)",
+					chain.to_string(), min, nat);
+				if (chain) {
 					return null;
 				}
 				return OLLMrpc.args("dd", (double) min, (double) nat);
@@ -160,7 +166,13 @@
 				} finally {
 					Actor.layout_relay_target = null;
 				}
-				if (Actor.layout_relay_chain) {
+				var chain = Actor.layout_relay_chain;
+				GLib.message(
+					"DBG layout_relay preferred_height type=%s name=%s chain=%s min=%.1f nat=%.1f",
+					self.get_type().name(),
+					self.get_name() ?? "(null)",
+					chain.to_string(), min, nat);
+				if (chain) {
 					return null;
 				}
 				return OLLMrpc.args("dd", (double) min, (double) nat);
@@ -179,7 +191,14 @@
 				} finally {
 					Actor.layout_relay_target = null;
 				}
-				if (Actor.layout_relay_chain) {
+				var chain = Actor.layout_relay_chain;
+				GLib.message(
+					"DBG layout_relay allocate type=%s name=%s chain=%s box=(%.1f,%.1f)-(%.1f,%.1f)",
+					self.get_type().name(),
+					self.get_name() ?? "(null)",
+					chain.to_string(),
+					box.x1, box.y1, box.x2, box.y2);
+				if (chain) {
 					return OLLMrpc.args("b", true);
 				}
 				return OLLMrpc.args("b", false);

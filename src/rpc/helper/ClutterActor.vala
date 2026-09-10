@@ -34,20 +34,27 @@ namespace GnomeShellRpc.Rpc.Helper
 			this.preferred_width_hook.emit(OLLMrpc.args("td",
 				this.preferred_width_hook.connection.export(this),
 				(double) for_height));
-			GLib.message(
-				"DBG Helper.Actor.preferred_width emit END hook_id=%d reply_id=%d replied=%s",
-				this.preferred_width_hook.id,
-				this.preferred_width_hook.reply_id,
-				this.preferred_width_hook.replied.to_string());
 			if (this.preferred_width_hook.reply_args.size < 2) {
 				base.get_preferred_width(
 					for_height, out min_width_p, out natural_width_p);
+				GLib.message(
+					"DBG Helper.Actor.preferred_width emit END hook_id=%d reply_id=%d replied=%s path=base min=%.1f nat=%.1f",
+					this.preferred_width_hook.id,
+					this.preferred_width_hook.reply_id,
+					this.preferred_width_hook.replied.to_string(),
+					min_width_p, natural_width_p);
 				return;
 			}
 			min_width_p = (float) this.preferred_width_hook.reply_args
 				.get(0).get_double();
 			natural_width_p = (float) this.preferred_width_hook.reply_args
 				.get(1).get_double();
+			GLib.message(
+				"DBG Helper.Actor.preferred_width emit END hook_id=%d reply_id=%d replied=%s path=js min=%.1f nat=%.1f",
+				this.preferred_width_hook.id,
+				this.preferred_width_hook.reply_id,
+				this.preferred_width_hook.replied.to_string(),
+				min_width_p, natural_width_p);
 		}
 
 		public override void get_preferred_height(
@@ -66,20 +73,27 @@ namespace GnomeShellRpc.Rpc.Helper
 			this.preferred_height_hook.emit(OLLMrpc.args("td",
 				this.preferred_height_hook.connection.export(this),
 				(double) for_width));
-			GLib.message(
-				"DBG Helper.Actor.preferred_height emit END hook_id=%d reply_id=%d replied=%s",
-				this.preferred_height_hook.id,
-				this.preferred_height_hook.reply_id,
-				this.preferred_height_hook.replied.to_string());
 			if (this.preferred_height_hook.reply_args.size < 2) {
 				base.get_preferred_height(
 					for_width, out min_height_p, out natural_height_p);
+				GLib.message(
+					"DBG Helper.Actor.preferred_height emit END hook_id=%d reply_id=%d replied=%s path=base min=%.1f nat=%.1f",
+					this.preferred_height_hook.id,
+					this.preferred_height_hook.reply_id,
+					this.preferred_height_hook.replied.to_string(),
+					min_height_p, natural_height_p);
 				return;
 			}
 			min_height_p = (float) this.preferred_height_hook.reply_args
 				.get(0).get_double();
 			natural_height_p = (float) this.preferred_height_hook.reply_args
 				.get(1).get_double();
+			GLib.message(
+				"DBG Helper.Actor.preferred_height emit END hook_id=%d reply_id=%d replied=%s path=js min=%.1f nat=%.1f",
+				this.preferred_height_hook.id,
+				this.preferred_height_hook.reply_id,
+				this.preferred_height_hook.replied.to_string(),
+				min_height_p, natural_height_p);
 		}
 
 		public override void allocate(Clutter.ActorBox box)
@@ -95,16 +109,18 @@ namespace GnomeShellRpc.Rpc.Helper
 				this.allocate_hook.connection.export(this),
 				(double) box.x1, (double) box.y1,
 				(double) box.x2, (double) box.y2));
+			var chain = this.allocate_hook.reply_args.size >= 1
+				&& this.allocate_hook.reply_args.get(0).type()
+					== GLib.Type.BOOLEAN
+				&& this.allocate_hook.reply_args.get(0).get_boolean();
 			GLib.message(
-				"DBG Helper.Actor.allocate emit END hook_id=%d reply_id=%d replied=%s args=%d",
+				"DBG Helper.Actor.allocate emit END hook_id=%d reply_id=%d replied=%s path=%s box=(%.1f,%.1f)-(%.1f,%.1f)",
 				this.allocate_hook.id,
 				this.allocate_hook.reply_id,
 				this.allocate_hook.replied.to_string(),
-				this.allocate_hook.reply_args.size);
-			if (this.allocate_hook.reply_args.size >= 1
-					&& this.allocate_hook.reply_args.get(0).type()
-						== GLib.Type.BOOLEAN
-					&& this.allocate_hook.reply_args.get(0).get_boolean()) {
+				chain ? "base" : "js",
+				box.x1, box.y1, box.x2, box.y2);
+			if (chain) {
 				base.allocate(box);
 				return;
 			}

@@ -1,12 +1,55 @@
 # Layout relay vs `call_sync` reentrancy (chrome piled top-left)
 
-**Status:** 🛑 Still Hanging after `remove_child` live replies (replied id=47); `gnome-shell-rpc` process blocks indefinitely.  
-**OPC:** ✔️ Same-pump nested `call_sync` with per-frame IO watch + mainloop landed.  
+**Status:** 🛑 booting (call_poll / concur) but chrome still piled left  
+**OPC:** ✔️ nested `call_poll` mid-emit path landed (boot reaches `notify_ready`)  
 **Hit:** 2026-09-09 nested Wayland (`mutter-rpc --wayland --nested`)  
 **Plan:** T-030 chrome layout  
 
 **OPC proposal / fix:** `OLLMchat/docs/bugs/2026-09-09-call-sync-mid-wait-live-invoke-flow.md`  
 **Repro:** `tests/call-sync-repro/` — see README
+
+---
+
+## 2026-09-10 evening — piled-left with boot alive
+
+Boot no longer hangs (`Meta-Context.notify_ready` in
+`~/.cache/gnome-shell-rpc/*.debug.log` ~17:30). Visual: top bar Apps /
+clock / indicators still stuffed left.
+
+### Log prove (existing DBG, no rebuild)
+
+From `mutter-rpc` + `org.gnome.ShellRpc` debug logs:
+
+| Counter | Value | Meaning |
+|---------|------:|---------|
+| allocate `emit END` | 42 | all `replied=true args=1` |
+| allocate chain boolean | **42 / 42 true** | server always `base.allocate` |
+| invoke `REPLY … extra=null` | 223 | preferred chain (empty reply) |
+| invoke `REPLY … extra=1` | 42 | allocate boolean only |
+| invoke `REPLY … extra=2` | **0** | **no JS preferred `dd` values ever** |
+
+Panel (`vendor/.../panel.js`) has `vfunc_allocate` that places
+`_leftBox` / `_centerBox` / `_rightBox`. Hook path never reaches it:
+client Vala `self.allocate` / `get_preferred_*` hit the
+`layout_relay_target` chain sentinel → server stock `BoxLayout` packs
+children from the left → exact piled-left chrome.
+
+Suspect next: Vala virtual call from the hook does **not** enter GJS
+`vfunc_*` (Class slot vs Vala method), not a missing Panel mint.
+
+Sharper DBG added (rebuild to use):
+
+- client `DBG layout_relay {preferred_width,preferred_height,allocate} type=… name=… chain=…`
+- server `path=base|js` on preferred/allocate END
+
+```bash
+rg 'layout_relay allocate|path=js|path=base' \
+  ~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log \
+  | head -80
+```
+
+Expect today: all `chain=true` / `path=base`, including GType names that
+look like Panel / UiActor subclasses.
 
 ---
 
