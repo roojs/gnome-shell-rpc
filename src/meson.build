@@ -85,12 +85,9 @@ mutter_rpc_gir_name = 'mutter-rpc-16'
 gnome_shell_client_libdir = meson.project_build_root() / 'gnome-shell' / 'client-libs'
 gnome_shell_client_typelibdir = get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != '' ? gnome_shell_client_libdir : ''
 
-gnome_shell_pkglibdir = '/usr/lib/gnome-shell'
-gnome_shell_girdir = '/usr/share/gnome-shell'
-
-# Stock libst for mutter-rpc Gi.register("St") — same pkglibdir as typelib.
-# Link by absolute path so --no-as-needed is not split from -lst-16 by the linker.
-gnome_shell_st_lib = gnome_shell_pkglibdir / 'libst-16.so'
+# Stock pkglibdir / libst: server-only (mutter-rpc links distro libst-16.so).
+# Client links libst-rpc-16.so; typelibs are build-tree (Meta/Clutter/St/Shell RPC).
+# Distro girdir is St-16.gir schema input + g-ir-compiler include path — not client typelibdir.
 gnome_shell_st_link_args = [
   '-Wl,--push-state',
   '-Wl,--no-as-needed',
@@ -868,9 +865,12 @@ shell_gi_lib = shared_library(
   install: false,
 )
 
+# Do not pass the Vala-generated GIR as custom_target input via
+# meson.current_build_dir() / 'Shell-16.gir' — Meson cannot turn that into a
+# File (warning → hard error in 2.0), and Ninja then depends on an absolute
+# path with no rule. Same pattern as Meta/St typelibs: path in command + depends.
 shell_gi_typelib = custom_target(
   'Shell-16.typelib',
-  input: meson.current_build_dir() / 'Shell-16.gir',
   output: 'Shell-16.typelib',
   command: [
     g_ir_compiler,
@@ -879,7 +879,7 @@ shell_gi_typelib = custom_target(
     '--includedir', mutter_typelib_dir,
     '--includedir', gnome_shell_girdir,
     '--includedir', meson.current_build_dir(),
-    '@INPUT@',
+    meson.current_build_dir() / 'Shell-16.gir',
   ],
   depends: [shell_gi_lib],
   build_by_default: true,
@@ -903,14 +903,18 @@ ollmrpc_typelib = custom_target(
 )
 
 # 0.7.7 S1 — JS gresource (vendor tree + substituted misc/config.js).
+# Vendor root is required and resolved in gnome-shell/meson.build (auto-detect).
 gnome = import('gnome')
 vendor_js_dir = gnome_shell_vendor_root / 'js'
 vendor_data_dir = gnome_shell_vendor_root / 'data'
+# Upstream path is build-aux/ (not meson/) as of current gnome-shell.
 generate_app_list = find_program(
-  gnome_shell_vendor_root / 'meson' / 'generate-app-list.py',
+  gnome_shell_vendor_root / 'build-aux' / 'generate-app-list.py',
 )
 subdir('shell-js')
 st_gir = gnome_shell_girdir / 'St-16.gir'
+# Typelib is ours (→ libst-rpc-16.so). Distro St-16.gir is schema only; includedir
+# resolves GIR imports. Do not point shared-library at stock libst.
 st_rpc_typelib = custom_target('St-16.typelib',
   output: 'St-16.typelib',
   command: [

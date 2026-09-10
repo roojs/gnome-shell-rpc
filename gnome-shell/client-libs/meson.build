@@ -247,7 +247,7 @@ message(
 
 vendor_js_dir = gnome_shell_vendor_root / 'js'
 vendor_data_dir = gnome_shell_vendor_root / 'data'
-generate_app_list = find_program(gnome_shell_vendor_root / 'meson' / 'generate-app-list.py')
+generate_app_list = find_program(gnome_shell_vendor_root / 'build-aux' / 'generate-app-list.py')
 
 gio_unix_dep = dependency('gio-unix-2.0')
 atk_bridge_dep = dependency('atk-bridge-2.0')

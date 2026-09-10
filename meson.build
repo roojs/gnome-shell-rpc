@@ -40,7 +40,11 @@ ocrpc_libdir = get_option('ocrpc_libdir')
 ocrpc_lib = ocrpc_libdir / 'libocrpc.so'
 ocrpc_vapi = ocrpc_libdir / 'ocrpc.vapi'
 if not fs.exists(ocrpc_lib) or not fs.exists(ocrpc_vapi)
-  warning('libocrpc not found at @0@ — build OLLMchat libocrpc first'.format(ocrpc_libdir))
+  error(
+    'libocrpc not found under @0@ (need libocrpc.so + ocrpc.vapi).\n'.format(ocrpc_libdir) +
+    '  Build OLLMchat libocrpc, then:\n' +
+    '    meson setup build -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc',
+  )
 endif
 
 ocrpc_vala_args = [

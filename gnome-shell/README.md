@@ -10,9 +10,9 @@ Build integration for upstream GNOME Shell. **`vendor/gnome-shell/`** is a gitig
 
 ## Runtime JavaScript
 
-**Packages depend on distro `gnome-shell`.** **`gnome-shell-rpc`** (shell binary) loads JS from the installed gnome-shell package (e.g. `/usr/share/gnome-shell/js/`), not from `vendor/`. We ship **`libmutter-rpc`**, **`mutter-rpc`**, and **`gnome-shell-rpc`** — not upstream `js/`.
+**Prefer distro** `/usr/share/gnome-shell/js` when present. If that tree is missing, configure **falls back to `vendor/gnome-shell/js`** (dev machines without a full gnome-shell JS install). Override with **`-Dgnome_shell_js_dir=`** or runtime **`GNOME_SHELL_JS_DIR`**. We still do **not** install or ship upstream JS from vendor into packages.
 
-Prefer **not** to touch, override, or install upstream JS unless a later phase proves it unavoidable.
+Stock **`libst-16.so`** (server link) and **`St-16.gir`** (schema for client stubs) must exist under `/usr/lib/gnome-shell` and `/usr/share/gnome-shell` — if not, **`meson setup` errors** with `sudo apt install gnome-shell`. Distro **St typelib is not** what the RPC client loads; that is **`build/src/St-16.typelib` → `libst-rpc-16.so`**.
 
 ## Fetch (build / CI)
 
@@ -27,12 +27,14 @@ Prefer **not** to touch, override, or install upstream JS unless a later phase p
 ## Meson
 
 ```bash
-meson setup build                                    # runtime JS dir; vendor off by default
+./scripts/gnome-shell-fetch.sh                       # once — required for JS gresource
+meson setup build                                    # auto-detects vendor/gnome-shell/
 meson setup build -Dgnome_shell_js_dir=/path/to/js  # override runtime JS path
-meson setup build -Dvendor_gnome_shell=enabled -Dgnome_shell_client_libs=enabled   # legacy vendored client libs only
+meson setup build -Dvendor_gnome_shell=enabled       # Meson runs fetch if vendor missing
+meson setup build -Dvendor_gnome_shell=enabled -Dgnome_shell_client_libs=enabled   # + legacy client libs
 ```
 
-Configure prints **`gnome-shell runtime JS dir:`** (distro — not installed by us). Vendor checkout is **off by default** (`-Dvendor_gnome_shell=disabled`). **`gjs-embed`** uses the runtime path in GJS `search-path` (**`GNOME_SHELL_JS_DIR`** env overrides at run time).
+Configure prints **`gnome-shell vendor root:`**, stock pkglibdir/girdir, and **`gnome-shell runtime JS dir:`** (with source: distro / vendor / override). Default vendor mode is **`auto`**. **`gjs-embed`** uses the runtime path in GJS `search-path` (**`GNOME_SHELL_JS_DIR`** env overrides at run time).
 
 **Server St (0.7.6 Phase B):** `mutter-rpc` uses **stock** `/usr/lib/gnome-shell/libst-16.so` + `St-16.typelib` — same pkglibdir as Gvc. No vendored server build.
 

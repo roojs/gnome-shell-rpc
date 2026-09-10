@@ -52,15 +52,17 @@ meson setup build -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc
 ninja -C build
 ```
 
-Vendor checkout is **off by default** (`-Dvendor_gnome_shell=disabled`). Enable only for legacy client-lib experiments:
+Vendor checkout is **auto** by default: if `vendor/gnome-shell/` exists it is used; if missing, `meson setup` errors with fetch instructions. Stock **`libst-16` / St GIR** still come from distro **`gnome-shell`** — configure fails with `apt install gnome-shell` if those files are absent. Runtime JS prefers distro, else falls back to vendor.
 
 ```bash
-meson setup build -Dvendor_gnome_shell=enabled -Dgnome_shell_client_libs=enabled --reconfigure
-meson setup build -Dgnome_shell_vendor_refresh=true --reconfigure   # refresh vendor pin
-./scripts/gnome-shell-fetch.sh --refresh                             # same, manual
+./scripts/gnome-shell-fetch.sh                                       # once
+meson setup build -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc
+meson setup build -Dvendor_gnome_shell=enabled                       # Meson runs fetch if missing
+meson setup build -Dgnome_shell_client_libs=enabled --reconfigure    # legacy client-libs
+./scripts/gnome-shell-fetch.sh --refresh                             # refresh vendor pin
 ```
 
-See [`gnome-shell/README.md`](../gnome-shell/README.md). Meson prints **`gnome-shell runtime JS dir:`** at configure (from distro layout, not vendor). Override: **`-Dgnome_shell_js_dir=…`** or runtime **`GNOME_SHELL_JS_DIR`**.
+See [`gnome-shell/README.md`](../gnome-shell/README.md). Override runtime JS: **`-Dgnome_shell_js_dir=…`** or **`GNOME_SHELL_JS_DIR`**.
 
 Main artifacts under `build/src/`:
 

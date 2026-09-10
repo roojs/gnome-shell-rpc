@@ -8,8 +8,8 @@ option(
 option(
   'vendor_gnome_shell',
   type: 'feature',
-  value: 'disabled',
-  description: 'Fetch vendored upstream gnome-shell under vendor/gnome-shell/ (legacy client-libs only)',
+  value: 'auto',
+  description: 'Vendored upstream gnome-shell under vendor/gnome-shell/ (required for JS gresource). auto: use if present; enabled: fetch if missing; disabled: refuse',
 )
 
 option(
