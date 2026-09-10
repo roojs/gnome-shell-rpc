@@ -63,7 +63,8 @@ namespace GnomeShellRpc.Rpc
 
 			this.service.incoming.connect((conn) => {
 				GLib.debug("client connected on %s", this.socket_path);
-				var connection = new OLLMrpc.Transport.Connection(conn) {
+				/* Polling Connection: Hook.emit can read mid-on_input_ready. */
+				var connection = new GnomeShellRpc.Rpc.Connection(conn) {
 					live_handles = this.live_handles,
 				};
 				if (this.buffer_listen != null) {

@@ -85,6 +85,7 @@ endif
 subdir('gnome-shell')
 subdir('vapi')
 subdir('src')
+subdir('tests')
 
 if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != ''
   subdir('gnome-shell/client-libs')

@@ -80,6 +80,9 @@ namespace GnomeShellRpc.GiStub
 				debug = false,
 			};
 			Runtime.client.invoke.connect((call) => {
+				GLib.message(
+					"DBG invoke ENTER id=%d reply_id=%d",
+					call.id, call.reply_id);
 				Gee.ArrayList<GLib.Value?>? extra = null;
 				if (Runtime.handlers != null && Runtime.handlers.has_key(call.id)) {
 					extra = Runtime.handlers.get(call.id).handler(call);
@@ -87,33 +90,36 @@ namespace GnomeShellRpc.GiStub
 					GLib.warning("Live.Invoke id=%d has no handler", call.id);
 				}
 				/*
-				 * Defer reply to Idle on the default context. Helper-Actor
-				 * allocate hooks are themselves idle-deferred on the server so
-				 * invoke usually arrives when the client is not inside
-				 * call_sync. Replying with call_sync from on_read during an
-				 * outer call_sync hits nested call_sync.
+				 * Reply in-flow via call_poll. Nested call_poll is supported
+				 * (Live.Invoke mid-wait → RPC-Live-Callback.reply). Do not
+				 * Idle-defer or queue — default Idle never runs during a
+				 * sync poll burst and deadlocks Hook.emit.
 				 */
 				var reply_id = (uint64) call.reply_id;
-				GLib.Idle.add(() => {
-					try {
-						if (extra == null) {
-							GnomeShellRpc.call_value(
-								"RPC-Live-Callback.reply", null,
-								OLLMrpc.args("t", reply_id));
-						} else {
-							var reply = OLLMrpc.args("t", reply_id);
-							foreach (var v in extra) {
-								reply.add(v);
-							}
-							GnomeShellRpc.call_value(
-								"RPC-Live-Callback.reply", null, reply);
+				GLib.message(
+					"DBG invoke REPLY start id=%d reply_id=%llu extra=%s",
+					call.id, reply_id,
+					extra == null ? "null" : extra.size.to_string());
+				try {
+					if (extra == null) {
+						GnomeShellRpc.call_value(
+							"RPC-Live-Callback.reply", null,
+							OLLMrpc.args("t", reply_id));
+					} else {
+						var reply = OLLMrpc.args("t", reply_id);
+						foreach (var v in extra) {
+							reply.add(v);
 						}
-					} catch (GLib.Error e) {
-						GLib.critical("Live.Invoke reply id=%d: %s",
-							call.id, e.message);
+						GnomeShellRpc.call_value(
+							"RPC-Live-Callback.reply", null, reply);
 					}
-					return GLib.Source.REMOVE;
-				});
+					GLib.message(
+						"DBG invoke REPLY done id=%d reply_id=%llu",
+						call.id, reply_id);
+				} catch (GLib.Error e) {
+					GLib.critical("Live.Invoke reply id=%d: %s",
+						call.id, e.message);
+				}
 			});
 			Runtime.client.notification.connect((notif) => {
 				if (notif.method != "RPC-Live-Callback.unregister") {
@@ -277,9 +283,10 @@ namespace GnomeShellRpc.GiStub
 		internal static OLLMrpc.Response do_call(OLLMrpc.Request request) throws GLib.Error
 		{
 			Runtime.register();
-			/* call_sync: private MainContext — do not nest default MainLoop
-			 * (that re-enters Gvc/Pulse mid-stub; volume.js _output race). */
-			return Runtime.client.call_sync(request);
+			/* call_poll: block on socket poll without iterating the default
+			 * MainContext (avoids Gvc/Pulse mid-stub; volume.js _output race).
+			 * Nested call_poll is OK for Live.Invoke → reply. */
+			return Runtime.client.call_poll(request);
 		}
 	}
 }

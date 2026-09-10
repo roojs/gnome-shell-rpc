@@ -226,16 +226,6 @@ namespace GnomeShellRpc.GiRpcMock
 						case "create":
 							this.reply_args_lease(request, "St-Widget");
 							return true;
-						case "chain_allocate":
-							this.reply_void(request);
-							return true;
-						case "chain_get_preferred_width":
-						case "chain_get_preferred_height":
-							request.reply(new OLLMrpc.Response() {
-								id = request.id,
-								args = OLLMrpc.args("dd", 0.0, 0.0),
-							});
-							return true;
 					}
 					break;
 

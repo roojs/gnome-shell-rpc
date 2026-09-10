@@ -1,9 +1,65 @@
 # Layout relay vs `call_sync` reentrancy (chrome piled top-left)
 
-**Status:** ⏳ design — stop hacking; fix in **client library** (`GiStub.Runtime` + helpers)  
+**Status:** 🛑 Still Hanging after `remove_child` live replies (replied id=47); `gnome-shell-rpc` process blocks indefinitely.  
+**OPC:** ✔️ Same-pump nested `call_sync` with per-frame IO watch + mainloop landed.  
 **Hit:** 2026-09-09 nested Wayland (`mutter-rpc --wayland --nested`)  
 **Plan:** T-030 chrome layout  
-**OPC:** 🚫 out of scope — do **not** teach `libocrpc` nested `call_sync` for this
+
+**OPC proposal / fix:** `OLLMchat/docs/bugs/2026-09-09-call-sync-mid-wait-live-invoke-flow.md`  
+**Repro:** `tests/call-sync-repro/` — see README
+
+---
+
+## 2026-09-09 evening — expedition log (what went wrong)
+
+### Product goal (unchanged)
+
+Nested chrome lays out like in-process mutter: **JS preferred/allocate run against server peers** (panel full width, not piled). Thin peer = **Constraint-shaped relay** (`Hook.emit` → apply reply). Reentrancy lives at **one client Runtime boundary + one server relay boundary**, not inside widget peers.
+
+### What the expedition actually did (hacking)
+
+| Change | Intent | Result |
+|--------|--------|--------|
+| Client `sync_depth` + invoke **queue** | Avoid nested `call_sync` when Live.Invoke arrives mid-stub | **Deadlocks** with sync `Hook.emit` (server waits for reply; client will not run handler until outer call finishes) |
+| Peer Idle / cache / stamp-`set_allocation` / `queue_relayout` | “Fix” preferred without sync emit | Peer **owned layout** (not a relay); blank / wrong geometry |
+| Strip peer to sync emit like Constraint | User: stop owning allocate | Correct shape for the peer; still hung without a real boundary |
+| `DeferRelay` (schedule → then `can_sync_emit` / `emit` depth) | One server place for emit rules | API churned mid-flight; never a clear “off-stack emit that still returns preferred outs” |
+| **`RelayConnection`** (new class; `Listen` switched) | Count `request_depth` without OPC change | Extra class; duplicates `Connection.on_input_ready`; not agreed design |
+| Gate **Constraint** `update_allocation` on `can_sync_emit` | Stop mid-request Constraint emit hang on `get_width` | Touched a working path; still not a designed relay |
+| DesaturateEffect / Runtime debug spam | Diagnose nested `set_factor` | Side quest; not chrome layout |
+
+### Observed proves (evening)
+
+- Queue + sync emit → hang (no `notify_ready`).
+- Preferred cache + DeferRelay schedule → booted, **Cover/Header** asserts (message-list z-order, **not** panel geometry); panel still wrong / later blank.
+- Thin sync emit without queue → `get_width` → Constraint/layout emit → **nested reply** → server stuck in `Hook.emit` → **blank nested window**.
+
+### Working tree at stop → **code reverted**
+
+**2026-09-09 ~20:07:** expedition **code** restored to `HEAD` (Idle-in-peer `Helper.Actor`, Runtime Idle-defer reply, no `DeferRelay` / `RelayConnection`). Deleted untracked `src/rpc/RelayConnection.vala` and `src/rpc/helper/DeferRelay.vala`.
+
+Only this bug doc still carries the expedition log. Chrome may again be **visible but squashed** — that is the known baseline until a real design lands.
+
+### Working tree at stop (historical — evening before revert)
+
+Modified then: `Runtime.vala`, `ClutterActor.vala`, `Constraint.vala`, `Listen.vala`, `namespace.vala`, `meson.build`, this doc.  
+Untracked then: `src/rpc/RelayConnection.vala`, `src/rpc/helper/DeferRelay.vala`.
+
+
+### Design constraints that keep getting rediscovered
+
+1. **Preferred outs are synchronous** in Clutter. Idle-then-cache is not a relay; it is a second layout engine.
+2. **Client invoke queue + server sync `Hook.emit` on the request stack = deadlock.** Both halves of the bug doc are required; inventing only one half fails.
+3. **`Hook.emit` reply via `call_sync` while already inside `call_sync` = nested forbid.** Idle-only reply while the client private sync loop is running never drains → hang. Reply-path needs an explicit design (not ad-hoc Idle).
+4. **Peers must stay Constraint-shaped.** `Helper.Actor` / Constraint call a **shared emit path**; they must not grow flags, caches, or stamp-allocate policy.
+
+### Decision gate (answer before more code)
+
+Code is back at HEAD. Next step is design-only until you say otherwise.
+
+**A.** Done — reverted.  
+**B.** Write emit/reply contract next (no code).  
+**C.** Something else (say what).
 
 ---
 
@@ -27,7 +83,7 @@ Visual prove (panel not piled) is still incomplete while reentrancy races remain
 
 Nested shell: **JS layout vfuncs run against compositor peers**, so chrome sizes and positions like in-process mutter. Same shape as the working **Helper-Constraint** relay — not a special Clutter API we invent on stock types.
 
-Corridor: stubs only implement **real** GI symbols; layout hooks live on **our** `Helper.Actor` / client Runtime.
+Corridor: stubs only implement **real** GI symbols; layout hooks are **our** Helper peer + **relay/Runtime** boundaries (not stock Meta/St APIs).
 
 ---
 
@@ -64,12 +120,13 @@ Constraint hooks rarely need a storm of nested GI RPCs inside the handler. **Act
 | Side | Role |
 |------|------|
 | Client construct | Parent-walk lease: first Bin alias `St-Widget` → `mint_layout_relay()` → `Helper-Actor.create(ttt)` with preferred-w/h + allocate callbacks |
-| Server peer | `Helper.Actor : St.Widget` (real class size via `st-widget-peer`) |
-| Server vfuncs | Prefer / allocate → live hooks → client JS vfuncs → reply → `set_allocation` / preferred outs |
+| Server peer | `Helper.Actor : St.Widget` — Clutter lifecycle only; **no** IPC Idle flags |
+| Server relay | Off-request-stack `Hook.emit` + apply path (`set_allocation` / preferred outs) |
+| Client Runtime | Queue Live.Invoke while `sync_depth > 0` |
 | Client Vala fallthrough | Chain sentinel when no JS override (server bases; **no** chain RPC from inside the hook) |
 | Bin | `register_alias("St-Widget", typeof(Helper.Actor))` so Gi `add_child` accepts the peer |
 
-This part is correct as a **product design**. The failure is **when** the client runs the live handler relative to `call_sync`.
+Peer minting is correct. Failure modes are **when** invoke runs relative to `call_sync`, and **where** off-stack emit is scheduled (relay vs peer).
 
 ---
 
@@ -137,7 +194,7 @@ So OPC `call_sync` solved the **wrong main-loop** problem. Layout relay surfaces
 - Private `MainContext` for RPC IO only — default sources do not run mid-stub.
 - **Forbids nesting** — intentional fence after the volume fix.
 
-**🔷 Fixing chrome must not mean enabling nested `call_sync` in OPC.** The layout fix lives in `GiStub.Runtime` (+ Helper emit discipline).
+**🔷 Fixing chrome must not mean enabling nested `call_sync` in OPC.** The layout fix lives in **two symmetric boundary layers** (client Runtime queue + server relay dispatcher) — not in concrete `Helper.Actor` / Constraint subclasses.
 
 ### How Live.Invoke actually arrives
 
@@ -165,12 +222,12 @@ Client: will not run B until A completes
 → deadlock
 ```
 
-So a complete design needs **both**:
+So a complete design needs **both boundary halves** — and they must live in **one relay / Runtime layer each**, not copied into every peer widget:
 
-1. **Server:** never `Hook.emit` layout hooks on the stack of an in-flight client request (or any path that blocks that request’s reply). Re-enter allocate from Idle (or equivalent) so `set_allocation` still runs inside the Clutter allocate vfunc on the second entry.
-2. **Client:** never run a live handler that may `call_sync` while `do_call` / `call_sync` depth &gt; 0. Queue invoke → run handler + reply when depth returns to 0.
+1. **Server relay boundary:** never `Hook.emit` layout (or similar) hooks on the stack of an in-flight client request. Schedule emission off that stack (Idle today; could later be frame-clock / a dedicated queue) **inside the dispatcher**, then apply the reply (e.g. `set_allocation`) through a callback the peer provides.
+2. **Client Runtime boundary:** never run a live handler that may `call_sync` while `do_call` depth &gt; 0. Queue invoke → run handler + reply when depth returns to 0.
 
-Server Idle alone races: invoke can still land in the private `on_read` of an unrelated later `call_sync` (DesaturateEffect spam). Client queue alone deadlocks if the server emits on the request stack. **Both halves are the design; neither is a drive-by.**
+Server-only Idle inside `Helper.Actor` still races: invoke can land in the private `on_read` of an unrelated later `call_sync` (DesaturateEffect spam). Client queue alone deadlocks if the server emits on the request stack. **Both halves; one place each.**
 
 ---
 
@@ -179,57 +236,123 @@ Server Idle alone races: invoke can still land in the private `on_read` of an un
 | Attempt | Why it is insufficient |
 |---------|-------------------------|
 | Skip preferred hooks; always `base.get_preferred_*` | Avoids emit during preferred; **layout sizes wrong**; does not fix allocate reentrancy |
-| Sync allocate = `base.allocate` only; Idle re-enter for hook | Correct *server* half for Clutter `set_allocation` rules; **races** with client `call_sync` without a client queue |
+| Idle / `in_allocate_hook_emit` **inside** `Helper.Actor` | Right *idea* (emit off request stack); **wrong layer** — scatters IPC sync into the Clutter peer (see below) |
 | Idle-defer `RPC-Live-Callback.reply` only | Stops reply-inside-`call_sync`; **handler** still nests |
 | Chain sentinel for Vala fallthrough | Good; unrelated to JS allocate child RPCs |
 | Teach OPC nested `call_sync` | 🚫 User: out of bounds; also re-opens volume-style default-context hazards if done naïvely |
-| Call `set_allocation` from Idle alone | Clutter critical: allocation only inside allocate vfunc |
+| Call `set_allocation` from Idle alone (no re-enter allocate) | Clutter critical: allocation only inside allocate vfunc |
 
-Shipping a pile of these without the invariant below leaves CRITICAL spam and unverified chrome.
+Shipping Idle flags in each peer without a relay boundary leaves CRITICAL spam, unverified chrome, and duplicated protocol logic.
 
 ---
 
-## Designed solution (client library + helpers)
+## Review conclusion: one reentrancy layer (not in the peer)
+
+**🔷 Important distinction.** Pushing `Idle` re-entrancy and layout flags (`in_allocate_hook_emit`, `allocate_idle_queued`, …) into individual server subclasses like `Helper.Actor` **scatters IPC synchronization across the object model** instead of insulating peers behind a strict protocol boundary.
+
+If `Helper.Actor` must know *how* to bounce calls through `GLib.Idle` to satisfy RPC transport state, the boundary between the **protocol layer** and the **Clutter peer** is leaking.
+
+### Why not in `Helper.Actor`
+
+1. **Leaky layer boundary.** Concrete widgets should care about Clutter lifecycle (`allocate`, `get_preferred_*`). They should not own IPC reentrancy state.
+2. **Duplication risk.** Every new peer actor, constraint, or server-side hook subclass would re-implement the same Idle deferral dance.
+3. **Implicit protocol contracts.** “Layout hooks must be deferred off the request stack” becomes folklore in widget files instead of an explicit guarantee of the relay framework.
+
+### Target architecture
+
+```
+[ GJS / client subclasses ]
+       │
+       ▼
+[ Client Runtime ]     ←── queue incoming Live.Invoke when sync_depth > 0
+       │
+═══════╪══════════════════════════════════════════ IPC BOUNDARY
+       │
+[ Server relay ]       ←── schedule Hook.emit off request stack; one place
+       │
+       ▼
+[ Helper.Actor ]       ←── pure Clutter peer (no Idle / reentrancy flags)
+```
+
+Sketch (names illustrative — land as whatever fits `src/rpc/`):
+
+```vala
+/* Peer — Clutter only; delegates emit+apply to the relay */
+public override void allocate(Clutter.ActorBox box) {
+    base.allocate(box);  /* sync pass so tree can finish mid-RPC */
+    this.layout_relay.dispatch_allocate(box, (computed) => {
+        this.set_allocation(computed);  /* must still run inside allocate vfunc */
+    });
+}
+
+/* Relay boundary — owns scheduling + Hook.emit rules */
+public void dispatch_allocate(Clutter.ActorBox box, owned AllocationApply apply) {
+    /* never emit synchronous layout hooks on an active client-RPC stack */
+    GLib.Idle.add(() => {
+        var reply = /* Hook.emit allocate … */;
+        if (!reply.is_chain_sentinel) {
+            apply(reply.box);
+        }
+        return GLib.Source.REMOVE;
+    });
+}
+```
+
+Clutter still requires `set_allocation` **inside** an `allocate` vfunc. The relay must arrange that (e.g. Idle that re-enters `allocate`, or an equivalent peer callback invoked while still on the allocate stack) — but the **scheduling policy** stays in the relay, not as ad-hoc fields on every peer.
+
+Constraint `update_allocation` / future hooks should use the **same** server emit path once it exists (no second Idle copy in `Helper.Constraint`).
+
+---
+
+## Designed solution (boundary layers only)
 
 ### Invariant
 
-> **Live layout (and any other) handlers that may perform GI RPC must run only when client `call_sync` depth is 0.**  
-> **Server must not `Hook.emit` those handlers on the stack of an in-flight client RPC.**
+> **Live handlers that may perform GI RPC run only when client `call_sync` depth is 0.**  
+> **Server must not `Hook.emit` those handlers on the stack of an in-flight client RPC.**  
+> **Both rules are enforced at the Runtime / server-relay boundary — not inside concrete widget peers.**
 
-### Client — `GiStub.Runtime` (primary fix locus)
+### Client — `GiStub.Runtime`
 
 1. Track `sync_depth` around `do_call` → `client.call_sync` (our wrapper; no OPC API change).
 2. On `invoke`:
    - If `sync_depth > 0`: enqueue `(call, handler)` — **do not** run handler, **do not** reply yet.
-   - If `sync_depth == 0`: run handler; then `RPC-Live-Callback.reply` (Idle-defer reply is optional once depth rule holds; keep if it still helps ordering).
-3. When `sync_depth` returns to 0: drain queue (handler then reply) on the **default** context (Idle), so Clutter/GJS see a normal turn.
-4. Prove that allocate / constraint handlers that RPC children succeed without nested errors; DesaturateEffect construct during chrome build must not CRITICAL.
+   - If `sync_depth == 0`: run handler; then `RPC-Live-Callback.reply`.
+3. When `sync_depth` returns to 0: drain queue (handler then reply) on the **default** context, so Clutter/GJS see a normal turn.
+4. Prove allocate / constraint handlers that RPC children succeed without nested errors; DesaturateEffect construct during chrome build must not CRITICAL.
 
-No invented stock GI methods. No OPC nested `call_sync`.
+### Server — relay / dispatcher (new or extract), not peer flags
 
-### Server — `Helper.Actor` (keep / finish the non-hack part)
-
-1. **Allocate:** sync entry: `base.allocate` so tree layout can finish; queue Idle → set `in_allocate_hook_emit` → re-enter `allocate` → `Hook.emit` → on chain sentinel `base.allocate`, else `set_allocation` (still inside vfunc).
-2. **Preferred:** same emit-off-request-stack rule before wiring JS preferred for real. Until then document that preferred is base-only (known geometry skew).
-3. Prefer hooks must not emit from `create` / property RPCs.
+1. Introduce a **server layout (live-hook) relay** that wraps `Hook.emit` for allocate / preferred (and later Constraint-style hooks): off-request-stack scheduling + chain-sentinel handling + apply callback.
+2. Strip `Helper.Actor` down to Clutter delegation: call the relay; **no** `in_allocate_hook_emit` / peer-local Idle ownership as the protocol mechanism.
+3. **Preferred:** wire through the same relay before treating JS preferred as real. Until then, document base-only preferred as known geometry skew — still do not invent a second deferral style inside the peer.
+4. Peers must not emit hooks from `create` / property RPC handlers on the request stack (relay enforces or peers simply call `dispatch_*`).
 
 ### Explicit non-goals
 
 - 🚫 Changing `libocrpc` to allow nested `call_sync`.
 - 🚫 Inventing `Meta`/`St`/`Clutter` APIs that are not in GIR.
 - 🚫 Patching stock gnome-shell JS to avoid `vfunc_allocate`.
+- 🚫 Leaving Idle / reentrancy flags as the long-term home inside each `Helper.*` peer.
 
 ---
 
-## Files (current state)
+## Files (current vs intended)
 
 | Path | Role |
 |------|------|
-| `src/gi-stub/Runtime.vala` | invoke + `do_call` — **needs sync_depth + queue** |
+| `src/gi-stub/Runtime.vala` | `sync_depth` + invoke queue + direct-reply |
+| `src/rpc/LayoutRelay.vala` | server defer/emit + `request_depth` |
+| `src/rpc/RelayConnection.vala` | enter/leave request around dispatch |
+| `src/rpc/helper/ClutterActor.vala` | Helper.Actor — defer allocate via LayoutRelay |
+| `src/rpc/helper/Constraint.vala` | sync emit only when `can_sync_emit` |
+| `src/rpc/Listen.vala` | uses `RelayConnection` |
 | `src/gi-stub/overrides-clutter/Actor.override.vala` | parent-walk mint, layout hooks, chain sentinel |
-| `src/rpc/helper/ClutterActor.vala` | Helper.Actor + Idle re-enter allocate |
 | `vapi/st-widget-peer.*` | real `StWidget` class/instance sizes |
 | `src/rpc/Server.vala` | `Bin.register_alias("St-Widget", …)` |
+| `tests/call-sync-repro/` | pure-gio failure + solution modes |
+
+Intended after design: one Runtime rule + one server emit relay; peers Constraint-shaped only.
 
 ---
 
@@ -247,6 +370,7 @@ Expect:
 3. Reach `Meta-Context.notify_ready` and stay up (~5s+).
 4. Nested window: top bar full width; Apps / clock / indicators not piled top-left.
 5. No Clutter critical `set_allocation … only be called from … allocate`.
+6. **No** reentrancy Idle / `in_*_hook_emit` logic left in concrete peers once the relay lands.
 
 ---
 
@@ -264,4 +388,12 @@ Expect:
 
 ## Decision needed before more code
 
-Implement **Runtime sync_depth + invoke queue** as the client half, keep Helper-Actor Idle re-enter as the server half, then re-prove nested chrome. Treat further Idle/`reply`-only tweaks without that invariant as out of order.
+See **Decision gate (A/B/C)** in the expedition log above.
+
+The long-standing design (still correct as a target, not as a claim that the tree implements it):
+
+1. **Client:** one Runtime rule for Live.Invoke vs `call_sync` (queue **or** another reply strategy that does not deadlock with server emit — pick explicitly).  
+2. **Server:** one relay that owns when `Hook.emit` may run (off request stack) and how preferred outs / allocate apply still satisfy Clutter.  
+3. **Peers:** `Helper.Actor` / Constraint = emit → apply only; **no** peer-local Idle/cache/stamp as protocol.
+
+Do not land more helper tweaks without that contract written and the expedition cleaned up.
