@@ -6,10 +6,10 @@
 	private Content? priv_content;
 
 	/**
-	 * While set, preferred/allocate came from a Helper-Actor hook. Vala
-	 * path (no JS vfunc) answers with a chain sentinel — server calls
-	 * base locally (no nested {@code call_sync}). JS vfuncs never hit
-	 * these methods unless they {@code super}.
+	 * While set, preferred/allocate came from a Helper-Actor hook.
+	 * Fallthrough is on the stock-offset {@code *_vfunc} Class slots (what
+	 * GJS patches) — not the RPC {@code allocate}/{@code get_preferred_*}
+	 * methods. Empty *_vfunc sets the chain sentinel; server bases locally.
 	 */
 	private static Actor? layout_relay_target;
 	private static bool layout_relay_chain;
@@ -48,6 +48,11 @@
 	 * Lease like the generator parent-walk ({@code Actor.new} denied).
 	 * First Bin-registered ancestor; {@code St-Widget} →
 	 * {@link mint_layout_relay} (Helper-Actor + hooks).
+	 *
+	 * {@code Meta-BackgroundActor}: leave {@code rpc_lid == 0} for the leaf
+	 * Helper construct. Stock ctor needs display+monitor; null-arg
+	 * {@code Meta-BackgroundActor.new} is -32602. Do not walk to
+	 * {@code Clutter-Actor} (wrong peer / double mint).
 	 */
 	construct {
 		if (this.rpc_lid != 0) {
@@ -63,6 +68,9 @@
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			if (alias == "St-Widget") {
 				this.mint_layout_relay();
+				return;
+			}
+			if (alias == "Meta-BackgroundActor") {
 				return;
 			}
 			var response = GnomeShellRpc.call_value(alias + ".new", null);
@@ -124,9 +132,44 @@
 	}
 
 	/**
-	 * Mint Helper-Actor with preferred/allocate hooks. Callbacks run JS
-	 * vfuncs when present; Vala fallthrough sets {@link layout_relay_chain}
-	 * so the server bases without a nested chain RPC.
+	 * Stock-offset Class fallthrough ({@code allocate_vfunc} etc.). GJS
+	 * replaces the Class slot; these run only when no JS override.
+	 */
+	protected void get_preferred_width_vfunc_fallback(
+		float for_height,
+		out float min_width_p,
+		out float natural_width_p
+	) {
+		if (Actor.layout_relay_target == this) {
+			Actor.layout_relay_chain = true;
+		}
+		min_width_p = 0.0f;
+		natural_width_p = 0.0f;
+	}
+
+	protected void get_preferred_height_vfunc_fallback(
+		float for_width,
+		out float min_height_p,
+		out float natural_height_p
+	) {
+		if (Actor.layout_relay_target == this) {
+			Actor.layout_relay_chain = true;
+		}
+		min_height_p = 0.0f;
+		natural_height_p = 0.0f;
+	}
+
+	protected void allocate_vfunc_fallback(ActorBox box)
+	{
+		if (Actor.layout_relay_target == this) {
+			Actor.layout_relay_chain = true;
+		}
+	}
+
+	/**
+	 * Mint Helper-Actor with preferred/allocate hooks. Callbacks invoke the
+	 * stock-offset {@code *_vfunc} Class slots (GJS {@code vfunc_allocate} /
+	 * {@code vfunc_get_preferred_*}); RPC methods stay for ordinary GI calls.
 	 */
 	public void mint_layout_relay()
 	{
@@ -137,7 +180,7 @@
 				Actor.layout_relay_chain = false;
 				Actor.layout_relay_target = self;
 				try {
-					self.get_preferred_width(
+					self.get_preferred_width_vfunc(
 						(float) call.args.get(1).get_double(),
 						out min, out nat);
 				} finally {
@@ -147,7 +190,7 @@
 				GLib.message(
 					"DBG layout_relay preferred_width type=%s name=%s chain=%s min=%.1f nat=%.1f",
 					self.get_type().name(),
-					self.get_name() ?? "(null)",
+					self.name ?? "(null)",
 					chain.to_string(), min, nat);
 				if (chain) {
 					return null;
@@ -160,7 +203,7 @@
 				Actor.layout_relay_chain = false;
 				Actor.layout_relay_target = self;
 				try {
-					self.get_preferred_height(
+					self.get_preferred_height_vfunc(
 						(float) call.args.get(1).get_double(),
 						out min, out nat);
 				} finally {
@@ -170,7 +213,7 @@
 				GLib.message(
 					"DBG layout_relay preferred_height type=%s name=%s chain=%s min=%.1f nat=%.1f",
 					self.get_type().name(),
-					self.get_name() ?? "(null)",
+					self.name ?? "(null)",
 					chain.to_string(), min, nat);
 				if (chain) {
 					return null;
@@ -187,7 +230,7 @@
 				Actor.layout_relay_chain = false;
 				Actor.layout_relay_target = self;
 				try {
-					self.allocate(box);
+					self.allocate_vfunc(box);
 				} finally {
 					Actor.layout_relay_target = null;
 				}
@@ -195,7 +238,7 @@
 				GLib.message(
 					"DBG layout_relay allocate type=%s name=%s chain=%s box=(%.1f,%.1f)-(%.1f,%.1f)",
 					self.get_type().name(),
-					self.get_name() ?? "(null)",
+					self.name ?? "(null)",
 					chain.to_string(),
 					box.x1, box.y1, box.x2, box.y2);
 				if (chain) {

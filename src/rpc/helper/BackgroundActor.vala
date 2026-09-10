@@ -32,11 +32,10 @@ namespace GnomeShellRpc.Rpc.Helper
 			uint64 display_lease,
 			int monitor
 		) {
-			var display = (Meta.Display) request.connection.leases.get(
-				(int) display_lease
+			var actor = new Meta.BackgroundActor(
+				(Meta.Display) request.connection.leases.get((int) display_lease),
+				monitor
 			);
-			var actor = new Meta.BackgroundActor(display, monitor);
-			var handle = (uint64) request.connection.export(actor);
 			/* Stock attach MetaBackgroundContent — client facade needs its
 			 * lease so content.background / set_vignette RPC to the peer. */
 			var content = actor.get_content();
@@ -44,9 +43,13 @@ namespace GnomeShellRpc.Rpc.Helper
 			if (content != null) {
 				content_handle = (uint64) request.connection.export(content);
 			}
+			/* Shell wallpaper lives under window_group; drop Plugin's
+			 * opaque pre-RPC fill so it no longer covers this actor. */
+			GnomeShellRpc.Plugin.release_placeholder_backgrounds();
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("tt", handle, content_handle),
+				args = OLLMrpc.args( "tt", (uint64) request.connection.export(actor),
+					content_handle),
 			});
 		}
 	}

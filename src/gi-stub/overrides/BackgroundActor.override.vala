@@ -5,7 +5,14 @@
 		public Display meta_display { get; construct; }
 		public int monitor { get; construct; }
 
+		/**
+		 * Actor parent-walk defers here (null-arg {@code .new} is -32602).
+		 * Wire import already has {@code rpc_lid} — skip remint.
+		 */
 		construct {
+			if (this.rpc_lid != 0) {
+				return;
+			}
 			var response = GnomeShellRpc.call_value(
 				"Helper-BackgroundActor.create",
 				null,

@@ -1425,6 +1425,8 @@ namespace $(ns)
 				return 0;
 			}
 			var vala_name = this.vala_ident(fname);
+			var method_denied = (class_name + "." + fname) in this.deny
+				|| fname in this.deny;
 			if (rename) {
 				/*
 				 * Keep Vala name free for the GIR signal. Do not use bare
@@ -1443,8 +1445,56 @@ namespace $(ns)
 		public virtual $(ret) $(vala_name)($(string.joinv(", ", args))) {
 ");
 			}
-			stream.puts(this.default_return_body(ret, "\t\t\t"));
-			stream.puts("		}\n");
+			/*
+			 * Denied class slots are renamed *_vfunc (stock Class offset for
+			 * GJS) while the override owns the RPC method under the GIR name.
+			 * Delegate fallthrough to {@code *_vfunc_fallback}. When overrides
+			 * say {@code vfunc_fallback=hand}, skip the empty default — the
+			 * {@code .override.vala} file supplies it.
+			 */
+			if (rename && method_denied) {
+				var fb_name = @"$(vala_name)_vfunc_fallback";
+				var fb_args = new string[args.length];
+				for (var i = 0; i < args.length; i++) {
+					var a = args[i].strip();
+					var prefix = "";
+					if (a.has_prefix("out ")) {
+						prefix = "out ";
+						a = a.substring(4).strip();
+					} else if (a.has_prefix("ref ")) {
+						prefix = "ref ";
+						a = a.substring(4).strip();
+					}
+					var sp = a.last_index_of_char(' ');
+					var pname = sp >= 0 ? a.substring(sp + 1) : a;
+					fb_args[i] = prefix + pname;
+				}
+				var fb_call = string.joinv(", ", fb_args);
+				if (ret == "void") {
+					stream.puts(@"
+			this.$(fb_name)($(fb_call));
+");
+				} else {
+					stream.puts(@"
+			return this.$(fb_name)($(fb_call));
+");
+				}
+				stream.puts("		}\n");
+				var uname = @"$(class_name).$(fname)";
+				var hand_fallback = this.overrides.has_key(uname)
+					&& this.overrides.get(uname).has_key("vfunc_fallback")
+					&& this.overrides.get(uname).get("vfunc_fallback") == "hand";
+				if (!hand_fallback) {
+					stream.puts(@"
+		protected $(ret) $(fb_name)($(string.joinv(", ", args))) {
+");
+					stream.puts(this.default_return_body(ret, "\t\t\t"));
+					stream.puts("		}\n");
+				}
+			} else {
+				stream.puts(this.default_return_body(ret, "\t\t\t"));
+				stream.puts("		}\n");
+			}
 			return 1;
 		}
 

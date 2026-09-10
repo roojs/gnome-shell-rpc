@@ -1,12 +1,24 @@
 # Layout relay vs `call_sync` reentrancy (chrome piled top-left)
 
-**Status:** 🛑 booting (call_poll / concur) but chrome still piled left  
-**OPC:** ✔️ nested `call_poll` mid-emit path landed (boot reaches `notify_ready`)  
+**Status:** 🔄 re-prove nested — OPC Gi INOUT float installed  
+**OPC:** ✔️ nested `call_poll` mid-emit; ✔️ Gi INOUT float (`libocrpc` ~18:18)  
 **Hit:** 2026-09-09 nested Wayland (`mutter-rpc --wayland --nested`)  
 **Plan:** T-030 chrome layout  
 
 **OPC proposal / fix:** `OLLMchat/docs/bugs/2026-09-09-call-sync-mid-wait-live-invoke-flow.md`  
+**OPC (INOUT):** `OLLMchat/docs/bugs/done/2026-09-10-FIXED-gi-inout-float-as-value-segfault.md`  
 **Repro:** `tests/call-sync-repro/` — see README
+
+---
+
+## 2026-09-10 late — SIGSEGV after `*_vfunc` preferred hits theme
+
+Layout mint now calls Class `*_vfunc` slots; preferred hooks run. Hit:
+`St-ThemeNode.adjust_for_height` → mutter-rpc segfault (`0xbf800000` =
+`-1.0f` as pointer). **OPC Gi INOUT scalar fix installed** (~18:18
+`libocrpc.so`) — re-run nested to confirm `replied` and chrome layout:
+
+→ `OLLMchat/docs/bugs/done/2026-09-10-FIXED-gi-inout-float-as-value-segfault.md`
 
 ---
 
@@ -36,6 +48,10 @@ children from the left → exact piled-left chrome.
 
 Suspect next: Vala virtual call from the hook does **not** enter GJS
 `vfunc_*` (Class slot vs Vala method), not a missing Panel mint.
+
+**2026-09-10 fix:** mint calls stock-offset `*_vfunc` slots (what GJS
+patches); denied Class slots emit layout_relay chain fallthrough. Prove:
+`chain=false` / `path=js` on `Gjs_ui_panel_Panel`.
 
 Sharper DBG added (rebuild to use):
 

@@ -51,3 +51,9 @@ PickContext emit=opaque-as-class
 # Ctors are malloc0-only stubs — see missing.md "Struct ctor alloc stubs (audit)".
 ActorBox emit=struct-methods
 ActorIter emit=struct-methods
+
+# Denied layout slots → *_vfunc at stock Class offset; fallthrough body in
+# Actor.override.vala (*_vfunc_fallback). Skip empty generator stub.
+Actor.allocate vfunc_fallback=hand
+Actor.get_preferred_width vfunc_fallback=hand
+Actor.get_preferred_height vfunc_fallback=hand
