@@ -84,6 +84,8 @@ libmutter_target = custom_target('libmutter-16',
 )
 
 # vapigen does not write .deps; copy ours next to the generated vapis.
+# Output a .vapi marker so declare_dependency(sources:) orders *valac* (a .c stamp
+# only ordered the C compile, so mutter-rpc raced and failed with "Package not found").
 mutter_vapi_stamp = custom_target('mutter-vapi-stamp',
   command: [
     'sh', '-c',
@@ -94,5 +96,10 @@ mutter_vapi_stamp = custom_target('mutter-vapi-stamp',
     '@OUTPUT@',
   ],
   depends: [libmutter_target, clutter_target, cogl_target, mtk_target],
-  output: 'mutter-vapi-stamp.c',
+  output: 'mutter-vapi-stamp.vapi',
+)
+
+# Targets that --pkg libmutter-16 / mutter-*-16 must depend on this (not only link).
+mutter_vapi_dep = declare_dependency(
+  sources: [mutter_vapi_stamp],
 )
