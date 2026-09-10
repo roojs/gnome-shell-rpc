@@ -15,8 +15,8 @@ option(
 option(
   'gnome_shell_vendor_ref',
   type: 'string',
-  value: 'head',
-  description: 'Upstream gnome-shell git ref when cloning or refreshing: head, tag, branch, or commit',
+  value: '48.0',
+  description: 'Unused for normal builds (always 48.0). Optional override to another 48.x tag only',
 )
 
 option(

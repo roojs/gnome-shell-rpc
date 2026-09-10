@@ -27,6 +27,12 @@ today (test phase): manual smokes via `gjs-embed` — compositor spawns `gnome-s
 
 All development uses **nested** mutter inside `dbus-run-session`. Do not point this at your host `gnome-shell`.
 
+```bash
+dbus-run-session ./build/src/mutter-rpc --wayland --nested
+```
+
+Compositor listens on `$XDG_RUNTIME_DIR/mutter-rpc.sock` and spawns **`gnome-shell-rpc`**. Details / smokes: [`docs/build.md`](docs/build.md).
+
 ---
 
 ## Where we are

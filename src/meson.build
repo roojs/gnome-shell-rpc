@@ -907,10 +907,12 @@ ollmrpc_typelib = custom_target(
 gnome = import('gnome')
 vendor_js_dir = gnome_shell_vendor_root / 'js'
 vendor_data_dir = gnome_shell_vendor_root / 'data'
-# Upstream path is build-aux/ (not meson/) as of current gnome-shell.
-generate_app_list = find_program(
-  gnome_shell_vendor_root / 'build-aux' / 'generate-app-list.py',
-)
+# Upstream moved generate-app-list.py: meson/ on 48.x, build-aux/ on newer.
+generate_app_list_script = gnome_shell_vendor_root / 'meson' / 'generate-app-list.py'
+if not fs.exists(generate_app_list_script)
+  generate_app_list_script = gnome_shell_vendor_root / 'build-aux' / 'generate-app-list.py'
+endif
+generate_app_list = find_program(generate_app_list_script)
 subdir('shell-js')
 st_gir = gnome_shell_girdir / 'St-16.gir'
 # Typelib is ours (→ libst-rpc-16.so). Distro St-16.gir is schema only; includedir

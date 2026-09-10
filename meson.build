@@ -16,13 +16,12 @@ add_project_arguments([
   '--target-glib=2.78',
 ], language: 'vala')
 
-libmutter_dep = dependency('libmutter-16', version: '>= 48')
+libmutter_dep = dependency('libmutter-16', version: ['>= 48', '< 49'])
 mutter_dep = [
   libmutter_dep,
-  dependency('mutter-mtk-16'),
-  dependency('mutter-cogl-16'),
-  dependency('mutter-clutter-16'),
-  dependency('gio-2.0'),
+  dependency('mutter-mtk-16', version: ['>= 48', '< 49']),
+  dependency('mutter-cogl-16', version: ['>= 48', '< 49']),
+  dependency('mutter-clutter-16', version: ['>= 48', '< 49']),  dependency('gio-2.0'),
   dependency('gobject-2.0'),
   dependency('glib-2.0'),
   dependency('atk'),

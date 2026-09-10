@@ -27,14 +27,13 @@ Stock **`libst-16.so`** (server link) and **`St-16.gir`** (schema for client stu
 ## Meson
 
 ```bash
-./scripts/gnome-shell-fetch.sh                       # once — required for JS gresource
-meson setup build                                    # auto-detects vendor/gnome-shell/
+./scripts/gnome-shell-fetch.sh                       # optional — meson also pins 48.0 if needed
+meson setup build                                    # auto-detects / re-pins vendor to 48.x
 meson setup build -Dgnome_shell_js_dir=/path/to/js  # override runtime JS path
-meson setup build -Dvendor_gnome_shell=enabled       # Meson runs fetch if vendor missing
 meson setup build -Dvendor_gnome_shell=enabled -Dgnome_shell_client_libs=enabled   # + legacy client libs
 ```
 
-Configure prints **`gnome-shell vendor root:`**, stock pkglibdir/girdir, and **`gnome-shell runtime JS dir:`** (with source: distro / vendor / override). Default vendor mode is **`auto`**. **`gjs-embed`** uses the runtime path in GJS `search-path` (**`GNOME_SHELL_JS_DIR`** env overrides at run time).
+Configure prints **`gnome-shell vendor root:`** (must be **version 48.x**). Stale `head` / 51.rc checkouts are **re-pinned to 48.0 automatically** on setup (network once). No `-Dgnome_shell_vendor_ref` needed. **`gjs-embed`** uses the runtime path in GJS `search-path` (**`GNOME_SHELL_JS_DIR`** env overrides at run time).
 
 **Server St (0.7.6 Phase B):** `mutter-rpc` uses **stock** `/usr/lib/gnome-shell/libst-16.so` + `St-16.typelib` — same pkglibdir as Gvc. No vendored server build.
 

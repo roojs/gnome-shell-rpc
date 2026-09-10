@@ -7,15 +7,16 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VENDOR_DIR="$ROOT/vendor/gnome-shell"
 UPSTREAM="${GNOME_SHELL_VENDOR_UPSTREAM:-https://gitlab.gnome.org/GNOME/gnome-shell.git}"
 
-REF="${GNOME_SHELL_VENDOR_REF:-head}"
+REF="${GNOME_SHELL_VENDOR_REF:-48.0}"
 REFRESH="${GNOME_SHELL_VENDOR_REFRESH:-0}"
 
 usage() {
   cat <<EOF
 Usage: $(basename "$0") [--refresh] [--ref=REF]
 
-  REF     head (default), branch name, tag, or commit SHA
-  --refresh   git fetch and checkout REF (default: use existing tree if present)
+  REF     48.0 (default), head/main, tag, branch, or commit SHA
+  --refresh   force fetch + checkout REF
+              (also auto-checkouts when HEAD is not already REF)
 
 Environment (used by meson configure):
   GNOME_SHELL_VENDOR_REF       same as --ref
@@ -59,13 +60,18 @@ checkout_ref() {
     ref="main"
   fi
 
-  git -C "$VENDOR_DIR" fetch origin
+  git -C "$VENDOR_DIR" fetch origin --tags
 
   if [[ "$ref" == "main" ]]; then
     git -C "$VENDOR_DIR" checkout -B main origin/main
     git -C "$VENDOR_DIR" pull --ff-only origin main || true
   else
-    git -C "$VENDOR_DIR" checkout "$ref"
+    # Tags/commits: ensure object exists after fetch, then detach or checkout tag.
+    if ! git -C "$VENDOR_DIR" rev-parse --verify "${ref}^{commit}" >/dev/null 2>&1; then
+      echo "scripts/gnome-shell-fetch.sh: unknown ref '${ref}' after fetch" >&2
+      exit 1
+    fi
+    git -C "$VENDOR_DIR" checkout --detach "${ref}^{commit}"
   fi
 }
 
@@ -84,9 +90,21 @@ clone_at_ref() {
     git clone --depth 1 "$UPSTREAM" "$VENDOR_DIR"
     checkout_ref main
   else
+    # Shallow clone of a tag often fails; full clone then checkout.
     git clone "$UPSTREAM" "$VENDOR_DIR"
     checkout_ref "$ref"
   fi
+}
+
+at_ref() {
+  local ref="$1"
+  local wanted current
+  if [[ "$ref" == "head" || "$ref" == "" ]]; then
+    ref="main"
+  fi
+  wanted="$(git -C "$VENDOR_DIR" rev-parse "${ref}^{commit}" 2>/dev/null || true)"
+  current="$(git -C "$VENDOR_DIR" rev-parse HEAD)"
+  [[ -n "$wanted" && "$wanted" == "$current" ]]
 }
 
 if [[ ! -d "$VENDOR_DIR/.git" ]]; then
@@ -103,4 +121,16 @@ if [[ "$REFRESH" == "1" ]]; then
   exit 0
 fi
 
+# Existing tree: switch if HEAD is not already REF (so --ref=48.0 works without
+# requiring --refresh after a previous head checkout).
+git -C "$VENDOR_DIR" fetch origin --tags --quiet 2>/dev/null \
+  || git -C "$VENDOR_DIR" fetch origin --tags
+
+if at_ref "$REF"; then
+  log_sha
+  exit 0
+fi
+
+echo "scripts/gnome-shell-fetch.sh: HEAD is not ${REF}; checking out ..."
+checkout_ref "$REF"
 log_sha
