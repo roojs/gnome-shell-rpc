@@ -150,7 +150,7 @@ namespace Shell
 			if (timestamp == 0) {
 				timestamp = this.get_current_time();
 			}
-			context.set_timestamp(timestamp);
+			context.timestamp = timestamp;
 			if (workspace > -1) {
 				var ws = this.workspace_manager.get_workspace_by_index(workspace);
 				if (ws != null) {

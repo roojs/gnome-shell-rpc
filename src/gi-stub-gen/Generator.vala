@@ -999,6 +999,12 @@ namespace $(ns)
 				var gprop_L = this.dbus_letter(ns, pi.get_type());
 				var gprop_ok = gprop_L.length == 1
 					&& "biyuxftds".index_of(gprop_L) >= 0;
+				/*
+				 * Vala emits C get_/set_${vala_name} for properties. If a
+				 * class slot already owns that name, gprop would redefine it.
+				 */
+				var conv_get = "get_" + vala_name.replace("@", "");
+				var conv_set = "set_" + vala_name.replace("@", "");
 
 				if (readable) {
 					getter = pi.get_getter();
@@ -1022,7 +1028,8 @@ namespace $(ns)
 							}
 						}
 					}
-					if (!read_method && gprop_ok) {
+					if (!read_method && gprop_ok
+						&& !vfunc_names.contains(conv_get)) {
 						read_gprop = true;
 					}
 					if (!read_method && !read_gprop) {
@@ -1042,12 +1049,11 @@ namespace $(ns)
 						&& !this.has_out_values(setter)
 						&& this.callable_wireable(setter, ns)) {
 						/*
-						 * Property setter must be a single IN matching the
-						 * property type. Multi-arg C setters (set_position
+						 * Single IN only — multi-arg C setters (set_position
 						 * x,y / set_brightness r,g,b) are not Vala property
-						 * set bodies.
+						 * set bodies. Letter may differ from the GIR property
+						 * type (e.g. opacity UINT vs set_opacity guint8).
 						 */
-						string? in_L = null;
 						var n_in = 0;
 						var bad_in = false;
 						for (var a = 0; a < setter.get_n_args(); a++) {
@@ -1062,10 +1068,8 @@ namespace $(ns)
 								bad_in = true;
 								break;
 							}
-							in_L = L;
 						}
-						if (!bad_in && n_in == 1 && in_L != null
-							&& in_L == this.dbus_letter(ns, pi.get_type())) {
+						if (!bad_in && n_in == 1) {
 							write_method = true;
 						}
 					}
@@ -1076,12 +1080,14 @@ namespace $(ns)
 						 */
 						if (read_method || read_gprop) {
 							if (gprop_ok
-								&& (flags & GLib.ParamFlags.CONSTRUCT_ONLY) == 0) {
+								&& (flags & GLib.ParamFlags.CONSTRUCT_ONLY) == 0
+								&& !vfunc_names.contains(conv_set)) {
 								write_gprop = true;
 							} else {
 								writable = false;
 							}
-						} else if (gprop_ok) {
+						} else if (gprop_ok
+							&& !vfunc_names.contains(conv_set)) {
 							write_gprop = true;
 						}
 					}
@@ -1129,6 +1135,7 @@ namespace $(ns)
 						stream, "\t\t\t\t", ns, vt, pi.get_type(), 0, true, ""
 					);
 					stream.puts("			}\n");
+					prop_accessors.add(conv_get);
 				}
 				if (write_method && setter != null) {
 					var csym = setter.get_symbol();
@@ -1162,6 +1169,7 @@ namespace $(ns)
 					OLLMrpc.args(\"s$(gprop_L)\", \"$(pname)\", value));
 ");
 					stream.puts("			}\n");
+					prop_accessors.add(conv_set);
 				}
 				stream.puts("		}\n");
 				emitted++;
