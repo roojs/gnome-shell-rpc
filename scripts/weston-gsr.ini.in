@@ -1,0 +1,17 @@
+# Weston config for gnome-shell-rpc isolated nesting.
+# Used by scripts/weston-gsr-session.sh — do not point host GNOME at this.
+#
+# XWayland is required: Mutter --nested uses MetaBackendX11Nested, so the
+# nested window must open on Weston's X11 display — not host DISPLAY=:0.
+# Autolaunch runs nested-weston-prove inside this compositor.
+
+[core]
+# backend chosen on the command line (x11-backend.so)
+xwayland=true
+
+[shell]
+panel-position=top
+locking=false
+
+[autolaunch]
+path=@AUTOLAUNCH@

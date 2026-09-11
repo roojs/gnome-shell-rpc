@@ -5,6 +5,7 @@ User-facing docs (no plan numbers):
 | Path | What |
 | ---- | ---- |
 | [`build.md`](build.md) | Prerequisites, meson/ninja, nested run, install |
+| [`weston-nested-test-env.md`](weston-nested-test-env.md) | Why Weston-in-X11 is the default nested prove env |
 | [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md) | `GI_TYPELIB_PATH` / pkg-config for client Meta |
 | [`coding-standards.md`](coding-standards.md) | Vala style |
 | [`coding-standards-router.md`](coding-standards-router.md) | Which standards apply to a change |
