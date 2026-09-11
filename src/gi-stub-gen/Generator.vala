@@ -138,7 +138,10 @@ namespace $(ns)
 				}
 			}
 			this.emit_namespace_register(stream, ns);
-			this.splice_class_override(stream, ns);
+			var ov_ns = this.read_class_override(ns);
+			if (ov_ns != "") {
+				stream.puts("\n" + ov_ns + "\n");
+			}
 			stream.puts("}\n");
 			stream = null;
 
@@ -247,8 +250,10 @@ namespace $(ns)
 				}
 				method_names.add(vn);
 			}
+			var ov_body = this.read_class_override(class_name);
 			var props = this.emit_object_properties(
-				stream, ns, oi, prop_accessors, vfunc_names, signal_names);
+				stream, ns, oi, prop_accessors, vfunc_names, signal_names,
+				ov_body);
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				var fi = oi.get_method(m);
 				if (vfunc_names.contains(fi.get_name())) {
@@ -274,7 +279,9 @@ namespace $(ns)
 				stream, ns, oi, method_names);
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
-			this.splice_class_override(stream, class_name);
+			if (ov_body != "") {
+				stream.puts("\n" + ov_body + "\n");
+			}
 			stream.puts("	}\n");
 			return 1 + methods + props + signals;
 		}
@@ -325,7 +332,10 @@ namespace $(ns)
 			}
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
-			this.splice_class_override(stream, class_name);
+			var ov = this.read_class_override(class_name);
+			if (ov != "") {
+				stream.puts("\n" + ov + "\n");
+			}
 			stream.puts("	}\n");
 			return 1 + methods;
 		}
@@ -519,25 +529,25 @@ namespace $(ns)
 		}
 
 		/**
-		 * If {@code Application.opt_override_path}/{class_name}.override.vala}
-		 * exists, append it before the class closing brace. Methods must be on
-		 * the deny list so the generator does not emit stubs for them.
+		 * Contents of {@code Application.opt_override_path}/{class_name}.override.vala},
+		 * or "" if unset / missing.
 		 */
-		private void splice_class_override(GLib.FileStream stream, string class_name)
+		private string read_class_override(string class_name)
 		{
 			var dir = Application.opt_override_path;
 			if (dir == "") {
-				return;
+				return "";
 			}
-			var path = GLib.Path.build_filename(dir, class_name + ".override.vala");
 			string contents;
 			size_t len;
 			try {
-				GLib.FileUtils.get_contents(path, out contents, out len);
+				GLib.FileUtils.get_contents(
+					GLib.Path.build_filename(dir, class_name + ".override.vala"),
+					out contents, out len);
 			} catch (GLib.Error e) {
-				return;
+				return "";
 			}
-			stream.puts("\n" + contents + "\n");
+			return contents;
 		}
 
 		/**
@@ -771,7 +781,10 @@ namespace $(ns)
 						stream, ns, si.get_name(), fi, "struct"
 					);
 				}
-				this.splice_class_override(stream, si.get_name());
+				var ov = this.read_class_override(si.get_name());
+				if (ov != "") {
+					stream.puts("\n" + ov + "\n");
+				}
 			}
 			stream.puts("	}\n");
 			return 1 + methods;
@@ -803,7 +816,10 @@ namespace $(ns)
 			}
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
-			this.splice_class_override(stream, class_name);
+			var ov = this.read_class_override(class_name);
+			if (ov != "") {
+				stream.puts("\n" + ov + "\n");
+			}
 			stream.puts("	}\n");
 			return 1 + methods;
 		}
@@ -917,6 +933,10 @@ namespace $(ns)
 		 * Skip when: denied, unmapped, OUT-arg accessors, class-slot vfunc
 		 * already owns the getter name, or a signal uses the same Vala name
 		 * (e.g. Display.focus_window). Non-emitted accessors stay as methods.
+		 *
+		 * When GIR has no usable getter/setter, scalar props use stock
+		 * {@code Type.get_property} / {@code set_property} (GObject.Value
+		 * on the wire — libocrpc Gi).
 		 */
 		private int emit_object_properties(
 			GLib.FileStream stream,
@@ -924,7 +944,8 @@ namespace $(ns)
 			GI.ObjectInfo oi,
 			Gee.HashSet<string> prop_accessors,
 			Gee.HashSet<string> vfunc_names,
-			Gee.HashSet<string> signal_names
+			Gee.HashSet<string> signal_names,
+			string ov_body
 		) {
 			var class_name = oi.get_name();
 			var emitted = 0;
@@ -936,6 +957,15 @@ namespace $(ns)
 					|| vala_name in this.deny
 					|| (class_name + "." + pname) in this.deny
 					|| (class_name + "." + vala_name) in this.deny) {
+					continue;
+				}
+				/* Override owns this prop (hand body) — do not double-emit. */
+				if (ov_body != ""
+					&& ov_body.index_of(vala_name + " {") >= 0) {
+					continue;
+				}
+				/* Vala forbids a property named type (even as @type). */
+				if (vala_name == "type" || vala_name == "@type") {
 					continue;
 				}
 				if (signal_names.contains(vala_name)) {
@@ -962,52 +992,63 @@ namespace $(ns)
 				}
 				GI.FunctionInfo? getter = null;
 				GI.FunctionInfo? setter = null;
+				var read_method = false;
+				var write_method = false;
+				var read_gprop = false;
+				var write_gprop = false;
+				var gprop_L = this.dbus_letter(ns, pi.get_type());
+				var gprop_ok = gprop_L.length == 1
+					&& "biyuxftds".index_of(gprop_L) >= 0;
+
 				if (readable) {
 					getter = pi.get_getter();
-					if (getter == null
-						|| vfunc_names.contains(getter.get_name())
-						|| this.has_out_values(getter)
-						|| !this.callable_wireable(getter, ns)) {
-						continue;
-					}
-					{
+					if (getter != null
+						&& !vfunc_names.contains(getter.get_name())
+						&& !this.has_out_values(getter)
+						&& this.callable_wireable(getter, ns)) {
 						var L = this.dbus_letter(ns, getter.get_return_type());
-						/* ay/v need OUT/blob paths that break inside property get. */
-						if (L == "" || L == "ay" || L == "v") {
-							continue;
+						if (L != "" && L != "ay" && L != "v") {
+							read_method = true;
+							/* Unset Response.retval = null object (libocrpc). */
+							if (getter.may_return_null() && !vt.has_suffix("?")) {
+								var iface = getter.get_return_type().get_interface();
+								if (iface != null
+									&& (
+										iface.get_type() == GI.InfoType.OBJECT
+										|| this.union_as_gobject(ns, iface)
+									)) {
+									vt = vt + "?";
+								}
+							}
 						}
 					}
-					/* Unset Response.retval = null object (libocrpc). */
-					if (getter.may_return_null() && !vt.has_suffix("?")) {
-						var iface = getter.get_return_type().get_interface();
-						if (iface != null
-							&& (
-								iface.get_type() == GI.InfoType.OBJECT
-								|| this.union_as_gobject(ns, iface)
-							)) {
-							vt = vt + "?";
-						}
+					if (!read_method && gprop_ok) {
+						read_gprop = true;
+					}
+					if (!read_method && !read_gprop) {
+						/*
+						 * Readable in GIR but no wireable getter and not a
+						 * scalar gobject prop (e.g. Graphene.Point /
+						 * Cogl.Color with multi-OUT accessors) — skip; do
+						 * not emit a half-broken setter-only property.
+						 */
+						continue;
 					}
 				}
 				if (writable) {
 					setter = pi.get_setter();
-					if (setter == null) {
+					if (setter != null
+						&& !vfunc_names.contains(setter.get_name())
+						&& !this.has_out_values(setter)
+						&& this.callable_wireable(setter, ns)) {
 						/*
-						 * Construct-only: GIR marks writable + construct-only
-						 * with a getter and no setter. Skipping left only the
-						 * method (e.g. get_context) so GJS {@code .context}
-						 * was undefined. Emit as readable-only instead.
+						 * Property setter must be a single IN matching the
+						 * property type. Multi-arg C setters (set_position
+						 * x,y / set_brightness r,g,b) are not Vala property
+						 * set bodies.
 						 */
-						if (readable && getter != null) {
-							writable = false;
-						} else {
-							continue;
-						}
-					} else if (vfunc_names.contains(setter.get_name())
-						|| this.has_out_values(setter)
-						|| !this.callable_wireable(setter, ns)) {
-						continue;
-					} else {
+						string? in_L = null;
+						var n_in = 0;
 						var bad_in = false;
 						for (var a = 0; a < setter.get_n_args(); a++) {
 							var arg = setter.get_arg(a);
@@ -1015,28 +1056,50 @@ namespace $(ns)
 								|| arg.get_direction() != GI.Direction.IN) {
 								continue;
 							}
+							n_in++;
 							var L = this.dbus_letter(ns, arg.get_type());
 							if (L == "" || L == "ay" || L == "v") {
 								bad_in = true;
 								break;
 							}
+							in_L = L;
 						}
-						if (bad_in) {
-							continue;
+						if (!bad_in && n_in == 1 && in_L != null
+							&& in_L == this.dbus_letter(ns, pi.get_type())) {
+							write_method = true;
+						}
+					}
+					if (!write_method) {
+						/*
+						 * Construct-only: GIR marks writable + construct-only
+						 * with a getter and no setter. Emit as readable-only.
+						 */
+						if (read_method || read_gprop) {
+							if (gprop_ok
+								&& (flags & GLib.ParamFlags.CONSTRUCT_ONLY) == 0) {
+								write_gprop = true;
+							} else {
+								writable = false;
+							}
+						} else if (gprop_ok) {
+							write_gprop = true;
 						}
 					}
 				}
 
+				if (!read_method && !read_gprop && !write_method && !write_gprop) {
+					continue;
+				}
+
 				stream.puts(@"		public $(vt) $(vala_name) {
 ");
-				if (readable && getter != null) {
+				if (read_method && getter != null) {
 					var rpc = @"$(ns)-$(class_name).$(getter.get_name())";
 					var csym = getter.get_symbol();
 					if (csym != null && csym != "") {
 						stream.puts(@"			[CCode (cname = \"$(csym)\")]
 ");
 					}
-					/* owned: get_string() must be copied before Response frees. */
 					var ret_tag = getter.get_return_type().get_tag();
 					if (
 						ret_tag == GI.TypeTag.UTF8
@@ -1051,8 +1114,23 @@ namespace $(ns)
 					);
 					stream.puts("			}\n");
 					prop_accessors.add(getter.get_name());
+				} else if (read_gprop) {
+					var tag = pi.get_type().get_tag();
+					if (tag == GI.TypeTag.UTF8 || tag == GI.TypeTag.FILENAME) {
+						stream.puts("			owned get {\n");
+					} else {
+						stream.puts("			get {\n");
+					}
+					stream.puts(@"				var response = GnomeShellRpc.call_value(
+					\"$(ns)-$(class_name).get_property\", this,
+					OLLMrpc.args(\"s\", \"$(pname)\"));
+");
+					this.emit_value_get(
+						stream, "\t\t\t\t", ns, vt, pi.get_type(), 0, true, ""
+					);
+					stream.puts("			}\n");
 				}
-				if (writable && setter != null) {
+				if (write_method && setter != null) {
 					var csym = setter.get_symbol();
 					if (csym != null && csym != "") {
 						stream.puts(@"			[CCode (cname = \"$(csym)\")]
@@ -1077,6 +1155,13 @@ namespace $(ns)
 					);
 					stream.puts("			}\n");
 					prop_accessors.add(setter.get_name());
+				} else if (write_gprop) {
+					stream.puts("			set {\n");
+					stream.puts(@"				GnomeShellRpc.call_value(
+					\"$(ns)-$(class_name).set_property\", this,
+					OLLMrpc.args(\"s$(gprop_L)\", \"$(pname)\", value));
+");
+					stream.puts("			}\n");
 				}
 				stream.puts("		}\n");
 				emitted++;

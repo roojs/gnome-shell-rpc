@@ -347,7 +347,6 @@ meta_override_files = files(
   'gi-stub/overrides/BackgroundActor.override.vala',
   'gi-stub/overrides/BackgroundImageCache.override.vala',
   'gi-stub/overrides/Context.override.vala',
-  'gi-stub/overrides/MonitorManager.override.vala',
   'gi-stub/overrides/Backend.override.vala',
   'gi-stub/overrides/Settings.override.vala',
   'gi-stub/overrides/IdleMonitor.override.vala',
