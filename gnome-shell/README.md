@@ -43,6 +43,6 @@ Configure prints **`gnome-shell vendor root:`** (must be **version 48.x**). Stal
 GI_META_SMOKE=shell-import-smoke.js dbus-run-session ./build/src/mutter-rpc --wayland --nested
 ```
 
-Phase 5 (**`init.js`**) is **not** this one-liner — see [`0.7-gnome-shell-rpc-client.md`](../docs/plans/0.7-gnome-shell-rpc-client.md) Phase 5.
+Phase 5 (**`init.js`**) is **not** this one-liner — see archived [`0.7-gnome-shell-rpc-client.md`](../docs/plans/done/0.7-gnome-shell-rpc-client.md) Phase 5.
 
-Plan: [`docs/plans/0.7-gnome-shell-rpc-client.md`](../docs/plans/0.7-gnome-shell-rpc-client.md).
+Active plan: [`docs/plans/0.8-init-complete-and-interaction.md`](../docs/plans/0.8-init-complete-and-interaction.md) · index [`docs/plans/README.md`](../docs/plans/README.md).

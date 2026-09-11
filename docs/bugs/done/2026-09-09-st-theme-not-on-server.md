@@ -1,6 +1,6 @@
 # St theme CSS never reached compositor (client-only set_theme)
 
-**Status:** ⏳ fix landed — nested prove  
+**Status:** ✔️ fixed — archived 2026-09-11  
 **Hit:** 2026-09-09 — panel/menu invisible despite construction  
 **Plan:** T-030 chrome visibility
 

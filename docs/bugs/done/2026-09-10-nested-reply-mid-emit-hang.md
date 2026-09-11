@@ -1,12 +1,14 @@
 # Nested `call_poll` reply never reaches server mid-`Hook.emit`
 
-**Status:** 🛑 open — pinned to OPC; consumer stopped  
+**Status:** ✔️ fixed — archived 2026-09-11 (`Rpc.Connection.emit_wait_poll` override)  
 **Hit:** 2026-09-10 ~09:22 / ~09:43 nested Wayland (`call_poll` + in-flow Runtime)  
 **Logs:** `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`  
-**OPC bug:** `OLLMchat/docs/bugs/2026-09-10-hook-emit-mid-dispatch-reply-unread.md`  
-**Supersedes:** `docs/bugs/2026-09-09-runtime-idle-reply-hang.md` (Idle queue — fixed by dropping drain)  
-**Related:** `docs/bugs/2026-09-09-layout-relay-call-sync-reentrancy.md`  
+**OPC hook:** `OLLMchat/docs/bugs/2026-09-10-hook-emit-mid-dispatch-reply-unread.md` (`emit_wait_poll` virtual)  
+**Fix:** `src/rpc/Connection.vala` + `Listen` accept path  
+**Supersedes:** `docs/bugs/done/2026-09-09-runtime-idle-reply-hang.md` (Idle queue — fixed by dropping drain)  
+**Related:** `docs/bugs/done/2026-09-09-layout-relay-call-sync-reentrancy.md`  
 **Upstream OPC (already landed, not this bug):** `call_poll`, PollFD `revents`, `poll_drain_readable` buffer-condition  
+**Follow-on (not this bug):** boot still dies later on `Clutter-DesaturateEffect.set_factor` mid-`new` — `unexpected byte 0xFD after 0xFF` (wire / nested construct).  
 
 ---
 
@@ -49,6 +51,32 @@ client: never REPLY done id=61
 
 **Stop:** needs OPC `Hook.emit` / connection read reentrancy — filed upstream.
 Do not patch libocrpc from this tree.
+
+## Fix (2026-09-10 ~10:09) — verified
+
+OPC added virtual `Connection.emit_wait_poll()` (default =
+`MainContext.iteration`). Consumer:
+
+1. `src/rpc/Connection.vala` subclasses and overrides with `GLib.poll` +
+   parse/dispatch (watch removed while depth &gt; 0).
+2. Pending check includes `bin.in_stream.get_available()` and socket
+   `get_available_bytes()` — otherwise a second Request already in the
+   `DataInputStream` buffer leaves `poll(-1)` hung (seen: recv `set_style`
+   then never recv nested `RPC-Live-Callback.reply`).
+3. `Listen` accept path constructs `GnomeShellRpc.Rpc.Connection`.
+
+Prove (`timeout 30 … --wayland --nested`):
+
+| Counter | Before | After |
+|---------|-------:|------:|
+| emit BEGIN / END | 219 / 218 | **226 / 226** |
+| invoke ENTER / REPLY done | 219 / 218 | **226 / 226** |
+| open emits at stop | 1 | **0** |
+
+Panel allocate boxes include `(0,0)-(800,32)`. Hang shape gone.
+
+Later boot still stops around `Clutter-DesaturateEffect.new` + nested
+`set_factor` with client `unexpected byte 0xFD after 0xFF` — separate issue.
 
 ---
 

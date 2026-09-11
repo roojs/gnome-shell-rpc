@@ -1,7 +1,7 @@
 # Lease-on-construct: leaves never mint their own peer (L4)
 
 **Status:** ✔️ fixed — Wayland prove 2026-09-07 (`/tmp/mutter-rpc-l4-prove.log`)  
-**Plan:** [`docs/plans/0.7.7-thin-shell-bootstrap.md`](../plans/0.7.7-thin-shell-bootstrap.md) T-030 **L4**  
+**Plan:** [`docs/plans/done/0.7.7-thin-shell-bootstrap.md`](../plans/done/0.7.7-thin-shell-bootstrap.md) T-030 **L4**  
 **Hit:** 2026-09-06 — Wayland nested, `_initializeUI` chrome ~**main.js L246–252**  
 **Last updated:** 2026-09-07
 

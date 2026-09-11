@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Clone or update vendor/gnome-shell/ (upstream GNOME Shell sources).
-# See gnome-shell/README.md and docs/plans/0.7-gnome-shell-rpc-client.md.
+# See gnome-shell/README.md and docs/plans/README.md.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

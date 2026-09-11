@@ -1,6 +1,6 @@
 # Layout relay vs `call_sync` reentrancy (chrome piled top-left)
 
-**Status:** 🔄 re-prove nested — OPC Gi INOUT float installed  
+**Status:** ✔️ fixed — archived 2026-09-11 (nested boot; OPC Gi INOUT float + layout relay)  
 **OPC:** ✔️ nested `call_poll` mid-emit; ✔️ Gi INOUT float (`libocrpc` ~18:18)  
 **Hit:** 2026-09-09 nested Wayland (`mutter-rpc --wayland --nested`)  
 **Plan:** T-030 chrome layout  
@@ -440,7 +440,7 @@ Expect:
   OPC `…/OLLMchat/docs/bugs/done/2026-09-08-FIXED-sync-call-nested-mainloop-reentrancy.md` ·  
   follow-ons Source.remove / no-`push_thread_default` hang under same date prefix in OPC `docs/bugs/done/`
 - Constraint mint: `docs/bugs/done/2026-09-07-align-constraint-relay-mint.md`
-- Theme CSS (orthogonal visibility): `docs/bugs/2026-09-09-st-theme-not-on-server.md`
+- Theme CSS (orthogonal visibility): `docs/bugs/done/2026-09-09-st-theme-not-on-server.md`
 - OPC `Client.call_sync` implementation: `libocrpc/Client.vala` — nested throw stays
 
 ---

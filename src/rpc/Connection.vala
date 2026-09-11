@@ -4,11 +4,18 @@
  * Default OPC {@code emit_wait_poll} uses {@code MainContext.iteration}, which
  * cannot re-enter the connection IO watch mid-{@code on_input_ready}. Override
  * with {@link GLib.poll} + the same parse/dispatch loop as the watch.
+ *
+ * Reads go through {@link OLLMrpc.Bin.Stream}'s {@link GLib.DataInputStream},
+ * not the wakeup {@link GLib.IOChannel} — so pending must include
+ * {@link GLib.BufferedInputStream.get_available}, or poll waits forever while
+ * the next Request sits in the stream buffer.
  */
 namespace GnomeShellRpc.Rpc
 {
 	public class Connection : OLLMrpc.Transport.Connection
 	{
+		private int emit_poll_depth = 0;
+
 		public Connection(GLib.SocketConnection? stream = null)
 		{
 			GLib.Object(stream: stream);
@@ -21,28 +28,68 @@ namespace GnomeShellRpc.Rpc
 				return;
 			}
 
-			if ((this.channel.get_buffer_condition() & GLib.IOCondition.IN) != 0) {
-				this.drain_readable();
-				return;
+			if (this.emit_poll_depth == 0 && this.input_watch_id != 0) {
+				GLib.Source.remove(this.input_watch_id);
+				this.input_watch_id = 0;
 			}
+			this.emit_poll_depth++;
 
-			var poll_source = GLib.PollFD();
-			poll_source.fd = this.channel.unix_get_fd();
-			poll_source.events =
-				GLib.IOCondition.IN | GLib.IOCondition.ERR | GLib.IOCondition.HUP;
-			var poll_fds = new GLib.PollFD[] { poll_source };
-			if (GLib.poll(poll_fds, -1) <= 0) {
-				return;
+			try {
+				if (this.input_pending()) {
+					this.drain_readable();
+					return;
+				}
+
+				var poll_source = GLib.PollFD();
+				poll_source.fd = this.channel.unix_get_fd();
+				poll_source.events =
+					GLib.IOCondition.IN | GLib.IOCondition.ERR | GLib.IOCondition.HUP;
+				var poll_fds = new GLib.PollFD[] { poll_source };
+				if (GLib.poll(poll_fds, -1) <= 0) {
+					return;
+				}
+				if ((poll_fds[0].revents & GLib.IOCondition.ERR) != 0
+						|| (poll_fds[0].revents & GLib.IOCondition.HUP) != 0) {
+					this.stop();
+					return;
+				}
+				if ((poll_fds[0].revents & GLib.IOCondition.IN) == 0) {
+					return;
+				}
+				this.drain_readable();
+			} finally {
+				this.emit_poll_depth--;
+				if (this.emit_poll_depth == 0 && this.running
+						&& this.channel_open && this.channel != null
+						&& this.input_watch_id == 0) {
+					this.input_watch_id = this.channel.add_watch(
+						GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
+						this.on_input_ready
+					);
+				}
 			}
-			if ((poll_fds[0].revents & GLib.IOCondition.ERR) != 0
-					|| (poll_fds[0].revents & GLib.IOCondition.HUP) != 0) {
-				this.stop();
-				return;
+		}
+
+		private bool input_pending()
+		{
+			if (this.channel != null
+					&& (this.channel.get_buffer_condition()
+						& GLib.IOCondition.IN) != 0) {
+				return true;
 			}
-			if ((poll_fds[0].revents & GLib.IOCondition.IN) == 0) {
-				return;
+			if (this.bin != null && this.bin.in_stream != null
+					&& this.bin.in_stream.get_available() > 0) {
+				return true;
 			}
-			this.drain_readable();
+			if (this.stream != null) {
+				try {
+					if (this.stream.get_socket().get_available_bytes() > 0) {
+						return true;
+					}
+				} catch (GLib.Error e) {
+				}
+			}
+			return false;
 		}
 
 		/**
@@ -78,10 +125,7 @@ namespace GnomeShellRpc.Rpc
 						(int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND
 					);
 				}
-			} while (
-				this.channel != null
-				&& (this.channel.get_buffer_condition() & GLib.IOCondition.IN) != 0
-			);
+			} while (this.input_pending());
 		}
 	}
 }

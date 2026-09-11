@@ -4,13 +4,14 @@ Written for **AI agents**. Human contributors may treat this as a helpful guide.
 
 Plan files live in **`docs/plans/`**. Completed work is archived under **`docs/plans/done/`**.
 
-## Agent rule: the only product goal is shell boot
+## Agent rule: product goal follows the active plan
 
-**🔷 CRITICAL.** The user cares about **one thing**: nested **gnome-shell boots** (`mutter-rpc` + `gnome-shell-rpc` through `init.js` / real shell chrome).
+**🔷 CRITICAL.** The **only active plan** is [`0.8-init-complete-and-interaction.md`](plans/0.8-init-complete-and-interaction.md): prove **init finished**, then **pointer/keyboard interaction** in nested Wayland. Index: [`plans/README.md`](plans/README.md).
 
-- Treat every other metric (header %, stock parity, full Clutter API, perfect stubs) as **means** — only pursue them when they unblock boot.
-- Put this reminder at the **top of every plan** (after the title). Do not bury it.
-- Prefer fix-forward on the nested boot path over speculative completeness.
+- Boot-through-`init.js` is **✔️** archived under [`done/0.7.7-thin-shell-bootstrap.md`](plans/done/0.7.7-thin-shell-bootstrap.md). Plans **0.1–0.7** live in [`plans/done/`](plans/done/) — reference only.
+- Treat stub completeness, header %, and full API parity as **means** — only pursue them when they unblock the **current** plan phase.
+- Put the **user goal** from the active plan at the **top of every new plan** (after the title). Do not bury it.
+- Prefer fix-forward on the nested path over speculative completeness.
 
 ## Checklist
 

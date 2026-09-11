@@ -1,7 +1,7 @@
 # Runtime Idle(default) reply hangs mid-`call_sync`
 
 **Status:** ✔️ root cause fixed in consumer (dropped Idle queue; use `call_poll` in-flow)  
-**Follow-on hang:** `docs/bugs/2026-09-10-nested-reply-mid-emit-hang.md`  
+**Follow-on hang:** `docs/bugs/done/2026-09-10-nested-reply-mid-emit-hang.md`  
 **Hit:** 2026-09-09 / 2026-09-10 nested Wayland  
 **Repro harness:** `tests/call-sync-repro/` (Idle / queue modes)  
 **Upstream related:** `OLLMchat/docs/bugs/2026-09-10-call-sync-nested-io-watch-reentrancy-hang.md`  

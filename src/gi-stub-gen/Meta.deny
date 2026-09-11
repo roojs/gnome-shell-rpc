@@ -35,6 +35,11 @@ BackgroundImageCache.load
 Context.terminate_with_error
 Context.terminate
 Context.run_main_loop
+# GIR props without accessors — Context / MonitorManager.override.vala
+Context.unsafe-mode
+Context.unsafe_mode
+MonitorManager.night-light-supported
+MonitorManager.night_light_supported
 IdleMonitor.add_idle_watch
 IdleMonitor.add_user_active_watch
 # Client-local — GSourceFunc not RPC-marshallable (see Laters.override.vala).

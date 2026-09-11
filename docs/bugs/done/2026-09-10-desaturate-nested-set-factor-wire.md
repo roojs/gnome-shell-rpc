@@ -7,7 +7,7 @@
 **JS:** `messageList.js` — `MessageHeader` → `new Clutter.DesaturateEffect()`  
 **Stub:** `src/gi-stub/overrides-clutter/DesaturateEffect.override.vala`  
 **Upstream (partial):** `OLLMchat/docs/bugs/done/2026-09-10-FIXED-live-parse-object-new-before-token-end.md`  
-**Related:** Constraint / BrightnessContrastEffect “store then sync after mint”; layout reentrancy side quest in `2026-09-09-layout-relay-call-sync-reentrancy.md`
+**Related:** Constraint / BrightnessContrastEffect “store then sync after mint”; layout reentrancy in `docs/bugs/done/2026-09-09-layout-relay-call-sync-reentrancy.md`
 
 ---
 

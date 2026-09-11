@@ -1,4 +1,23 @@
 		/**
+		 * Stock {@code unsafe-mode} (GIR property, no accessor methods).
+		 * Compositor value via stock {@code GObject.get_property} /
+		 * {@code set_property} on the lease.
+		 */
+		public bool unsafe_mode {
+			get {
+				var response = GnomeShellRpc.call_value(
+					"Meta-Context.get_property", this,
+					OLLMrpc.args("s", "unsafe-mode"));
+				return response.retval.get_boolean();
+			}
+			set {
+				GnomeShellRpc.call_value(
+					"Meta-Context.set_property", this,
+					OLLMrpc.args("sb", "unsafe-mode", value));
+			}
+		}
+
+		/**
 		 * Quit the client loop only — never tear down mutter-rpc.
 		 *
 		 * @param error unused (stock API); logged for diagnose

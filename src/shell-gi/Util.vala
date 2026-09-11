@@ -216,6 +216,7 @@ namespace Shell
 	 */
 	public void util_sd_notify()
 	{
+		GLib.debug("READY=1");
 		sd_notify(1, "READY=1");
 	}
 

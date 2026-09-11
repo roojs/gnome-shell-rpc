@@ -53,6 +53,8 @@ namespace Shell
 		public signal void notify_error(string msg, string details);
 		public signal void shutdown();
 		public signal void locate_pointer();
+		/** Stock {@code startup-complete} on {@code Shell.Global}. */
+		public signal void startup_complete();
 
 		/**
 		 * Stock {@code shell_global_get} — singleton after {@link bind_display}.
@@ -98,6 +100,9 @@ namespace Shell
 			this.stage.notify["width"].connect(this.on_stage_size_changed);
 			this.stage.notify["height"].connect(this.on_stage_size_changed);
 			this.update_scaling_factor();
+			this.startup_complete.connect(() => {
+				GLib.debug("startup-complete");
+			});
 		}
 
 		/**
