@@ -48,15 +48,20 @@ namespace GnomeShellRpc.Rpc
 				if (GLib.poll(poll_fds, -1) <= 0) {
 					return;
 				}
-				if ((poll_fds[0].revents & GLib.IOCondition.ERR) != 0
-						|| (poll_fds[0].revents & GLib.IOCondition.HUP) != 0) {
-					this.stop();
+				var revents = poll_fds[0].revents;
+				if ((revents & GLib.IOCondition.IN) != 0) {
+					this.drain_readable();
 					return;
 				}
-				if ((poll_fds[0].revents & GLib.IOCondition.IN) == 0) {
+				if ((revents & GLib.IOCondition.ERR) != 0
+						|| (revents & GLib.IOCondition.HUP) != 0) {
+					/* Wake emit waiters; do not stop() mid-base — that leaves
+					 * later Hook.emit as write no-op + infinite wait. */
+					foreach (var id in this.callbacks.keys) {
+						this.callbacks.get(id).replied = true;
+					}
 					return;
 				}
-				this.drain_readable();
 			} finally {
 				this.emit_poll_depth--;
 				if (this.emit_poll_depth == 0 && this.running
@@ -112,18 +117,12 @@ namespace GnomeShellRpc.Rpc
 					GLib.warning("connection read: expected Request");
 					break;
 				}
-				GLib.debug(
-					"recv id=%d method=%s conn=%p",
-					request.id,
-					request.method,
-					this
-				);
+				GLib.debug("recv id=%d method=%s conn=%p", request.id,
+					 request.method, this);
 				request.connection = this;
 				if (!request.dispatch()) {
-					this.reply_error(
-						request,
-						(int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND
-					);
+					this.reply_error(request,
+						(int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND);
 				}
 			} while (this.input_pending());
 		}

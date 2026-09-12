@@ -48,18 +48,10 @@ namespace GnomeShellRpc.Rpc.Helper
 			if (this.update_hook == null) {
 				return;
 			}
-			GLib.message(
-				"DBG Helper.Constraint.update_allocation emit BEGIN hook_id=%d",
-				this.update_hook.id);
 			this.update_hook.emit(OLLMrpc.args("tdddd",
 				this.update_hook.connection.export(actor),
 				(double) allocation.x1, (double) allocation.y1,
 				(double) allocation.x2, (double) allocation.y2));
-			GLib.message(
-				"DBG Helper.Constraint.update_allocation emit END hook_id=%d reply_id=%d replied=%s",
-				this.update_hook.id,
-				this.update_hook.reply_id,
-				this.update_hook.replied.to_string());
 			if (this.update_hook.reply_args.size < 4) {
 				return;
 			}

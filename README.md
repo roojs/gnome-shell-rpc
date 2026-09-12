@@ -1,5 +1,16 @@
 # gnome-shell-rpc
 
+> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+>
+> ## DO NOT STOP for “status theatre”
+>
+> **Keep working.** Do not pause to narrate progress, summarize what you tried,
+> or ask whether to continue after every prove / dead end / rebuild. Carry on
+> until the bar moves or you hit a real stop (need user help, or FAIL-backed
+> OPC bug — then stop). Details:
+> [`docs/plans/0.8-init-complete-and-interaction.md`](docs/plans/0.8-init-complete-and-interaction.md),
+> `.cursor/rules/no-status-theatre.mdc`.
+
 Today, GNOME Shell and Mutter run in one process: the shell’s JavaScript calls straight into the compositor. If the shell crashes, the whole session goes down.
 
 This project **separates** them. Mutter keeps compositing (windows, Wayland, the display server). GNOME Shell’s JavaScript runs in another process and talks to Mutter over RPC — same `Meta` API from JS’s point of view, but calls go out-of-process instead of in-process.

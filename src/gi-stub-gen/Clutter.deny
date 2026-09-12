@@ -2,12 +2,33 @@
 #
 # Every entry needs a reason and permanence:
 #   TEMPORARY — corridor/mock stand-in; undeny + wire when that work lands
-#   PERMANENT — GIR/Vala/ABI clash or non-marshallable; not a deferred RPC
-# Prefer TEMPORARY unless the symbol cannot go on the wire.
+#   PERMANENT — hand override owns the body, GIR/Vala/ABI clash, or
+#               non-marshallable; not deferred RPC
+# Prefer TEMPORARY unless the symbol will not later become a generated stub.
 #
 # ************************************************************************
 # TEMPORARY — revisit / undeny when implementing (keep this block together)
 # ************************************************************************
+
+# Generator: GString returns (GLib.String maps poorly).
+FrameClock.get_max_render_time_debug_info
+
+# Array wire mapping missing (noop keeps C symbol).
+PaintNode.add_rectangles noop
+PaintNode.add_texture_rectangles noop
+ActorBox.from_vertices noop
+Actor.get_abs_allocation_vertices noop
+
+# Mock a11y: GenericAccessible has no rpc_lid. Undeny when Atk peers leased.
+Actor.accessible
+Actor.get_accessible
+Actor.set_accessible
+
+# ************************************************************************
+# PERMANENT — not deferred RPC work
+# ************************************************************************
+
+# --- Hand override owns GIR prop/method (generator must not emit) ---
 
 # BindConstraint.override — hand construct props; sync set_* after mint.
 # Lease via Clutter-BindConstraint.new (Helper.Constraint Ffi mint).
@@ -21,6 +42,9 @@ BindConstraint.get_coordinate
 BindConstraint.set_coordinate
 BindConstraint.get_offset
 BindConstraint.set_offset
+
+# ClickAction.override — client-local pressed/enabled (ActorMeta size-locked).
+ClickAction.pressed
 
 # SnapConstraint.override — from/to_edge only (GIR uses get/set_edges OUTs;
 # generator skips those props). source/offset stay generated.
@@ -36,15 +60,6 @@ AlignConstraint.new
 AlignConstraint.pivot_point
 AlignConstraint.get_pivot_point
 AlignConstraint.set_pivot_point
-
-# Generator: GString returns (GLib.String maps poorly).
-FrameClock.get_max_render_time_debug_info
-
-# Array wire mapping missing (noop keeps C symbol).
-PaintNode.add_rectangles noop
-PaintNode.add_texture_rectangles noop
-ActorBox.from_vertices noop
-Actor.get_abs_allocation_vertices noop
 
 # ActorBox.override — local field math (struct, no rpc_lid).
 ActorBox.init_rect
@@ -72,6 +87,7 @@ Actor.get_preferred_height
 Actor.allocate
 
 # Actor.override — content RPC when Content.rpc_lid set; else local identity.
+Actor.content
 Actor.get_content
 Actor.set_content
 
@@ -80,6 +96,10 @@ Actor.set_content
 Actor.pivot_point
 Actor.get_pivot_point
 Actor.set_pivot_point
+
+# Actor.override — scale axes via get_scale/set_scale (no GIR get_scale_x).
+Actor.scale_x
+Actor.scale_y
 
 # Actor.override — visible via is_visible/show/hide; constraints/actions timing.
 Actor.visible
@@ -93,17 +113,10 @@ Actor.layout_manager
 Actor.get_layout_manager
 Actor.set_layout_manager
 
-# Mock a11y: GenericAccessible has no rpc_lid. Undeny when Atk peers leased.
-Actor.get_accessible
-Actor.set_accessible
-
 # Backend.override — GJS InputMethod has no rpc_lid (client-owned).
+Backend.input_method
 Backend.get_input_method
 Backend.set_input_method
-
-# ************************************************************************
-# PERMANENT — not deferred RPC work
-# ************************************************************************
 
 # Stock C symbol in header-overrides/clutter-main.h — Clutter.override.vala.
 get_default_text_direction

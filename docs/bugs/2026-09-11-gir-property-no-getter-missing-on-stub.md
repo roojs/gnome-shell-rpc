@@ -1,5 +1,14 @@
 # GIR boolean properties without getters missing on client Meta stubs
 
+> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+>
+> ## DO NOT STOP for “status theatre”
+>
+> **Keep working.** Do not pause to narrate progress, summarize what you tried,
+> or ask whether to continue after every prove / dead end / rebuild. Carry on
+> until the bar moves or you hit a real stop (need user help, or FAIL-backed
+> OPC bug — then stop). See `.cursor/rules/no-status-theatre.mdc`.
+
 **Status:** ✔️ corridor proven 2026-09-11 — stub props + Gi `get_property` / `set_property` (libocrpc GValue → `retval`); A4 still elsewhere  
 **Hit:** 2026-09-11 nested Wayland — Phase A after `notify_ready` / `READY=1`  
 **Plan:** [`docs/plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md) A3/A4  

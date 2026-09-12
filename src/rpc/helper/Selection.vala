@@ -32,59 +32,56 @@ namespace GnomeShellRpc.Rpc.Helper
 				(int) request.lease_id);
 			var stream = new GLib.MemoryOutputStream.resizable();
 			var cancel = GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id);
-			var loop = new GLib.MainLoop();
-			GLib.Error? err = null;
-			var ok = false;
 			selection.transfer_async.begin((Meta.SelectionType) selection_type,
 				mimetype, (ssize_t) size, stream, cancel, (obj, res) => {
+					GLib.Error? err = null;
+					var ok = false;
 					try {
 						ok = selection.transfer_async.end(res);
 					} catch (GLib.Error e) {
 						err = e;
 					}
-					loop.quit();
+					if (err != null) {
+						request.connection.reply_error(request,
+							(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, err);
+						return;
+					}
+					if (!ok) {
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							args = OLLMrpc.args("b", false),
+						});
+						return;
+					}
+					var bytes = stream.steal_as_bytes();
+					var data = bytes.get_data();
+					string path;
+					GLib.IOStream iostream;
+					try {
+						var file = GLib.File.new_tmp("gsr-sel-XXXXXX", out iostream);
+						path = file.get_path();
+						size_t written;
+						iostream.output_stream.write_all(data, out written);
+						iostream.close();
+					} catch (GLib.Error e) {
+						request.connection.reply_error(request,
+							(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e);
+						return;
+					}
+					var fd = Posix.open(path, Posix.O_RDONLY);
+					GLib.FileUtils.unlink(path);
+					if (fd < 0) {
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							args = OLLMrpc.args("b", false),
+						});
+						return;
+					}
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						args = OLLMrpc.args("bx", true, (int64) data.length),
+					}, new OLLMrpc.Live.Buffer(fd));
 				});
-			loop.run();
-			if (err != null) {
-				request.connection.reply_error(request,
-					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, err);
-				return;
-			}
-			if (!ok) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					args = OLLMrpc.args("b", false),
-				});
-				return;
-			}
-			var bytes = stream.steal_as_bytes();
-			var data = bytes.get_data();
-			string path;
-			GLib.IOStream iostream;
-			try {
-				var file = GLib.File.new_tmp("gsr-sel-XXXXXX", out iostream);
-				path = file.get_path();
-				size_t written;
-				iostream.output_stream.write_all(data, out written);
-				iostream.close();
-			} catch (GLib.Error e) {
-				request.connection.reply_error(request,
-					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e);
-				return;
-			}
-			var fd = Posix.open(path, Posix.O_RDONLY);
-			GLib.FileUtils.unlink(path);
-			if (fd < 0) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					args = OLLMrpc.args("b", false),
-				});
-				return;
-			}
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				args = OLLMrpc.args("bx", true, (int64) data.length),
-			}, new OLLMrpc.Live.Buffer(fd));
 		}
 	}
 }

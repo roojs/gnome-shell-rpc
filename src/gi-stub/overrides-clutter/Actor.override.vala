@@ -193,7 +193,9 @@
 					self.name ?? "(null)",
 					chain.to_string(), min, nat);
 				if (chain) {
-					return null;
+					/* Return explicit zeros (not null) so server skips path=base
+					 * nested child Hook.emit after this invoke returns. */
+					return OLLMrpc.args("dd", 0.0, 0.0);
 				}
 				return OLLMrpc.args("dd", (double) min, (double) nat);
 			});
@@ -216,7 +218,9 @@
 					self.name ?? "(null)",
 					chain.to_string(), min, nat);
 				if (chain) {
-					return null;
+					/* Return explicit zeros (not null) so server skips path=base
+					 * nested child Hook.emit after this invoke returns. */
+					return OLLMrpc.args("dd", 0.0, 0.0);
 				}
 				return OLLMrpc.args("dd", (double) min, (double) nat);
 			});

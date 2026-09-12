@@ -1,5 +1,13 @@
 # Coding standards router
 
+> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+>
+> ## DO NOT STOP for “status theatre”
+>
+> **Keep working.** Do not pause to narrate progress or ask whether to continue
+> after every prove / rebuild. Stop only for real user help or a FAIL-backed
+> OPC bug. See `.cursor/rules/no-status-theatre.mdc`.
+
 **AI agents:** Before editing Vala, work through this checklist. Collect every
 section slug marked **yes**, union with **universal**, then read each matching
 block in **`docs/coding-standards.md`** in full (grep `section: <slug>`). Do **not**

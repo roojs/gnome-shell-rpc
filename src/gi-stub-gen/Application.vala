@@ -157,21 +157,13 @@ Examples:
 				return 1;
 			}
 
-			string[] deny = {};
-			string[] noop = {};
-			string? deny_err = this.load_deny(out deny, out noop);
-			if (deny_err != null) {
-				command_line.printerr("%s", deny_err);
-				return 1;
-			}
+			Gee.HashSet<string> deny;
+			Gee.HashSet<string> noop;
+			this.load_deny(out deny, out noop);
 
 			Gee.HashMap<string, Gee.HashMap<string, string>> overrides;
 			Gee.HashSet<string> signal_prefer;
-			string? ov_err = this.load_overrides(out overrides, out signal_prefer);
-			if (ov_err != null) {
-				command_line.printerr("%s", ov_err);
-				return 1;
-			}
+			this.load_overrides(out overrides, out signal_prefer);
 
 			if (Application.opt_typelib_dir != "") {
 				foreach (var dir in Application.opt_typelib_dir.split(":")) {
@@ -213,12 +205,14 @@ Examples:
 			return 0;
 		}
 
-		private string? load_deny(out string[] deny, out string[] noop)
-		{
-			deny = {};
-			noop = {};
+		private void load_deny(
+			out Gee.HashSet<string> deny,
+			out Gee.HashSet<string> noop
+		) {
+			deny = new Gee.HashSet<string>();
+			noop = new Gee.HashSet<string>();
 			if (Application.opt_deny_file == "") {
-				return null;
+				return;
 			}
 			string contents;
 			size_t len;
@@ -227,10 +221,11 @@ Examples:
 					Application.opt_deny_file, out contents, out len
 				);
 			} catch (GLib.Error e) {
-				return @"cannot read deny file $(Application.opt_deny_file): $(e.message)\n";
+				GLib.error(
+					"cannot read deny file %s: %s",
+					Application.opt_deny_file, e.message
+				);
 			}
-			var deny_list = new Gee.ArrayList<string>();
-			var noop_list = new Gee.ArrayList<string>();
 			foreach (var line in contents.split("\n")) {
 				var name = line.strip();
 				if (name == "" || name.has_prefix("#")) {
@@ -245,29 +240,29 @@ Examples:
 				}
 				var space = name.index_of(" ");
 				if (space < 0) {
-					deny_list.add(name);
+					deny.add(name);
 					continue;
 				}
 				var symbol = name.substring(0, space);
 				var flag = name.substring(space + 1).strip();
 				if (flag != "noop") {
-					return @"deny file $(Application.opt_deny_file): unknown flag $(flag) on $(symbol) (only noop)\n";
+					GLib.error(
+						"deny file %s: unknown flag %s on %s (only noop)",
+						Application.opt_deny_file, flag, symbol
+					);
 				}
-				noop_list.add(symbol);
+				noop.add(symbol);
 			}
-			deny = deny_list.to_array();
-			noop = noop_list.to_array();
-			return null;
 		}
 
-		private string? load_overrides(
+		private void load_overrides(
 			out Gee.HashMap<string, Gee.HashMap<string, string>> overrides,
 			out Gee.HashSet<string> signal_prefer
 		) {
 			overrides = new Gee.HashMap<string, Gee.HashMap<string, string>>();
 			signal_prefer = new Gee.HashSet<string>();
 			if (Application.opt_overrides_file == "") {
-				return null;
+				return;
 			}
 			string contents;
 			size_t len;
@@ -276,7 +271,10 @@ Examples:
 					Application.opt_overrides_file, out contents, out len
 				);
 			} catch (GLib.Error e) {
-				return @"cannot read overrides file $(Application.opt_overrides_file): $(e.message)\n";
+				GLib.error(
+					"cannot read overrides file %s: %s",
+					Application.opt_overrides_file, e.message
+				);
 			}
 			foreach (var line in contents.split("\n")) {
 				var stripped = line.strip();
@@ -304,7 +302,6 @@ Examples:
 				}
 				overrides.get(symbol).set(key, val);
 			}
-			return null;
 		}
 
 		private GLib.OptionContext app_options()

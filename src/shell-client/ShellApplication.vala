@@ -228,9 +228,16 @@ namespace GnomeShellRpc.ShellClient
 					rel = rel.replace("\\", "/");
 					var dest = GLib.Path.build_filename(staging, rel);
 					try {
-						GLib.File.new_for_path(
+						var dest_dir = GLib.File.new_for_path(
 							GLib.Path.get_dirname(dest)
-						).make_directory_with_parents(null);
+						);
+						try {
+							dest_dir.make_directory_with_parents(null);
+						} catch (GLib.Error mkdir_err) {
+							if (!(mkdir_err is GLib.IOError.EXISTS)) {
+								throw mkdir_err;
+							}
+						}
 						child.copy(
 							GLib.File.new_for_path(dest),
 							GLib.FileCopyFlags.OVERWRITE,

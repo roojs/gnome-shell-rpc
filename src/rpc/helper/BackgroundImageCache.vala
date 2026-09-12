@@ -24,6 +24,9 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * ''Helper-BackgroundImageCache.load'' — URI → compositor
 		 * {@link Meta.BackgroundImageCache.load}.
 		 *
+		 * Replies when {@code loaded} has fired (or on timeout). Does not
+		 * nest a {@link GLib.MainLoop} — safe mid-{@link OLLMrpc.Live.Hook.emit}.
+		 *
 		 * @param request inbound RPC (lease = cache)
 		 * @param uri file URI, or empty
 		 */
@@ -53,44 +56,51 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var image = cache.load(file);
+			request.connection.export(image);
+			if (image.is_loaded()) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("o", image),
+				});
+				return;
+			}
 			/*
 			 * Client stubs declare {@code loaded} but do not forward it.
-			 * Wait so {@code is_loaded()} is true before reply. Stock
-			 * Meta emits {@code loaded} on success *or* failure; timeout
-			 * means that signal never came — fail the RPC.
+			 * Hold the Request until Meta emits {@code loaded} (success or
+			 * failure) or the timeout fires — no nested MainLoop.
 			 */
-			if (!image.is_loaded()) {
-				var loop = new GLib.MainLoop();
-				var hid = image.loaded.connect(() => {
-					loop.quit();
-				});
-				uint tid = 0;
-				tid = GLib.Timeout.add_seconds(3, () => {
-					tid = 0;
-					loop.quit();
-					return GLib.Source.REMOVE;
-				});
-				if (!image.is_loaded()) {
-					loop.run();
-				}
+			ulong hid = 0;
+			uint tid = 0;
+			hid = image.loaded.connect(() => {
 				if (tid != 0) {
 					GLib.Source.remove(tid);
+					tid = 0;
 				}
 				image.disconnect(hid);
-			}
-			if (!image.is_loaded()) {
+				if (!image.is_loaded()) {
+					request.connection.reply_error(
+						request,
+						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						new GLib.IOError.FAILED(
+							@"BackgroundImageCache.load failed uri=$(uri)")
+					);
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("o", image),
+				});
+			});
+			tid = GLib.Timeout.add_seconds(3, () => {
+				tid = 0;
+				image.disconnect(hid);
 				request.connection.reply_error(
 					request,
 					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 					new GLib.IOError.TIMED_OUT(
 						@"BackgroundImageCache.load timed out uri=$(uri)")
 				);
-				return;
-			}
-			request.connection.export(image);
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				retval = OLLMrpc.val("o", image),
+				return GLib.Source.REMOVE;
 			});
 		}
 	}

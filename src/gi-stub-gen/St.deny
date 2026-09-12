@@ -1,18 +1,41 @@
 # St generate/compile deny list.
+#
+# Every entry needs a reason and permanence:
+#   TEMPORARY — corridor/mock stand-in; undeny + wire when that work lands
+#   PERMANENT — hand override owns the body, GIR/Vala/ABI clash, or
+#               non-marshallable; not deferred RPC
+# Prefer TEMPORARY unless the symbol will not later become a generated stub.
+#
+# ************************************************************************
+# TEMPORARY — revisit / undeny when implementing (keep this block together)
+# ************************************************************************
 
-# No GIR ctor — Actor parent-walk mints Helper-Actor.create / St-*.new.
-Widget.new
+# Gio.File list / raw pixmap bytes — not on RPC wire yet.
+Theme.get_custom_stylesheets noop
 
+ImageContent.set_data noop
+
+# int[] return — generator maps poorly.
+IconTheme.get_icon_sizes noop
+
+# Event blob — not on wire yet.
+FocusManager.navigate_from_event noop
+
+# ************************************************************************
+# PERMANENT — not deferred RPC work
+# ************************************************************************
+
+# Opaque GIR privates — clash with Vala GObject instance private + rpc_lid.
 IconPrivate
 LabelPrivate
 WidgetPrivate
 ThemeNodePrivate
 ThemeContextPrivate
 
-# Gio.File list / raw pixmap bytes — not on RPC wire yet.
-Theme.get_custom_stylesheets noop
+# No GIR ctor — Actor parent-walk mints Helper-Actor.create / St-*.new.
+Widget.new
 
-# Adjustment.new — GIR ctor needs actor + six doubles; override mints with zeros.
+# Adjustment.override — GIR ctor needs actor + six doubles; mint with zeros.
 # Transitions stay client-owned (Clutter.Transition not always leased).
 Adjustment.new
 Adjustment.add_transition
@@ -29,31 +52,31 @@ Icon.set_fallback_gicon
 
 # Client-owned theme files for loadTheme (Theme.override.vala).
 Theme.new
+Theme.application_stylesheet
+Theme.default_stylesheet
+Theme.theme_stylesheet
 Theme.get_application_stylesheet
 Theme.get_default_stylesheet
 Theme.get_theme_stylesheet
 Theme.load_stylesheet
 Theme.unload_stylesheet
 
-ImageContent.set_data noop
-
-# int[] return — generator maps poorly.
-IconTheme.get_icon_sizes noop
-
-# Class singleton getters + Event blob — hand overrides / not on wire yet.
+# Class singleton getters — hand overrides.
 ThemeContext.get_for_stage
 ThemeContext.get_theme
 ThemeContext.set_theme
 FocusManager.get_for_stage
-FocusManager.navigate_from_event noop
 Settings.get
 
 # Client-owned a11y proxy — GenericAccessible.override.vala (BarLevel/Slider).
 GenericAccessible.new_for_actor
 
-# ScrollView.override — child prop (Scrollable); generated get/set were unwired.
+# ScrollView.override — child + policies (construct timing / local store).
+ScrollView.child
 ScrollView.get_child
 ScrollView.set_child
+ScrollView.hscrollbar_policy
+ScrollView.vscrollbar_policy
 
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new

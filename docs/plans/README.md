@@ -1,5 +1,16 @@
 # Plans index
 
+> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+>
+> ## DO NOT STOP for “status theatre”
+>
+> **Keep working.** Do not pause to narrate progress, summarize what you tried,
+> or ask whether to continue after every prove / dead end / rebuild. Carry on
+> until the bar moves or you hit a real stop (need user help, or FAIL-backed
+> OPC bug — then stop). Banner required on every **active** plan and **open**
+> bug — see [`guide-to-writing-plans.md`](../guide-to-writing-plans.md) and
+> `.cursor/rules/no-status-theatre.mdc`.
+
 **Active work:** [`0.8-init-complete-and-interaction.md`](0.8-init-complete-and-interaction.md) only.
 
 **Deferred (not active):** [`0.7.10-src-directory-layout.md`](0.7.10-src-directory-layout.md) — `src/` naming / tidy-up after **0.8**; inventory in [`src/README.md`](../../src/README.md).

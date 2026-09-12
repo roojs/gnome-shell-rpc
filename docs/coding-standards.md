@@ -1,5 +1,16 @@
 # Coding Standards
 
+> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+>
+> ## DO NOT STOP for “status theatre”
+>
+> **Keep working.** Do not pause to narrate progress, summarize what you tried,
+> or ask whether to continue after every prove / dead end / rebuild. Carry on
+> until the bar moves or you hit a real stop (need user help, or FAIL-backed
+> OPC bug — then stop). See
+> [`plans/0.8-init-complete-and-interaction.md`](plans/0.8-init-complete-and-interaction.md)
+> and `.cursor/rules/no-status-theatre.mdc`.
+
 Canonical Vala style and patterns for this project and related codebases. Written for **AI agents** — **mandatory** for agents implementing or changing Vala code. Human contributors may treat this as a helpful guide. Also see **`docs/build-rules.md`** and **`docs/code-documentation.md`**.
 
 ---

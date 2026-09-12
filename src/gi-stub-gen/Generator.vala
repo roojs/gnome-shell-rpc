@@ -15,14 +15,20 @@ namespace GnomeShellRpc.GiStubGen
 	 * };
 	 * gen.emit("GiRpcSmoke", "GiRpcSmoke_generated.vala");
 	 * }}}
+	 *
+	 * {@link deny} is seeded from the deny file, then updated while emitting
+	 * (e.g. property accessors) so those symbols need not be hand-listed.
 	 */
 	public class Generator : GLib.Object
 	{
-		/** Denylisted symbols omitted on emit; {@code Type.method} or bare name. */
-		public string[] deny = {};
+		/**
+		 * Denylisted symbols omitted on emit; {@code Type.method} or bare name.
+		 * Seeded from the deny file; mutated during emit.
+		 */
+		public Gee.HashSet<string> deny = new Gee.HashSet<string>();
 
 		/** Same names as {@link deny}, but emit an empty / dummy-return stub. */
-		public string[] noop = {};
+		public Gee.HashSet<string> noop = new Gee.HashSet<string>();
 
 		/**
 		 * {@code Type.method} or bare {@code Type} → override keys
@@ -138,10 +144,7 @@ namespace $(ns)
 				}
 			}
 			this.emit_namespace_register(stream, ns);
-			var ov_ns = this.read_class_override(ns);
-			if (ov_ns != "") {
-				stream.puts("\n" + ov_ns + "\n");
-			}
+			this.splice_class_override(stream, ns);
 			stream.puts("}\n");
 			stream = null;
 
@@ -250,16 +253,16 @@ namespace $(ns)
 				}
 				method_names.add(vn);
 			}
-			var ov_body = this.read_class_override(class_name);
 			var props = this.emit_object_properties(
-				stream, ns, oi, prop_accessors, vfunc_names, signal_names,
-				ov_body);
+				stream, ns, oi, prop_accessors, vfunc_names, signal_names);
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				var fi = oi.get_method(m);
 				if (vfunc_names.contains(fi.get_name())) {
 					continue;
 				}
-				if (prop_accessors.contains(fi.get_name())) {
+				if (prop_accessors.contains(fi.get_name())
+					|| fi.get_name() in this.deny
+					|| (class_name + "." + fi.get_name()) in this.deny) {
 					continue;
 				}
 				/*
@@ -279,9 +282,7 @@ namespace $(ns)
 				stream, ns, oi, method_names);
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
-			if (ov_body != "") {
-				stream.puts("\n" + ov_body + "\n");
-			}
+			this.splice_class_override(stream, class_name);
 			stream.puts("	}\n");
 			return 1 + methods + props + signals;
 		}
@@ -332,10 +333,7 @@ namespace $(ns)
 			}
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
-			var ov = this.read_class_override(class_name);
-			if (ov != "") {
-				stream.puts("\n" + ov + "\n");
-			}
+			this.splice_class_override(stream, class_name);
 			stream.puts("	}\n");
 			return 1 + methods;
 		}
@@ -529,14 +527,18 @@ namespace $(ns)
 		}
 
 		/**
-		 * Contents of {@code Application.opt_override_path}/{class_name}.override.vala},
-		 * or "" if unset / missing.
+		 * Append {@code Class.override.vala} into the generated class — write
+		 * only. Do not keep or scan the body for emit decisions; hand-owned
+		 * symbols belong in the deny seed (or get denied as accessors are
+		 * emitted).
 		 */
-		private string read_class_override(string class_name)
-		{
+		private void splice_class_override(
+			GLib.FileStream stream,
+			string class_name
+		) {
 			var dir = Application.opt_override_path;
 			if (dir == "") {
-				return "";
+				return;
 			}
 			string contents;
 			size_t len;
@@ -545,9 +547,16 @@ namespace $(ns)
 					GLib.Path.build_filename(dir, class_name + ".override.vala"),
 					out contents, out len);
 			} catch (GLib.Error e) {
-				return "";
+				return;
 			}
-			return contents;
+			if (contents == "") {
+				return;
+			}
+			stream.puts("\n");
+			stream.puts(contents);
+			if (!contents.has_suffix("\n")) {
+				stream.puts("\n");
+			}
 		}
 
 		/**
@@ -781,10 +790,7 @@ namespace $(ns)
 						stream, ns, si.get_name(), fi, "struct"
 					);
 				}
-				var ov = this.read_class_override(si.get_name());
-				if (ov != "") {
-					stream.puts("\n" + ov + "\n");
-				}
+				this.splice_class_override(stream, si.get_name());
 			}
 			stream.puts("	}\n");
 			return 1 + methods;
@@ -816,10 +822,7 @@ namespace $(ns)
 			}
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
-			var ov = this.read_class_override(class_name);
-			if (ov != "") {
-				stream.puts("\n" + ov + "\n");
-			}
+			this.splice_class_override(stream, class_name);
 			stream.puts("	}\n");
 			return 1 + methods;
 		}
@@ -944,8 +947,7 @@ namespace $(ns)
 			GI.ObjectInfo oi,
 			Gee.HashSet<string> prop_accessors,
 			Gee.HashSet<string> vfunc_names,
-			Gee.HashSet<string> signal_names,
-			string ov_body
+			Gee.HashSet<string> signal_names
 		) {
 			var class_name = oi.get_name();
 			var emitted = 0;
@@ -957,11 +959,6 @@ namespace $(ns)
 					|| vala_name in this.deny
 					|| (class_name + "." + pname) in this.deny
 					|| (class_name + "." + vala_name) in this.deny) {
-					continue;
-				}
-				/* Override owns this prop (hand body) — do not double-emit. */
-				if (ov_body != ""
-					&& ov_body.index_of(vala_name + " {") >= 0) {
 					continue;
 				}
 				/* Vala forbids a property named type (even as @type). */
@@ -981,7 +978,7 @@ namespace $(ns)
 				 */
 				if (this.property_is_local(class_name, pname, vala_name)) {
 					emitted += this.emit_object_property_local(
-						stream, pi, vt, vala_name, prop_accessors);
+						stream, class_name, pi, vt, vala_name, prop_accessors);
 					continue;
 				}
 				var flags = pi.get_flags();
@@ -1120,6 +1117,7 @@ namespace $(ns)
 					);
 					stream.puts("			}\n");
 					prop_accessors.add(getter.get_name());
+					this.deny.add(class_name + "." + getter.get_name());
 				} else if (read_gprop) {
 					var tag = pi.get_type().get_tag();
 					if (tag == GI.TypeTag.UTF8 || tag == GI.TypeTag.FILENAME) {
@@ -1136,6 +1134,7 @@ namespace $(ns)
 					);
 					stream.puts("			}\n");
 					prop_accessors.add(conv_get);
+					this.deny.add(class_name + "." + conv_get);
 				}
 				if (write_method && setter != null) {
 					var csym = setter.get_symbol();
@@ -1162,6 +1161,7 @@ namespace $(ns)
 					);
 					stream.puts("			}\n");
 					prop_accessors.add(setter.get_name());
+					this.deny.add(class_name + "." + setter.get_name());
 				} else if (write_gprop) {
 					stream.puts("			set {\n");
 					stream.puts(@"				GnomeShellRpc.call_value(
@@ -1170,6 +1170,7 @@ namespace $(ns)
 ");
 					stream.puts("			}\n");
 					prop_accessors.add(conv_set);
+					this.deny.add(class_name + "." + conv_set);
 				}
 				stream.puts("		}\n");
 				emitted++;
@@ -1210,6 +1211,7 @@ namespace $(ns)
 		 */
 		private int emit_object_property_local(
 			GLib.FileStream stream,
+			string class_name,
 			GI.PropertyInfo pi,
 			string vt,
 			string vala_name,
@@ -1274,10 +1276,12 @@ namespace $(ns)
 			var getter = pi.get_getter();
 			if (getter != null) {
 				prop_accessors.add(getter.get_name());
+				this.deny.add(class_name + "." + getter.get_name());
 			}
 			var setter = pi.get_setter();
 			if (setter != null) {
 				prop_accessors.add(setter.get_name());
+				this.deny.add(class_name + "." + setter.get_name());
 			}
 			return 1;
 		}

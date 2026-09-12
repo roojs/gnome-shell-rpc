@@ -1,5 +1,17 @@
 # Docs
 
+> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+>
+> ## DO NOT STOP for “status theatre”
+>
+> **Keep working.** Do not pause to narrate progress, summarize what you tried,
+> or ask whether to continue after every prove / dead end / rebuild. Carry on
+> until the bar moves or you hit a real stop (need user help, or FAIL-backed
+> OPC bug — then stop). Details:
+> [`plans/0.8-init-complete-and-interaction.md`](plans/0.8-init-complete-and-interaction.md),
+> [`guide-to-writing-plans.md`](guide-to-writing-plans.md),
+> `.cursor/rules/no-status-theatre.mdc`.
+
 User-facing docs (no plan numbers):
 
 | Path | What |

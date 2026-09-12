@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Weston in an X11 window; [autolaunch] runs nested-weston-prove inside the nest.
+# Weston in an X11 window for **looking** at the nested shell.
+# Nest stays up until you close the Weston window.
 #
 #   ./scripts/weston-gsr-session.sh
 #
-# Stop: close the Weston window, or: pkill -f 'weston.*wayland-gsr'
+# Short auto-kill prove (agent / CI): ./scripts/weston-gsr-prove.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -14,14 +15,21 @@ HEIGHT="${GSR_WESTON_HEIGHT:-800}"
 INI_DIR="${XDG_RUNTIME_DIR:-/tmp}/gsr-weston-$$"
 INI="$INI_DIR/weston-gsr.ini"
 AUTO="$ROOT/scripts/weston-gsr-autolaunch.sh"
+# session = hold until window closed; prove = short timeout (set by weston-gsr-prove.sh)
+MODE="${GSR_WESTON_MODE:-session}"
 
 chmod 700 "$RT" 2>/dev/null || true
 export XDG_RUNTIME_DIR="$RT"
+export GSR_WESTON_MODE="$MODE"
 
-if [[ -e "$RT/$SOCK" ]]; then
-	echo "weston-gsr-session: $RT/$SOCK already present — not starting a second Weston" >&2
-	echo "  (close it, or: pkill -f 'weston.*$SOCK')" >&2
-	exit 0
+# Leftover nest from a previous run — clear and continue.
+if [[ -e "$RT/$SOCK" || -e "$RT/${SOCK}.lock" ]]; then
+	echo "weston-gsr-session: clearing previous $SOCK nest" >&2
+	pkill -f "weston.*${SOCK}" 2>/dev/null || true
+	pkill -x mutter-rpc 2>/dev/null || true
+	pkill -x gnome-shell-rpc 2>/dev/null || true
+	sleep 0.2
+	rm -f "$RT/$SOCK" "$RT/${SOCK}.lock"
 fi
 
 if ! command -v weston >/dev/null; then
@@ -34,11 +42,14 @@ if [[ ! -x "$AUTO" ]]; then
 fi
 
 mkdir -p "$INI_DIR"
-# Embed absolute autolaunch path (weston.ini does not expand ~).
 sed "s|@AUTOLAUNCH@|$AUTO|g" "$ROOT/scripts/weston-gsr.ini.in" >"$INI"
 
-echo "weston-gsr-session: socket=$SOCK ${WIDTH}x${HEIGHT} ini=$INI"
-echo "weston-gsr-session: autolaunch → nested-weston-prove (mutter-rpc --nested)"
+echo "weston-gsr-session: mode=$MODE socket=$SOCK ${WIDTH}x${HEIGHT}"
+if [[ "$MODE" == "prove" ]]; then
+	echo "weston-gsr-session: autolaunch → nested prove (short timeout)"
+else
+	echo "weston-gsr-session: autolaunch → nested shell (close Weston window to stop)"
+fi
 
 exec weston \
 	--backend=x11-backend.so \
