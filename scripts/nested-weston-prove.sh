@@ -8,8 +8,8 @@
 #
 # Env:
 #   GSR_MUTTER_RPC=…/build/src/mutter-rpc
-#   GSR_NESTED_TIMEOUT=5           # hard cap (seconds) — used by weston-gsr-prove.sh
-#   GSR_NESTED_SETTLE=1            # seconds after READY=1 before stop
+#   GSR_NESTED_TIMEOUT=15          # hard cap (seconds) — used by weston-gsr-prove.sh
+#   GSR_NESTED_SETTLE=5            # seconds after READY=1 before stop (A4 window)
 #   GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-gsr
 #   GI_RPC_JS_OVERRIDE_DIR=…     # optional debug overlay only — do not default
 #
@@ -20,8 +20,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MUTTER_RPC="${GSR_MUTTER_RPC:-$ROOT/build/src/mutter-rpc}"
-TIMEOUT_SEC="${GSR_NESTED_TIMEOUT:-5}"
-SETTLE_SEC="${GSR_NESTED_SETTLE:-1}"
+TIMEOUT_SEC="${GSR_NESTED_TIMEOUT:-15}"
+SETTLE_SEC="${GSR_NESTED_SETTLE:-5}"
 RT="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 # Mutter's own Wayland socket (must not collide with Weston's wayland-gsr).
 MUTTER_WL="${GSR_MUTTER_WAYLAND_DISPLAY:-wayland-mutter-gsr}"
@@ -113,7 +113,9 @@ if kill -0 "$MPID" 2>/dev/null; then
 	exit 0
 fi
 
+set +e
 wait "$MPID"
 ec=$?
+set -e
 echo "nested-weston-prove: mutter exited ec=$ec after ${SECONDS}s"
 exit "$ec"

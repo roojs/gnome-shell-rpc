@@ -13,7 +13,9 @@
 
 **Active work:** [`0.8-init-complete-and-interaction.md`](0.8-init-complete-and-interaction.md) only.
 
-**Deferred (not active):** [`0.7.10-src-directory-layout.md`](0.7.10-src-directory-layout.md) — `src/` naming / tidy-up after **0.8**; inventory in [`src/README.md`](../../src/README.md).
+**Deferred (not active):**
+- [`0.8.1-vfunc-capability-cache.md`](0.8.1-vfunc-capability-cache.md) — skip preferred/allocate RPC when client has no JS vfunc (performance; after 0.8 A/B).
+- [`0.7.10-src-directory-layout.md`](0.7.10-src-directory-layout.md) — `src/` naming / tidy-up after **0.8**; inventory in [`src/README.md`](../../src/README.md).
 
 Everything below **0.8** is **archived** under [`done/`](done/) — kept for history and grep, not a backlog to execute unless 0.8 points at a specific gap.
 
@@ -31,6 +33,7 @@ Conventions: [`guide-to-writing-plans.md`](../guide-to-writing-plans.md).
 
 | Plan | Purpose |
 | ---- | ------- |
+| [**0.8.1**](0.8.1-vfunc-capability-cache.md) | Vfunc capability cache — avoid live emit when GJS does not override preferred/allocate; **after 0.8** |
 | [**0.7.10**](0.7.10-src-directory-layout.md) | Audit and optionally rename `src/` folders (legacy vs product); **wait for 0.8** |
 | [**0.9**](0.9-multi-shell-series.md) | Separate **named** `libmutter-rpc-NN` per shell release + **head** track — **after 0.8** on 48 |
 

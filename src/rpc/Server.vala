@@ -26,6 +26,8 @@ namespace GnomeShellRpc.Rpc
 		{
 			this.display = display;
 			OLLMrpc.rpc_register(true);
+			/* Prefer error codes on Callback.reply → reply_error (throws). */
+			Rpc.LiveCallback.rpc_register();
 			Shared.Rectangle.rpc_register();
 			Ui.Window.rpc_register();
 			Ui.Workspace.rpc_register();

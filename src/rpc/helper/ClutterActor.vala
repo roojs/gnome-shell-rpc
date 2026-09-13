@@ -2,10 +2,11 @@
  * Layout relay for GJS {@code St.Widget} subclasses — same shape as
  * {@link Constraint}: mint hooks, sync {@link OLLMrpc.Live.Hook.emit}, apply.
  *
- * {@link LayoutHooks} owns emit + JS sizes. Empty / chain reply: {@link Actor}
- * pops {@link Actor.layout_hooks}, calls {@code base} (not the vfunc), pulls.
+ * {@link LayoutHooks} owns emit + JS sizes. No local measure: client calls
+ * {@link Actor.base_preferred_*} while the ask is still open, then replies
+ * with real {@code dd}. Empty reply still → caller {@code base} (too late).
  *
- * 🚫 Do not revive emit_guard / {@code suppress_emit}.
+ * 🚫 Do not revive emit_guard / {@code suppress_emit} / measure-depth skips.
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
@@ -16,8 +17,9 @@ namespace GnomeShellRpc.Rpc.Helper
 		public OLLMrpc.Live.Hook allocate;
 
 		/**
-		 * Emit preferred-width hook. {@code true} = JS sizes in outs;
-		 * {@code false} = chain / empty — caller runs {@code base}.
+		 * Emit preferred-width hook. {@code true} = sizes in outs;
+		 * {@code false} = {@link OLLMrpc.Error} / empty — caller runs
+		 * {@code base}.
 		 */
 		public bool measure_width(
 			Actor actor,
@@ -25,27 +27,25 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_width_p,
 			out float natural_width_p
 		) {
-			/* Drop prior JS sizes — emit only sets replied=false; stale
-			 * reply_args would look like a JS reply without a matching Invoke. */
 			this.preferred_width.reply_args.clear();
 			this.preferred_width.emit(OLLMrpc.args("td",
 				this.preferred_width.connection.export(actor),
 				(double) for_height));
-			if (this.preferred_width.reply_args.size < 2) {
+			var args = this.preferred_width.reply_args;
+			if ((args.size == 1 && args.get(0).holds(typeof(OLLMrpc.Error)))
+					|| args.size < 2) {
 				min_width_p = 0.0f;
 				natural_width_p = 0.0f;
 				return false;
 			}
-			min_width_p = (float) this.preferred_width.reply_args
-				.get(0).get_double();
-			natural_width_p = (float) this.preferred_width.reply_args
-				.get(1).get_double();
+			min_width_p = (float) args.get(0).get_double();
+			natural_width_p = (float) args.get(1).get_double();
 			return true;
 		}
 
 		/**
-		 * Emit preferred-height hook. {@code true} = JS sizes; {@code false} =
-		 * caller runs {@code base}.
+		 * Emit preferred-height hook. {@code true} = sizes; {@code false} =
+		 * {@link OLLMrpc.Error} / empty — caller runs {@code base}.
 		 */
 		public bool measure_height(
 			Actor actor,
@@ -57,15 +57,15 @@ namespace GnomeShellRpc.Rpc.Helper
 			this.preferred_height.emit(OLLMrpc.args("td",
 				this.preferred_height.connection.export(actor),
 				(double) for_width));
-			if (this.preferred_height.reply_args.size < 2) {
+			var args = this.preferred_height.reply_args;
+			if ((args.size == 1 && args.get(0).holds(typeof(OLLMrpc.Error)))
+					|| args.size < 2) {
 				min_height_p = 0.0f;
 				natural_height_p = 0.0f;
 				return false;
 			}
-			min_height_p = (float) this.preferred_height.reply_args
-				.get(0).get_double();
-			natural_height_p = (float) this.preferred_height.reply_args
-				.get(1).get_double();
+			min_height_p = (float) args.get(0).get_double();
+			natural_height_p = (float) args.get(1).get_double();
 			return true;
 		}
 
@@ -102,7 +102,11 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			var helper = new Actor();
 			OLLMrpc.Request.add_class(
-				"Helper-Actor", typeof(Actor), "create", "ttt", null);
+				"Helper-Actor", typeof(Actor),
+				"create", "ttt",
+				"base_preferred_width", "d",
+				"base_preferred_height", "d",
+				null);
 			OLLMrpc.Request.register_live("Helper-Actor", helper);
 		}
 
@@ -121,9 +125,9 @@ namespace GnomeShellRpc.Rpc.Helper
 					this, for_height, out min_width_p, out natural_width_p)) {
 				return;
 			}
-			/* Pop before base — must use base., not vfunc (infinite recurse). */
 			this.layout_hooks = null;
-			base.get_preferred_width(for_height, out min_width_p, out natural_width_p);
+			base.get_preferred_width(
+				for_height, out min_width_p, out natural_width_p);
 			this.layout_hooks = hooks;
 		}
 
@@ -161,6 +165,53 @@ namespace GnomeShellRpc.Rpc.Helper
 			this.layout_hooks = null;
 			base.allocate(box);
 			this.layout_hooks = hooks;
+		}
+
+		/**
+		 * ''Helper-Actor.base_preferred_width'' — St measure with hooks popped,
+		 * called mid-Invoke when layout_relay chains. Off-stage peers skip
+		 * {@code base} (theme_node would CRITICAL) and return 0,0.
+		 */
+		public void base_preferred_width(
+			OLLMrpc.Request request,
+			double for_height
+		) {
+			var hooks = this.layout_hooks;
+			this.layout_hooks = null;
+			float min_width_p = 0.0f, natural_width_p = 0.0f;
+			if (this.get_stage() != null) {
+				base.get_preferred_width(
+					(float) for_height, out min_width_p, out natural_width_p);
+			}
+			this.layout_hooks = hooks;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("dd",
+					(double) min_width_p, (double) natural_width_p),
+			});
+		}
+
+		/**
+		 * ''Helper-Actor.base_preferred_height'' — see
+		 * {@link base_preferred_width}.
+		 */
+		public void base_preferred_height(
+			OLLMrpc.Request request,
+			double for_width
+		) {
+			var hooks = this.layout_hooks;
+			this.layout_hooks = null;
+			float min_height_p = 0.0f, natural_height_p = 0.0f;
+			if (this.get_stage() != null) {
+				base.get_preferred_height(
+					(float) for_width, out min_height_p, out natural_height_p);
+			}
+			this.layout_hooks = hooks;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("dd",
+					(double) min_height_p, (double) natural_height_p),
+			});
 		}
 
 		public void create(

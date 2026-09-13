@@ -117,8 +117,10 @@ namespace GnomeShellRpc.GiStub
 						"DBG invoke REPLY done id=%d reply_id=%llu",
 						call.id, reply_id);
 				} catch (GLib.Error e) {
-					GLib.critical("Live.Invoke reply id=%d: %s",
-						call.id, e.message);
+					/* LiveCallback.reply_error — Hook already completed. */
+					GLib.message(
+						"DBG invoke REPLY error id=%d reply_id=%llu: %s",
+						call.id, reply_id, e.message);
 				}
 			});
 			Runtime.client.notification.connect((notif) => {

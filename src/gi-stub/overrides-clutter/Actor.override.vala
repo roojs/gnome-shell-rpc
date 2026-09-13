@@ -187,15 +187,16 @@
 					Actor.layout_relay_target = null;
 				}
 				var chain = Actor.layout_relay_chain;
-				GLib.message(
-					"DBG layout_relay preferred_width type=%s name=%s chain=%s min=%.1f nat=%.1f",
-					self.get_type().name(),
-					self.name ?? "(null)",
-					chain.to_string(), min, nat);
 				if (chain) {
-					/* Return explicit zeros (not null) so server skips path=base
-					 * nested child Hook.emit after this invoke returns. */
-					return OLLMrpc.args("dd", 0.0, 0.0);
+					/* Keep this ask open: server measure now (children
+					 * asked while we still wait). Then return real sizes. */
+					var for_height = call.args.get(1).get_double();
+					var response = GnomeShellRpc.call_value(
+						"Helper-Actor.base_preferred_width", self,
+						OLLMrpc.args("d", for_height));
+					return OLLMrpc.args("dd",
+						response.args.get(0).get_double(),
+						response.args.get(1).get_double());
 				}
 				return OLLMrpc.args("dd", (double) min, (double) nat);
 			});
@@ -212,15 +213,14 @@
 					Actor.layout_relay_target = null;
 				}
 				var chain = Actor.layout_relay_chain;
-				GLib.message(
-					"DBG layout_relay preferred_height type=%s name=%s chain=%s min=%.1f nat=%.1f",
-					self.get_type().name(),
-					self.name ?? "(null)",
-					chain.to_string(), min, nat);
 				if (chain) {
-					/* Return explicit zeros (not null) so server skips path=base
-					 * nested child Hook.emit after this invoke returns. */
-					return OLLMrpc.args("dd", 0.0, 0.0);
+					var for_width = call.args.get(1).get_double();
+					var response = GnomeShellRpc.call_value(
+						"Helper-Actor.base_preferred_height", self,
+						OLLMrpc.args("d", for_width));
+					return OLLMrpc.args("dd",
+						response.args.get(0).get_double(),
+						response.args.get(1).get_double());
 				}
 				return OLLMrpc.args("dd", (double) min, (double) nat);
 			});
@@ -239,12 +239,6 @@
 					Actor.layout_relay_target = null;
 				}
 				var chain = Actor.layout_relay_chain;
-				GLib.message(
-					"DBG layout_relay allocate type=%s name=%s chain=%s box=(%.1f,%.1f)-(%.1f,%.1f)",
-					self.get_type().name(),
-					self.name ?? "(null)",
-					chain.to_string(),
-					box.x1, box.y1, box.x2, box.y2);
 				if (chain) {
 					return OLLMrpc.args("b", true);
 				}

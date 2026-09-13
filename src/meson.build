@@ -14,6 +14,7 @@ compositor_sources = files(
   'rpc/Bootstrap.vala',
   'rpc/Daemon.vala',
   'rpc/Connection.vala',
+  'rpc/LiveCallback.vala',
   'rpc/Listen.vala',
   'rpc/Server.vala',
   'rpc/CancellableBridge.vala',

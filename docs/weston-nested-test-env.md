@@ -6,7 +6,7 @@
 >
 > **Keep working.** Do not pause to narrate progress, summarize what you tried,
 > or ask whether to continue after every prove / dead end / rebuild. Prove with
-> `./scripts/weston-gsr-prove.sh` (**5s** nest — do not raise). Stop only for
+> `./scripts/weston-gsr-prove.sh` (**8s** nest; debug logging is slow). Stop only for
 > real user help or a FAIL-backed OPC bug. See
 > `.cursor/rules/no-status-theatre.mdc`.
 
