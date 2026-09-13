@@ -1,16 +1,5 @@
 # Plans index
 
-> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
->
-> ## DO NOT STOP for “status theatre”
->
-> **Keep working.** Do not pause to narrate progress, summarize what you tried,
-> or ask whether to continue after every prove / dead end / rebuild. Carry on
-> until the bar moves or you hit a real stop (need user help, or FAIL-backed
-> OPC bug — then stop). Banner required on every **active** plan and **open**
-> bug — see [`guide-to-writing-plans.md`](../guide-to-writing-plans.md) and
-> `.cursor/rules/no-status-theatre.mdc`.
-
 **Active work:** [`0.8-init-complete-and-interaction.md`](0.8-init-complete-and-interaction.md)
 (A-bar). Parallel (user-applied): [`0.8.1-vfunc-capability-cache.md`](0.8.1-vfunc-capability-cache.md)
 — C2–C4 landed.
@@ -30,6 +19,7 @@ Conventions: [`guide-to-writing-plans.md`](../guide-to-writing-plans.md).
 | ---- | ------- |
 | [**0.8**](0.8-init-complete-and-interaction.md) | Prove init finished (`startup-complete`, `notify_ready`, …), then pointer/keyboard interaction — **A1/A2/A5 ✔️**; GIR no-getter props ✔️; **A4 still ⏳** |
 | [**0.8.1**](0.8.1-vfunc-capability-cache.md) | Vfunc capability cache — C2–C4 **✔️** (parallel); skip emit when Class slots match St.Widget |
+| [**0.8.2**](0.8.2-vfunc-hook-registry.md) | **IN PROGRESS** — name-keyed vfunc hook registry landed (S2); R1–R5 agent **✔️**; R3b/R6 later |
 
 ### Deferred
 

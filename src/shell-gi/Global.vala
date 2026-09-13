@@ -55,6 +55,27 @@ namespace Shell
 		public signal void locate_pointer();
 
 		/**
+		 * Nested B3 prove — server virtual pointer click at stage coords.
+		 * Not stock Shell; Helper-Actor.pointer_click only.
+		 */
+		public void pointer_click(float x, float y)
+		{
+			GnomeShellRpc.call_value(
+				"Helper-Actor.pointer_click", null,
+				OLLMrpc.args("dd", (double) x, (double) y));
+		}
+
+		/**
+		 * Nested B3 prove — fire BUTTON_PRESS Live.Hook on {@code actor}
+		 * (Helper-Actor peer). Not stock Shell.
+		 */
+		public void fire_button_press(Clutter.Actor actor)
+		{
+			GnomeShellRpc.call_value(
+				"Helper-Actor.fire_button_press", actor);
+		}
+
+		/**
 		 * Stock {@code shell_global_get} — singleton after {@link bind_display}.
 		 */
 		public static new unowned Global get()

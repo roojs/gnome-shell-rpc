@@ -57,3 +57,9 @@ ActorIter emit=struct-methods
 Actor.allocate vfunc_fallback=hand
 Actor.get_preferred_width vfunc_fallback=hand
 Actor.get_preferred_height vfunc_fallback=hand
+
+# Live.Hook registration — generator emits bind_vfunc calls; override defines relay_*.
+Actor.get_preferred_width  relay=1
+Actor.get_preferred_height relay=1
+Actor.allocate             relay=1
+Actor.event                relay=1

@@ -46,6 +46,11 @@ BindConstraint.set_offset
 # ClickAction.override — client-local pressed/enabled (ActorMeta size-locked).
 ClickAction.pressed
 
+# Event.override — local fields for Live.Hook event relay (boxed on server).
+Event.type
+Event.get_coords
+Event.get_button
+
 # SnapConstraint.override — from/to_edge only (GIR uses get/set_edges OUTs;
 # generator skips those props). source/offset stay generated.
 # Lease via Clutter-SnapConstraint.new (Helper.Constraint Ffi mint).

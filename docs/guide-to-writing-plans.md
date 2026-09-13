@@ -4,33 +4,11 @@ Written for **AI agents**. Human contributors may treat this as a helpful guide.
 
 Plan files live in **`docs/plans/`**. Completed work is archived under **`docs/plans/done/`**.
 
-> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
->
-> ## DO NOT STOP for “status theatre”
->
-> **Keep working.** Do not pause to narrate progress, summarize what you tried,
-> or ask whether to continue after every prove / dead end / rebuild. Carry on
-> until the bar moves or you hit one of the stop conditions below.
->
-> ## When you MAY stop
->
-> 1. **You actually need the user’s help** — a decision only they can make,
->    credentials, a machine/session you cannot reach, or explicit approval the
->    plan forbids you from assuming. Say what you need in one short ask, then
->    wait.
-> 2. **OPC / libocrpc is the problem** — and only then: write a **FAIL-backed**
->    bug (gate under `tests/call-sync-repro/` that **FAIL**s, plus the bug doc),
->    **do not edit OLLMchat from this tree**, and **stop**. That is the **only**
->    OPC-related stop. PASS gates → chase the **consumer**; do not stop to
->    “report” a theory.
->
-> ## Everything else
->
-> File/update the tracking bug, pick the next allowed step, rebuild, prove,
-> repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
->
-> **🔷** Paste this exact banner at the top of every **active** plan and every
-> **open** bug (after the title). Cursor rule: `.cursor/rules/no-status-theatre.mdc`.
+> **ℹ️** The no-status-theatre banner lives on the **currently active plan
+> only** — today [`plans/0.8-init-complete-and-interaction.md`](plans/0.8-init-complete-and-interaction.md).
+> Do **not** paste it on other plans, bugs, or docs (user call 2026-09-13 —
+> it was only relevant to the plan being run and had splattered everywhere).
+> The behaviour rule itself is `.cursor/rules/no-status-theatre.mdc`.
 
 ## Agent rule: product goal follows the active plan
 

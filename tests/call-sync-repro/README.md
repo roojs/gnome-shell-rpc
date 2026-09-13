@@ -1,13 +1,5 @@
 # call_sync × Live.Invoke
 
-> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
->
-> ## DO NOT STOP for “status theatre”
->
-> **Keep working.** Gate PASS → chase the **consumer**, do not stop to report a
-> theory. Gate **FAIL** → file OPC bug and **stop** (only OPC stop). See
-> `.cursor/rules/no-status-theatre.mdc`.
-
 ```bash
 meson compile -C build
 BIN=./build/tests/call-sync-repro/call-sync-repro

@@ -1,16 +1,18 @@
 /**
- * 0.5.6 B1 — Display.add_keybinding + keybindings_set_custom_handler
- * (nested mutter only).
+ * 0.8 Phase B1 — Display.add_keybinding + keybindings_set_custom_handler
+ * (nested mutter via weston prove).
  *
- *   GI_META_SMOKE=key-smoke dbus-run-session ./build/src/gnome-shell-rpc --debug --wayland --nested
+ *   GI_META_SMOKE=key-smoke GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
  *
- * Registers a shell-schema keybinding. Fire is not required — Clutter.Event
- * packing is still 0.5.3. The callback path is the same Live.Invoke as B2.
+ * Registers a shell-schema keybinding. Fire is B2 — Clutter.Event packing
+ * still incomplete. Host already called Shell.Global.bind_display before
+ * this script runs (use Global, not Meta.get_display bootstrap).
  */
 
 imports.gi.versions.Meta = '16';
+imports.gi.versions.Shell = '16';
 
-const { Gio, GLib, Meta } = imports.gi;
+const { Gio, GLib, Meta, Shell } = imports.gi;
 
 const SMOKE_DOMAIN = 'key-smoke';
 const SCHEMA = 'org.gnome.shell.keybindings';
@@ -24,12 +26,10 @@ function smokeLog(message) {
 }
 
 function main() {
-	const display = Meta.get_display();
+	const display = Shell.Global.get().display;
 	const settings = new Gio.Settings({ schema_id: SCHEMA });
-	let bound = false;
 	const action = display.add_keybinding(
 		KEY, settings, Meta.KeyBindingFlags.NONE, () => {
-			bound = true;
 			smokeLog('add_keybinding fired');
 		});
 	smokeLog('add_keybinding action=' + action);
@@ -41,6 +41,9 @@ function main() {
 			smokeLog('custom handler fired');
 		});
 	smokeLog('keybindings_set_custom_handler=' + custom);
+	if (!custom) {
+		throw new Error('key-smoke: keybindings_set_custom_handler returned false');
+	}
 	smokeLog('ok');
 }
 

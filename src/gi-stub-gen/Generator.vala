@@ -1403,6 +1403,7 @@ namespace $(ns)
 			}
 			var class_name = oi.get_name();
 			var emitted = 0;
+			var relayed = new Gee.ArrayList<string>();
 			for (var f = 0; f < cs.get_n_fields(); f++) {
 				var field = cs.get_field(f);
 				var fname = field.get_name();
@@ -1450,6 +1451,30 @@ namespace $(ns)
 					emitted += this.emit_virtual_from_callback(
 						stream, ns, class_name, fname, cb, rename);
 				}
+				var uname = @"$(class_name).$(fname)";
+				if (this.overrides.has_key(uname)
+						&& this.overrides.get(uname).has_key("relay")
+						&& this.overrides.get(uname).get("relay") == "1") {
+					relayed.add(fname);
+				}
+			}
+			if (relayed.size > 0) {
+				stream.puts(@"
+		internal uint64 bind_vfunc(string name) {
+			switch (name) {
+");
+				foreach (var rname in relayed) {
+					var vala = this.vala_ident(rname);
+					stream.puts(@"			case \"$(rname)\":
+				return this.relay_$(vala)();
+");
+				}
+				stream.puts(@"			default:
+				return 0;
+			}
+		}
+");
+				emitted++;
 			}
 			return emitted;
 		}

@@ -38,7 +38,7 @@
 	/**
 	 * Lease like the generator parent-walk ({@code Actor.new} denied).
 	 * First Bin-registered ancestor; {@code St-Widget} →
-	 * {@link GnomeShellRpc.GiStub.LayoutRelay.attach} (Helper-Actor + hooks).
+	 * {@code this.relay_attach()} (Helper-Actor + hooks).
 	 *
 	 * {@code Meta-BackgroundActor}: leave {@code rpc_lid == 0} for the leaf
 	 * Helper construct. Stock ctor needs display+monitor; null-arg
@@ -58,7 +58,7 @@
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			if (alias == "St-Widget") {
-				GnomeShellRpc.GiStub.LayoutRelay.attach(this);
+				this.relay_attach();
 				return;
 			}
 			if (alias == "Meta-BackgroundActor") {
@@ -74,13 +74,133 @@
 			this.get_type().name());
 	}
 
+	void relay_attach()
+	{
+		/* event: GJS vfunc_event often matches StWidget Class.event at
+		 * attach — force-register (B3 panel path). */
+		string[] always = { "event" };
+		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
+			this.get_type(), "Clutter", "Actor", "StWidget", always);
+		var response = GnomeShellRpc.call_value(
+			"Helper-Actor.create", null,
+			OLLMrpc.args("s", this.get_type().name()));
+		this.rpc_lid = response.args.get(0).get_uint64();
+		GnomeShellRpc.GiStub.Runtime.register_handle(this);
+		foreach (var name in overridden) {
+			var id = this.bind_vfunc(name);
+			if (id == 0) {
+				continue;
+			}
+			GnomeShellRpc.call_value(
+				"Helper-Actor.add_hook", this,
+				OLLMrpc.args("st", name, id));
+		}
+	}
+
+	uint64 relay_get_preferred_width()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			float min = 0.0f, nat = 0.0f;
+			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			try {
+				this.get_preferred_width_vfunc(
+					(float) call.args.get(1).get_double(),
+					out min, out nat);
+			} finally {
+				GnomeShellRpc.GiStub.VfuncRelay.end();
+			}
+			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+				var for_height = call.args.get(1).get_double();
+				var response = GnomeShellRpc.call_value(
+					"Helper-Actor.base_preferred_width", this,
+					OLLMrpc.args("d", for_height));
+				return OLLMrpc.args("dd",
+					response.args.get(0).get_double(),
+					response.args.get(1).get_double());
+			}
+			return OLLMrpc.args("dd", (double) min, (double) nat);
+		});
+	}
+
+	uint64 relay_get_preferred_height()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			float min = 0.0f, nat = 0.0f;
+			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			try {
+				this.get_preferred_height_vfunc(
+					(float) call.args.get(1).get_double(),
+					out min, out nat);
+			} finally {
+				GnomeShellRpc.GiStub.VfuncRelay.end();
+			}
+			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+				var for_width = call.args.get(1).get_double();
+				var response = GnomeShellRpc.call_value(
+					"Helper-Actor.base_preferred_height", this,
+					OLLMrpc.args("d", for_width));
+				return OLLMrpc.args("dd",
+					response.args.get(0).get_double(),
+					response.args.get(1).get_double());
+			}
+			return OLLMrpc.args("dd", (double) min, (double) nat);
+		});
+	}
+
+	uint64 relay_allocate()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			var box = ActorBox();
+			box.x1 = (float) call.args.get(1).get_double();
+			box.y1 = (float) call.args.get(2).get_double();
+			box.x2 = (float) call.args.get(3).get_double();
+			box.y2 = (float) call.args.get(4).get_double();
+			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			try {
+				this.allocate_vfunc(box);
+			} finally {
+				GnomeShellRpc.GiStub.VfuncRelay.end();
+			}
+			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+				return OLLMrpc.args("b", true);
+			}
+			return OLLMrpc.args("b", false);
+		});
+	}
+
+	/**
+	 * Live.Hook args: actor lease, event type, x, y, button.
+	 * Reply: bool (EVENT_STOP = true).
+	 */
+	uint64 relay_event()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			var type = (EventType) call.args.get(1).get_int();
+			var x = (float) call.args.get(2).get_double();
+			var y = (float) call.args.get(3).get_double();
+			var button = (uint32) call.args.get(4).get_uint();
+			var ev = Event.from_local(type, x, y, button);
+			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			bool stop = false;
+			try {
+				stop = this.event_vfunc(ev);
+			} finally {
+				GnomeShellRpc.GiStub.VfuncRelay.end();
+			}
+			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+				return OLLMrpc.args("b", false);
+			}
+			return OLLMrpc.args("b", stop);
+		});
+	}
+
 	public virtual void get_preferred_width(
 		float for_height,
 		out float min_width_p,
 		out float natural_width_p
 	) {
-		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			min_width_p = 0.0f;
 			natural_width_p = 0.0f;
 			return;
@@ -97,8 +217,8 @@
 		out float min_height_p,
 		out float natural_height_p
 	) {
-		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			min_height_p = 0.0f;
 			natural_height_p = 0.0f;
 			return;
@@ -112,8 +232,8 @@
 
 	public virtual void allocate(ActorBox box)
 	{
-		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			return;
 		}
 		uint8[] data = new uint8[sizeof(ActorBox)];
@@ -132,8 +252,8 @@
 		out float min_width_p,
 		out float natural_width_p
 	) {
-		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 		}
 		min_width_p = 0.0f;
 		natural_width_p = 0.0f;
@@ -144,8 +264,8 @@
 		out float min_height_p,
 		out float natural_height_p
 	) {
-		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 		}
 		min_height_p = 0.0f;
 		natural_height_p = 0.0f;
@@ -153,8 +273,8 @@
 
 	protected void allocate_vfunc_fallback(ActorBox box)
 	{
-		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 		}
 	}
 

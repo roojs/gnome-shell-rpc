@@ -1,15 +1,5 @@
 # Weston nested test environment
 
-> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
->
-> ## DO NOT STOP for “status theatre”
->
-> **Keep working.** Do not pause to narrate progress, summarize what you tried,
-> or ask whether to continue after every prove / dead end / rebuild. Prove with
-> `./scripts/weston-gsr-prove.sh` (**8s** nest; debug logging is slow). Stop only for
-> real user help or a FAIL-backed OPC bug. See
-> `.cursor/rules/no-status-theatre.mdc`.
-
 **Default prove environment** for `mutter-rpc --wayland --nested`: run Mutter
 inside a **Weston** compositor that itself lives in an **X11 window** on your
 desktop. One command: `./scripts/weston-gsr-session.sh`.

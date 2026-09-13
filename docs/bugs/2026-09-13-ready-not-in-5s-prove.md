@@ -1,30 +1,5 @@
 # Boot never reaches READY in the 5s prove
 
-> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
->
-> ## DO NOT STOP for “status theatre”
->
-> **Keep working.** Do not pause to narrate progress, summarize what you tried,
-> or ask whether to continue after every prove / dead end / rebuild. Carry on
-> until the bar moves or you hit one of the stop conditions below.
->
-> ## When you MAY stop
->
-> 1. **You actually need the user’s help** — a decision only they can make,
->    credentials, a machine/session you cannot reach, or explicit approval the
->    plan forbids you from assuming. Say what you need in one short ask, then
->    wait.
-> 2. **OPC / libocrpc is the problem** — and only then: write a **FAIL-backed**
->    bug (gate under `tests/call-sync-repro/` that **FAIL**s, plus the bug doc),
->    **do not edit OLLMchat from this tree**, and **stop**. That is the **only**
->    OPC-related stop. PASS gates → chase the **consumer**; do not stop to
->    “report” a theory.
->
-> ## Everything else
->
-> File/update the tracking bug, pick the next allowed step, rebuild, prove,
-> repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
-
 **Status:** ✔️ A4 proxy green (`Meta.is_restart` / prepare-started). Archive
 when stay-up + `startup-complete` are boring; soft post-boot leases remain.  
 **Hit:** 2026-09-13 nested Weston (`weston-gsr-prove.sh`)  

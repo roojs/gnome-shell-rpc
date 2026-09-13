@@ -15,6 +15,17 @@ chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
 MODE="${GSR_WESTON_MODE:-session}"
 SOCK="${GSR_WESTON_SOCKET:-wayland-gsr}"
 
+# Weston may clear exports; session.sh writes this for prove/hold/smoke.
+GSR_ENV_FILE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/gsr-weston-autolaunch.env"
+if [[ -f "$GSR_ENV_FILE" ]]; then
+	# shellcheck disable=SC1090
+	set -a
+	# shellcheck disable=SC1091
+	source "$GSR_ENV_FILE"
+	set +a
+	MODE="${GSR_WESTON_MODE:-$MODE}"
+fi
+
 # Wait until Weston has given us an XWayland DISPLAY (not host :0 alone with no X).
 for _ in $(seq 1 50); do
 	if [[ -n "${DISPLAY:-}" ]] && [[ -S "/tmp/.X11-unix/X${DISPLAY#:}" || -e "/tmp/.X11-unix/X${DISPLAY#:}" ]]; then

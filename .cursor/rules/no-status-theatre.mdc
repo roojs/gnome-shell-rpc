@@ -26,5 +26,7 @@ until the bar moves or you hit one of the stop conditions below.
 File/update the tracking bug, pick the next allowed step, rebuild, prove,
 repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
 
-Active plan banner (same text): `docs/plans/0.8-init-complete-and-interaction.md`.
-Required on every **active** plan and **open** bug — see `docs/guide-to-writing-plans.md`.
+The banner lives on the **currently active plan only** (today:
+`docs/plans/0.8-init-complete-and-interaction.md`). Do **not** paste it on
+other plans, bugs, or docs — user call 2026-09-13: it was only relevant to
+the plan being run and had splattered everywhere.

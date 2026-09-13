@@ -12,10 +12,11 @@
 #   GSR_NESTED_SETTLE=5            # seconds after READY=1 before stop (A4 window)
 #   GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-gsr
 #   GI_RPC_JS_OVERRIDE_DIR=…     # optional debug overlay only — do not default
+#   GI_META_SMOKE=key-smoke      # optional gjs-embed smoke (B1); early-stop on ok
 #
 # Prefer: ./scripts/weston-gsr-prove.sh (short) or ./scripts/weston-gsr-session.sh (hold).
-# Stops early on A4 marker (when defined), or READY=1 + settle — does not sit idle
-# for the full timeout when init already passed the bar.
+# Stops early on A4 marker (when defined), smoke ok, or READY=1 + settle — does not
+# sit idle for the full timeout when init already passed the bar.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -28,9 +29,20 @@ MUTTER_WL="${GSR_MUTTER_WAYLAND_DISPLAY:-wayland-mutter-gsr}"
 WESTON_WL="${GSR_WESTON_SOCKET:-wayland-gsr}"
 CLIENT_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc/org.gnome.ShellRpc.debug.log"
 TEE_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc/nested-weston-prove.tee.log"
+# Truncate so stale A4 / smoke markers from prior runs cannot early-stop.
+: >"$CLIENT_LOG"
+: >"$TEE_LOG"
 # Stock path: Meta.is_restart means _prepareStartupAnimation ran (A4 proxy until
 # a non-override startup-complete marker exists).
 A4_PAT='method=Meta\.is_restart'
+# Phase B1: GI_META_SMOKE=key-smoke → key-smoke.js logs this.
+# Phase B3: GI_META_SMOKE=panel-click-smoke → panel-click-smoke: ok
+SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok)'
+# When proving a smoke script, do not early-stop on A4 (init is not running).
+SMOKE_MODE=0
+if [[ -n "${GI_META_SMOKE:-}" && "${GI_META_SMOKE}" != "init" && "${GI_META_SMOKE}" != "init.js" ]]; then
+	SMOKE_MODE=1
+fi
 
 if [[ ! -x "$MUTTER_RPC" ]]; then
 	echo "nested-weston-prove: missing $MUTTER_RPC" >&2
@@ -46,7 +58,7 @@ if [[ -z "${DISPLAY:-}" ]]; then
 	exit 2
 fi
 
-echo "nested-weston-prove: DISPLAY=$DISPLAY weston=$WESTON_WL mutter_wl=$MUTTER_WL timeout=${TIMEOUT_SEC}s settle=${SETTLE_SEC}s${GI_RPC_JS_OVERRIDE_DIR:+ override=$GI_RPC_JS_OVERRIDE_DIR}"
+echo "nested-weston-prove: DISPLAY=$DISPLAY weston=$WESTON_WL mutter_wl=$MUTTER_WL timeout=${TIMEOUT_SEC}s settle=${SETTLE_SEC}s${GI_META_SMOKE:+ smoke=$GI_META_SMOKE}${GI_RPC_JS_OVERRIDE_DIR:+ override=$GI_RPC_JS_OVERRIDE_DIR}"
 
 stop_tree() {
 	local pid="$1"
@@ -68,6 +80,18 @@ env_args=(
 if [[ -n "${GI_RPC_JS_OVERRIDE_DIR:-}" ]]; then
 	env_args+=(GI_RPC_JS_OVERRIDE_DIR="$GI_RPC_JS_OVERRIDE_DIR")
 fi
+if [[ -n "${GI_META_SMOKE:-}" ]]; then
+	env_args+=(GI_META_SMOKE="$GI_META_SMOKE")
+fi
+if [[ -n "${GI_META_GDB:-}" ]]; then
+	env_args+=(GI_META_GDB="$GI_META_GDB")
+fi
+if [[ -n "${GI_META_GDB_BIN:-}" ]]; then
+	env_args+=(GI_META_GDB_BIN="$GI_META_GDB_BIN")
+fi
+if [[ -n "${GI_META_GDB_EX:-}" ]]; then
+	env_args+=(GI_META_GDB_EX="$GI_META_GDB_EX")
+fi
 # Keep stdout for weston-autolaunch tee; also capture for markers
 dbus-run-session -- \
 	env "${env_args[@]}" \
@@ -85,21 +109,32 @@ seen_a4() {
 		|| rg -q "$A4_PAT" "$TEE_LOG" 2>/dev/null
 }
 
+seen_smoke_ok() {
+	[[ -n "${GI_META_SMOKE:-}" ]] || return 1
+	rg -q "$SMOKE_OK_PAT" "$CLIENT_LOG" 2>/dev/null \
+		|| rg -q "$SMOKE_OK_PAT" "$TEE_LOG" 2>/dev/null
+}
+
 while kill -0 "$MPID" 2>/dev/null; do
 	if [[ $SECONDS -ge $deadline ]]; then
 		reason="timeout"
 		break
 	fi
-	if seen_a4; then
+	if seen_smoke_ok; then
+		reason="smoke-ok"
+		sleep 0.2
+		break
+	fi
+	if [[ "$SMOKE_MODE" -eq 0 ]] && seen_a4; then
 		reason="prepare-started"
 		sleep 0.3
 		break
 	fi
-	if [[ -z "$ready_at" ]] && [[ -f "$CLIENT_LOG" ]] && rg -q 'READY=1' "$CLIENT_LOG" 2>/dev/null; then
+	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ -z "$ready_at" ]] && [[ -f "$CLIENT_LOG" ]] && rg -q 'READY=1' "$CLIENT_LOG" 2>/dev/null; then
 		ready_at=$SECONDS
 		echo "nested-weston-prove: READY=1 — settle ${SETTLE_SEC}s for prepare/startup"
 	fi
-	if [[ -n "$ready_at" ]] && [[ $((SECONDS - ready_at)) -ge $SETTLE_SEC ]]; then
+	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ -n "$ready_at" ]] && [[ $((SECONDS - ready_at)) -ge $SETTLE_SEC ]]; then
 		reason="READY=1+settle"
 		break
 	fi
