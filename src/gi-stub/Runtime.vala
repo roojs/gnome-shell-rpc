@@ -77,7 +77,8 @@ namespace GnomeShellRpc.GiStub
 
 			Runtime.client = new OLLMrpc.Client("", "", socket_path) {
 				live_handles = true,
-				debug = false,
+				/* OLLMrpc default is true; keep it. Never hard-disable. */
+				debug = true,
 			};
 			Runtime.client.invoke.connect((call) => {
 				GLib.message(

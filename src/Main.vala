@@ -51,8 +51,7 @@ namespace GnomeShellRpc
 			}
 
 			GnomeShellRpc.debug_on = CompositorApp.opt_debug;
-			GnomeShellRpc.debug_critical_enabled =
-				CompositorApp.opt_debug_critical;
+			GnomeShellRpc.debug_critical_enabled = CompositorApp.opt_debug_critical;
 
 			var ctx = new Meta.Context("Mutter(GnomeShellRpc)");
 			try {

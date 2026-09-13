@@ -5,15 +5,6 @@
 	 */
 	private Content? priv_content;
 
-	/**
-	 * While set, preferred/allocate came from a Helper-Actor hook.
-	 * Fallthrough is on the stock-offset {@code *_vfunc} Class slots (what
-	 * GJS patches) — not the RPC {@code allocate}/{@code get_preferred_*}
-	 * methods. Empty *_vfunc sets the chain sentinel; server bases locally.
-	 */
-	private static Actor? layout_relay_target;
-	private static bool layout_relay_chain;
-
 	public Content? content {
 		get {
 			if (this.priv_content != null) {
@@ -47,7 +38,7 @@
 	/**
 	 * Lease like the generator parent-walk ({@code Actor.new} denied).
 	 * First Bin-registered ancestor; {@code St-Widget} →
-	 * {@link mint_layout_relay} (Helper-Actor + hooks).
+	 * {@link GnomeShellRpc.GiStub.LayoutRelay.attach} (Helper-Actor + hooks).
 	 *
 	 * {@code Meta-BackgroundActor}: leave {@code rpc_lid == 0} for the leaf
 	 * Helper construct. Stock ctor needs display+monitor; null-arg
@@ -67,7 +58,7 @@
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			if (alias == "St-Widget") {
-				this.mint_layout_relay();
+				GnomeShellRpc.GiStub.LayoutRelay.attach(this);
 				return;
 			}
 			if (alias == "Meta-BackgroundActor") {
@@ -87,8 +78,8 @@
 		out float min_width_p,
 		out float natural_width_p
 	) {
-		if (Actor.layout_relay_target == this) {
-			Actor.layout_relay_chain = true;
+		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
 			min_width_p = 0.0f;
 			natural_width_p = 0.0f;
 			return;
@@ -105,8 +96,8 @@
 		out float min_height_p,
 		out float natural_height_p
 	) {
-		if (Actor.layout_relay_target == this) {
-			Actor.layout_relay_chain = true;
+		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
 			min_height_p = 0.0f;
 			natural_height_p = 0.0f;
 			return;
@@ -120,8 +111,8 @@
 
 	public virtual void allocate(ActorBox box)
 	{
-		if (Actor.layout_relay_target == this) {
-			Actor.layout_relay_chain = true;
+		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
 			return;
 		}
 		uint8[] data = new uint8[sizeof(ActorBox)];
@@ -140,8 +131,8 @@
 		out float min_width_p,
 		out float natural_width_p
 	) {
-		if (Actor.layout_relay_target == this) {
-			Actor.layout_relay_chain = true;
+		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
 		}
 		min_width_p = 0.0f;
 		natural_width_p = 0.0f;
@@ -152,8 +143,8 @@
 		out float min_height_p,
 		out float natural_height_p
 	) {
-		if (Actor.layout_relay_target == this) {
-			Actor.layout_relay_chain = true;
+		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
 		}
 		min_height_p = 0.0f;
 		natural_height_p = 0.0f;
@@ -161,94 +152,9 @@
 
 	protected void allocate_vfunc_fallback(ActorBox box)
 	{
-		if (Actor.layout_relay_target == this) {
-			Actor.layout_relay_chain = true;
+		if (GnomeShellRpc.GiStub.LayoutRelay.hook_actor == this) {
+			GnomeShellRpc.GiStub.LayoutRelay.use_base = true;
 		}
-	}
-
-	/**
-	 * Mint Helper-Actor with preferred/allocate hooks. Callbacks invoke the
-	 * stock-offset {@code *_vfunc} Class slots (GJS {@code vfunc_allocate} /
-	 * {@code vfunc_get_preferred_*}); RPC methods stay for ordinary GI calls.
-	 */
-	public void mint_layout_relay()
-	{
-		var self = this;
-		var preferred_width_id = GnomeShellRpc.GiStub.Runtime.callback_bind(
-			(call) => {
-				float min = 0.0f, nat = 0.0f;
-				Actor.layout_relay_chain = false;
-				Actor.layout_relay_target = self;
-				try {
-					self.get_preferred_width_vfunc(
-						(float) call.args.get(1).get_double(),
-						out min, out nat);
-				} finally {
-					Actor.layout_relay_target = null;
-				}
-				var chain = Actor.layout_relay_chain;
-				if (chain) {
-					/* Keep this ask open: server measure now (children
-					 * asked while we still wait). Then return real sizes. */
-					var for_height = call.args.get(1).get_double();
-					var response = GnomeShellRpc.call_value(
-						"Helper-Actor.base_preferred_width", self,
-						OLLMrpc.args("d", for_height));
-					return OLLMrpc.args("dd",
-						response.args.get(0).get_double(),
-						response.args.get(1).get_double());
-				}
-				return OLLMrpc.args("dd", (double) min, (double) nat);
-			});
-		var preferred_height_id = GnomeShellRpc.GiStub.Runtime.callback_bind(
-			(call) => {
-				float min = 0.0f, nat = 0.0f;
-				Actor.layout_relay_chain = false;
-				Actor.layout_relay_target = self;
-				try {
-					self.get_preferred_height_vfunc(
-						(float) call.args.get(1).get_double(),
-						out min, out nat);
-				} finally {
-					Actor.layout_relay_target = null;
-				}
-				var chain = Actor.layout_relay_chain;
-				if (chain) {
-					var for_width = call.args.get(1).get_double();
-					var response = GnomeShellRpc.call_value(
-						"Helper-Actor.base_preferred_height", self,
-						OLLMrpc.args("d", for_width));
-					return OLLMrpc.args("dd",
-						response.args.get(0).get_double(),
-						response.args.get(1).get_double());
-				}
-				return OLLMrpc.args("dd", (double) min, (double) nat);
-			});
-		var allocate_id = GnomeShellRpc.GiStub.Runtime.callback_bind(
-			(call) => {
-				var box = ActorBox();
-				box.x1 = (float) call.args.get(1).get_double();
-				box.y1 = (float) call.args.get(2).get_double();
-				box.x2 = (float) call.args.get(3).get_double();
-				box.y2 = (float) call.args.get(4).get_double();
-				Actor.layout_relay_chain = false;
-				Actor.layout_relay_target = self;
-				try {
-					self.allocate_vfunc(box);
-				} finally {
-					Actor.layout_relay_target = null;
-				}
-				var chain = Actor.layout_relay_chain;
-				if (chain) {
-					return OLLMrpc.args("b", true);
-				}
-				return OLLMrpc.args("b", false);
-			});
-		var response = GnomeShellRpc.call_value(
-			"Helper-Actor.create", null,
-			OLLMrpc.args("ttt",
-				preferred_width_id, preferred_height_id, allocate_id));
-		this.rpc_lid = response.args.get(0).get_uint64();
 	}
 
 	/**
@@ -332,6 +238,52 @@
 			double sy;
 			this.get_scale(out sx, out sy);
 			this.set_scale(sx, value);
+		}
+	}
+
+	/**
+	 * Generator gap: GIR {@code translation-*} have no dedicated accessors
+	 * (only {@code get_translation}/{@code set_translation}). Generated
+	 * props use {@code set_property} with wire {@code sf}; OLLMrpc pins
+	 * {@code GValue*} as INVALID then copy → type-id-0 CRITICAL. Relay
+	 * like {@code scale_x}; set one axis preserves the others.
+	 */
+	public float translation_x {
+		get {
+			float tx, ty, tz;
+			this.get_translation(out tx, out ty, out tz);
+			return tx;
+		}
+		set {
+			float tx, ty, tz;
+			this.get_translation(out tx, out ty, out tz);
+			this.set_translation(value, ty, tz);
+		}
+	}
+
+	public float translation_y {
+		get {
+			float tx, ty, tz;
+			this.get_translation(out tx, out ty, out tz);
+			return ty;
+		}
+		set {
+			float tx, ty, tz;
+			this.get_translation(out tx, out ty, out tz);
+			this.set_translation(tx, value, tz);
+		}
+	}
+
+	public float translation_z {
+		get {
+			float tx, ty, tz;
+			this.get_translation(out tx, out ty, out tz);
+			return tz;
+		}
+		set {
+			float tx, ty, tz;
+			this.get_translation(out tx, out ty, out tz);
+			this.set_translation(tx, ty, value);
 		}
 	}
 

@@ -2,9 +2,9 @@
  * Layout relay for GJS {@code St.Widget} subclasses — same shape as
  * {@link Constraint}: mint hooks, sync {@link OLLMrpc.Live.Hook.emit}, apply.
  *
- * {@link LayoutHooks} owns emit + JS sizes. No local measure: client calls
- * {@link Actor.base_preferred_*} while the ask is still open, then replies
- * with real {@code dd}. Empty reply still → caller {@code base} (too late).
+ * {@link LayoutHooks} owns emit + JS sizes + client-type vfunc registry.
+ * No local measure: client calls {@link Actor.base_preferred_*} while the
+ * ask is still open, then replies with real {@code dd}.
  *
  * 🚫 Do not revive emit_guard / {@code suppress_emit} / measure-depth skips.
  */
@@ -12,9 +12,12 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class LayoutHooks
 	{
-		public OLLMrpc.Live.Hook preferred_width;
-		public OLLMrpc.Live.Hook preferred_height;
-		public OLLMrpc.Live.Hook allocate;
+		public OLLMrpc.Live.Hook? preferred_width;
+		public OLLMrpc.Live.Hook? preferred_height;
+		public OLLMrpc.Live.Hook? allocate;
+
+		/* client type.name() → flags (1 width, 2 height, 4 allocate) */
+		public static Gee.HashMap<string, uint32>? vfuncs;
 
 		/**
 		 * Emit preferred-width hook. {@code true} = sizes in outs;
@@ -27,6 +30,11 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_width_p,
 			out float natural_width_p
 		) {
+			if (this.preferred_width == null) {
+				min_width_p = 0.0f;
+				natural_width_p = 0.0f;
+				return false;
+			}
 			this.preferred_width.reply_args.clear();
 			this.preferred_width.emit(OLLMrpc.args("td",
 				this.preferred_width.connection.export(actor),
@@ -53,6 +61,11 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_height_p,
 			out float natural_height_p
 		) {
+			if (this.preferred_height == null) {
+				min_height_p = 0.0f;
+				natural_height_p = 0.0f;
+				return false;
+			}
 			this.preferred_height.reply_args.clear();
 			this.preferred_height.emit(OLLMrpc.args("td",
 				this.preferred_height.connection.export(actor),
@@ -75,6 +88,9 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public bool measure_allocate(Actor actor, Clutter.ActorBox box)
 		{
+			if (this.allocate == null) {
+				return false;
+			}
 			this.allocate.reply_args.clear();
 			this.allocate.emit(OLLMrpc.args("tdddd",
 				this.allocate.connection.export(actor),
@@ -97,17 +113,36 @@ namespace GnomeShellRpc.Rpc.Helper
 	public class Actor : global::St.Widget
 	{
 		public LayoutHooks? layout_hooks;
+		public string? client_type_name;
 
 		public static void rpc_register()
 		{
 			var helper = new Actor();
 			OLLMrpc.Request.add_class(
 				"Helper-Actor", typeof(Actor),
-				"create", "ttt",
+				"register_vfuncs", "su",
+				"create", "sttt",
 				"base_preferred_width", "d",
 				"base_preferred_height", "d",
 				null);
 			OLLMrpc.Request.register_live("Helper-Actor", helper);
+		}
+
+		/**
+		 * ''Helper-Actor.register_vfuncs'' — client type name + flags.
+		 */
+		public void register_vfuncs(
+			OLLMrpc.Request request,
+			string type_name,
+			uint32 flags
+		) {
+			if (LayoutHooks.vfuncs == null) {
+				LayoutHooks.vfuncs = new Gee.HashMap<string, uint32>();
+			}
+			LayoutHooks.vfuncs.set(type_name, flags);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
 		}
 
 		public override void get_preferred_width(
@@ -115,6 +150,14 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_width_p,
 			out float natural_width_p
 		) {
+			if (this.client_type_name == null
+					|| LayoutHooks.vfuncs == null
+					|| !LayoutHooks.vfuncs.has_key(this.client_type_name)
+					|| (LayoutHooks.vfuncs.get(this.client_type_name) & 1) == 0) {
+				base.get_preferred_width(
+					for_height, out min_width_p, out natural_width_p);
+				return;
+			}
 			var hooks = this.layout_hooks;
 			if (hooks == null) {
 				base.get_preferred_width(
@@ -136,6 +179,14 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_height_p,
 			out float natural_height_p
 		) {
+			if (this.client_type_name == null
+					|| LayoutHooks.vfuncs == null
+					|| !LayoutHooks.vfuncs.has_key(this.client_type_name)
+					|| (LayoutHooks.vfuncs.get(this.client_type_name) & 2) == 0) {
+				base.get_preferred_height(
+					for_width, out min_height_p, out natural_height_p);
+				return;
+			}
 			var hooks = this.layout_hooks;
 			if (hooks == null) {
 				base.get_preferred_height(
@@ -154,6 +205,13 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public override void allocate(Clutter.ActorBox box)
 		{
+			if (this.client_type_name == null
+					|| LayoutHooks.vfuncs == null
+					|| !LayoutHooks.vfuncs.has_key(this.client_type_name)
+					|| (LayoutHooks.vfuncs.get(this.client_type_name) & 4) == 0) {
+				base.allocate(box);
+				return;
+			}
 			var hooks = this.layout_hooks;
 			if (hooks == null) {
 				base.allocate(box);
@@ -169,8 +227,8 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * ''Helper-Actor.base_preferred_width'' — St measure with hooks popped,
-		 * called mid-Invoke when layout_relay chains. Off-stage peers skip
-		 * {@code base} (theme_node would CRITICAL) and return 0,0.
+		 * called mid-Invoke when layout hook falls through. Off-stage peers
+		 * skip {@code base} (theme_node would CRITICAL) and return 0,0.
 		 */
 		public void base_preferred_width(
 			OLLMrpc.Request request,
@@ -214,29 +272,58 @@ namespace GnomeShellRpc.Rpc.Helper
 			});
 		}
 
+		/**
+		 * ''Helper-Actor.create'' — type_name + optional callback ids
+		 * ({@code 0} = no hook for that vfunc).
+		 */
 		public void create(
 			OLLMrpc.Request request,
+			string type_name,
 			uint64 preferred_width_cb,
 			uint64 preferred_height_cb,
 			uint64 allocate_cb
 		) {
-			if (!request.connection.callbacks.has_key((int) preferred_width_cb)
-					|| !request.connection.callbacks.has_key(
-						(int) preferred_height_cb)
-					|| !request.connection.callbacks.has_key(
+			OLLMrpc.Live.Hook? pw = null;
+			OLLMrpc.Live.Hook? ph = null;
+			OLLMrpc.Live.Hook? al = null;
+			if (preferred_width_cb != 0) {
+				if (!request.connection.callbacks.has_key(
+						(int) preferred_width_cb)) {
+					request.connection.reply_error(request,
+						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+					return;
+				}
+				pw = request.connection.callbacks.get(
+					(int) preferred_width_cb);
+			}
+			if (preferred_height_cb != 0) {
+				if (!request.connection.callbacks.has_key(
+						(int) preferred_height_cb)) {
+					request.connection.reply_error(request,
+						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+					return;
+				}
+				ph = request.connection.callbacks.get(
+					(int) preferred_height_cb);
+			}
+			if (allocate_cb != 0) {
+				if (!request.connection.callbacks.has_key(
 						(int) allocate_cb)) {
-				request.connection.reply_error(request,
-					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
-				return;
+					request.connection.reply_error(request,
+						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+					return;
+				}
+				al = request.connection.callbacks.get((int) allocate_cb);
 			}
 			var created = new Actor();
-			created.layout_hooks = new LayoutHooks() {
-				preferred_width = request.connection.callbacks.get(
-					(int) preferred_width_cb),
-				preferred_height = request.connection.callbacks.get(
-					(int) preferred_height_cb),
-				allocate = request.connection.callbacks.get((int) allocate_cb),
-			};
+			created.client_type_name = type_name;
+			if (pw != null || ph != null || al != null) {
+				created.layout_hooks = new LayoutHooks() {
+					preferred_width = pw,
+					preferred_height = ph,
+					allocate = al,
+				};
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("t",

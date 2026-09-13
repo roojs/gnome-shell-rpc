@@ -41,86 +41,44 @@
 
 ## Verdict
 
-**A2:** ✔️ on **8s** prove — `READY=1` + `notify_ready` (debug-slow boot;
-5s was only the timer).
+**A2:** ✔️ — `READY=1` + `notify_ready` (~+5.2s with debug). Early **5s**
+hard kill was only the timer. Prove window extended (**15s** / **5s** settle).
 
-**A4:** still ❌ — no `Meta.is_restart` / `startup-complete` in the settle
-window after READY.
+**Post-READY:** **not an RPC hang.** `ENTER`/`REPLY done` balanced (0 open).
+Client dies with **SIGSEGV (139)** within ~ms of READY (after
+`notify_ready` + one nested `base_preferred_height` reply). Mutter often then
+exits **133 (SIGTRAP)**. Longer settle does not help until the crash is fixed.
+
+**A4:** ❌ blocked by that crash — not by prove timeout / idle priority.
+
+**🚫** Do not chase layout `PRIORITY_*` / idle-callback retuning.
+
+---
+
+## Hang check (2026-09-13)
+
+| Check | Result |
+| ----- | ------ |
+| Open `DBG invoke ENTER` without `REPLY done` | **0** |
+| Post-READY RPC progress | brief (`notify_ready`, preferred reply) then stop |
+| `gnome-shell-rpc` exit | **139 / SIGSEGV** (wrapper) |
+| gdb | SEGV in `libffi` ← `libgio` (`g_dbus_address_get_for_bus_sync` @ gio+0x110def) ← main loop |
+| Just before READY in log | `GSocketClient` connect_async (session / extensions path in `main.js` after READY idle is scheduled) |
+
+Stock `main.js` schedules READY idle, then continues into
+`ExtensionDownloader.init()` / `ExtensionManager.init()` — D-Bus traffic fits.
 
 ---
 
 ## When READY is supposed to happen (stock)
 
-In `vendor/gnome-shell/js/ui/main.js`, after a long `_initializeUI()`
-(layout, overview, panel, message tray, …), shell schedules an idle that
-calls:
+In `vendor/gnome-shell/js/ui/main.js`, after `_initializeUI()`, shell schedules:
 
-1. `Shell.util_sd_notify()` → our log line `READY=1`  
+1. `Shell.util_sd_notify()` → `READY=1`  
 2. `global.context.notify_ready()`
 
-```318:322:vendor/gnome-shell/js/ui/main.js
-    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-        Shell.util_sd_notify();
-        global.context.notify_ready();
-        return GLib.SOURCE_REMOVE;
-    });
-```
-
-That idle is **after** panel / message-tray / layout construction — not at
-the start of boot.
-
-A4 (`Meta.is_restart` / `startup-complete`) is even later (layout prepare),
-and only after READY-side init has progressed.
-
----
-
-## What the 5s prove actually shows (2026-09-13)
-
-Fresh prove: stop reason **timeout** (ec=124). Client log ~**4.2s** then
-disconnect.
-
-| Marker | Count |
-| ------ | ----: |
-| `READY=1` | **0** |
-| `notify_ready` | **0** |
-| `Meta.is_restart` | **0** |
-| Preferred ask / reply | **201 / 201** |
-| `Helper-Actor.base_preferred_*` | **98** (timing fix; asks stay open) |
-| `Helper-Actor.create` | **115** |
-| `Clutter-Actor.add_child` | **556** |
-| `St-BoxLayout.new` | **178** |
-
-Last RPCs before kill (still building UI):
-
-- `St-BoxLayout.new`, `St-Label.new`, `set_text`, `add_child`, …
-
-Per-second work is mostly **mint widgets + style + add_child + callback
-register**, with size-measure (`base_preferred`) mixed in the whole window
-(~0.5s–4.0s) — not a hang at the end of preferred.
-
-```
-t+0..3s  heavy create / style / add_child / register
-t+4s     still the same, fewer calls, then kill
-         never READY / never notify_ready
-```
-
-One server CRITICAL seen: `cogl_framebuffer_set_viewport` width/height 0 —
-noise relative to “never reached READY.”
-
----
-
-## Plain picture
-
-```
-Stock:   build UI ──► idle: READY + notify_ready ──► later A4
-Ours:    build UI via many RPCs (+ debug) ──► prove timer ──► stop
-         (still in build if window too short; idle never ran)
-```
-
-So A2 is red when **`util_sd_notify` never runs**, not because READY was
-lost on the wire. A4 is red because we never get past that.
-
-Preferred hang is fixed. This bug is: **prove window vs debug-slow boot**.
+A4 (`Meta.is_restart` / layout `startup-complete`) is later — unreachable while
+client segfaults.
 
 ---
 
@@ -130,16 +88,14 @@ Preferred hang is fixed. This bug is: **prove window vs debug-slow boot**.
 | - | - |
 | Preferred ask/reply mismatch | no — matched |
 | Close-ask-then-measure hang | fixed; archived |
-| Missing `READY=1` after notify | never called yet |
-| “Do not raise timeout” / paper over | wrong — debug is slow; **8s** ok |
-| `suppress_emit` / measure-depth | rejected |
+| Prove timer alone (A2) | fixed — extend window |
+| Post-READY RPC hang | **no** — crash |
+| layout.js `PRIORITY_*` / idle retune | rejected |
+| Wait 40s | rejected — crash is immediate |
 
 ---
 
 ## Next
 
-1. A2 done at 8s. Chase **A4**: why no `Meta.is_restart` in 1s settle after
-   READY (layout prepare).  
-2. Update this bug or split an A4 bug once the method is named.
-
-**Done for A2:** `READY=1` on stock 8s prove. **A4** still open.
+1. Chase **SIGSEGV** after READY (ffi/gio/dbus — extension / session bus path).  
+2. Re-prove A4 only after client stays up past READY.

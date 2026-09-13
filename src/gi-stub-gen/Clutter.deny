@@ -101,6 +101,11 @@ Actor.set_pivot_point
 Actor.scale_x
 Actor.scale_y
 
+# Actor.override — translation via get/set_translation (set_property GValue wire).
+Actor.translation_x
+Actor.translation_y
+Actor.translation_z
+
 # Actor.override — visible via is_visible/show/hide; constraints/actions timing.
 Actor.visible
 Actor.constraints
