@@ -13,6 +13,7 @@ meson compile -C build
 BIN=./build/tests/call-sync-repro/call-sync-repro
 GATE=./build/tests/call-sync-repro/after-reply-gate
 BUF=./build/tests/call-sync-repro/buffer-invoke-gate
+GVAL=./build/tests/call-sync-repro/gvalue-omit-gate
 
 timeout 3 $BIN idle        # FAIL — Idle(default) reply
 timeout 3 $BIN opc-head    # FAIL — OPC head-only send (fixed upstream)
@@ -22,6 +23,9 @@ timeout 3 $BIN child       # PASS — child GI + reenter
 
 timeout 5 $GATE            # Response then Hook.emit B same turn (after emit A)
 timeout 5 $BUF             # Response then Hook.emit, no prior emit A
+timeout 5 $GVAL            # Gi get_property omit — PASS after OPC FIXED
+GATE_PROXY=./build/tests/call-sync-repro/proxy-reuse-gate
+timeout 5 $GATE_PROXY      # live decode identity — PASS after OPC FIXED
 ```
 
 `stack` matches live after OPC send fix: reply is recv’d at depth=1, not
@@ -48,3 +52,29 @@ buffering). Client `call_poll` returns → only `MainContext.iteration`.
 
 → **Do not file OPC** on buffered-Invoke / `get_available` until a gate
 **FAIL**s. Weston hang after READY remains a **consumer** chase.
+
+## gvalue-omit-gate
+
+Shape: lease `Gio.SimpleAction` → `Gio-SimpleAction.get_property` with
+GValue wire row **omitted** (Meta property override pattern). Count
+server `type id '0'` CRITICAL.
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-13 | **FAIL** (3 CRITICAL — bad out GValue init) |
+| 2026-09-13 | **PASS** after OPC [`FIXED`](file:///home/alan/gitlive/OLLMchat/docs/bugs/done/2026-09-13-FIXED-gi-get-property-gvalue-init-critical.md) |
+
+→ Archived: [`docs/bugs/done/2026-09-13-gi-gvalue-omit-invalid-critical.md`](../../docs/bugs/done/2026-09-13-gi-gvalue-omit-invalid-critical.md).
+PASS → chase consumer (post-READY SIGSEGV).
+
+## proxy-reuse-gate
+
+Shape: `Gate.make` exports peer → `Gate.get_peer` returns same lid → client
+decode twice. Pointers must match.
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-13 | **FAIL** then **PASS** after OPC [`FIXED`](file:///home/alan/gitlive/OLLMchat/docs/bugs/done/2026-09-13-FIXED-live-parse-object-remints-proxy.md) |
+
+→ Archived: [`docs/bugs/done/2026-09-13-messagelist-cover-header-stack-critical.md`](../../docs/bugs/done/2026-09-13-messagelist-cover-header-stack-critical.md).
+Consumer keeps `Runtime.register_handle` on mint (create-time → `proxies`).

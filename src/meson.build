@@ -417,6 +417,8 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/GestureAction.override.vala',
   'gi-stub/overrides-clutter/Stage.override.vala',
   'gi-stub/overrides-clutter/Actor.override.vala',
+  'gi-stub/overrides-clutter/LayoutManager.override.vala',
+  'gi-stub/overrides-clutter/LayoutMeta.override.vala',
   'gi-stub/overrides-clutter/Backend.override.vala',
   'gi-stub/overrides-clutter/SnapConstraint.override.vala',
   'gi-stub/overrides-clutter/ActorIter.override.vala',

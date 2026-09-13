@@ -223,10 +223,17 @@ namespace Shell
 	/**
 	 * Stock {@code shell_util_touch_file_async} — create file (and parents)
 	 * on a worker thread.
+	 *
+	 * Callback must be transfer-none / {@code scope=async} (stock Shell GIR).
+	 * {@code owned} here made Vala emit {@code scope=notified} + destroy,
+	 * which corrupts GJS when the {@link GLib.Task} completes (post-READY SEGV).
 	 */
-	public void util_touch_file_async(GLib.File file, owned GLib.AsyncReadyCallback? callback)
+	public void util_touch_file_async(
+		GLib.File file,
+		[CCode (scope = "async")] GLib.AsyncReadyCallback? callback
+	)
 	{
-		var task = new GLib.Task(file, null, (owned) callback);
+		var task = new GLib.Task(file, null, callback);
 		task.run_in_thread((task, source_object, task_data, cancellable) => {
 			var f = (GLib.File) source_object;
 			var parent = f.get_parent();

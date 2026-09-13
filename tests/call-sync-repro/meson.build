@@ -37,3 +37,41 @@ executable('buffer-invoke-gate',
   build_rpath: ocrpc_rpath,
   install: false,
 )
+
+# Gi get_property omit GValue — must not CRITICAL via Value(Type.INVALID).
+executable('gvalue-omit-gate',
+  [
+    'gvalue-omit-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [
+    ocrpc_dep,
+    dependency('gio-unix-2.0'),
+    dependency('gobject-introspection-1.0'),
+  ],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+# Live decode must reuse Client.proxies (object identity).
+executable('proxy-reuse-gate',
+  [
+    'proxy-reuse-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)

@@ -9,7 +9,7 @@
 > until the bar moves or you hit a real stop (need user help, or FAIL-backed
 > OPC bug — then stop). See `.cursor/rules/no-status-theatre.mdc`.
 
-**Status:** ✔️ corridor proven 2026-09-11 — stub props + Gi `get_property` / `set_property` (libocrpc GValue → `retval`); A4 still elsewhere  
+**Status:** ✔️ done — archived (property corridor + Gi init CRITICAL fixed)  
 **Hit:** 2026-09-11 nested Wayland — Phase A after `notify_ready` / `READY=1`  
 **Plan:** [`docs/plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md) A3/A4  
 **Reject:** client `return false` fakes · JS DBus shims · `Helper-ObjectProperty` wrapping `g_object_get`/`set`

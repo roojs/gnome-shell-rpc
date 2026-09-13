@@ -40,6 +40,7 @@ namespace GnomeShellRpc.GiStub
 				OLLMrpc.args("sttt", type.name(),
 					preferred_width_id, preferred_height_id, allocate_id));
 			self.rpc_lid = response.args.get(0).get_uint64();
+			Runtime.register_handle(self);
 		}
 
 		static uint32 ensure_registered(GLib.Type type)

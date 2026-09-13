@@ -44,6 +44,22 @@ namespace GnomeShellRpc.GiStub
 		private static Gee.HashMap<int, InvokeRow>? handlers = null;
 
 		/**
+		 * Insert create-time proxy into {@link OLLMrpc.Client.proxies}.
+		 *
+		 * OPC {@code parse_object} reuses that map; without this, the first
+		 * decode of a client-minted lid still remints and GJS {@code ===}
+		 * breaks (messageList Cover/Header).
+		 */
+		public static void register_handle(GLib.Object obj)
+		{
+			var handle = obj as OLLMrpc.Live.Handle;
+			if (handle == null || handle.rpc_lid == 0 || Runtime.client == null) {
+				return;
+			}
+			Runtime.client.proxies.set((int) handle.rpc_lid, obj);
+		}
+
+		/**
 		 * Register Ui wire types and connect to {@code MUTTER_RPC_SOCKET}.
 		 *
 		 * Safe to call repeatedly; returns immediately if already connected.

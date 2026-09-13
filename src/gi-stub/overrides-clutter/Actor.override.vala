@@ -67,6 +67,7 @@
 			var response = GnomeShellRpc.call_value(alias + ".new", null);
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
+			GnomeShellRpc.GiStub.Runtime.register_handle(this);
 			return;
 		}
 		GLib.error("lease construct: no Bin-registered ancestor for %s",
@@ -336,8 +337,12 @@
 			return this.priv_layout_manager;
 		}
 		set {
+			var previous = this.priv_layout_manager;
 			this.priv_layout_manager = value;
 			if (value == null) {
+				if (previous != null && previous.rpc_lid == 0) {
+					previous.set_container(null);
+				}
 				GnomeShellRpc.call_value(
 					"Clutter-Actor.set_layout_manager",
 					this,
@@ -349,6 +354,12 @@
 					"Clutter-Actor.set_layout_manager",
 					this,
 					OLLMrpc.args("o", value));
+			} else {
+				/* GJS LayoutManager — local only; still run set_container vfunc. */
+				if (previous != null && previous != value && previous.rpc_lid == 0) {
+					previous.set_container(null);
+				}
+				value.set_container(this);
 			}
 		}
 	}

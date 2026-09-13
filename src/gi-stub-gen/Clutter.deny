@@ -118,6 +118,23 @@ Actor.layout_manager
 Actor.get_layout_manager
 Actor.set_layout_manager
 
+# LayoutManager.override — GJS subclasses (QuickSettingsLayout, …) are
+# client-owned; child meta / set_container must stay local (no rpc_lid).
+LayoutManager.child_set_property
+LayoutManager.child_get_property
+LayoutManager.get_child_meta
+LayoutManager.find_child_property
+LayoutManager.set_container
+
+# LayoutMeta.override — construct props for local GJS child metas.
+LayoutMeta.actor
+LayoutMeta.container
+LayoutMeta.manager
+LayoutMeta.get_actor
+LayoutMeta.get_container
+LayoutMeta.get_manager
+LayoutMeta.is_for
+
 # Backend.override — GJS InputMethod has no rpc_lid (client-owned).
 Backend.input_method
 Backend.get_input_method
