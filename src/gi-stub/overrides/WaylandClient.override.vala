@@ -26,23 +26,31 @@
 		 * Stock {@code meta_wayland_client_spawnv}. Returns
 		 * {@link Meta.RpcSubprocess} (Gio.Subprocess is foreign / not on wire).
 		 *
-		 * {@code GLib.SubprocessLauncher} has no get_cwd in our Gio — cwd is
-		 * sent empty; callers that need a cwd should use absolute argv (DING).
+		 * Wire args: display, cwd, then one {@code s} per argv element.
+		 * (Ffi {@code as} hangs / drops the strv on this Helper path.)
 		 */
-		public RpcSubprocess? spawnv(Display display, string[] argv)
-			throws GLib.Error
-		{
-			string[] wire_argv = argv;
-			if (wire_argv == null) {
-				wire_argv = new string[0];
+		public RpcSubprocess? spawnv(
+			Display display,
+			[CCode (array_length = false, array_null_terminated = true)]
+			string[] argv
+		) throws GLib.Error {
+			string[] wire = {};
+			if (argv != null) {
+				for (int i = 0; argv[i] != null; i++) {
+					wire += argv[i];
+				}
 			}
 			GLib.message(
 				"WaylandClient.spawnv client argv_len=%d",
-				wire_argv.length
+				wire.length
 			);
+			/* cwd: Gio SubprocessLauncher has set_cwd, no get_cwd. */
+			var packed = OLLMrpc.args("os", display, "");
+			foreach (var s in wire) {
+				packed.add(OLLMrpc.val("s", s));
+			}
 			var response = GnomeShellRpc.call_value(
-				"Helper-WaylandClient.spawnv", this,
-				OLLMrpc.args("osas", display, "", wire_argv)
+				"Helper-WaylandClient.spawnv", this, packed
 			);
 			int stdout_fd = -1;
 			if (response.buffer != null && response.buffer.fd >= 0) {

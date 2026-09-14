@@ -79,6 +79,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request request,
 			Meta.Display display,
 			string cwd,
+			[CCode (array_length = false, array_null_terminated = true)]
 			string[] argv
 		) {
 			if (this.peer == null) {
@@ -101,20 +102,22 @@ namespace GnomeShellRpc.Rpc.Helper
 				);
 				return;
 			}
-			string[] wire_argv = argv;
-			if (wire_argv == null) {
-				wire_argv = new string[0];
+			string[] wire = {};
+			if (raw != null) {
+				for (int i = 0; raw[i] != null; i++) {
+					wire += raw[i];
+				}
 			}
 			GLib.message(
 				"Helper-WaylandClient.spawnv argv_len=%d cwd='%s'",
-				wire_argv.length, cwd ?? "(null)"
+				wire.length, cwd ?? "(null)"
 			);
 			if (this.launcher != null && cwd != null && cwd.length > 0) {
 				this.launcher.set_cwd(cwd);
 			}
 			GLib.Subprocess? proc = null;
 			try {
-				proc = this.peer.spawnv(display, wire_argv);
+				proc = this.peer.spawnv(display, wire);
 			} catch (GLib.Error e) {
 				request.connection.reply_error(
 					request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e
