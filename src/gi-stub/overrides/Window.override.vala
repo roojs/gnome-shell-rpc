@@ -29,12 +29,11 @@
 			uint32 timestamp,
 			Graphene.Point? pos_hint
 		) {
-			uint64 device_lease = 0;
+			Clutter.InputDevice? wire = null;
 			var device_name = "";
 			if (device != null) {
-				var lease = device.rpc_lid;
-				if (lease != 0) {
-					device_lease = lease;
+				if (device.rpc_lid != 0) {
+					wire = device;
 				} else {
 					device_name = device.get_device_name();
 				}
@@ -51,7 +50,7 @@
 			}
 			var response = GnomeShellRpc.call_value(
 				"Helper-Window.begin_grab_op", this,
-				OLLMrpc.args("utsiubff", (uint) op, device_lease, device_name,
+				OLLMrpc.args("uosiubff", (uint) op, wire, device_name,
 					sequence_slot, timestamp, has_pos, pos_x, pos_y));
 			return response.retval.get_boolean();
 		}

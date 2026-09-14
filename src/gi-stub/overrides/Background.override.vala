@@ -8,7 +8,7 @@
 			var response = GnomeShellRpc.call_value(
 				"Helper-Background.create",
 				null,
-				OLLMrpc.args("t", this.meta_display.rpc_lid)
+				OLLMrpc.args("o", this.meta_display)
 			);
 			this.rpc_lid = response.args.get(0).get_uint64();
 		}

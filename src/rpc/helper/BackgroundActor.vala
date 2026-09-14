@@ -13,7 +13,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-BackgroundActor", typeof(BackgroundActor),
-				"create", "ti",
+				"create", "oi",
 				null
 			);
 			OLLMrpc.Request.register_live("Helper-BackgroundActor",
@@ -24,18 +24,15 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * ''Helper-BackgroundActor.create'' — compositor background actor.
 		 *
 		 * @param request inbound RPC
-		 * @param display_lease lease id of {@link Meta.Display}
+		 * @param display compositor display (wire ''o'' / lease)
 		 * @param monitor monitor index
 		 */
 		public void create(
 			OLLMrpc.Request request,
-			uint64 display_lease,
+			Meta.Display display,
 			int monitor
 		) {
-			var actor = new Meta.BackgroundActor(
-				(Meta.Display) request.connection.leases.get((int) display_lease),
-				monitor
-			);
+			var actor = new Meta.BackgroundActor(display, monitor);
 			/* Stock attach MetaBackgroundContent — client facade needs its
 			 * lease so content.background / set_vignette RPC to the peer. */
 			var content = actor.get_content();

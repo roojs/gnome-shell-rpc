@@ -7,10 +7,12 @@
 		{
 			Object();
 			this.local_launcher = launcher;
-			uint flags = 0;
-			var fv = GLib.Value(typeof(GLib.SubprocessFlags));
-			launcher.get_property("flags", ref fv);
-			flags = fv.get_flags();
+			/* Gio.SubprocessLauncher.flags is construct-only (no getter).
+			 * DING and peers always want a merged stdout pipe. */
+			uint flags = (uint) (
+				GLib.SubprocessFlags.STDOUT_PIPE
+				| GLib.SubprocessFlags.STDERR_MERGE
+			);
 			var response = GnomeShellRpc.call_value(
 				"Helper-WaylandClient.create", null,
 				OLLMrpc.args("ou", context, flags)

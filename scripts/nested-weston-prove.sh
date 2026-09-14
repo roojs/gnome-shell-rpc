@@ -34,7 +34,11 @@ TEE_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc/nested-weston-prove.tee
 : >"$TEE_LOG"
 # Stock path: Meta.is_restart means _prepareStartupAnimation ran (A4 proxy until
 # a non-override startup-complete marker exists).
+# GSR_NESTED_NO_A4=1 — keep running after A4 (stay-up / post-READY extension spawn).
 A4_PAT='method=Meta\.is_restart'
+if [[ "${GSR_NESTED_NO_A4:-0}" == "1" ]]; then
+	A4_PAT='__gsr_no_a4_early_stop__'
+fi
 # Phase B1: GI_META_SMOKE=key-smoke → key-smoke.js logs this.
 # Phase B3: GI_META_SMOKE=panel-click-smoke → panel-click-smoke: ok
 SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok)'

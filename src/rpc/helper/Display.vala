@@ -17,9 +17,9 @@ namespace GnomeShellRpc.Rpc.Helper
 				"Helper-Display", typeof(Display),
 				"add_keybinding", "ssut",
 				"keybindings_set_custom_handler", "st",
-				"request_pad_osd", "tsb",
-				"get_pad_button_label", "tsi",
-				"get_pad_feature_label", "tsiui",
+				"request_pad_osd", "osb",
+				"get_pad_button_label", "osi",
+				"get_pad_feature_label", "osiui",
 				null
 			);
 			OLLMrpc.Request.register_live("Helper-Display",
@@ -44,7 +44,20 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var row = request.connection.callbacks.get((int) callback_id);
-			var settings = new GLib.Settings(schema_id);
+			var source = GLib.SettingsSchemaSource.get_default();
+			var schema = source.lookup(schema_id, true);
+			if (schema == null) {
+				GLib.warning(
+					"Helper-Display.add_keybinding: schema '%s' is not installed",
+					schema_id
+				);
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("u", (uint) 0),
+				});
+				return;
+			}
+			var settings = new GLib.Settings.full(schema, null, null);
 			var action = display.add_keybinding(
 				name, settings, (Meta.KeyBindingFlags) flags,
 				(d, w, event, binding) => {
@@ -92,16 +105,15 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void request_pad_osd(
 			OLLMrpc.Request request,
-			uint64 device_lease,
+			Clutter.InputDevice? pad,
 			string device_name,
 			bool edition_mode
 		) {
 			var display = (Meta.Display) request.connection.leases.get(
 				(int) request.lease_id);
-			var pad = Devices.resolve(request.connection, device_lease,
-				device_name, true);
-			if (pad != null) {
-				display.request_pad_osd(pad, edition_mode);
+			var device = Devices.resolve(pad, device_name, true);
+			if (device != null) {
+				display.request_pad_osd(device, edition_mode);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
@@ -110,17 +122,16 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void get_pad_button_label(
 			OLLMrpc.Request request,
-			uint64 device_lease,
+			Clutter.InputDevice? pad,
 			string device_name,
 			int button_number
 		) {
 			var display = (Meta.Display) request.connection.leases.get(
 				(int) request.lease_id);
-			var pad = Devices.resolve(request.connection, device_lease,
-				device_name, true);
+			var device = Devices.resolve(pad, device_name, true);
 			var label = "";
-			if (pad != null) {
-				label = display.get_pad_button_label(pad, button_number);
+			if (device != null) {
+				label = display.get_pad_button_label(device, button_number);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
@@ -130,7 +141,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void get_pad_feature_label(
 			OLLMrpc.Request request,
-			uint64 device_lease,
+			Clutter.InputDevice? pad,
 			string device_name,
 			int feature,
 			uint direction,
@@ -138,11 +149,10 @@ namespace GnomeShellRpc.Rpc.Helper
 		) {
 			var display = (Meta.Display) request.connection.leases.get(
 				(int) request.lease_id);
-			var pad = Devices.resolve(request.connection, device_lease,
-				device_name, true);
+			var device = Devices.resolve(pad, device_name, true);
 			var label = "";
-			if (pad != null) {
-				label = display.get_pad_feature_label(pad,
+			if (device != null) {
+				label = display.get_pad_feature_label(device,
 					(Meta.PadFeatureType) feature,
 					(Meta.PadDirection) direction, feature_number);
 			}

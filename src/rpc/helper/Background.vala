@@ -14,7 +14,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-Background", typeof(Background),
-				"create", "t",
+				"create", "o",
 				"set_file", "si",
 				null
 			);
@@ -25,15 +25,12 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * ''Helper-Background.create'' — create compositor background.
 		 *
 		 * @param request inbound RPC
-		 * @param display_lease lease id of {@link Meta.Display}
+		 * @param display compositor display (wire ''o'' / lease)
 		 */
 		public void create(
 			OLLMrpc.Request request,
-			uint64 display_lease
+			Meta.Display display
 		) {
-			var display = (Meta.Display) request.connection.leases.get(
-				(int) display_lease
-			);
 			var background = new Meta.Background(display);
 			var handle = (uint64) request.connection.export(background);
 			request.reply(new OLLMrpc.Response() {

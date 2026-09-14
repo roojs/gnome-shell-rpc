@@ -33,7 +33,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-WaylandClient.create'' — context lease + launcher flags →
+		 * ''Helper-WaylandClient.create'' — context + launcher flags →
 		 * compositor {@link Meta.WaylandClient}.
 		 */
 		public void create(
@@ -41,6 +41,16 @@ namespace GnomeShellRpc.Rpc.Helper
 			Meta.Context context,
 			uint flags
 		) {
+			if (context == null) {
+				request.connection.reply_error(
+					request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+					new GLib.IOError.FAILED(
+						"Helper-WaylandClient.create: context is null"
+					)
+				);
+				return;
+			}
 			var launcher = new GLib.SubprocessLauncher(
 				(GLib.SubprocessFlags) flags
 			);
@@ -73,6 +83,16 @@ namespace GnomeShellRpc.Rpc.Helper
 		) {
 			var lid = (int) request.lease_id;
 			var client = (Meta.WaylandClient) request.connection.leases.get(lid);
+			if (display == null) {
+				request.connection.reply_error(
+					request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+					new GLib.IOError.FAILED(
+						"Helper-WaylandClient.spawnv: display is null"
+					)
+				);
+				return;
+			}
 			var launcher = this.launchers.get(lid);
 			if (launcher != null && cwd != null && cwd.length > 0) {
 				launcher.set_cwd(cwd);

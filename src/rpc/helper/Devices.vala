@@ -1,7 +1,8 @@
 /**
- * Resolve a compositor {@link Clutter.InputDevice} from lease id and/or name.
+ * Resolve a compositor {@link Clutter.InputDevice} from a live peer and/or
+ * name.
  *
- * Used by grab / pad Helpers (plan 0.5.5 D). Lease wins; else match
+ * Used by grab / pad Helpers (plan 0.5.5 D). Object wins; else match
  * {@link Clutter.InputDevice.get_device_name}; else default pointer (or
  * first pad when {@code want_pad}).
  */
@@ -10,28 +11,26 @@ namespace GnomeShellRpc.Rpc.Helper
 	public class Devices : GLib.Object
 	{
 		public static Clutter.InputDevice? resolve(
-			OLLMrpc.Transport.Connection connection,
-			uint64 lease_id,
+			Clutter.InputDevice? device,
 			string name,
 			bool want_pad = false
 		) {
-			if (lease_id != 0) {
-				return (Clutter.InputDevice) connection.leases.get(
-					(int) lease_id);
+			if (device != null) {
+				return device;
 			}
 			var seat = Clutter.get_default_backend().get_default_seat();
 			if (name.length > 0) {
-				foreach (var device in seat.list_devices()) {
-					if (device.get_device_name() == name) {
-						return device;
+				foreach (var d in seat.list_devices()) {
+					if (d.get_device_name() == name) {
+						return d;
 					}
 				}
 			}
 			if (want_pad) {
-				foreach (var device in seat.list_devices()) {
-					if (device.get_device_type() ==
+				foreach (var d in seat.list_devices()) {
+					if (d.get_device_type() ==
 							Clutter.InputDeviceType.PAD_DEVICE) {
-						return device;
+						return d;
 					}
 				}
 				return null;

@@ -18,6 +18,8 @@ timeout 5 $BUF             # Response then Hook.emit, no prior emit A
 timeout 5 $GVAL            # Gi get_property omit — PASS after OPC FIXED
 GATE_PROXY=./build/tests/call-sync-repro/proxy-reuse-gate
 timeout 5 $GATE_PROXY      # live decode identity — PASS after OPC FIXED
+GATE_FFI_O=./build/tests/call-sync-repro/ffi-o-lease-gate
+timeout 5 $GATE_FFI_O     # Ffi "o" lease resolve — FAIL until OPC
 ```
 
 `stack` matches live after OPC send fix: reply is recv’d at depth=1, not
@@ -70,3 +72,17 @@ decode twice. Pointers must match.
 
 → Archived: [`docs/bugs/done/2026-09-13-messagelist-cover-header-stack-critical.md`](../../docs/bugs/done/2026-09-13-messagelist-cover-header-stack-critical.md).
 Consumer keeps `Runtime.register_handle` on mint (create-time → `proxies`).
+
+## ffi-o-lease-gate
+
+Shape: `Gate.make` exports Peer → client calls `Gate.echo` with wire arg
+`uint64` lease id and `add_class` signature `"o"` (same as
+`call_value` object→lease). Helper must receive a non-null Peer.
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-14 | **FAIL** — Ffi `pack("o")` does `get_object` on UINT64 |
+| 2026-09-14 | **PASS** after OPC Ffi lease resolve |
+
+→ [`docs/bugs/2026-09-14-ffi-o-lease-resolve.md`](../../docs/bugs/2026-09-14-ffi-o-lease-resolve.md).
+Helpers (`Helper-WaylandClient`, Background, pad/grab) use GObject `"o"`.

@@ -23,34 +23,32 @@
 
 		public void request_pad_osd(Clutter.InputDevice pad, bool edition_mode)
 		{
-			uint64 device_lease = 0;
+			Clutter.InputDevice? wire = null;
 			var device_name = "";
-			var lease = pad.rpc_lid;
-			if (lease != 0) {
-				device_lease = lease;
+			if (pad.rpc_lid != 0) {
+				wire = pad;
 			} else {
 				device_name = pad.get_device_name();
 			}
 			GnomeShellRpc.call_value(
 				"Helper-Display.request_pad_osd", this,
-				OLLMrpc.args("tsb", device_lease, device_name, edition_mode));
+				OLLMrpc.args("osb", wire, device_name, edition_mode));
 		}
 
 		public owned string get_pad_button_label(
 			Clutter.InputDevice pad,
 			int button_number
 		) {
-			uint64 device_lease = 0;
+			Clutter.InputDevice? wire = null;
 			var device_name = "";
-			var lease = pad.rpc_lid;
-			if (lease != 0) {
-				device_lease = lease;
+			if (pad.rpc_lid != 0) {
+				wire = pad;
 			} else {
 				device_name = pad.get_device_name();
 			}
 			var response = GnomeShellRpc.call_value(
 				"Helper-Display.get_pad_button_label", this,
-				OLLMrpc.args("tsi", device_lease, device_name, button_number));
+				OLLMrpc.args("osi", wire, device_name, button_number));
 			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
 				return "";
 			}
@@ -64,17 +62,16 @@
 			PadDirection direction,
 			int feature_number
 		) {
-			uint64 device_lease = 0;
+			Clutter.InputDevice? wire = null;
 			var device_name = "";
-			var lease = pad.rpc_lid;
-			if (lease != 0) {
-				device_lease = lease;
+			if (pad.rpc_lid != 0) {
+				wire = pad;
 			} else {
 				device_name = pad.get_device_name();
 			}
 			var response = GnomeShellRpc.call_value(
 				"Helper-Display.get_pad_feature_label", this,
-				OLLMrpc.args("tsiui", device_lease, device_name,
+				OLLMrpc.args("osiui", wire, device_name,
 					(int) feature, (uint) direction, feature_number));
 			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
 				return "";

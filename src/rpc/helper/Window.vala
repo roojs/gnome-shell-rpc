@@ -15,7 +15,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				"Helper-Window", typeof(Window),
 				"foreach_transient", "t",
 				"foreach_ancestor", "t",
-				"begin_grab_op", "utsiubff",
+				"begin_grab_op", "uosiubff",
 				null
 			);
 			OLLMrpc.Request.register_live("Helper-Window",
@@ -77,7 +77,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		public void begin_grab_op(
 			OLLMrpc.Request request,
 			uint op,
-			uint64 device_lease,
+			Clutter.InputDevice? device,
 			string device_name,
 			int sequence_slot,
 			uint timestamp,
@@ -87,8 +87,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		) {
 			var window = (Meta.Window) request.connection.leases.get(
 				(int) request.lease_id);
-			var device = Devices.resolve(request.connection, device_lease,
-				device_name);
+			var resolved = Devices.resolve(device, device_name);
 			Graphene.Point? pos_hint = null;
 			if (has_pos) {
 				Graphene.Point pos = {};
@@ -103,7 +102,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					"begin_grab_op: sequence slot %d ignored (no cross-process sequence)",
 					sequence_slot);
 			}
-			var ok = window.begin_grab_op((Meta.GrabOp) op, device, sequence,
+			var ok = window.begin_grab_op((Meta.GrabOp) op, resolved, sequence,
 				timestamp, pos_hint);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

@@ -1,7 +1,9 @@
 # Meta-WaylandClient.spawnv aborts shell (no rpc_lid)
 
-**Status:** ⏳ open — WaylandClient.new/spawnv **wired** (Helper + override +
-`Meta.RpcSubprocess`); nested prove stay-up still due.  
+**Status:** ⏳ blocked — need OPC Ffi `"o"` lease resolve  
+([`2026-09-14-ffi-o-lease-resolve.md`](2026-09-14-ffi-o-lease-resolve.md)).  
+Helper keeps `Meta.Context` / `Meta.Display` + `"ou"` / `"oas"` (no manual
+`leases.get`).  
 **Hit:** 2026-09-14 nested Weston  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)  
 **Logs:** `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`  
