@@ -35,7 +35,7 @@
 		{
 			var response = GnomeShellRpc.call_value(
 				"Helper-WaylandClient.spawnv", this,
-				OLLMrpc.args("osas", display, "", argv)
+				OLLMrpc.args("osS", display, "", argv)
 			);
 			int stdout_fd = -1;
 			if (response.buffer != null && response.buffer.fd >= 0) {

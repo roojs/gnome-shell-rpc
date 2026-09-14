@@ -21,7 +21,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request.add_class(
 				"Helper-WaylandClient", typeof(WaylandClient),
 				"create", "ou",
-				"spawnv", "osas",
+				"spawnv", "osS",
 				"wait", "",
 				"get_if_exited", "",
 				"get_exit_status", "",
