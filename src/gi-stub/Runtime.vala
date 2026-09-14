@@ -97,8 +97,7 @@ namespace GnomeShellRpc.GiStub
 				debug = true,
 			};
 			Runtime.client.invoke.connect((call) => {
-				GLib.message(
-					"DBG invoke ENTER id=%d reply_id=%d",
+				GLib.debug("invoke ENTER id=%d reply_id=%d",
 					call.id, call.reply_id);
 				Gee.ArrayList<GLib.Value?>? extra = null;
 				if (Runtime.handlers != null && Runtime.handlers.has_key(call.id)) {
@@ -113,8 +112,7 @@ namespace GnomeShellRpc.GiStub
 				 * sync poll burst and deadlocks Hook.emit.
 				 */
 				var reply_id = (uint64) call.reply_id;
-				GLib.message(
-					"DBG invoke REPLY start id=%d reply_id=%llu extra=%s",
+				GLib.debug("invoke REPLY start id=%d reply_id=%llu extra=%s",
 					call.id, reply_id,
 					extra == null ? "null" : extra.size.to_string());
 				try {
@@ -130,13 +128,11 @@ namespace GnomeShellRpc.GiStub
 						GnomeShellRpc.call_value(
 							"RPC-Live-Callback.reply", null, reply);
 					}
-					GLib.message(
-						"DBG invoke REPLY done id=%d reply_id=%llu",
+					GLib.debug("invoke REPLY done id=%d reply_id=%llu",
 						call.id, reply_id);
 				} catch (GLib.Error e) {
 					/* LiveCallback.reply_error — Hook already completed. */
-					GLib.message(
-						"DBG invoke REPLY error id=%d reply_id=%llu: %s",
+					GLib.debug("invoke REPLY error id=%d reply_id=%llu: %s",
 						call.id, reply_id, e.message);
 				}
 			});

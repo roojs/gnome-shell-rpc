@@ -104,7 +104,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					|| et == Clutter.EventType.PAD_BUTTON_RELEASE) {
 				button = event.get_button();
 			}
-			hook.emit(OLLMrpc.args("tiidu",
+			hook.emit(OLLMrpc.args("tiddu",
 				hook.connection.export(actor),
 				(int) et,
 				(double) x, (double) y,
@@ -340,7 +340,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			float ax = 0.0f, ay = 0.0f;
 			actor.get_transformed_position(out ax, out ay);
-			hook.emit(OLLMrpc.args("tiidu",
+			hook.emit(OLLMrpc.args("tiddu",
 				hook.connection.export(actor),
 				(int) Clutter.EventType.BUTTON_PRESS,
 				(double) (ax + actor.get_width() / 2.0f),

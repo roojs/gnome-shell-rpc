@@ -169,7 +169,7 @@
 	}
 
 	/**
-	 * Live.Hook args: actor lease, event type, x, y, button.
+	 * Live.Hook args: actor lease, event type, x, y, button ({@code tiddu}).
 	 * Reply: bool (EVENT_STOP = true).
 	 */
 	uint64 relay_event()

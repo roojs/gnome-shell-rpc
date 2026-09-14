@@ -92,3 +92,12 @@ executable('ffi-o-lease-gate',
   build_rpath: ocrpc_rpath,
   install: false,
 )
+
+# measure_event tiddu (not typo tiidu) coords stay double across bin.
+executable('event-tiidu-gate',
+  'event-tiidu-gate.vala',
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
