@@ -17,8 +17,7 @@
 				"Helper-WaylandClient.create", null,
 				OLLMrpc.args("ou", context, flags)
 			);
-			var stub = (WaylandClient) response.retval.get_object();
-			this.rpc_lid = stub.rpc_lid;
+			this.rpc_lid = response.args.get(0).get_uint64();
 		}
 
 		private GLib.SubprocessLauncher? local_launcher = null;
@@ -33,9 +32,17 @@
 		public RpcSubprocess? spawnv(Display display, string[] argv)
 			throws GLib.Error
 		{
+			string[] wire_argv = argv;
+			if (wire_argv == null) {
+				wire_argv = new string[0];
+			}
+			GLib.message(
+				"WaylandClient.spawnv client argv_len=%d",
+				wire_argv.length
+			);
 			var response = GnomeShellRpc.call_value(
 				"Helper-WaylandClient.spawnv", this,
-				OLLMrpc.args("osS", display, "", argv)
+				OLLMrpc.args("osas", display, "", wire_argv)
 			);
 			int stdout_fd = -1;
 			if (response.buffer != null && response.buffer.fd >= 0) {

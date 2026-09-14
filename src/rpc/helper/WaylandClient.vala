@@ -1,27 +1,26 @@
 /**
  * Delivers {@link Meta.WaylandClient} Override RPC.
  *
- * Wire prefix ''Helper-WaylandClient''. {@code Gio.SubprocessLauncher} is not
- * on the wire — client sends flags (+ cwd at spawn). Compositor builds the
- * real launcher and {@link Meta.WaylandClient}.
+ * Wire prefix ''Helper-WaylandClient''. Each create exports **this** helper
+ * row (launcher + mutter peer). Instance methods run with that row as
+ * {@code self} — no {@code request.lease_id} lookup of the Meta peer.
+ *
+ * {@code Gio.SubprocessLauncher} stays compositor-side (flags + cwd on wire).
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
 	public class WaylandClient : GLib.Object
 	{
-		private Gee.HashMap<int, GLib.SubprocessLauncher> launchers {
-			get; set; default = new Gee.HashMap<int, GLib.SubprocessLauncher>();
-		}
-		private Gee.HashMap<int, GLib.Subprocess> subprocesses {
-			get; set; default = new Gee.HashMap<int, GLib.Subprocess>();
-		}
+		private Meta.WaylandClient? peer = null;
+		private GLib.SubprocessLauncher? launcher = null;
+		private GLib.Subprocess? subprocess = null;
+
 		public static void rpc_register()
 		{
-			var helper = new WaylandClient();
 			OLLMrpc.Request.add_class(
 				"Helper-WaylandClient", typeof(WaylandClient),
 				"create", "ou",
-				"spawnv", "osS",
+				"spawnv", "osas",
 				"wait", "",
 				"get_if_exited", "",
 				"get_exit_status", "",
@@ -29,12 +28,15 @@ namespace GnomeShellRpc.Rpc.Helper
 				"force_exit", "",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-WaylandClient", helper);
+			/* Not register_live — Ffi must bind lease_id → this row as self. */
+			OLLMrpc.Request.register(
+				"Helper-WaylandClient", new WaylandClient()
+			);
 		}
 
 		/**
-		 * ''Helper-WaylandClient.create'' — context + launcher flags →
-		 * compositor {@link Meta.WaylandClient}.
+		 * ''Helper-WaylandClient.create'' — mint a helper row + mutter peer.
+		 * Reply lease id in {@link OLLMrpc.Response.args} (same as Background).
 		 */
 		public void create(
 			OLLMrpc.Request request,
@@ -51,29 +53,27 @@ namespace GnomeShellRpc.Rpc.Helper
 				);
 				return;
 			}
-			var launcher = new GLib.SubprocessLauncher(
+			var row = new WaylandClient();
+			row.launcher = new GLib.SubprocessLauncher(
 				(GLib.SubprocessFlags) flags
 			);
-			Meta.WaylandClient? client = null;
 			try {
-				client = new Meta.WaylandClient(context, launcher);
+				row.peer = new Meta.WaylandClient(context, row.launcher);
 			} catch (GLib.Error e) {
 				request.connection.reply_error(
 					request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e
 				);
 				return;
 			}
-			var lid = (int) request.connection.export(client);
-			this.launchers.set(lid, launcher);
+			var handle = (uint64) request.connection.export(row);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = OLLMrpc.val("o", client),
+				args = OLLMrpc.args("t", handle),
 			});
 		}
 
 		/**
-		 * ''Helper-WaylandClient.spawnv'' — cwd + argv on the leased client.
-		 * Stdout pipe fd on {@link OLLMrpc.Live.Buffer} when present.
+		 * ''Helper-WaylandClient.spawnv'' — {@code this} is the leased row.
 		 */
 		public void spawnv(
 			OLLMrpc.Request request,
@@ -81,8 +81,16 @@ namespace GnomeShellRpc.Rpc.Helper
 			string cwd,
 			string[] argv
 		) {
-			var lid = (int) request.lease_id;
-			var client = (Meta.WaylandClient) request.connection.leases.get(lid);
+			if (this.peer == null) {
+				request.connection.reply_error(
+					request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+					new GLib.IOError.FAILED(
+						"Helper-WaylandClient.spawnv: no peer (create row?)"
+					)
+				);
+				return;
+			}
 			if (display == null) {
 				request.connection.reply_error(
 					request,
@@ -93,13 +101,20 @@ namespace GnomeShellRpc.Rpc.Helper
 				);
 				return;
 			}
-			var launcher = this.launchers.get(lid);
-			if (launcher != null && cwd != null && cwd.length > 0) {
-				launcher.set_cwd(cwd);
+			string[] wire_argv = argv;
+			if (wire_argv == null) {
+				wire_argv = new string[0];
+			}
+			GLib.message(
+				"Helper-WaylandClient.spawnv argv_len=%d cwd='%s'",
+				wire_argv.length, cwd ?? "(null)"
+			);
+			if (this.launcher != null && cwd != null && cwd.length > 0) {
+				this.launcher.set_cwd(cwd);
 			}
 			GLib.Subprocess? proc = null;
 			try {
-				proc = client.spawnv(display, argv);
+				proc = this.peer.spawnv(display, wire_argv);
 			} catch (GLib.Error e) {
 				request.connection.reply_error(
 					request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e
@@ -114,14 +129,13 @@ namespace GnomeShellRpc.Rpc.Helper
 				);
 				return;
 			}
-			this.subprocesses.set(lid, proc);
+			this.subprocess = proc;
 			var stdout = proc.get_stdout_pipe();
 			int fd = -1;
 			if (stdout != null) {
 				var unix_out = stdout as GLib.UnixInputStream;
 				if (unix_out != null) {
 					fd = unix_out.get_fd();
-					/* Dup — reply Buffer closes its fd; Subprocess keeps the pipe. */
 					fd = Posix.dup(fd);
 				}
 			}
@@ -137,8 +151,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void wait(OLLMrpc.Request request)
 		{
-			var lid = (int) request.lease_id;
-			var proc = this.subprocesses.get(lid);
+			var proc = this.subprocess;
 			if (proc == null) {
 				request.connection.reply_error(
 					request,
@@ -165,7 +178,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void get_if_exited(OLLMrpc.Request request)
 		{
-			var proc = this.subprocesses.get((int) request.lease_id);
+			var proc = this.subprocess;
 			if (proc == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -181,7 +194,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void get_exit_status(OLLMrpc.Request request)
 		{
-			var proc = this.subprocesses.get((int) request.lease_id);
+			var proc = this.subprocess;
 			int status = 0;
 			if (proc != null && proc.get_if_exited()) {
 				status = proc.get_exit_status();
@@ -194,7 +207,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void send_signal(OLLMrpc.Request request, int signum)
 		{
-			var proc = this.subprocesses.get((int) request.lease_id);
+			var proc = this.subprocess;
 			if (proc != null) {
 				proc.send_signal(signum);
 			}
@@ -205,7 +218,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void force_exit(OLLMrpc.Request request)
 		{
-			var proc = this.subprocesses.get((int) request.lease_id);
+			var proc = this.subprocess;
 			if (proc != null) {
 				proc.force_exit();
 			}
