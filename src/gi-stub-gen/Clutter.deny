@@ -118,6 +118,10 @@ Actor.layout_manager
 Actor.get_layout_manager
 Actor.set_layout_manager
 
+# Actor.override — get_transition still RPCs; arms Live.Subscribe for
+# Transition::stopped so environment.js ease() onComplete can run.
+Actor.get_transition
+
 # LayoutManager.override — GJS subclasses (QuickSettingsLayout, …) are
 # client-owned; child meta / set_container stay local (no rpc_lid).
 # layout_changed: deny RPC method (name clash with GIR signal). C symbol for

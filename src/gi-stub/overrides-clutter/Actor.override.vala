@@ -334,14 +334,12 @@
 	 */
 	public double scale_x {
 		get {
-			double sx;
-			double sy;
+			double sx, sy;
 			this.get_scale(out sx, out sy);
 			return sx;
 		}
 		set {
-			double sx;
-			double sy;
+			double sx, sy;
 			this.get_scale(out sx, out sy);
 			this.set_scale(value, sy);
 		}
@@ -349,14 +347,12 @@
 
 	public double scale_y {
 		get {
-			double sx;
-			double sy;
+			double sx, sy;
 			this.get_scale(out sx, out sy);
 			return sy;
 		}
 		set {
-			double sx;
-			double sy;
+			double sx, sy;
 			this.get_scale(out sx, out sy);
 			this.set_scale(sx, value);
 		}
@@ -488,6 +484,31 @@
 				value.set_container(this);
 			}
 		}
+	}
+
+	/**
+	 * Stock {@code clutter_actor_get_transition}.
+	 *
+	 * Server returns the live Transition (implicit animation from easing +
+	 * set). {@code ui/environment.js} {@code Actor.ease()} connects
+	 * {@code stopped} for {@code onComplete}; without
+	 * {@link GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe}, that
+	 * signal never reaches the client and MessageTray never arms
+	 * {@code NOTIFICATION_TIMEOUT}.
+	 */
+	public Transition? get_transition(string name)
+	{
+		var response = GnomeShellRpc.call_value(
+			"Clutter-Actor.get_transition", this,
+			OLLMrpc.args("s", name));
+		if (response.retval.type() == GLib.Type.INVALID
+				|| response.retval.get_object() == null) {
+			return null;
+		}
+		var transition = (Transition) response.retval.get_object();
+		GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+			transition, "stopped");
+		return transition;
 	}
 
 	/**

@@ -44,6 +44,13 @@ namespace GnomeShellRpc.GiStub
 		private static Gee.HashMap<int, InvokeRow>? handlers = null;
 
 		/**
+		 * Lease ids already subscribed via {@code RPC-Live-Subscribe.rpc_signal}
+		 * (signal name → true). Avoids repeat wire subscribe for the same
+		 * {@code stopped} (etc.) on one Transition.
+		 */
+		private static Gee.HashMap<int, Gee.HashSet<string>>? signal_subs = null;
+
+		/**
 		 * Insert create-time proxy into {@link OLLMrpc.Client.proxies}.
 		 *
 		 * OPC {@code parse_object} reuses that map; without this, the first
@@ -57,6 +64,38 @@ namespace GnomeShellRpc.GiStub
 				return;
 			}
 			Runtime.client.proxies.set((int) handle.rpc_lid, obj);
+		}
+
+		/**
+		 * Subscribe the lease to a named GObject signal on the server and
+		 * re-emit it on the client proxy when the Notification arrives.
+		 *
+		 * Used for {@code Transition::stopped} so stock {@code Actor.ease()}
+		 * {@code onComplete} runs (MessageTray banner timeout). OPC
+		 * {@link OLLMrpc.Live.Subscription.emit} does not pack args — we
+		 * emit {@code stopped(true)} (finished).
+		 */
+		public static void ensure_signal_subscribe(GLib.Object obj, string signal_name)
+		{
+			Runtime.register();
+			var handle = obj as OLLMrpc.Live.Handle;
+			if (handle == null || handle.rpc_lid == 0) {
+				return;
+			}
+			var lid = (int) handle.rpc_lid;
+			if (Runtime.signal_subs == null) {
+				Runtime.signal_subs = new Gee.HashMap<int, Gee.HashSet<string>>();
+			}
+			if (!Runtime.signal_subs.has_key(lid)) {
+				Runtime.signal_subs.set(lid, new Gee.HashSet<string>());
+			}
+			if (Runtime.signal_subs.get(lid).contains(signal_name)) {
+				return;
+			}
+			Runtime.client.proxies.set(lid, obj);
+			GnomeShellRpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
+				OLLMrpc.args("s", signal_name));
+			Runtime.signal_subs.get(lid).add(signal_name);
 		}
 
 		/**
@@ -117,16 +156,14 @@ namespace GnomeShellRpc.GiStub
 					extra == null ? "null" : extra.size.to_string());
 				try {
 					if (extra == null) {
-						GnomeShellRpc.call_value(
-							"RPC-Live-Callback.reply", null,
+						GnomeShellRpc.call_value("RPC-Live-Callback.reply", null,
 							OLLMrpc.args("t", reply_id));
 					} else {
 						var reply = OLLMrpc.args("t", reply_id);
 						foreach (var v in extra) {
 							reply.add(v);
 						}
-						GnomeShellRpc.call_value(
-							"RPC-Live-Callback.reply", null, reply);
+						GnomeShellRpc.call_value("RPC-Live-Callback.reply", null, reply);
 					}
 					GLib.debug("invoke REPLY done id=%d reply_id=%llu",
 						call.id, reply_id);
@@ -137,11 +174,21 @@ namespace GnomeShellRpc.GiStub
 				}
 			});
 			Runtime.client.notification.connect((notif) => {
-				if (notif.method != "RPC-Live-Callback.unregister") {
+				if (notif.method == "RPC-Live-Callback.unregister") {
+					if (Runtime.handlers != null) {
+						Runtime.handlers.unset(notif.id);
+					}
 					return;
 				}
-				if (Runtime.handlers != null) {
-					Runtime.handlers.unset(notif.id);
+				/*
+				 * Live.Subscribe → Notification (no reply). Re-emit on the
+				 * client proxy so GJS .connect() handlers run. OPC emit
+				 * packs no signal args; stopped assumes finished=true.
+				 */
+				if (notif.method == "stopped"
+						&& Runtime.client.proxies.has_key(notif.id)) {
+					var proxy = Runtime.client.proxies.get(notif.id);
+					GLib.Signal.emit_by_name(proxy, "stopped", true);
 				}
 			});
 
@@ -227,10 +274,8 @@ namespace GnomeShellRpc.GiStub
 			var handle = obj as OLLMrpc.Live.Handle;
 			if (handle == null || handle.rpc_lid == 0) {
 				var where = context ?? "lease_ids_at";
-				throw new GLib.IOError.FAILED(
-					"RPC %s: no rpc_lid on %s",
-					where, obj.get_type().name()
-				);
+				throw new GLib.IOError.FAILED("RPC %s: no rpc_lid on %s",
+					where, obj.get_type().name());
 			}
 			return handle.rpc_lid;
 		}

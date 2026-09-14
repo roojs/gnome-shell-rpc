@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<!--
+  Peer typelib for Meta.RpcSubprocess (compositor Gio.Subprocess is not on
+  the wire). Same pattern as OLLMrpc-1.0.gir — do **not** patch stock Meta GIR.
+
+  GJS resolves methods via g_irepository_find_by_gtype after require().
+-->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <include name="Gio" version="2.0"/>
+  <namespace name="GnomeShellRpc"
+             version="1.0"
+             shared-library="libmutter-rpc-16.so"
+             c:identifier-prefixes="GnomeShellRpc"
+             c:symbol-prefixes="gnome_shell_rpc">
+    <class name="RpcSubprocess"
+           c:symbol-prefix="meta_rpc_subprocess"
+           c:type="MetaRpcSubprocess"
+           parent="GObject.Object"
+           glib:type-name="MetaRpcSubprocess"
+           glib:get-type="meta_rpc_subprocess_get_type">
+      <method name="get_stdout_pipe"
+              c:identifier="meta_rpc_subprocess_get_stdout_pipe">
+        <return-value transfer-ownership="full">
+          <type name="Gio.InputStream" c:type="GInputStream*"/>
+        </return-value>
+      </method>
+      <method name="get_if_exited"
+              c:identifier="meta_rpc_subprocess_get_if_exited">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+      </method>
+      <method name="get_exit_status"
+              c:identifier="meta_rpc_subprocess_get_exit_status">
+        <return-value transfer-ownership="none">
+          <type name="gint" c:type="gint"/>
+        </return-value>
+      </method>
+      <method name="send_signal"
+              c:identifier="meta_rpc_subprocess_send_signal">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="signal_num" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="force_exit"
+              c:identifier="meta_rpc_subprocess_force_exit">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </method>
+      <method name="wait_async"
+              c:identifier="meta_rpc_subprocess_wait_async"
+              throws="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="cancellable" transfer-ownership="none" allow-none="1">
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback" transfer-ownership="none" allow-none="1"
+                     scope="async" closure="2">
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data" transfer-ownership="none" allow-none="1"
+                     closure="2">
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="wait_finish"
+              c:identifier="meta_rpc_subprocess_wait_finish"
+              throws="1">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <parameter name="res" transfer-ownership="none">
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="rpc-lid"
+                writable="1"
+                construct="1"
+                transfer-ownership="none">
+        <type name="guint64" c:type="guint64"/>
+      </property>
+    </class>
+  </namespace>
+</repository>
