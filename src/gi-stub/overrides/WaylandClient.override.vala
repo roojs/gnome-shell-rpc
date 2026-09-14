@@ -22,35 +22,45 @@
 
 		private GLib.SubprocessLauncher? local_launcher = null;
 
+		/* Gio has set_cwd, no get_cwd — peek private layout (glib ≥2.40). */
+		[CCode (cname = "gsr_subprocess_launcher_peek_cwd")]
+		private static extern unowned string? peek_launcher_cwd(
+			GLib.SubprocessLauncher launcher
+		);
+
 		/**
 		 * Stock {@code meta_wayland_client_spawnv}. Returns
 		 * {@link Meta.RpcSubprocess} (Gio.Subprocess is foreign / not on wire).
 		 *
-		 * Wire args: display, cwd, then one {@code s} per argv element.
-		 * (Ffi {@code as} hangs / drops the strv on this Helper path.)
+		 * Wire: typed Ffi {@code osas} — display, cwd, length-bearing argv
+		 * (same pack shape as {@code Helper-ThemeContext.set_theme} {@code as}).
 		 */
 		public RpcSubprocess? spawnv(
 			Display display,
 			[CCode (array_length = false, array_null_terminated = true)]
 			string[] argv
 		) throws GLib.Error {
+			/* Stock argv is null-terminated; Ffi ''as'' needs length-bearing. */
 			string[] wire = {};
 			if (argv != null) {
 				for (int i = 0; argv[i] != null; i++) {
 					wire += argv[i];
 				}
 			}
-			GLib.message(
-				"WaylandClient.spawnv client argv_len=%d",
-				wire.length
-			);
-			/* cwd: Gio SubprocessLauncher has set_cwd, no get_cwd. */
-			var packed = OLLMrpc.args("os", display, "");
-			foreach (var s in wire) {
-				packed.add(OLLMrpc.val("s", s));
+			string cwd = "";
+			if (this.local_launcher != null) {
+				unowned string? peeked = peek_launcher_cwd(this.local_launcher);
+				if (peeked != null) {
+					cwd = peeked;
+				}
 			}
+			GLib.message(
+				"WaylandClient.spawnv client argv_len=%d cwd='%s'",
+				wire.length, cwd
+			);
 			var response = GnomeShellRpc.call_value(
-				"Helper-WaylandClient.spawnv", this, packed
+				"Helper-WaylandClient.spawnv", this,
+				OLLMrpc.args("osas", display, cwd, wire)
 			);
 			int stdout_fd = -1;
 			if (response.buffer != null && response.buffer.fd >= 0) {

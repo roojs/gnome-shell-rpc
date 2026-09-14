@@ -634,6 +634,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     'gi-stub/BackgroundContent.vala',
     'gi-stub/RpcSubprocess.vala',
     'gi-stub/MetaSettingsAbi.vala',
+    'gi-stub/c-gio-subprocess-launcher-cwd.c',
   ),
   meta_window_generated,
   dependencies: [
