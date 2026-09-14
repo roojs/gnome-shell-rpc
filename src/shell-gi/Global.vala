@@ -50,6 +50,15 @@ namespace Shell
 			}
 		}
 
+		/**
+		 * Stock {@code shell_global_get_window_actors} — non-destroyed
+		 * {@link Meta.WindowActor}s from the compositor.
+		 */
+		public GLib.List<Meta.WindowActor> get_window_actors()
+		{
+			return this.compositor.get_window_actors();
+		}
+
 		public signal void notify_error(string msg, string details);
 		public signal void shutdown();
 		public signal void locate_pointer();

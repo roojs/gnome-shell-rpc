@@ -1,9 +1,11 @@
 # Boot never reaches READY in the 5s prove
 
-**Status:** ✔️ A4 proxy green (`Meta.is_restart` / prepare-started). Archive
-when stay-up + `startup-complete` are boring; soft post-boot leases remain.  
+**Status:** ✔️ FIXED / archived — A2 `READY=1` + A4 proxy (`Meta.is_restart`
+/ prepare-started) green on nested prove. Post-boot stay-up is a **separate**
+bug: [`../2026-09-14-waylandclient-spawnv-no-rpc-lid.md`](../2026-09-14-waylandclient-spawnv-no-rpc-lid.md).  
 **Hit:** 2026-09-13 nested Weston (`weston-gsr-prove.sh`)  
-**Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md) A2–A4  
+**Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md) A2–A4  
+**Archived:** 2026-09-14  
 **Logs:** `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`  
 **Prove:** `./scripts/weston-gsr-prove.sh` (**15s** / settle **5s** after READY)
 
@@ -20,12 +22,11 @@ when stay-up + `startup-complete` are boring; soft post-boot leases remain.
 **A2:** ✔️ — `READY=1` + `notify_ready` (~+5.2s with debug). Early **5s**
 hard kill was only the timer. Prove window extended (**15s** / **5s** settle).
 
-**Post-READY:** **not an RPC hang.** `ENTER`/`REPLY done` balanced (0 open).
-**Client** (`gnome-shell-rpc`) **SIGSEGV** within ~ms of READY (after
-`notify_ready` + nested preferred reply). **Server** (`mutter-rpc`) is not
-making the D-Bus call; it often exits **133** afterward (peer reset).
+**Post-READY (historical):** not an RPC hang. Early client **SIGSEGV** after
+READY was fixed (`util_touch_file_async` GIR scope + layout child-meta).
+`ENTER`/`REPLY done` balanced.
 
-**A4:** ❌ blocked by that client crash — not by prove timeout / idle priority.
+**A4:** ✔️ — `Meta.is_restart` / prepare-started. Stay-up after A4 → spawnv bug.
 
 **🚫** Do not chase layout `PRIORITY_*` / idle-callback retuning.
 
@@ -75,8 +76,8 @@ In `vendor/gnome-shell/js/ui/main.js`, after `_initializeUI()`, shell schedules:
 1. `Shell.util_sd_notify()` → `READY=1`  
 2. `global.context.notify_ready()`
 
-A4 (`Meta.is_restart` / layout `startup-complete`) is later — unreachable while
-client segfaults.
+A4 (`Meta.is_restart` / layout `startup-complete`) is later — was unreachable
+while the client segfaulted; that crash is fixed and A4 is green.
 
 ---
 
@@ -128,11 +129,10 @@ is wallpaper + chrome without the grow-in animation, that is the
 background → `_prepareStartupAnimation` gate / crash — layout also has
 `_bgManagers`, easy to conflate with “workspace managers”.)
 
-## Next
+## Next (superseded)
 
-1. Confirm post-READY SEGV gone across clean proves; early READY=0 flakes
-   only if they persist.
-2. A4 → observe `startup-complete` / stay up for Phase B.
+Boot bar closed. Stay-up / Phase B continue under 0.8 +
+[`../2026-09-14-waylandclient-spawnv-no-rpc-lid.md`](../2026-09-14-waylandclient-spawnv-no-rpc-lid.md).
 
 ## GDB (built-in)
 

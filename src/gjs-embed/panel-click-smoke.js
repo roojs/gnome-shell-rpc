@@ -1,12 +1,9 @@
 /**
  * 0.8 Phase B3 — pointer → chrome via Actor.event Live.Hook
- * (VfuncRelay name-keyed; PanelMenu.Button uses vfunc_event).
+ * (fire_button_press → event Live.Hook; seat/pick is pointer_click).
  *
  *   GI_META_SMOKE=panel-click-smoke GSR_WESTON_MODE=prove \
  *     ./scripts/weston-gsr-session.sh
- *
- * Places a reactive St.Widget with vfunc_event on the stage, then
- * Helper-Actor.fire_button_press (relay prove; hit-test is pointer_click).
  */
 
 imports.gi.versions.Meta = '16';
@@ -40,10 +37,13 @@ function main() {
 	const Panelish = GObject.registerClass(
 	class Panelish extends St.Widget {
 		vfunc_event(event) {
-			/* Typelib still lists Event as union (stock GIR); our stub is
-			 * GObject — avoid Event methods until typelib matches. */
-			sawEvent = true;
-			smokeLog('clicked');
+			const t = event.type();
+			smokeLog('vfunc_event type=' + t);
+			if (t === Clutter.EventType.BUTTON_PRESS
+					|| t === Clutter.EventType.TOUCH_BEGIN) {
+				sawEvent = true;
+				smokeLog('clicked');
+			}
 			return Clutter.EVENT_STOP;
 		}
 	});

@@ -19,6 +19,65 @@
 	}
 
 	/**
+	 * Compact ClutterEvent* (GJS typelib union). Sole Clutter GIR union —
+	 * denied in generator; fields match header-overrides/Event.h.
+	 * copy_function is required for Vala to emit clutter_event_get_type.
+	 */
+	[CCode (cname = "ClutterEvent", copy_function = "clutter_event_copy", free_function = "clutter_event_free", has_type_id = true)]
+	[Compact]
+	public class Event
+	{
+		[CCode (cname = "type")]
+		public EventType event_type;
+		public float x;
+		public float y;
+		public uint32 button;
+
+		public Event.local(
+			EventType type,
+			float x,
+			float y,
+			uint32 button
+		) {
+			this.event_type = type;
+			this.x = x;
+			this.y = y;
+			this.button = button;
+		}
+
+		public static Event from_local(
+			EventType type,
+			float x,
+			float y,
+			uint32 button
+		) {
+			return new Event.local(type, x, y, button);
+		}
+
+		[CCode (cname = "clutter_event_copy")]
+		public Event copy() {
+			return new Event.local(
+				this.event_type, this.x, this.y, this.button);
+		}
+
+		[CCode (cname = "clutter_event_type")]
+		public EventType @type() {
+			return this.event_type;
+		}
+
+		[CCode (cname = "clutter_event_get_coords")]
+		public void get_coords(out float x, out float y) {
+			x = this.x;
+			y = this.y;
+		}
+
+		[CCode (cname = "clutter_event_get_button")]
+		public uint32 get_button() {
+			return this.button;
+		}
+	}
+
+	/**
 	 * GType-struct methods (generator skips is_gtype_struct). St class_init +
 	 * typelib.
 	 *

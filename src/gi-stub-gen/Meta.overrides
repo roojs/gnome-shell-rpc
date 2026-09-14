@@ -9,3 +9,4 @@ Settings emit=opaque-as-class
 
 # Hand class (Meta.deny) — Meta.register() emits Bin.register inline.
 BackgroundContent register=hand
+RpcSubprocess register=hand

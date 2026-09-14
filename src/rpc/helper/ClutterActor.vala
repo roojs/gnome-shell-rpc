@@ -19,7 +19,6 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_width_p,
 			out float natural_width_p
 		) {
-			hook.reply_args.clear();
 			hook.emit(OLLMrpc.args("td",
 				hook.connection.export(actor),
 				(double) for_height));
@@ -46,7 +45,6 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_height_p,
 			out float natural_height_p
 		) {
-			hook.reply_args.clear();
 			hook.emit(OLLMrpc.args("td",
 				hook.connection.export(actor),
 				(double) for_width));
@@ -71,7 +69,6 @@ namespace GnomeShellRpc.Rpc.Helper
 			Actor actor,
 			Clutter.ActorBox box
 		) {
-			hook.reply_args.clear();
 			hook.emit(OLLMrpc.args("tdddd",
 				hook.connection.export(actor),
 				(double) box.x1, (double) box.y1,
@@ -107,7 +104,6 @@ namespace GnomeShellRpc.Rpc.Helper
 					|| et == Clutter.EventType.PAD_BUTTON_RELEASE) {
 				button = event.get_button();
 			}
-			hook.reply_args.clear();
 			hook.emit(OLLMrpc.args("tiidu",
 				hook.connection.export(actor),
 				(int) et,
@@ -322,8 +318,10 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.fire_button_press'' — emit {@code event} Live.Hook
-		 * on the leased peer (B3 relay prove without pick).
+		 * ''Helper-Actor.fire_button_press'' — fire the leased peer's
+		 * {@code event} Live.Hook (same emit as {@link event} / 
+		 * {@link LayoutHooks.measure_event}). Seat/pick path is
+		 * {@link pointer_click}.
 		 */
 		public void fire_button_press(OLLMrpc.Request request)
 		{
@@ -342,13 +340,11 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			float ax = 0.0f, ay = 0.0f;
 			actor.get_transformed_position(out ax, out ay);
-			float cx = ax + actor.get_width() / 2.0f;
-			float cy = ay + actor.get_height() / 2.0f;
-			hook.reply_args.clear();
 			hook.emit(OLLMrpc.args("tiidu",
 				hook.connection.export(actor),
 				(int) Clutter.EventType.BUTTON_PRESS,
-				(double) cx, (double) cy,
+				(double) (ax + actor.get_width() / 2.0f),
+				(double) (ay + actor.get_height() / 2.0f),
 				(uint32) Clutter.Button.PRIMARY));
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

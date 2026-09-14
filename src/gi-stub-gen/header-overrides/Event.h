@@ -1,7 +1,10 @@
-/* Curated ClutterEvent header body (0.7.4).
+/* Curated ClutterEvent header body (0.7.4 / B3).
  * Spliced by gi-stub-gen after the generated banner — GIR size is 0 and stock
  * macros (EVENT_STOP / button ids) are not in the typelib.
  * Method prototypes are still emitted from GIR after this body.
+ *
+ * typedef in clutter-types.h is union _ClutterEvent; layout matches Vala
+ * Compact Event (event_type cname "type", then x, y, button).
  */
 
 #include <glib-object.h>
@@ -19,8 +22,12 @@ G_BEGIN_DECLS
 #define CLUTTER_BUTTON_MIDDLE (2)
 #define CLUTTER_BUTTON_SECONDARY (3)
 
-/* Opaque — St only needs ClutterEvent * (typedef in clutter-types.h). */
 union _ClutterEvent
 {
-  guint8 _gsr_opaque;
+	struct {
+		ClutterEventType type;
+		float x;
+		float y;
+		guint32 button;
+	};
 };

@@ -202,7 +202,7 @@ namespace GnomeShellRpc.GiStub
 		 * @param list owned or null GSList of leased GObjects
 		 * @return empty ''at'' when list is null or empty
 		 */
-		public static GLib.Variant lease_ids_at_slist(GLib.SList<GLib.Object>? list)
+		public static GLib.Variant lease_ids_at_slist(GLib.SList<GLib.Object>? list) throws GLib.Error
 		{
 			var builder = new GLib.VariantBuilder(new GLib.VariantType("at"));
 			for (unowned GLib.SList<GLib.Object>? node = list; node != null; node = node.next) {
@@ -217,7 +217,7 @@ namespace GnomeShellRpc.GiStub
 		 * @param list owned or null GList of leased GObjects
 		 * @return empty ''at'' when list is null or empty
 		 */
-		public static GLib.Variant lease_ids_at_list(GLib.List<GLib.Object>? list)
+		public static GLib.Variant lease_ids_at_list(GLib.List<GLib.Object>? list) throws GLib.Error
 		{
 			var builder = new GLib.VariantBuilder(new GLib.VariantType("at"));
 			for (unowned GLib.List<GLib.Object>? node = list; node != null; node = node.next) {
@@ -226,17 +226,14 @@ namespace GnomeShellRpc.GiStub
 			return builder.end();
 		}
 
-		internal static uint64 lease_id_of(GLib.Object obj, string? context = null)
+		internal static uint64 lease_id_of(GLib.Object obj, string? context = null) throws GLib.Error
 		{
 			var handle = obj as OLLMrpc.Live.Handle;
 			if (handle == null || handle.rpc_lid == 0) {
-				if (context != null) {
-					GLib.error("RPC %s: no rpc_lid on %s",
-						context, obj.get_type().name());
-				}
-				GLib.error(
-					"RPC lease_ids_at: no rpc_lid on %s",
-					obj.get_type().name()
+				var where = context ?? "lease_ids_at";
+				throw new GLib.IOError.FAILED(
+					"RPC %s: no rpc_lid on %s",
+					where, obj.get_type().name()
 				);
 			}
 			return handle.rpc_lid;

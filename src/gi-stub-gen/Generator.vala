@@ -31,6 +31,12 @@ namespace GnomeShellRpc.GiStubGen
 		public Gee.HashSet<string> noop = new Gee.HashSet<string>();
 
 		/**
+		 * Temporary gaps: emit a stub that {@code GLib.error}s
+		 * ''temporary — implement this'' (never omit silently).
+		 */
+		public Gee.HashSet<string> temporary = new Gee.HashSet<string>();
+
+		/**
 		 * {@code Type.method} or bare {@code Type} → override keys
 		 * (e.g. {@code list_elem=WindowActor}, {@code emit=union-as-class}).
 		 */
@@ -288,7 +294,9 @@ namespace $(ns)
 		}
 
 		/**
-		 * Emit a GIR union when {@code Type emit=union-as-class} is set in overrides.
+		 * Emit a GIR union when {@code Type emit=union-as-class} +
+		 * {@code wire_as=gobject} (RPC Handle). Clutter only has {@code Event};
+		 * that one is denied and hand-written Compact in Clutter.override.vala.
 		 */
 		private int emit_union_as_object(
 			GLib.FileStream stream,
@@ -1817,6 +1825,8 @@ namespace $(ns)
 
 			var listed_noop = name in this.noop
 				|| (type_name != "" && (type_name + "." + name) in this.noop);
+			var listed_temporary = name in this.temporary
+				|| (type_name != "" && (type_name + "." + name) in this.temporary);
 
 			var flags = fi.get_flags();
 			var is_constructor = (flags & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0;
@@ -1886,6 +1896,9 @@ namespace $(ns)
 					}
 				}
 			}
+			if (ret == "" && listed_temporary) {
+				ret = "void";
+			}
 			if (ret == "") {
 				this.gaps.add(new Gap() {
 					symbol = symbol,
@@ -1902,12 +1915,16 @@ namespace $(ns)
 					continue;
 				}
 				var at = this.type_vala(ns, arg.get_type());
-				if (at == "" && listed_noop
+				if (at == "" && (listed_noop || listed_temporary)
 					&& arg.get_type().get_tag() == GI.TypeTag.ARRAY) {
 					var elem = this.type_vala(ns, arg.get_type().get_param_type(0));
 					if (elem != "") {
 						at = elem + "[]";
 					}
+				}
+				if (at == "" && listed_temporary) {
+					/* Still emit — hit must GLib.error, not omit. */
+					at = "GLib.Object?";
 				}
 				if (at == "") {
 					this.gaps.add(new Gap() {
@@ -1924,6 +1941,35 @@ namespace $(ns)
 			var indent = tab + "\t";
 			var arglist = string.joinv(", ", args);
 			var vala_name = this.vala_ident(name);
+			if (listed_temporary && kind != "iface") {
+				this.gaps.add(new Gap() {
+					symbol = symbol,
+					reason = "temporary",
+				});
+				if (is_constructor) {
+					stream.puts(
+						tab + @"public $(this.constructor_decl(type_name, name))($(arglist))$(throws_clause)
+$(tab){
+$(indent)Object();
+$(indent)GLib.error(\"gi-stub: $(symbol) temporary — implement this\");
+$(tab)}
+"
+					);
+				} else if (ret == "void") {
+					stream.puts(tab + @"$(vis) void $(vala_name)($(arglist))$(throws_clause)
+$(tab){
+$(indent)GLib.error(\"gi-stub: $(symbol) temporary — implement this\");
+$(tab)}
+");
+				} else {
+					stream.puts(tab + @"$(vis) $(ret) $(vala_name)($(arglist))$(throws_clause)
+$(tab){
+$(indent)GLib.error(\"gi-stub: $(symbol) temporary — implement this\");
+$(tab)}
+");
+				}
+				return 1;
+			}
 			if (listed_noop && kind != "iface") {
 				this.gaps.add(new Gap() {
 					symbol = symbol,
@@ -2875,6 +2921,10 @@ if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
 			}
 			if (info.get_type() == GI.InfoType.UNION) {
 				if (this.union_as_gobject(ns, info)) {
+					return false;
+				}
+				/* Denied unions are hand-written (e.g. Compact Event) — not memcpy. */
+				if (info.get_name() in this.deny) {
 					return false;
 				}
 				return true;

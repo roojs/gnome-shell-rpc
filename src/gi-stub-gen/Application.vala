@@ -159,7 +159,8 @@ Examples:
 
 			Gee.HashSet<string> deny;
 			Gee.HashSet<string> noop;
-			this.load_deny(out deny, out noop);
+			Gee.HashSet<string> temporary;
+			this.load_deny(out deny, out noop, out temporary);
 
 			Gee.HashMap<string, Gee.HashMap<string, string>> overrides;
 			Gee.HashSet<string> signal_prefer;
@@ -181,6 +182,7 @@ Examples:
 					var gen = new Generator() {
 						deny = deny,
 						noop = noop,
+						temporary = temporary,
 						overrides = overrides,
 						signal_prefer = signal_prefer,
 						missing_out_path = Application.opt_missing_out,
@@ -207,10 +209,12 @@ Examples:
 
 		private void load_deny(
 			out Gee.HashSet<string> deny,
-			out Gee.HashSet<string> noop
+			out Gee.HashSet<string> noop,
+			out Gee.HashSet<string> temporary
 		) {
 			deny = new Gee.HashSet<string>();
 			noop = new Gee.HashSet<string>();
+			temporary = new Gee.HashSet<string>();
 			if (Application.opt_deny_file == "") {
 				return;
 			}
@@ -245,13 +249,18 @@ Examples:
 				}
 				var symbol = name.substring(0, space);
 				var flag = name.substring(space + 1).strip();
-				if (flag != "noop") {
-					GLib.error(
-						"deny file %s: unknown flag %s on %s (only noop)",
-						Application.opt_deny_file, flag, symbol
-					);
+				if (flag == "noop") {
+					noop.add(symbol);
+					continue;
 				}
-				noop.add(symbol);
+				if (flag == "temporary") {
+					temporary.add(symbol);
+					continue;
+				}
+				GLib.error(
+					"deny file %s: unknown flag %s on %s (noop|temporary)",
+					Application.opt_deny_file, flag, symbol
+				);
 			}
 		}
 

@@ -1,13 +1,13 @@
 # Plans index
 
 **Active work:** [`0.8-init-complete-and-interaction.md`](0.8-init-complete-and-interaction.md)
-(A-bar). Parallel (user-applied): [`0.8.1-vfunc-capability-cache.md`](0.8.1-vfunc-capability-cache.md)
-— C2–C4 landed.
+(A-bar / stay-up).
 
 **Deferred (not active):**
 - [`0.7.10-src-directory-layout.md`](0.7.10-src-directory-layout.md) — `src/` naming / tidy-up after **0.8**; inventory in [`src/README.md`](../../src/README.md).
+- [`0.8.3-rpc-lid-hardening.md`](0.8.3-rpc-lid-hardening.md) — hide/lock `rpc_lid` from GJS; **after 0.8**.
 
-Everything below **0.8** is **archived** under [`done/`](done/) — kept for history and grep, not a backlog to execute unless 0.8 points at a specific gap.
+**0.8.1** / **0.8.2** (vfunc caps + hook registry) are **archived** under [`done/`](done/). Everything below **0.8** is also there — history/grep only unless 0.8 points at a specific gap.
 
 Conventions: [`guide-to-writing-plans.md`](../guide-to-writing-plans.md).
 
@@ -17,15 +17,14 @@ Conventions: [`guide-to-writing-plans.md`](../guide-to-writing-plans.md).
 
 | Plan | Purpose |
 | ---- | ------- |
-| [**0.8**](0.8-init-complete-and-interaction.md) | Prove init finished (`startup-complete`, `notify_ready`, …), then pointer/keyboard interaction — **A1/A2/A5 ✔️**; GIR no-getter props ✔️; **A4 still ⏳** |
-| [**0.8.1**](0.8.1-vfunc-capability-cache.md) | Vfunc capability cache — C2–C4 **✔️** (parallel); skip emit when Class slots match St.Widget |
-| [**0.8.2**](0.8.2-vfunc-hook-registry.md) | **IN PROGRESS** — name-keyed vfunc hook registry landed (S2); R1–R5 agent **✔️**; R3b/R6 later |
+| [**0.8**](0.8-init-complete-and-interaction.md) | Init + interaction — **A1–A4/A5 ✔️**; **stay-up ❌** (`WaylandClient.spawnv`); B1/B3 ✔️; **next = spawnv** |
 
 ### Deferred
 
 | Plan | Purpose |
 | ---- | ------- |
 | [**0.7.10**](0.7.10-src-directory-layout.md) | Audit and optionally rename `src/` folders (legacy vs product); **wait for 0.8** |
+| [**0.8.3**](0.8.3-rpc-lid-hardening.md) | Harden `rpc_lid` / `rpc-lid` from GJS; **after 0.8** |
 | [**0.9**](0.9-multi-shell-series.md) | Separate **named** `libmutter-rpc-NN` per shell release + **head** track — **after 0.8** on 48 |
 
 ---
@@ -60,6 +59,8 @@ Conventions: [`guide-to-writing-plans.md`](../guide-to-writing-plans.md).
 | [0.7.8](done/0.7.8-gi-rpc-noop-server.md) | **Done** | Mock harness for fast replay |
 | [0.7.9](done/0.7.9-init-complete-and-interaction.md) | **Renumbered** | Same intent as **0.8** (short-lived filename) |
 | [0.7.10](0.7.10-src-directory-layout.md) | **Deferred** | `src/` layout README + rename audit — not in `done/` until executed |
+| [0.8.1](done/0.8.1-vfunc-capability-cache.md) | **Done / superseded shape** | Caps intent ✔️; bitflags/`LayoutRelay` replaced by 0.8.2 `VfuncRelay` |
+| [0.8.2](done/0.8.2-vfunc-hook-registry.md) | **Done** | Name-keyed `vfuncs` + caps cache; R3b/R6 optional leftovers |
 
 ---
 

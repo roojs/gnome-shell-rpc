@@ -38,9 +38,7 @@ Namespace signal_prefer=child_removed
 Namespace signal_prefer=parent_set
 Namespace signal_prefer=pick
 
-# GIR union → GObject class + instance methods (Vala null, Meta key handlers).
-Event emit=union-as-class
-Event wire_as=gobject
+# Event (sole Clutter GIR union) — denied; Compact in Clutter.override.vala.
 
 # Opaque boxed records (size 0) → class + methods for St C ABI.
 PaintContext emit=opaque-as-class

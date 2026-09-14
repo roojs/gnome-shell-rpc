@@ -15,15 +15,17 @@
 # (get_compositor_private is wired). Revisit if a client must attach an actor.
 Window.set_compositor_private noop
 
-# Priority E (0.5.5) — noop/omit because stock gnome-shell JS does not call
-# these. Not real RPC. Revisit if an extension / future shell needs them.
-# Constructors are omit (deny), not noop — empty ctor cannot return a GObject.
+# Priority E (0.5.5) — temporary until wired, or omit when hand override owns.
+# Constructors with hand overrides: deny (override body). Bare temporary →
+# emit GLib.error("… temporary — implement this").
 BackgroundImageCache.purge noop
 Background.set_blend noop
 ShapedTexture.set_mask_texture noop
-MultiTexture.new
-MultiTexture.new_simple
+MultiTexture.new temporary
+MultiTexture.new_simple temporary
+# Hand: WaylandClient.override.vala + Helper-WaylandClient
 WaylandClient.new
+WaylandClient.spawnv
 
 # ************************************************************************
 # PERMANENT — not deferred RPC work

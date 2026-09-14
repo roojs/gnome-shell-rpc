@@ -2,7 +2,9 @@
  * Client {@link Meta.BackgroundContent} — stock attaches this as
  * {@link Clutter.Actor.content} on {@link BackgroundActor} create.
  * GJS uses {@code content.set({ background, vignette, … })}; property
- * setters relay state when {@link rpc_lid} is set.
+ * setters relay to the compositor when {@link rpc_lid} is set.
+ *
+ * {@link vignette} is stock Meta wallpaper edge-darkening.
  */
 namespace Meta
 {
@@ -10,46 +12,59 @@ namespace Meta
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 
-		private Background? _background;
-		private bool _vignette;
-		private double _vignette_sharpness = 0.5;
-		private double _brightness = 1.0;
+		Background? priv_background;
+		bool priv_vignette;
+		double priv_vignette_sharpness = 0.5;
+		double priv_brightness = 1.0;
+		float priv_rounded_clip_radius = 0.0f;
 
 		public Background background {
-			get { return this._background; }
+			get { return this.priv_background; }
 			set {
-				this._background = value;
+				this.priv_background = value;
 				if (this.rpc_lid != 0 && value != null) {
 					GnomeShellRpc.call_value(
 						"Meta-BackgroundContent.set_background",
 						this,
-						OLLMrpc.args("o", value)
-					);
+						OLLMrpc.args("o", value));
 				}
 			}
 		}
 
 		public bool vignette {
-			get { return this._vignette; }
+			get { return this.priv_vignette; }
 			set {
-				this._vignette = value;
+				this.priv_vignette = value;
 				this.push_vignette();
 			}
 		}
 
 		public double vignette_sharpness {
-			get { return this._vignette_sharpness; }
+			get { return this.priv_vignette_sharpness; }
 			set {
-				this._vignette_sharpness = value;
+				this.priv_vignette_sharpness = value;
 				this.push_vignette();
 			}
 		}
 
 		public double brightness {
-			get { return this._brightness; }
+			get { return this.priv_brightness; }
 			set {
-				this._brightness = value;
+				this.priv_brightness = value;
 				this.push_vignette();
+			}
+		}
+
+		public float rounded_clip_radius {
+			get { return this.priv_rounded_clip_radius; }
+			set {
+				this.priv_rounded_clip_radius = value;
+				if (this.rpc_lid != 0) {
+					GnomeShellRpc.call_value(
+						"Meta-BackgroundContent.set_rounded_clip_radius",
+						this,
+						OLLMrpc.args("f", (double) value));
+				}
 			}
 		}
 
@@ -58,7 +73,33 @@ namespace Meta
 			Object();
 		}
 
-		private void push_vignette()
+		/**
+		 * Stock overview workspace clip — {@code workspace.js}
+		 * {@code _updateRoundedClipBounds}.
+		 *
+		 * @param bounds clip rectangle, or {@code null} to clear
+		 */
+		public void set_rounded_clip_bounds(Graphene.Rect? bounds)
+		{
+			if (this.rpc_lid == 0) {
+				return;
+			}
+			if (bounds == null) {
+				GnomeShellRpc.call_value(
+					"Meta-BackgroundContent.set_rounded_clip_bounds",
+					this,
+					OLLMrpc.args("ay", new GLib.Bytes(new uint8[0])));
+				return;
+			}
+			uint8[] data = new uint8[sizeof(Graphene.Rect)];
+			*((Graphene.Rect*) data) = bounds;
+			GnomeShellRpc.call_value(
+				"Meta-BackgroundContent.set_rounded_clip_bounds",
+				this,
+				OLLMrpc.args("ay", new GLib.Bytes(data)));
+		}
+
+		void push_vignette()
 		{
 			if (this.rpc_lid == 0) {
 				return;
@@ -68,11 +109,9 @@ namespace Meta
 				this,
 				OLLMrpc.args(
 					"bdd",
-					this._vignette,
-					this._brightness,
-					this._vignette_sharpness
-				)
-			);
+					this.priv_vignette,
+					this.priv_brightness,
+					this.priv_vignette_sharpness));
 		}
 
 		public bool get_preferred_size(out float width, out float height)
