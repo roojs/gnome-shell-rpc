@@ -136,8 +136,21 @@ namespace GnomeShellRpc.Rpc.Helper
 				if (unix_out != null) {
 					fd = unix_out.get_fd();
 					fd = Posix.dup(fd);
+				} else {
+					GLib.warning(
+						"Helper-WaylandClient.spawnv stdout type=%s "
+						+ "(not UnixInputStream)",
+						stdout.get_type().name()
+					);
 				}
+			} else {
+				GLib.warning(
+					"Helper-WaylandClient.spawnv get_stdout_pipe null"
+				);
 			}
+			GLib.message(
+				"Helper-WaylandClient.spawnv stdout_fd=%d", fd
+			);
 			var response = new OLLMrpc.Response() {
 				id = request.id,
 			};

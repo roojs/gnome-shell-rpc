@@ -87,7 +87,8 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * Emit event hook. {@code true} = JS handled (EVENT_STOP);
-		 * {@code false} = fall through — caller runs {@code base.event}.
+		 * {@code false} = fall through — caller returns false (propagate).
+		 * 🚫 Do not {@code base.event}: St.Widget parent class slot is NULL.
 		 */
 		public static bool measure_event(
 			OLLMrpc.Live.Hook hook,
@@ -284,12 +285,14 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			var hook = this.vfuncs.get("event");
 			if (hook == null) {
-				return base.event(clutter_event);
+				/* Parent ClutterActorClass.event is NULL on St.Widget —
+				 * Vala base.event would call through 0 (motion SIGSEGV). */
+				return false;
 			}
 			if (LayoutHooks.measure_event(hook, this, clutter_event)) {
 				return true;
 			}
-			return base.event(clutter_event);
+			return false;
 		}
 
 		/**

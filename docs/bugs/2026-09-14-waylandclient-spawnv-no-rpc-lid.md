@@ -1,7 +1,7 @@
 # Meta-WaylandClient.spawnv aborts shell (no rpc_lid)
 
-**Status:** ⏳ lease/`"o"` path landed; **argv still empty** — see  
-[`2026-09-14-ffi-as-string-array-empty.md`](2026-09-14-ffi-as-string-array-empty.md)  
+**Status:** ⏳ lease/`"o"` path landed; **argv still empty** — OPC  
+[`file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-14-ffi-s-string-array-pointers.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-14-ffi-s-string-array-pointers.md)  
 (gate `ffi-as-string-array-gate`). Do not keep hacking spawnv around that.  
 **Hit:** 2026-09-14 nested Weston  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)  

@@ -6,6 +6,7 @@
 **Deferred (not active):**
 - [`0.7.10-src-directory-layout.md`](0.7.10-src-directory-layout.md) — `src/` naming / tidy-up after **0.8**; inventory in [`src/README.md`](../../src/README.md).
 - [`0.8.3-rpc-lid-hardening.md`](0.8.3-rpc-lid-hardening.md) — hide/lock `rpc_lid` from GJS; **after 0.8**.
+- [`0.8.4-wayland-subprocess-peer.md`](0.8.4-wayland-subprocess-peer.md) — compositor owns spawn; shell `RpcSubprocess` peer (discussion); **after stay-up / real caller**.
 
 **0.8.1** / **0.8.2** (vfunc caps + hook registry) are **archived** under [`done/`](done/). Everything below **0.8** is also there — history/grep only unless 0.8 points at a specific gap.
 
@@ -25,6 +26,7 @@ Conventions: [`guide-to-writing-plans.md`](../guide-to-writing-plans.md).
 | ---- | ------- |
 | [**0.7.10**](0.7.10-src-directory-layout.md) | Audit and optionally rename `src/` folders (legacy vs product); **wait for 0.8** |
 | [**0.8.3**](0.8.3-rpc-lid-hardening.md) | Harden `rpc_lid` / `rpc-lid` from GJS; **after 0.8** |
+| [**0.8.4**](0.8.4-wayland-subprocess-peer.md) | WaylandClient spawn → shell `RpcSubprocess` peer; discussion until stay-up + real caller |
 | [**0.9**](0.9-multi-shell-series.md) | Separate **named** `libmutter-rpc-NN` per shell release + **head** track — **after 0.8** on 48 |
 
 ---

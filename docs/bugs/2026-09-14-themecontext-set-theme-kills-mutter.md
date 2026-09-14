@@ -1,59 +1,48 @@
-# mutter-rpc dies after READY (session/hold — not prove settle)
+# Nest dies after READY (session/hold)
 
-**Status:** ⏳ open — stay-up  
-**Hit:** 2026-09-14 nested Weston  
+**Status:** ⏳ fix in flight — GJS `LayoutManager.layout_changed`  
+**Hit:** 2026-09-14 session hold ~13:34  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)  
-**Logs:** `~/.cache/gnome-shell-rpc/{mutter-rpc,org.gnome.ShellRpc}.debug.log`  
-**Related:** [`2026-09-14-ffi-as-string-array-empty.md`](2026-09-14-ffi-as-string-array-empty.md)
+**Logs:** `~/.cache/gnome-shell-rpc/{mutter-rpc,org.gnome.ShellRpc,nested-weston-prove.tee}.log`
 
-**Roles:** **consumer** — compositor exit under **hold** / session
+**Roles:** **consumer** Gi stub · prove settle is separate (10s now)
 
 ---
 
-## Prove settle vs real death
+## Was (13:34 session)
 
-`weston-gsr-prove.sh` early-stops with **SIGKILL** on:
+`nested-weston-hold` (no settle SIGKILL). `READY=1` @ 28.319 → socket closed @ 35.521 (~7s).
 
-- `Meta.is_restart` (A4), or  
-- `READY=1` + settle (now **10s**, was 5s)
+| Signal | Detail |
+| ------ | ------ |
+| `Clutter-LayoutManager.layout_changed: no rpc_lid` on `WorkspaceLayout` / `ControlsManagerLayout` | uncaught `call_value` → CRITICAL (line Clutter_generated 10341) |
+| mutter `CLUTTER_IS_LAYOUT_MANAGER` / cogl viewport 0×0 | GJS manager never cleared stock manager on server |
+| First `set_theme` | ok `customs=0` — not the killer this run |
+| Pending at death | `Meta-Compositor.get_laters` (mutter stopped mid-flight) |
 
-That looks identical to a crash (`socket closed`, random pending RPC).  
-**Session** (`./scripts/weston-gsr-session.sh` → `nested-weston-hold.sh`) does **not**
-do that — if mutter exits there, it exited for real (`nested-weston-hold: mutter exited ec=…`).
+Same gap as archived `child_set_property` / GJS LayoutManager: `set_container` was local-safe; **`layout_changed` was not**.
 
-Stay-up timed path:
+---
+
+## Landed
+
+| Piece | State |
+| ----- | ----- |
+| Deny `LayoutManager.layout_changed` RPC method (keep GIR **signal**) | ✔️ PERMANENT |
+| GJS `Actor.layout_manager` set → clear compositor manager | ✔️ |
+| Prove settle 10s / `GSR_NESTED_STAYUP` | ✔️ scripts |
+| Re-prove session stay-up | ⏳ |
+
+ℹ️ Same deny block as `set_container` / `child_set_property` — shell JS
+LayoutManagers are client-owned by design, **not** a TEMPORARY mock. The
+signal stays for local emit; only the generated RPC method was wrong.
+
+---
+
+## Prove
 
 ```bash
-GSR_NESTED_STAYUP=1 ./scripts/weston-gsr-prove.sh   # no READY/A4 kill
-# or look:
 ./scripts/weston-gsr-session.sh
+# expect: no layout_changed no rpc_lid CRITICAL flood; nest stays past READY
+# tee: nested-weston-hold: mutter exited … only when you close Weston
 ```
-
----
-
-## Was (candidates)
-
-### A — second `Helper-ThemeContext.set_theme` (13:13)
-
-First `set_theme` `customs=0` **ok**. Second recv, no `ok`, socket closed (~8s after READY).  
-May still be real under hold; re-check with session + `enter customs=` debug.
-
-### B — prove settle / A4 kill (13:28)
-
-`READY=1` → socket closed **~4.8s** later (old 5s settle). Pending `St-Icon.new` —
-harness kill, not St-Icon.
-
-### C — layout noise (both)
-
-`CLUTTER_IS_LAYOUT_MANAGER` / cogl viewport 0×0 on mutter; JS
-`LayoutManager.layout_changed: no rpc_lid` on client. Not proven fatal alone.
-
----
-
-## Want
-
-1. Settle default **10s**; nest timeout **25s** (landed in prove scripts).  
-2. Re-prove **session/hold** (or `GSR_NESTED_STAYUP=1`) and capture:
-   - `nested-weston-hold: mutter exited ec=N`
-   - last mutter line + any `set_theme enter customs=N`
-3. Fix the real exit cause (likely theme apply / layout), not prove SIGKILL.

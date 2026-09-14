@@ -475,10 +475,16 @@
 					this,
 					OLLMrpc.args("o", value));
 			} else {
-				/* GJS LayoutManager — local only; still run set_container vfunc. */
+				/* GJS LayoutManager — client-owned (no rpc_lid). Clear any
+				 * stock manager on the compositor; layout runs on the client
+				 * (deny Actor.layout_manager + LayoutManager.* local path). */
 				if (previous != null && previous != value && previous.rpc_lid == 0) {
 					previous.set_container(null);
 				}
+				GnomeShellRpc.call_value(
+					"Clutter-Actor.set_layout_manager",
+					this,
+					OLLMrpc.args("o", null));
 				value.set_container(this);
 			}
 		}

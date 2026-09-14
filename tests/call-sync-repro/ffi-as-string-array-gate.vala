@@ -1,21 +1,14 @@
 /**
  * Gate: Ffi Helper {@code string[]} — pack / wire / {@code as} vs {@code S}.
  *
- * Boot: client {@code argv_len=4} → Helper {@code argv_len=0} on
- * {@code Helper-WaylandClient.spawnv}.
- *
- * Splits three layers (no WaylandClient, no Response-object fallbacks):
- * 1. Local {@code OLLMrpc.args("as", …)} length after pack
- * 2. Server {@code request.args[0]} length (wire unpack)
- * 3. Vala {@code string[]} param length under signature {@code as} vs {@code S}
+ * Nest needed usable argv content under {@code Helper-WaylandClient.spawnv}
+ * ({@code osS}), not length alone.
  *
  *   meson compile -C build ffi-as-string-array-gate
  *   timeout 5 ./build/tests/call-sync-repro/ffi-as-string-array-gate
  *
- * Expect: {@code echo_S} PASS (OPC Ffi length fix); {@code echo_as}
- * stays empty — pointer-only; Helpers must use {@code S}.
- *
- * No OPC edits from this tree. No response-object fallbacks.
+ * PASS: {@code echo_S} ffi_len=4 and argv0 content {@code ding}.
+ * No OPC code edits from this tree.
  */
 
 class Gate : GLib.Object
@@ -41,29 +34,28 @@ class Gate : GLib.Object
 		return arr.length;
 	}
 
-	/**
-	 * Signature {@code as} — pointer only at FFI.
-	 */
 	public void echo_as(OLLMrpc.Request request, string[] items)
 	{
-		string[] wire = items ?? new string[0];
+		/* "as" is pointer-only — do not index items. */
+		int ffi_len = items.length;
 		int req_len = -1;
 		if (request.args.size >= 1) {
 			req_len = value_as_len(request.args.get(0));
 		}
 		stderr.printf(
-			"server echo_as ffi_len=%d req_args_len=%d args_size=%d\n",
-			wire.length, req_len, request.args.size
+			"server echo_as ffi_len=%d req_args_len=%d\n",
+			ffi_len, req_len
 		);
 		stderr.flush();
 		request.reply(new OLLMrpc.Response() {
 			id = request.id,
-			args = OLLMrpc.args("ii", wire.length, req_len),
+			args = OLLMrpc.args("ii", ffi_len, req_len),
 		});
 	}
 
 	/**
-	 * Signature {@code S} — pointer + Vala array length at FFI.
+	 * {@code S}: Helper-shaped — index Ffi {@code items} like spawnv argv.
+	 * Upstream must pin a live GStrv so this does not SEGV / empty.
 	 */
 	public void echo_S(OLLMrpc.Request request, string[] items)
 	{
@@ -72,20 +64,22 @@ class Gate : GLib.Object
 		if (request.args.size >= 1) {
 			req_len = value_as_len(request.args.get(0));
 		}
+		string a0 = (wire.length > 0 && wire[0] != null) ? wire[0] : "";
+		int a0_first = (a0.length > 0) ? (int) a0.get_char() : 0;
 		stderr.printf(
-			"server echo_S ffi_len=%d req_args_len=%d args_size=%d\n",
-			wire.length, req_len, request.args.size
+			"server echo_S ffi_len=%d req_len=%d argv0='%s' "
+			+ "argv0_len=%d first=%d\n",
+			wire.length, req_len, a0, a0.length, a0_first
 		);
 		stderr.flush();
 		request.reply(new OLLMrpc.Response() {
 			id = request.id,
-			args = OLLMrpc.args("ii", wire.length, req_len),
+			args = OLLMrpc.args(
+				"iiii", wire.length, req_len, a0.length, a0_first
+			),
 		});
 	}
 
-	/**
-	 * Same Ffi shape as {@code Helper-ThemeContext.set_theme} ({@code sssS}).
-	 */
 	public void echo_sssS(
 		OLLMrpc.Request request,
 		string a,
@@ -94,19 +88,21 @@ class Gate : GLib.Object
 		string[] items
 	) {
 		string[] wire = items ?? new string[0];
+		string a0 = (wire.length > 0 && wire[0] != null) ? wire[0] : "";
 		stderr.printf(
-			"server echo_sssS a='%s' b='%s' c='%s' ffi_len=%d\n",
-			a ?? "", b ?? "", c ?? "", wire.length
+			"server echo_sssS a='%s' b='%s' c='%s' ffi_len=%d argv0='%s'\n",
+			a ?? "", b ?? "", c ?? "", wire.length, a0
 		);
 		stderr.flush();
 		request.reply(new OLLMrpc.Response() {
 			id = request.id,
 			args = OLLMrpc.args(
-				"iiii",
+				"iiiii",
 				(a ?? "").length,
 				(b ?? "").length,
 				(c ?? "").length,
-				wire.length
+				wire.length,
+				a0.length
 			),
 		});
 	}
@@ -147,21 +143,6 @@ static string self_exe(string argv0)
 	}
 }
 
-static void call_echo(
-	OLLMrpc.Client client,
-	string method,
-	string[] payload,
-	out int ffi_len,
-	out int req_len
-) throws GLib.Error {
-	var response = client.call_poll(new OLLMrpc.Request() {
-		method = method,
-		args = OLLMrpc.args("as", payload),
-	});
-	ffi_len = response.args.get(0).get_int();
-	req_len = response.args.get(1).get_int();
-}
-
 int main(string[] args)
 {
 	if (args.length >= 3 && args[1] == "server") {
@@ -169,27 +150,24 @@ int main(string[] args)
 	}
 
 	string[] payload = {"ding", "--arg", "one", "two"};
+	int want_a0 = (int) payload[0].get_char();
 	var packed = OLLMrpc.args("as", payload);
 	int packed_len = -1;
 	if (packed.size >= 1) {
 		var pv = packed.get(0);
-		stderr.printf(
-			"client pack type=%s\n",
-			pv != null ? (pv.type().name() ?? "?") : "(null)"
-		);
 		if (pv != null && pv.type() == typeof(string[])) {
 			packed_len = ((string[]) pv).length;
 		}
 	}
 	stderr.printf(
-		"client payload len=%d packed args len=%d\n",
-		payload.length, packed_len
+		"client payload len=%d packed args len=%d argv0='%s'\n",
+		payload.length, packed_len, payload[0]
 	);
 	stderr.flush();
 	if (packed_len != payload.length) {
 		stderr.printf(
 			"FAIL ffi-as-string-array-gate: OLLMrpc.args(\"as\") lost length "
-			+ "(packed=%d want=%d) — before wire/Ffi\n",
+			+ "(packed=%d want=%d)\n",
 			packed_len, payload.length
 		);
 		stderr.flush();
@@ -259,9 +237,24 @@ int main(string[] args)
 	int as_req = -1;
 	int S_ffi = -1;
 	int S_req = -1;
+	int S_a0 = -1;
+	int S_first = -1;
 	try {
-		call_echo(client, "Gate.echo_as", payload, out as_ffi, out as_req);
-		call_echo(client, "Gate.echo_S", payload, out S_ffi, out S_req);
+		var as_r = client.call_poll(new OLLMrpc.Request() {
+			method = "Gate.echo_as",
+			args = OLLMrpc.args("as", payload),
+		});
+		as_ffi = as_r.args.get(0).get_int();
+		as_req = as_r.args.get(1).get_int();
+
+		var S_r = client.call_poll(new OLLMrpc.Request() {
+			method = "Gate.echo_S",
+			args = OLLMrpc.args("as", payload),
+		});
+		S_ffi = S_r.args.get(0).get_int();
+		S_req = S_r.args.get(1).get_int();
+		S_a0 = S_r.args.get(2).get_int();
+		S_first = S_r.args.get(3).get_int();
 	} catch (Error e) {
 		stderr.printf("FAIL ffi-as-string-array-gate: call %s\n", e.message);
 		stderr.flush();
@@ -273,6 +266,7 @@ int main(string[] args)
 	int s1 = -1;
 	int s2 = -1;
 	int s_arr = -1;
+	int s_a0 = -1;
 	try {
 		var sss = client.call_poll(new OLLMrpc.Request() {
 			method = "Gate.echo_sssS",
@@ -288,6 +282,7 @@ int main(string[] args)
 		s1 = sss.args.get(1).get_int();
 		s2 = sss.args.get(2).get_int();
 		s_arr = sss.args.get(3).get_int();
+		s_a0 = sss.args.get(4).get_int();
 	} catch (Error e) {
 		stderr.printf(
 			"FAIL ffi-as-string-array-gate: echo_sssS %s\n", e.message
@@ -301,19 +296,21 @@ int main(string[] args)
 	FileUtils.unlink(sock);
 
 	stderr.printf(
-		"echo_as ffi=%d req=%d | echo_S ffi=%d req=%d | want=%d\n",
-		as_ffi, as_req, S_ffi, S_req, payload.length
+		"echo_as ffi=%d req=%d | echo_S ffi=%d req=%d a0_len=%d first=%d "
+		+ "| want=%d want_first=%d\n",
+		as_ffi, as_req, S_ffi, S_req, S_a0, S_first,
+		payload.length, want_a0
 	);
 	stderr.printf(
-		"echo_sssS lens=%d,%d,%d arr=%d want_arr=%d\n",
-		s0, s1, s2, s_arr, payload.length
+		"echo_sssS lens=%d,%d,%d arr=%d a0_len=%d\n",
+		s0, s1, s2, s_arr, s_a0
 	);
 	stderr.flush();
 
 	if (as_req != payload.length && S_req != payload.length) {
 		stderr.printf(
-			"FAIL ffi-as-string-array-gate: wire/request.args string[] empty "
-			+ "(as_req=%d S_req=%d want=%d) — StreamValue or GValue boxed length\n",
+			"FAIL ffi-as-string-array-gate: wire string[] empty "
+			+ "(as_req=%d S_req=%d want=%d)\n",
 			as_req, S_req, payload.length
 		);
 		stderr.flush();
@@ -321,18 +318,25 @@ int main(string[] args)
 	}
 	if (S_ffi != payload.length) {
 		stderr.printf(
-			"FAIL ffi-as-string-array-gate: echo_S ffi_len=%d want %d "
-			+ "(req_args_len=%d)\n",
-			S_ffi, payload.length, S_req
+			"FAIL ffi-as-string-array-gate: echo_S ffi_len=%d want %d\n",
+			S_ffi, payload.length
 		);
 		stderr.flush();
 		return 1;
 	}
-	/* "as" is pointer-only — Vala length-bearing string[] stays empty. */
+	if (S_a0 != payload[0].length || S_first != want_a0) {
+		stderr.printf(
+			"FAIL ffi-as-string-array-gate: echo_S argv0 empty/wrong "
+			+ "(a0_len=%d first=%d want_len=%d want_first=%d) — "
+			+ "OPC Ffi \"S\" must pin usable GStrv content\n",
+			S_a0, S_first, payload[0].length, want_a0
+		);
+		stderr.flush();
+		return 1;
+	}
 	if (as_ffi == payload.length) {
 		stderr.printf(
-			"WARN ffi-as-string-array-gate: echo_as unexpectedly ok "
-			+ "(ffi=%d) — contract may have changed\n",
+			"WARN ffi-as-string-array-gate: echo_as unexpectedly ok (ffi=%d)\n",
 			as_ffi
 		);
 		stderr.flush();
@@ -346,11 +350,12 @@ int main(string[] args)
 	if (s0 != "app.css".length
 			|| s1 != "theme.css".length
 			|| s2 != "default.css".length
-			|| s_arr != payload.length) {
+			|| s_arr != payload.length
+			|| s_a0 != payload[0].length) {
 		stderr.printf(
-			"FAIL ffi-as-string-array-gate: echo_sssS (ThemeContext shape) "
-			+ "lens=%d,%d,%d arr=%d\n",
-			s0, s1, s2, s_arr
+			"FAIL ffi-as-string-array-gate: echo_sssS "
+			+ "lens=%d,%d,%d arr=%d a0=%d\n",
+			s0, s1, s2, s_arr, s_a0
 		);
 		stderr.flush();
 		return 1;

@@ -118,3 +118,21 @@ executable('ffi-as-string-array-gate',
   build_rpath: ocrpc_rpath,
   install: false,
 )
+
+# call_poll must deliver Live.Buffer fd on reply (spawnv stdout).
+executable('call-poll-buffer-fd-gate',
+  [
+    'call-poll-buffer-fd-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args + ['--pkg=posix'],
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+

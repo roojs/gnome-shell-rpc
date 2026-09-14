@@ -2,12 +2,22 @@
 	 * GJS {@link LayoutManager} subclasses (QuickSettingsLayout, …) have no
 	 * {@code rpc_lid}. Child layout props and container wiring stay local —
 	 * same idea as {@link Actor.layout_manager}. Leased stock managers RPC.
+	 *
+	 * {@code layout_changed} is a GIR **signal**. The RPC **method** of the
+	 * same name is denied (Vala name clash). Stock C only emits the signal —
+	 * export that symbol under a different Vala name for GJS.
 	 */
 	private static Quark child_meta_quark;
 
 	static construct {
 		child_meta_quark = Quark.from_string(
 			"gsr-clutter-layout-manager-child-meta");
+	}
+
+	[CCode (cname = "clutter_layout_manager_layout_changed")]
+	public void layout_changed_invoke()
+	{
+		this.layout_changed();
 	}
 
 	public virtual void set_container(Actor? container)

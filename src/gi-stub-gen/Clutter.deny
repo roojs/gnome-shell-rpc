@@ -119,12 +119,15 @@ Actor.get_layout_manager
 Actor.set_layout_manager
 
 # LayoutManager.override — GJS subclasses (QuickSettingsLayout, …) are
-# client-owned; child meta / set_container must stay local (no rpc_lid).
+# client-owned; child meta / set_container stay local (no rpc_lid).
+# layout_changed: deny RPC method (name clash with GIR signal). C symbol for
+# GJS is LayoutManager.override layout_changed_invoke [CCode cname=…].
 LayoutManager.child_set_property
 LayoutManager.child_get_property
 LayoutManager.get_child_meta
 LayoutManager.find_child_property
 LayoutManager.set_container
+LayoutManager.layout_changed
 
 # LayoutMeta.override — construct props for local GJS child metas.
 LayoutMeta.actor

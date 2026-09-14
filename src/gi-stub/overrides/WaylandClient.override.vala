@@ -67,5 +67,10 @@
 				stdout_fd = response.buffer.fd;
 				response.buffer.fd = -1;
 			}
+			GLib.message(
+				"WaylandClient.spawnv client stdout_fd=%d buffer=%s",
+				stdout_fd,
+				response.buffer != null ? "yes" : "null"
+			);
 			return new RpcSubprocess(this.rpc_lid, stdout_fd);
 		}

@@ -680,9 +680,10 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
 
 # mutter_rpc_client_dep is declared after st_rpc_lib (Clutter Runtime needs st_register).
 
-# Stock Meta GIR, shared-library → our stub .so (same pattern as Clutter).
+# Stock Meta GIR → our stub .so (same pattern as Clutter).
 # Hand meta-mini/Meta-16.gir stays for docs / early smokes; typelib must list
 # Background etc. for init.js.
+# RpcSubprocess peer: separate GnomeShellRpc-1.0.gir — do not patch stock Meta.
 mutter_meta_gir = mutter_typelib_dir / 'Meta-16.gir'
 mutter_rpc_typelib = custom_target('Meta-16.typelib',
   output: 'Meta-16.typelib',
@@ -911,6 +912,22 @@ ollmrpc_typelib = custom_target(
   install: false,
 )
 
+# Meta.RpcSubprocess peer methods for GJS (find_by_gtype). Not stock Meta GIR.
+gsr_rpc_subprocess_typelib = custom_target(
+  'GnomeShellRpc-1.0.typelib',
+  input: meson.current_source_dir() / 'gi-stub' / 'GnomeShellRpc-1.0.gir',
+  output: 'GnomeShellRpc-1.0.typelib',
+  command: [
+    g_ir_compiler,
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libmutter-rpc-16.so',
+    '@INPUT@',
+  ],
+  depends: [mutter_rpc_lib],
+  build_by_default: true,
+  install: false,
+)
+
 # 0.7.7 S1 — JS gresource (vendor tree + substituted misc/config.js).
 # Vendor root is required and resolved in gnome-shell/meson.build (auto-detect).
 gnome = import('gnome')
@@ -994,6 +1011,8 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
     mutter_rpc_typelib,
     clutter_rpc_typelib,
     st_rpc_typelib,
+    ollmrpc_typelib,
+    gsr_rpc_subprocess_typelib,
   ],
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
   install: false,
