@@ -41,6 +41,7 @@
 			string default_uri;
 			theme.construct_uris(
 				out application_uri, out theme_uri, out default_uri);
+			/* Pack letter as; Helper add_class uses sssS (Vala length). */
 			GnomeShellRpc.call_value(
 				"Helper-ThemeContext.set_theme",
 				this,

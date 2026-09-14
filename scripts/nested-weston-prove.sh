@@ -8,8 +8,10 @@
 #
 # Env:
 #   GSR_MUTTER_RPC=…/build/src/mutter-rpc
-#   GSR_NESTED_TIMEOUT=15          # hard cap (seconds) — used by weston-gsr-prove.sh
-#   GSR_NESTED_SETTLE=5            # seconds after READY=1 before stop (A4 window)
+#   GSR_NESTED_TIMEOUT=25          # hard cap (seconds) — used by weston-gsr-prove.sh
+#   GSR_NESTED_SETTLE=10           # seconds after READY=1 before stop (A4 window)
+#   GSR_NESTED_STAYUP=1            # no READY+settle / A4 early-stop — run to TIMEOUT
+#                                  # (stay-up; or use weston-gsr-session.sh hold)
 #   GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-gsr
 #   GI_RPC_JS_OVERRIDE_DIR=…     # optional debug overlay only — do not default
 #   GI_META_SMOKE=key-smoke      # optional gjs-embed smoke (B1); early-stop on ok
@@ -17,12 +19,20 @@
 # Prefer: ./scripts/weston-gsr-prove.sh (short) or ./scripts/weston-gsr-session.sh (hold).
 # Stops early on A4 marker (when defined), smoke ok, or READY=1 + settle — does not
 # sit idle for the full timeout when init already passed the bar.
+# ℹ️ Early stop SIGKILLs mutter — client log looks like a crash (socket closed,
+# pending RPC). Session/hold has no settle kill; if that dies, mutter exited for real.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MUTTER_RPC="${GSR_MUTTER_RPC:-$ROOT/build/src/mutter-rpc}"
-TIMEOUT_SEC="${GSR_NESTED_TIMEOUT:-15}"
-SETTLE_SEC="${GSR_NESTED_SETTLE:-5}"
+TIMEOUT_SEC="${GSR_NESTED_TIMEOUT:-25}"
+SETTLE_SEC="${GSR_NESTED_SETTLE:-10}"
+STAYUP=0
+if [[ "${GSR_NESTED_STAYUP:-0}" == "1" ]]; then
+	STAYUP=1
+	# Stay-up also skips A4 early-stop (same as GSR_NESTED_NO_A4=1).
+	export GSR_NESTED_NO_A4=1
+fi
 RT="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 # Mutter's own Wayland socket (must not collide with Weston's wayland-gsr).
 MUTTER_WL="${GSR_MUTTER_WAYLAND_DISPLAY:-wayland-mutter-gsr}"
@@ -62,7 +72,7 @@ if [[ -z "${DISPLAY:-}" ]]; then
 	exit 2
 fi
 
-echo "nested-weston-prove: DISPLAY=$DISPLAY weston=$WESTON_WL mutter_wl=$MUTTER_WL timeout=${TIMEOUT_SEC}s settle=${SETTLE_SEC}s${GI_META_SMOKE:+ smoke=$GI_META_SMOKE}${GI_RPC_JS_OVERRIDE_DIR:+ override=$GI_RPC_JS_OVERRIDE_DIR}"
+echo "nested-weston-prove: DISPLAY=$DISPLAY weston=$WESTON_WL mutter_wl=$MUTTER_WL timeout=${TIMEOUT_SEC}s settle=${SETTLE_SEC}s${STAYUP:+ stayup=1}${GI_META_SMOKE:+ smoke=$GI_META_SMOKE}${GI_RPC_JS_OVERRIDE_DIR:+ override=$GI_RPC_JS_OVERRIDE_DIR}"
 
 stop_tree() {
 	local pid="$1"
@@ -134,11 +144,11 @@ while kill -0 "$MPID" 2>/dev/null; do
 		sleep 0.3
 		break
 	fi
-	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ -z "$ready_at" ]] && [[ -f "$CLIENT_LOG" ]] && rg -q 'READY=1' "$CLIENT_LOG" 2>/dev/null; then
+	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ "$STAYUP" -eq 0 ]] && [[ -z "$ready_at" ]] && [[ -f "$CLIENT_LOG" ]] && rg -q 'READY=1' "$CLIENT_LOG" 2>/dev/null; then
 		ready_at=$SECONDS
 		echo "nested-weston-prove: READY=1 — settle ${SETTLE_SEC}s for prepare/startup"
 	fi
-	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ -n "$ready_at" ]] && [[ $((SECONDS - ready_at)) -ge $SETTLE_SEC ]]; then
+	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ "$STAYUP" -eq 0 ]] && [[ -n "$ready_at" ]] && [[ $((SECONDS - ready_at)) -ge $SETTLE_SEC ]]; then
 		reason="READY=1+settle"
 		break
 	fi

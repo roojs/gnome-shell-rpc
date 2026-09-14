@@ -27,6 +27,9 @@ fi
 
 echo "nested-weston-hold: DISPLAY=$DISPLAY weston=$WESTON_WL mutter_wl=$MUTTER_WL (close Weston to stop)"
 
+CLIENT_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc/org.gnome.ShellRpc.debug.log"
+# Fresh client log for this hold so session crashes are readable.
+: >"$CLIENT_LOG"
 : >"$TEE_LOG"
 env_args=(
 	DISPLAY="$DISPLAY"

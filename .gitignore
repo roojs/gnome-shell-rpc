@@ -9,3 +9,7 @@
 .gdb_history
 .vscode/
 .specstory/
+# Accidental valac dumps at repo root (not meson build outputs)
+/PubLayout.c
+/pub_layout.c
+/tactor.c

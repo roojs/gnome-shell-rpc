@@ -101,3 +101,20 @@ executable('event-tiidu-gate',
   build_rpath: ocrpc_rpath,
   install: false,
 )
+
+# Ffi "as" vs "S" for Vala length-bearing string[] (spawnv argv).
+executable('ffi-as-string-array-gate',
+  [
+    'ffi-as-string-array-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)

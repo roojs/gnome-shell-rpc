@@ -32,15 +32,15 @@
 		 * Stock {@code meta_wayland_client_spawnv}. Returns
 		 * {@link Meta.RpcSubprocess} (Gio.Subprocess is foreign / not on wire).
 		 *
-		 * Wire: typed Ffi {@code osas} — display, cwd, length-bearing argv
-		 * (same pack shape as {@code Helper-ThemeContext.set_theme} {@code as}).
+		 * Wire pack: {@code osas} (display, cwd, string[]). Helper
+		 * {@code add_class} uses {@code osS} so Vala gets array length.
 		 */
 		public RpcSubprocess? spawnv(
 			Display display,
 			[CCode (array_length = false, array_null_terminated = true)]
 			string[] argv
 		) throws GLib.Error {
-			/* Stock argv is null-terminated; Ffi ''as'' needs length-bearing. */
+			/* Stock argv is null-terminated; pack needs length-bearing. */
 			string[] wire = {};
 			if (argv != null) {
 				for (int i = 0; argv[i] != null; i++) {

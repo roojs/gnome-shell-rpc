@@ -46,7 +46,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			OLLMrpc.Request.add_class(
 				"Helper-ThemeContext", typeof(ThemeContext),
-				"set_theme", "sssas",
+				"set_theme", "sssS",
 				null
 			);
 			OLLMrpc.Request.register_live(
@@ -70,6 +70,15 @@ namespace GnomeShellRpc.Rpc.Helper
 			string default_uri,
 			string[] custom_uris
 		) {
+			string[] customs = custom_uris ?? new string[0];
+			GLib.debug(
+				"Helper-ThemeContext.set_theme enter customs=%d "
+				+ "app='%s' theme='%s' default='%s'",
+				customs.length,
+				application_uri ?? "",
+				theme_uri ?? "",
+				default_uri ?? ""
+			);
 			if (!theme_gresource_tried) {
 				theme_gresource_tried = true;
 				var gresource_path = "/usr/share/gnome-shell/gnome-shell-theme.gresource";
@@ -95,7 +104,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var theme = st_theme_new(application, theme_file, default_file);
-			foreach (var uri in custom_uris) {
+			foreach (var uri in customs) {
 				var custom = this.file_for_stylesheet_uri(uri);
 				if (custom == null) {
 					continue;
@@ -109,7 +118,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			st_theme_context_set_theme(ctx, theme);
 			GLib.message("Helper-ThemeContext.set_theme ok default=%s app=%s customs=%d",
-				default_uri, application_uri, custom_uris.length);
+				default_uri, application_uri, customs.length);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

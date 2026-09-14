@@ -1,9 +1,8 @@
 # Meta-WaylandClient.spawnv aborts shell (no rpc_lid)
 
-**Status:** ⏳ blocked — need OPC Ffi `"o"` lease resolve  
-([`2026-09-14-ffi-o-lease-resolve.md`](2026-09-14-ffi-o-lease-resolve.md)).  
-Helper keeps `Meta.Context` / `Meta.Display` + `"ou"` / `"oas"` (no manual
-`leases.get`).  
+**Status:** ⏳ lease/`"o"` path landed; **argv still empty** — see  
+[`2026-09-14-ffi-as-string-array-empty.md`](2026-09-14-ffi-as-string-array-empty.md)  
+(gate `ffi-as-string-array-gate`). Do not keep hacking spawnv around that.  
 **Hit:** 2026-09-14 nested Weston  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)  
 **Logs:** `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`  
@@ -11,7 +10,8 @@ Helper keeps `Meta.Context` / `Meta.Display` + `"ou"` / `"oas"` (no manual
 
 **Roles:** **server** = `mutter-rpc` · **client** = `gnome-shell-rpc`
 
-**🚫** No OLLMchat / libocrpc edits. **🚫** No inventing `Meta.Display.launch`.
+**🚫** No OLLMchat / libocrpc edits. **🚫** No inventing `Meta.Display.launch`.  
+**🚫** No Response-object fallbacks for argv.
 
 ---
 
