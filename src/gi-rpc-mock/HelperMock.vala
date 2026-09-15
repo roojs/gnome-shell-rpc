@@ -230,19 +230,9 @@ namespace GnomeShellRpc.GiRpcMock
 					break;
 
 				case "Helper-Clutter":
-					switch (name) {
-						case "new_interval_for_type":
-							if (request.args == null || request.args.size < 1) {
-								return false;
-							}
-							var gtype = (GLib.Type) request.args.get(0).get_uint64();
-							var interval = HelperMock.mint("Clutter-Interval");
-							interval.set_property("value-type", gtype);
-							this.reply_retval_leased(request, interval);
-							return true;
-						case "get_current_event":
-							this.reply_void(request);
-							return true;
+					if (name == "get_current_event") {
+						this.reply_void(request);
+						return true;
 					}
 					break;
 

@@ -1,63 +1,91 @@
 # St.Adjustment missing Clutter.Animatable — startup grey + menus stick
 
-**Status:** ⏳ diagnose pinned — FAIL smoke next, then stub implements  
-**Hit:** 2026-09-15 — user: ibus menu hangs / can’t hide; big grey over main background; menu **position** OK  
+**Status:** ⏳ Animatable iface ✔️; GValue `set_to` **design** (do not hack)  
+**Hit:** 2026-09-15 — ibus menu hangs / grey over background; position OK  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
-**Roles:** **consumer** `St.Adjustment` / overview startup ease (client stub)
+**Roles:** **consumer** `St.Adjustment` + **generator** GValue IN args
 
 ---
 
 ## Symptom
 
-| Surface | Observed |
-| --- | --- |
-| Boot desktop | Large grey plane over wallpaper / stage bg |
-| Ibus / input-source menu | Opens; cannot dismiss |
-| Panel menus | Position OK after allocate wipe (§ chrome-placement B) |
-
-Nest CRITICAL (prove tee):
+Nest CRITICAL:
 
 ```
-TypeError: Object is of type .Gjs_ui_overviewControls_OverviewAdjustment
-  - cannot convert to ClutterAnimatable
-Caused by: Error: This JS object wrapper isn't wrapping a GObject…
-  _easeActorProperty@ui/environment.js:229  (actor.find_property)
-  St.Adjustment.prototype.ease@environment.js:310
-  runStartupAnimation@overviewControls.js:804
-  … → layout._startupAnimationSession
+TypeError: …OverviewAdjustment — cannot convert to ClutterAnimatable
+  _easeActorProperty → find_property → St.Adjustment.prototype.ease
+  → overviewControls.runStartupAnimation → layout startup
 ```
+
+Overview left `SHOWING` → grey. Menu dismiss fights that layer.
 
 ---
 
-## Cause
+## Two separate gaps (do not conflate)
 
-Stock `St.Adjustment` **implements** `Clutter.Animatable` (`vendor/gnome-shell/src/st/st-adjustment.c` —
-iface only overrides `get_actor`; defaults for `find_property` / state).
+### 1. Animatable on Adjustment (landed)
 
-Our typelib is compiled from **distro** `St-16.gir` (schema claims Animatable).
-Generated stub is only:
+Stock `St.Adjustment` implements `Clutter.Animatable`. Distro typelib
+claims it; stub was only `GLib.Object, Handle`. Generator skips foreign
+ifaces unless `Type implements=…`.
 
-`class Adjustment : GLib.Object, OLLMrpc.Live.Handle`
+**Fix:** `Adjustment implements=Clutter.Animatable` + Animatable methods
+in `Adjustment.override` (GObject property defaults + `get_actor`).
+`add_transition` = stock (`set_animatable` + `start` + subscribe).
 
-`Namespace emit_implements=1` emits **same-namespace** ifaces only (e.g.
-`Scrollable`) — skips foreign `Clutter.Animatable` (St.overrides note:
-“until Animatable ready”).
+Smoke: `instanceof Animatable` + `find_property('value')` ✔️.
 
-`St.Adjustment.prototype.ease` → `_easeActorProperty` → `find_property`
-(Animatable). GJS cast fails → startup animation throws.
+### 2. GValue IN args (open — needs design, not API salad)
 
-`overview.runStartupAnimation` already called `showOverview()` and left
-`OverviewShownState.SHOWING`. Throw skips `_showDone` / hide path →
-overview group stays up → **grey cover**. Layout `finally` still destroys
-layout `_coverPane`; this is **overview**, not that pane.
+`environment.js` then does `transition.set_to(target)` →
+`clutter_transition_set_to_value(transition, GValue*)`.
 
-Incomplete client `add_transition` (no `set_animatable` / no
-`timeline.start`) would hang ease even after the cast works — stock
-`st_adjustment_add_transition` does both.
+**What already works in OPC (do not reinvent):**
 
-Ibus “can’t hide”: dismiss clicks / grab fight the stuck overview layer
-(same root). Not a separate BoxPointer position bug.
+| Layer | Behavior |
+| --- | --- |
+| Wire | `Request.args` is `ArrayList<GLib.Value?>`; `StreamValue` encodes DOUBLE/FLOAT/INT/… |
+| Helper Gi | `GObject.Value` INTERFACE IN → pin into `value_keep`, pass `GValue*` to C |
+
+**The actual gap:** `gi-stub-gen` does not treat `GObject.Value` as that
+path. It falls through to “boxed blob” and emits:
+
+```vala
+// WRONG — memcpy of GLib.Value struct as ay
+OLLMrpc.args("ay", bytes_of_value_struct);
+```
+
+That bypasses StreamValue/Gi and cannot work across processes.
+
+---
+
+## Design (GValue IN — one rule; Interval mint deferred)
+
+**GIR `GObject.Value` IN → put the Vala `GLib.Value` in `call_value` args
+as-is.** One method, one signature. No type switch, no Helper-*, no
+`Interval.set_property("final", …)`.
+
+1. **Generator** (`callable_wireable` + emit body): detect INTERFACE
+   `GObject.Value`; wireable; pack by appending the Value to the args
+   list. Deny/replace the `ay` memcpy path for this type.
+2. **Same rule** for every GValue* API: `Transition.set_to` /
+   `set_from`, `Interval.set_final_value` / `set_initial_value`, etc.
+3. **Client GJS only:** `[CCode cname=clutter_transition_set_to_value]`
+   thin alias → the one stub method.
+
+**Interval construct (`value-type`) — removed for now.** No
+`Helper-Clutter.new_interval_for_type`, no `Interval.override` mint.
+Bring back only after an **isolated smoke outside this tree** proves
+GType construct + GValue IN (not nested in shell/overview).
+
+### Rejected (do not revive)
+
+- `Helper-Transition.set_to_double` / float / int forks
+- `Clutter-Interval.set_property` with `sd` / `sf` / `si` from Transition
+- Reimplementing `set_to` by poking `Interval:final` from the client
+- Inventing non-GIR methods on Adjustment / Transition
+- Premature Interval mint Helpers without an external smoke
 
 ---
 
@@ -68,23 +96,15 @@ GI_META_SMOKE=adjustment-animatable-smoke GSR_WESTON_MODE=prove \
   ./scripts/weston-gsr-session.sh
 ```
 
-**FAIL pin:** `Adjustment` not usable as Animatable / `ease` throws
-`ClutterAnimatable`. **PASS:** `instanceof Clutter.Animatable`,
-`find_property('value')`, `ease` → `stopped`.
+| Gate | Meaning |
+| --- | --- |
+| Animatable + find_property | §1 |
+| Interval / set_to / ease → value | deferred — external smoke first |
 
 ---
 
-## Fix (after FAIL smoke)
+## Next
 
-1. `Adjustment.implements=Clutter.Animatable` (+ generator honor foreign
-   `implements=`).
-2. Override: Animatable methods (GObject property defaults + `get_actor`);
-   `add_transition` → `set_animatable` + `start` (stock-shaped).
-3. Smoke PASS → nest: no Animatable CRITICAL; grey gone; ibus dismisses.
-
----
-
-## 🚫 Do not
-
-- layout.js / overview.js ship hacks to skip `ease`
-- Invent non-GIR APIs on Adjustment
+1. Isolated smoke (outside this tree) for GValue IN + Interval construct.
+2. Generator GValue IN packing from that proof.
+3. Nest: no Animatable CRITICAL; then ease/grey.

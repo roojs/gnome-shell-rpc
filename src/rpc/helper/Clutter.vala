@@ -14,7 +14,6 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request.add_class(
 				"Helper-Clutter", typeof(ClutterHelper),
 				"get_current_event", "",
-				"new_interval_for_type", "t",
 				null
 			);
 			OLLMrpc.Request.register_live("Helper-Clutter", new ClutterHelper());
@@ -48,27 +47,6 @@ namespace GnomeShellRpc.Rpc.Helper
 				args = OLLMrpc.args("idddu",
 					(int) et, (double) x, (double) y, button,
 					(uint) ev.get_state()),
-			});
-		}
-
-		/**
-		 * ''Helper-Clutter.new_interval_for_type'' —
-		 * {@code Clutter.Interval.new} is introspectable=0 (varargs).
-		 * GJS {@code new Clutter.Interval({value_type})} needs a typed mint.
-		 * {@code GType} as uint64 (fundamentals match across processes).
-		 */
-		public void new_interval_for_type(
-			OLLMrpc.Request request,
-			uint64 gtype_bits
-		) {
-			var gtype = (GLib.Type) gtype_bits;
-			var interval = (Clutter.Interval) GLib.Object.new(
-				typeof(Clutter.Interval),
-				"value-type", gtype);
-			request.connection.export(interval);
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				retval = OLLMrpc.val("o", interval),
 			});
 		}
 	}

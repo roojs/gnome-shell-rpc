@@ -24,6 +24,13 @@ Actor.accessible
 Actor.get_accessible
 Actor.set_accessible
 
+# GValue IN: generator ay-memcpy of GLib.Value is wrong. Undeny + wire when
+# StreamValue/Gi design is smoked outside this tree (bug §2). No override.
+Transition.set_to temporary
+Transition.set_from temporary
+Transition.set_to_value temporary
+Transition.set_from_value temporary
+
 # ************************************************************************
 # PERMANENT — not deferred RPC work
 # ************************************************************************
@@ -125,13 +132,6 @@ Actor.get_transition
 # Transition.override — Animatable iface args not wireable by generator.
 Transition.set_animatable
 Transition.get_animatable
-# GJS set_to → set_to_value (shadow); export C symbols from override.
-Transition.set_to_value
-Transition.set_from_value
-
-# Interval.override — value-type construct-only (GType); GJS ease needs it.
-Interval.get_value_type
-Interval.value_type
 
 # LayoutManager.override — GJS subclasses (QuickSettingsLayout, …) are
 # client-owned; child meta / set_container stay local (no rpc_lid).
