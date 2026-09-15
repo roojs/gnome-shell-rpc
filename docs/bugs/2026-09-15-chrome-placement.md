@@ -1,56 +1,85 @@
 # Notification / chrome placement wrong after layout CRITICAL fix
 
-**Status:** ⏳ debug — prove, do not patch yet  
+**Status:** ⏳ partial — constraint pipe ✔️ (`constraint-allocate-smoke` PASS); tray still content-sized in nest probe  
 **Hit:** 2026-09-15 — user: banners/menus not in the right place; panel bold  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
-**Roles:** **consumer** MessageTray / panel / constraints
+**Roles:** **consumer** MessageTray / panel / constraints (client `Constraint.override`)
 
 ---
 
-## Probe (`GI_RPC_JS_OVERRIDE_DIR=src/shell-js-probe`)
+## Symptom
 
-Post-READY + `_showNotification` (tee `GNOME Shell-Message:`):
+| Surface | Observed | Stock expectation |
+| --- | --- | --- |
+| MessageTray at show | still `@ 0,0 **521x106**` after fix (2026-09-15 probe) | Monitor-sized via `Layout.MonitorConstraint({primary: true})` |
+| bannerBin | width 521; `y=-102` (slide-in) | Same tray allocation, then local slide |
+| panelBox | `@ 0,0 800x32` | OK — panel uses `set_position` / `set_size` on primary, **not** MonitorConstraint |
+| Menus / “panel bold” | user-reported | AlignConstraint / theme — re-check after tray |
 
-| Actor | Geometry |
-| --- | --- |
-| primaryMonitor | `@ 0,0 800x600` |
-| panelBox | `@ 0,0 800x32` |
-| MessageTray (at show) | `@ 0,0 **521x106**` |
-| bannerBin | width 521; `y=-102` (slide-in) |
+Probe: `GI_RPC_JS_OVERRIDE_DIR=src/shell-js-probe` (`gsr-place:`).
 
-Panel horizontal layout looks sane. Tray is content-sized, not monitor-sized.
-Stock uses `Layout.MonitorConstraint({primary: true})` on the tray.
+---
 
-## Smoke pin (`GI_META_SMOKE=constraint-allocate-smoke`)
+## Cause (proven for smoke; tray residual open)
 
-GJS `Clutter.Constraint` subclass on `St.Widget` (Helper.Actor peer):
+Two client `Constraint.override` bugs; both required for JS constraint geometry to stick.
 
-| Check | Result |
-| --- | --- |
-| `has_constraints` | true |
-| `is_mapped` | true |
-| `vfunc_update_allocation` hits | **0** (stage layout + forced `allocate`) |
+### 1. `enabled` GParamSpec defaulted FALSE
 
-Temporary compositor DBG (removed): `Helper-Actor.allocate` **did** run with
-`constraints=yes`; `Helper-Constraint.update_allocation` **never** entered.
+Hand-written `enabled` construct property emitted
+`g_param_spec_boolean(..., FALSE, … | CONSTRUCT)`. Construct overwrote field
+init `true`, then `sync_actor_meta_enabled()` RPCd `set_enabled(false)`.
 
-## Hypothesis (unproved — do not ship a fix on this alone)
+Stock `clutter_actor_update_constraints` skips disabled metas → JS
+`vfunc_update_allocation` never ran.
 
-`Clutter-Actor.allocate` over GI may hit `Class->allocate` and skip stock
-`clutter_actor_allocate()`’s constraint pass. Confirm by reading Ffi/GI
-dispatch / comparing with in-process allocate before any Helper patch.
+Tee: `Helper-Constraint.create enabled=true` → `Clutter-ActorMeta.set_enabled`
+→ `Helper-Actor.allocate … enabled=false`.
 
-Also pending (only after vfunc actually runs): Vala `ActorBox` by-value on the
-client callback (`_tmp30_` copy) would drop GJS `init_rect` mutations.
+### 2. ActorBox by-value dropped `init_rect` mutations
 
-## 🚫 Reverted / do not revive
+Relay callback called `self.update_allocation(actor, box)` (Vala by-value
+copy). GJS mutated the copy; reply `dddd` used the original box. After (1)
+alone: hits ≥ 1 but geom stayed 50×50.
+
+---
+
+## Fix (landed)
+
+`src/gi-stub/overrides-clutter/Constraint.override.vala`:
+
+1. `public bool enabled { get; set construct; default = true; }` (same as
+   Brightness/Desaturate mirrors).
+2. Relay calls `clutter_constraint_update_allocation` via
+   `invoke_update_allocation(..., ref box)` so mutations land in the reply.
+
+Smoke `constraint-allocate-smoke` also checks geom ≥ 800×600.
+
+Temporary Helper-Actor / Helper-Constraint DBG messages removed.
+
+---
+
+## Prove
+
+```bash
+GI_META_SMOKE=constraint-allocate-smoke GSR_WESTON_MODE=prove \
+  ./scripts/weston-gsr-session.sh
+```
+
+**2026-09-15 after fix:** `hits=2 geom=800x600` → **PASS**.
+
+**Tray probe (same day, stay-up + `shell-js-probe`):** still
+`gsr-place: tray @ 0,0 521x106` at `_showNotification`. Constraint pipe for a
+plain GJS `Clutter.Constraint` subclass is fixed; MessageTray /
+`MonitorConstraint` path still wrong — next chase (when / how tray is
+allocated, whether MonitorConstraint early-returns, chrome track), **not**
+another Helper allocate pre-pass.
+
+---
+
+## 🚫 Do not revive
 
 - `gsr_clutter_actor_update_constraints` + Helper.Actor.allocate pre-apply
-- Speculative client `invoke_update_allocation` before the path is proved
-
-## Next
-
-1. Prove how `Clutter-Actor.allocate` is invoked (public vs Class vfunc).
-2. Only then fix so MonitorConstraint’s `update_allocation` runs.
-3. Then re-check tray geom + menus / panel bold.
+- Speculative client pre-apply before enabled was fixed
+- Layout.js ship hacks

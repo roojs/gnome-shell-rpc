@@ -1,37 +1,22 @@
 		/**
 		 * ActorMeta props — parent is a size-locked C GType (no Vala props).
 		 * GJS: {@code new AlignConstraint({ name: 'align', … })}.
+		 * {@code enabled} must GParamSpec-default true (stock ActorMeta);
+		 * construct FALSE was syncing set_enabled(false) and skipping
+		 * update_allocation — see bugs/2026-09-15-chrome-placement.md.
 		 */
-		private string priv_name;
-		private bool priv_enabled = true;
-
-		public string name {
-			get {
-				return this.priv_name;
-			}
-			set construct {
-				this.priv_name = value;
-			}
-		}
-
-		public bool enabled {
-			get {
-				return this.priv_enabled;
-			}
-			set construct {
-				this.priv_enabled = value;
-			}
-		}
+		public string name { get; set construct; }
+		public bool enabled { get; set construct; default = true; }
 
 		private void sync_actor_meta_name()
 		{
 			if (this.rpc_lid == 0
-					|| this.priv_name == null
-					|| this.priv_name.length == 0) {
+					|| this.name == null
+					|| this.name.length == 0) {
 				return;
 			}
 			GnomeShellRpc.call_value("Clutter-ActorMeta.set_name", this,
-				OLLMrpc.args("s", this.priv_name));
+				OLLMrpc.args("s", this.name));
 		}
 
 		private void sync_actor_meta_enabled()
@@ -40,8 +25,22 @@
 				return;
 			}
 			GnomeShellRpc.call_value("Clutter-ActorMeta.set_enabled", this,
-				OLLMrpc.args("b", this.priv_enabled));
+				OLLMrpc.args("b", this.enabled));
 		}
+
+		/**
+		 * Class slot takes {@code ClutterActorBox*} (GIR). Vala
+		 * {@code update_allocation(..., ActorBox)} is by-value — a local
+		 * copy is mutated and the reply would keep the pre-call box.
+		 * Call the public invoker with {@code ref} so GJS {@code init_rect}
+		 * sticks in the wire reply.
+		 */
+		[CCode (cname = "clutter_constraint_update_allocation")]
+		private static extern void invoke_update_allocation(
+			Constraint self,
+			Actor actor,
+			ref ActorBox allocation
+		);
 
 		/**
 		 * Mint the compositor peer. Base = {@code Helper-Constraint.create}
@@ -58,7 +57,7 @@
 				box.y1 = (float) call.args.get(2).get_double();
 				box.x2 = (float) call.args.get(3).get_double();
 				box.y2 = (float) call.args.get(4).get_double();
-				self.update_allocation(actor, box);
+				invoke_update_allocation(self, actor, ref box);
 				return OLLMrpc.args("dddd",
 					(double) box.x1, (double) box.y1,
 					(double) box.x2, (double) box.y2);

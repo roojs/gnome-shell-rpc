@@ -196,6 +196,7 @@ namespace GnomeShellRpc.Rpc
 				|| smoke_env == "init.js";
 
 			string[] argv;
+			/* Nested boot: user extensions off via host memory settings. */
 			if (use_init) {
 				argv = { shell_bin, "--debug" };
 			} else {

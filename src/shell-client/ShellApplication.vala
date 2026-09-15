@@ -15,10 +15,8 @@ namespace GnomeShellRpc.ShellClient
 		private static bool opt_debug_critical = false;
 
 		private const GLib.OptionEntry[] options = {
-			{ "debug", 'd', 0, GLib.OptionArg.NONE, ref opt_debug,
-				"Enable debug output", null },
-			{ "debug-critical", 0, 0, GLib.OptionArg.NONE, ref opt_debug_critical,
-				"Treat critical warnings as errors", null },
+			{ "debug", 'd', 0, GLib.OptionArg.NONE, ref opt_debug, "Enable debug output", null },
+			{ "debug-critical", 0, 0, GLib.OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
 			{ null }
 		};
 
@@ -94,6 +92,7 @@ namespace GnomeShellRpc.ShellClient
 
 			GnomeShellRpc.GiStub.Runtime.register();
 			Shell.Global.bind_display(Meta.get_display());
+			Application.apply_extension_policy();
 
 			var js_dir = GLib.Environment.get_variable("GNOME_SHELL_JS_DIR") ?? "";
 			var script = resolve_script(remaining, js_dir);
@@ -155,9 +154,31 @@ namespace GnomeShellRpc.ShellClient
 			return status;
 		}
 
+		[CCode (cname = "g_memory_settings_backend_new")]
+		private static extern GLib.SettingsBackend memory_settings_backend_new();
+
+		/**
+		 * Nest bisect: same stock key ExtensionManager reads
+		 * ({@code org.gnome.shell disable-user-extensions}), on a memory
+		 * backend so live-session dconf is not written. Stock has no
+		 * {@code --disable-extensions} CLI.
+		 */
+		private static void apply_extension_policy()
+		{
+			var settings = new GLib.Settings.with_backend(
+				"org.gnome.shell", Application.memory_settings_backend_new()
+			);
+			settings.set_boolean("disable-user-extensions", true);
+			Shell.Global.get().host_install_settings(settings);
+			GLib.message(
+				"gnome-shell-rpc: disable-user-extensions "
+				+ "(memory org.gnome.shell)"
+			);
+		}
+
 		private void prepend_typelib_paths()
 		{
-			var typelib_dir = GLib.Environment.get_variable( "GI_RPC_SMOKE_TYPELIB_DIR") ?? "";
+			var typelib_dir = GLib.Environment.get_variable("GI_RPC_SMOKE_TYPELIB_DIR") ?? "";
 			if (typelib_dir.length > 0) {
 				GI.Repository.prepend_search_path(typelib_dir);
 				GLib.debug("typelib prepend %s", typelib_dir);

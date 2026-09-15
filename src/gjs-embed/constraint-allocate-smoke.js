@@ -84,6 +84,16 @@ function main() {
 			loop.quit();
 			return GLib.SOURCE_REMOVE;
 		}
+		const w = actor.get_width();
+		const h = actor.get_height();
+		/* FillConstraint init_rect(10, 20, 800, 600) — size must stick. */
+		if (w < 799 || h < 599) {
+			smokeLog('FAIL vfunc ran but geom not applied hits=' + hits
+				+ ' geom=' + w + 'x' + h);
+			smokeLog('done');
+			loop.quit();
+			return GLib.SOURCE_REMOVE;
+		}
 		smokeLog('PASS');
 		smokeLog('done');
 		loop.quit();

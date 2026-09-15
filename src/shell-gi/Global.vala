@@ -40,6 +40,16 @@ namespace Shell
 			}
 		}
 
+		/**
+		 * Host only — nest boot may install a memory-backed
+		 * {@code org.gnome.shell} before JS (see ShellApplication). Not stock.
+		 */
+		[CCode (gir = false)]
+		public void host_install_settings(GLib.Settings settings)
+		{
+			this.settings_cache = settings;
+		}
+
 		public St.FocusManager focus_manager {
 			get {
 				if (this.focus_manager_cache == null) {
@@ -248,6 +258,74 @@ namespace Shell
 					null, false, GLib.FileCreateFlags.REPLACE_DESTINATION, out new_etag);
 			} catch (GLib.Error e) {
 				GLib.warning("Could not replace persistent state file: %s", e.message);
+			}
+		}
+
+		/**
+		 * Stock runtime-state dir:
+		 * {@code $XDG_RUNTIME_DIR/gnome-shell/runtime-state-{LE|BE}.$DISPLAY}.
+		 */
+		private GLib.File runtime_state_dir()
+		{
+			var byteorder = GLib.ByteOrder.HOST == GLib.ByteOrder.LITTLE_ENDIAN
+				? "LE" : "BE";
+			/* Stock g_strdup_printf("%s", NULL) → "(null)". */
+			var display = GLib.Environment.get_variable("DISPLAY") ?? "(null)";
+			var path = "%s/gnome-shell/runtime-state-%s.%s".printf(
+				GLib.Environment.get_user_runtime_dir(), byteorder, display);
+			return GLib.File.new_for_path(path);
+		}
+
+		/**
+		 * Stock {@code shell_global_get_runtime_state} — typed GVariant that
+		 * does not persist across logout/reboot.
+		 */
+		public GLib.Variant? get_runtime_state(string property_type, string property_name)
+		{
+			var path = this.runtime_state_dir().get_child(property_name);
+			var pathstr = path.get_path();
+			if (pathstr == null) {
+				return null;
+			}
+			try {
+				var mfile = new GLib.MappedFile(pathstr, false);
+				return new GLib.Variant.from_bytes(
+					new GLib.VariantType(property_type), mfile.get_bytes(), false);
+			} catch (GLib.FileError.NOENT e) {
+				return null;
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to open runtime state: %s", e.message);
+				return null;
+			}
+		}
+
+		/**
+		 * Stock {@code shell_global_set_runtime_state}.
+		 */
+		public void set_runtime_state(string property_name, GLib.Variant? variant)
+		{
+			var dir = this.runtime_state_dir();
+			try {
+				dir.make_directory_with_parents();
+			} catch (GLib.IOError.EXISTS e) {
+			} catch (GLib.Error e) {
+				GLib.warning("Could not create runtime state dir: %s", e.message);
+				return;
+			}
+			var path = dir.get_child(property_name);
+			if (variant == null || variant.get_data() == null) {
+				try {
+					path.@delete();
+				} catch (GLib.Error e) {
+				}
+				return;
+			}
+			try {
+				string? new_etag;
+				path.replace_contents(variant.get_data_as_bytes().get_data(),
+					null, false, GLib.FileCreateFlags.REPLACE_DESTINATION, out new_etag);
+			} catch (GLib.Error e) {
+				GLib.warning("Could not replace runtime state file: %s", e.message);
 			}
 		}
 

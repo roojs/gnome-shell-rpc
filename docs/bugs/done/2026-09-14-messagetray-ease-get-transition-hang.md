@@ -1,6 +1,6 @@
 # MessageTray banner never auto-hides (`Transition::stopped` not relayed)
 
-**Status:** ⏳ fix in flight  
+**Status:** ✔️ subscribe landed — nest sees `notification method=stopped` (2026-09-15); polish if banners still stick  
 **Hit:** 2026-09-14 nest — banners stay until dismiss / nest death  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)  
 **Roles:** **consumer** Actor + Runtime subscribe demux

@@ -224,17 +224,6 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public override void allocate(Clutter.ActorBox box)
 		{
-			/* DBG placement — remove after pin. */
-			if (this.has_constraints()) {
-				foreach (var c in this.get_constraints()) {
-					var meta = (Clutter.ActorMeta) c;
-					GLib.message(
-						"Helper-Actor.allocate constraint type=%s enabled=%s",
-						c.get_type().name(),
-						meta.get_enabled().to_string());
-				}
-			}
-
 			var hook = this.vfuncs.get("allocate");
 			if (hook == null) {
 				base.allocate(box);
