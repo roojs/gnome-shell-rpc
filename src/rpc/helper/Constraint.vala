@@ -84,6 +84,8 @@ namespace GnomeShellRpc.Rpc.Helper
 			var created = new Constraint();
 			created.update_hook = request.connection.callbacks.get(
 				(int) callback_id);
+			GLib.message("Helper-Constraint.create enabled=%s",
+				created.get_enabled().to_string());
 			var handle = (uint64) request.connection.export(created);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

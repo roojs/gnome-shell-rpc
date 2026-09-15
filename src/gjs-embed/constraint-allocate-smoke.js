@@ -48,7 +48,9 @@ function main() {
 		reactive: true,
 	});
 	actor.set_size(50, 50);
-	actor.add_constraint(new FillConstraint());
+	const constraint = new FillConstraint();
+	smokeLog('client constraint.enabled=' + constraint.enabled);
+	actor.add_constraint(constraint);
 	stage.add_child(actor);
 	actor.show();
 	actor.queue_relayout();
