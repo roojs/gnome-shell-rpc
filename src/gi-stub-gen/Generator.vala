@@ -440,28 +440,44 @@ namespace $(ns)
 		 * Same-namespace GIR {@code implements} when
 		 * {@code Namespace emit_implements=1} (St.overrides). Skip ifaces on
 		 * {@link deny}, foreign namespaces, or already on a parent stub.
+		 *
+		 * Foreign ifaces via override {@code Type.implements=Clutter.Animatable}
+		 * (comma-separated, qualified names) — e.g. St.Adjustment once
+		 * Animatable methods are ready in the override splice.
 		 */
 		private string emit_object_implements(string ns, GI.ObjectInfo oi)
 		{
-			if (!(this.overrides.has_key("Namespace")
-				&& this.overrides.get("Namespace").has_key("emit_implements")
-				&& this.overrides.get("Namespace").get("emit_implements") == "1")) {
-				return "";
-			}
 			string[] names = {};
-			for (var i = 0; i < oi.get_n_interfaces(); i++) {
-				var ii = oi.get_interface(i);
-				if (ii.get_namespace() != ns) {
-					continue;
+			if (this.overrides.has_key("Namespace")
+				&& this.overrides.get("Namespace").has_key("emit_implements")
+				&& this.overrides.get("Namespace").get("emit_implements") == "1") {
+				for (var i = 0; i < oi.get_n_interfaces(); i++) {
+					var ii = oi.get_interface(i);
+					if (ii.get_namespace() != ns) {
+						continue;
+					}
+					var iname = ii.get_name();
+					if (iname in this.deny) {
+						continue;
+					}
+					if (this.parent_stub_implements(ns, oi, iname)) {
+						continue;
+					}
+					names += iname;
 				}
-				var iname = ii.get_name();
-				if (iname in this.deny) {
-					continue;
+			}
+			var cname = oi.get_name();
+			if (this.overrides.has_key(cname)
+				&& this.overrides.get(cname).has_key("implements")) {
+				foreach (var part in this.overrides.get(cname).get("implements").split(",")) {
+					var t = part.strip();
+					if (t != "") {
+						names += t;
+					}
 				}
-				if (this.parent_stub_implements(ns, oi, iname)) {
-					continue;
-				}
-				names += iname;
+			}
+			if (names.length == 0) {
+				return "";
 			}
 			return string.joinv(", ", names);
 		}

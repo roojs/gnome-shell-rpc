@@ -2,7 +2,11 @@
 
 # Emit GIR implements on stub classes (Viewport → Scrollable). Deny an iface
 # name to skip it; Clutter/Meta leave this off until Animatable/etc. are ready.
+# Foreign: Type.implements=Clutter.Animatable (see Adjustment).
 Namespace emit_implements=1
+
+# Stock St.Adjustment implements Clutter.Animatable (find_property / ease).
+Adjustment implements=Clutter.Animatable
 
 # Class vfunc slots (Button.clicked/transition, Widget.get_focus_chain, …).
 Namespace emit_class_slots=1

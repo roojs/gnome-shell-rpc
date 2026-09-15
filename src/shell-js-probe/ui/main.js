@@ -366,6 +366,48 @@ async function _initializeUI() {
                         log(`gsr-place: panel-${name} child${i} type=${c.get_type?.()?.name ?? c.constructor?.name} class=${cls}`);
                     }
                 }
+                /* DBG menus — log around open; geom after idle. */
+                try {
+                    const roles = panel.statusArea ? Object.keys(panel.statusArea) : [];
+                    log(`gsr-place: statusArea roles=${roles.join(',')}`);
+                    const dm = panel.statusArea?.dateMenu;
+                    if (!dm) {
+                        log('gsr-place: dateMenu missing');
+                    } else {
+                        log(`gsr-place: dateMenu present hasMenu=${!!dm.menu}`);
+                        try {
+                            log('gsr-place: dateMenu open enter');
+                            dm.menu.open(0);
+                            log('gsr-place: dateMenu open returned');
+                        } catch (e) {
+                            log(`gsr-place: dateMenu open threw ${e}`);
+                        }
+                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+                            try {
+                                const bp = dm.menu._boxPointer;
+                                const [x, y] = bp.get_transformed_position();
+                                const [w, h] = bp.get_transformed_size();
+                                let pref = '?';
+                                try {
+                                    const ps = bp.get_preferred_size();
+                                    pref = Array.isArray(ps)
+                                        ? ps.map(v => Math.round(v)).join(',')
+                                        : String(ps);
+                                } catch (e) { pref = `err:${e}`; }
+                                log(`gsr-place: dateMenu open @ ${x.toFixed(0)},${y.toFixed(0)} ${w.toFixed(0)}x${h.toFixed(0)} preferred=${pref}`);
+                                const [sx, sy] = dm.get_transformed_position();
+                                const [sw, sh] = dm.get_transformed_size();
+                                log(`gsr-place: dateMenu source @ ${sx.toFixed(0)},${sy.toFixed(0)} ${sw.toFixed(0)}x${sh.toFixed(0)}`);
+                            } catch (e) {
+                                log(`gsr-place: dateMenu geom threw ${e}`);
+                            }
+                            try { dm.menu.close(0); } catch (e) {}
+                            return GLib.SOURCE_REMOVE;
+                        });
+                    }
+                } catch (e) {
+                    log(`gsr-place: menu probe threw ${e}`);
+                }
             } else {
                 log('gsr-place: panel is null');
             }

@@ -63,6 +63,10 @@ namespace GnomeShellRpc.Rpc.Helper
 		/**
 		 * Emit allocate hook. {@code true} = JS applied;
 		 * {@code false} = chain — caller runs {@code base.allocate}.
+		 *
+		 * Non-chain: GJS Class->allocate must {@code set_allocation} (Clutter
+		 * contract). Do not re-apply the pre-hook box — that wiped
+		 * BoxPointer._reposition (actor-allocate-box-smoke / chrome menus).
 		 */
 		public static bool measure_allocate(
 			OLLMrpc.Live.Hook hook,
@@ -81,7 +85,6 @@ namespace GnomeShellRpc.Rpc.Helper
 			if (chain) {
 				return false;
 			}
-			actor.set_allocation(box);
 			return true;
 		}
 

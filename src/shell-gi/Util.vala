@@ -400,4 +400,49 @@ namespace Shell
 	{
 		return ((GLib.Task) res).propagate_boolean();
 	}
+
+	/**
+	 * Stock {@code shell_util_wifexited} — libc {@code WIFEXITED} /
+	 * {@code WEXITSTATUS} for GJS ({@code networkAgent.js}).
+	 *
+	 * @param status wait / waitpid status
+	 * @param exit set to the process exit code when this returns true
+	 * @return true if the process exited normally
+	 */
+	public bool util_wifexited(int status, out int exit)
+	{
+		if (!GLib.Process.if_exited(status)) {
+			exit = 0;
+			return false;
+		}
+		exit = GLib.Process.exit_status(status);
+		return true;
+	}
+
+	/**
+	 * Stock {@code shell_write_string_to_stream} — UTF-8 write for GJS
+	 * ({@code scripting.js} dump).
+	 */
+	public bool write_string_to_stream(
+		GLib.OutputStream stream,
+		string str
+	) throws GLib.Error {
+		size_t written;
+		return stream.write_all(str.data, out written);
+	}
+
+	/**
+	 * Stock {@code shell_get_file_contents_utf8_sync} — load file as UTF-8
+	 * (embedded NUL invalid).
+	 */
+	public string get_file_contents_utf8_sync(string path) throws GLib.Error
+	{
+		string contents;
+		size_t len;
+		GLib.FileUtils.get_contents(path, out contents, out len);
+		if (!contents.validate((ssize_t) len)) {
+			throw new GLib.IOError.FAILED("File %s contains invalid UTF-8", path);
+		}
+		return contents;
+	}
 }

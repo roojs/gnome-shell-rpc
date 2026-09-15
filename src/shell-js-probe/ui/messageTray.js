@@ -709,11 +709,22 @@ export const MessageTray = GObject.registerClass({
             this._onStatusChanged(status);
         });
 
-        let constraint = new Layout.MonitorConstraint({primary: true});
+        /* DBG placement — wrap MonitorConstraint to pin update_allocation. */
+        const ProbeMonitorConstraint = GObject.registerClass(
+        class ProbeMonitorConstraint extends Layout.MonitorConstraint {
+            vfunc_update_allocation(actor, actorBox) {
+                const pm = Main.layoutManager.primaryMonitor;
+                log(`gsr-place: MC.update enter primary=${this.primary} index=${this.index} workArea=${this.workArea} enabled=${this.enabled} pm=${pm ? `${pm.width}x${pm.height}` : 'null'} in=${actorBox.get_width()}x${actorBox.get_height()}`);
+                super.vfunc_update_allocation(actor, actorBox);
+                log(`gsr-place: MC.update leave out=${actorBox.get_width()}x${actorBox.get_height()}`);
+            }
+        });
+        let constraint = new ProbeMonitorConstraint({primary: true});
         Main.layoutManager.panelBox.bind_property('visible',
             constraint, 'work-area',
             GObject.BindingFlags.SYNC_CREATE);
         this.add_constraint(constraint);
+        log(`gsr-place: tray constraint primary=${constraint.primary} workArea=${constraint.workArea} enabled=${constraint.enabled}`);
 
         this._bannerBin = new St.Widget({
             name: 'notification-container',
@@ -1129,17 +1140,20 @@ export const MessageTray = GObject.registerClass({
         this._bannerBin.y = -this._banner.height;
         this.show();
 
-        /* DBG placement probe */
-        try {
-            const [bx, by] = this._bannerBin.get_transformed_position();
-            const [bw, bh] = this._bannerBin.get_transformed_size();
-            const [mx, my] = this.get_transformed_position();
-            const [mw, mh] = this.get_transformed_size();
-            log(`gsr-place: tray @ ${mx.toFixed(0)},${my.toFixed(0)} ${mw.toFixed(0)}x${mh.toFixed(0)} x_align=${this._bannerBin.get_x_align()}`);
-            log(`gsr-place: bannerBin @ ${bx.toFixed(0)},${by.toFixed(0)} ${bw.toFixed(0)}x${bh.toFixed(0)} y=${this._bannerBin.y}`);
-        } catch (e) {
-            log(`gsr-place: banner geom threw ${e}`);
-        }
+        /* DBG placement — show() only queues allocate; sample after layout. */
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+            try {
+                const [mx, my] = this.get_transformed_position();
+                const [mw, mh] = this.get_transformed_size();
+                const [bx, by] = this._bannerBin.get_transformed_position();
+                const [bw, bh] = this._bannerBin.get_transformed_size();
+                log(`gsr-place: tray@500ms @ ${mx.toFixed(0)},${my.toFixed(0)} ${mw.toFixed(0)}x${mh.toFixed(0)}`);
+                log(`gsr-place: bannerBin@500ms @ ${bx.toFixed(0)},${by.toFixed(0)} ${bw.toFixed(0)}x${bh.toFixed(0)} y=${this._bannerBin.y}`);
+            } catch (e) {
+                log(`gsr-place: banner geom@500ms threw ${e}`);
+            }
+            return GLib.SOURCE_REMOVE;
+        });
 
         global.compositor.disable_unredirect();
         this._updateShowingNotification();

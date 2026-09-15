@@ -29,5 +29,6 @@ union _ClutterEvent
 		float x;
 		float y;
 		guint32 button;
+		guint32 state;
 	};
 };

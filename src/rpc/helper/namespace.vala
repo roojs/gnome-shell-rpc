@@ -34,7 +34,9 @@ namespace GnomeShellRpc.Rpc.Helper
 		ShaderEffect.rpc_register();
 		GLSLEffect.rpc_register();
 		BlurEffect.rpc_register();
+		InvertLightnessEffect.rpc_register();
 		ClutterThreads.rpc_register();
+		ClutterHelper.rpc_register();
 		Constraint.rpc_register();
 		St.rpc_register();
 		ThemeContext.rpc_register();

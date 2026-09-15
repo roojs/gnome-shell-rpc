@@ -122,6 +122,17 @@ Actor.set_layout_manager
 # Transition::stopped so environment.js ease() onComplete can run.
 Actor.get_transition
 
+# Transition.override — Animatable iface args not wireable by generator.
+Transition.set_animatable
+Transition.get_animatable
+# GJS set_to → set_to_value (shadow); export C symbols from override.
+Transition.set_to_value
+Transition.set_from_value
+
+# Interval.override — value-type construct-only (GType); GJS ease needs it.
+Interval.get_value_type
+Interval.value_type
+
 # LayoutManager.override — GJS subclasses (QuickSettingsLayout, …) are
 # client-owned; child meta / set_container stay local (no rpc_lid).
 # layout_changed: deny RPC method (name clash with GIR signal). C symbol for
@@ -189,6 +200,9 @@ EventSequence
 
 # GSourceFunc not DBus-marshallable; Helper / Live.Callback instead.
 threads_add_repaint_func
+
+# Compact Event — pack type/x/y/button/state via Helper-Clutter.
+get_current_event
 
 # Nested Event <function>s duplicate ns clutter_event_* cnames.
 Event.add_filter

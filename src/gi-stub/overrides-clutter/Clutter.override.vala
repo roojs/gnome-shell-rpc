@@ -5,6 +5,30 @@
 	}
 
 	/**
+	 * Stock {@code clutter_get_current_event} — compositor packs type / coords /
+	 * button / state into Compact {@link Event} (transfer none via cache).
+	 */
+	private static Event? current_event_cache;
+
+	[CCode (cname = "clutter_get_current_event")]
+	public static unowned Event? get_current_event()
+	{
+		var response = GnomeShellRpc.call_value(
+			"Helper-Clutter.get_current_event", null);
+		if (response.args.size < 5) {
+			current_event_cache = null;
+			return null;
+		}
+		current_event_cache = new Event.local(
+			(EventType) response.args.get(0).get_int(),
+			(float) response.args.get(1).get_double(),
+			(float) response.args.get(2).get_double(),
+			response.args.get(3).get_uint(),
+			response.args.get(4).get_uint());
+		return current_event_cache;
+	}
+
+	/**
 	 * Opaque sequence handle; {@link get_slot} stub until Clutter Event RPC exists.
 	 */
 	public struct EventSequence
@@ -32,32 +56,36 @@
 		public float x;
 		public float y;
 		public uint32 button;
+		public uint32 state;
 
 		public Event.local(
 			EventType type,
 			float x,
 			float y,
-			uint32 button
+			uint32 button,
+			uint32 state = 0
 		) {
 			this.event_type = type;
 			this.x = x;
 			this.y = y;
 			this.button = button;
+			this.state = state;
 		}
 
 		public static Event from_local(
 			EventType type,
 			float x,
 			float y,
-			uint32 button
+			uint32 button,
+			uint32 state = 0
 		) {
-			return new Event.local(type, x, y, button);
+			return new Event.local(type, x, y, button, state);
 		}
 
 		[CCode (cname = "clutter_event_copy")]
 		public Event copy() {
 			return new Event.local(
-				this.event_type, this.x, this.y, this.button);
+				this.event_type, this.x, this.y, this.button, this.state);
 		}
 
 		[CCode (cname = "clutter_event_type")]
@@ -74,6 +102,11 @@
 		[CCode (cname = "clutter_event_get_button")]
 		public uint32 get_button() {
 			return this.button;
+		}
+
+		[CCode (cname = "clutter_event_get_state")]
+		public ModifierType get_state() {
+			return (ModifierType) this.state;
 		}
 	}
 
