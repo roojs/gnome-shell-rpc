@@ -45,4 +45,4 @@ GI_META_SMOKE=shell-import-smoke.js dbus-run-session ./build/src/mutter-rpc --wa
 
 Phase 5 (**`init.js`**) is **not** this one-liner — see archived [`0.7-gnome-shell-rpc-client.md`](../docs/plans/done/0.7-gnome-shell-rpc-client.md) Phase 5.
 
-Active plan: [`docs/plans/0.8-init-complete-and-interaction.md`](../docs/plans/0.8-init-complete-and-interaction.md) · index [`docs/plans/README.md`](../docs/plans/README.md).
+Active plan: [`docs/plans/0.8-init-complete-and-interaction.md`](../docs/plans/0.8-init-complete-and-interaction.md).

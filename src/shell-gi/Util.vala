@@ -76,24 +76,20 @@ namespace Shell
 		return pid;
 	}
 
-	static async void systemd_call(
-		string method,
-		GLib.Variant params,
-		GLib.Cancellable? cancellable
-	) throws GLib.Error
-	{
-		var bus = yield GLib.Bus.@get(GLib.BusType.SESSION, cancellable);
-		yield bus.call("org.freedesktop.systemd1", "/org/freedesktop/systemd1",
-			"org.freedesktop.systemd1.Manager", method, params, null,
-			GLib.DBusCallFlags.NONE, -1, cancellable);
-	}
-
+	/**
+	 * Stock async + finish ({@code util_*_finish} emitted by Vala for GJS
+	 * promisify — 1.0 S.1–S.3). Session-bus systemd1 Manager.
+	 */
 	public async bool util_systemd_unit_exists(
 		string unit,
 		GLib.Cancellable? cancellable = null
 	) throws GLib.Error
 	{
-		yield systemd_call("GetUnit", new GLib.Variant("(s)", unit), cancellable);
+		var bus = yield GLib.Bus.@get(GLib.BusType.SESSION, cancellable);
+		yield bus.call("org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+			"org.freedesktop.systemd1.Manager", "GetUnit",
+			new GLib.Variant("(s)", unit), null,
+			GLib.DBusCallFlags.NONE, -1, cancellable);
 		return true;
 	}
 
@@ -103,7 +99,11 @@ namespace Shell
 		GLib.Cancellable? cancellable = null
 	) throws GLib.Error
 	{
-		yield systemd_call("StartUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
+		var bus = yield GLib.Bus.@get(GLib.BusType.SESSION, cancellable);
+		yield bus.call("org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+			"org.freedesktop.systemd1.Manager", "StartUnit",
+			new GLib.Variant("(ss)", unit, mode), null,
+			GLib.DBusCallFlags.NONE, -1, cancellable);
 		return true;
 	}
 
@@ -113,8 +113,134 @@ namespace Shell
 		GLib.Cancellable? cancellable = null
 	) throws GLib.Error
 	{
-		yield systemd_call( "StopUnit", new GLib.Variant("(ss)", unit, mode), cancellable);
+		var bus = yield GLib.Bus.@get(GLib.BusType.SESSION, cancellable);
+		yield bus.call("org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+			"org.freedesktop.systemd1.Manager", "StopUnit",
+			new GLib.Variant("(ss)", unit, mode), null,
+			GLib.DBusCallFlags.NONE, -1, cancellable);
 		return true;
+	}
+
+	/**
+	 * Stock {@code shell_util_regex_escape} — {@code g_regex_escape_string}
+	 * with a NUL-terminated string for GJS.
+	 */
+	public string util_regex_escape(string str)
+	{
+		return GLib.Regex.escape_string(str);
+	}
+
+	/**
+	 * Stock {@code shell_util_get_translated_folder_name} — Name from
+	 * {@code desktop-directories/*.directory} (first path wins), same as
+	 * {@code shell_app_cache_translate_folder}.
+	 */
+	static Gee.HashMap<string, string>? folder_translations;
+
+	public string? util_get_translated_folder_name(string name)
+	{
+		if (folder_translations != null) {
+			return folder_translations.get(name);
+		}
+
+		folder_translations = new Gee.HashMap<string, string>();
+		string[] paths = {};
+		paths += GLib.Path.build_filename(
+			GLib.Environment.get_user_data_dir(), "desktop-directories");
+		foreach (unowned string sys in GLib.Environment.get_system_data_dirs()) {
+			paths += GLib.Path.build_filename(sys, "desktop-directories");
+		}
+
+		foreach (unowned string path in paths) {
+			GLib.Dir dir;
+			try {
+				dir = GLib.Dir.open(path, 0);
+			} catch (GLib.FileError e) {
+				continue;
+			}
+
+			var fname = dir.read_name();
+			while (fname != null) {
+				if (folder_translations.has_key(fname)) {
+					fname = dir.read_name();
+					continue;
+				}
+
+				var keyfile = new GLib.KeyFile();
+				try {
+					keyfile.load_from_file(
+						GLib.Path.build_filename(path, fname),
+						GLib.KeyFileFlags.NONE);
+					folder_translations.set(
+						fname,
+						keyfile.get_locale_string("Desktop Entry", "Name", null));
+				} catch (GLib.Error e) {
+				}
+
+				fname = dir.read_name();
+			}
+		}
+
+		return folder_translations.get(name);
+	}
+
+	/**
+	 * Stock {@code shell_util_check_cloexec_fds} — warn on open FDs without
+	 * {@code FD_CLOEXEC} (skip stdin/out/err).
+	 */
+	public void util_check_cloexec_fds()
+	{
+		try {
+			var dir = GLib.Dir.open("/proc/self/fd", 0);
+			for (var name = dir.read_name(); name != null; name = dir.read_name()) {
+				var fd = int.parse(name);
+				if (fd < 3) {
+					continue;
+				}
+				var r = Posix.fcntl(fd, Posix.F_GETFD);
+				if (r < 0) {
+					continue;
+				}
+				if ((r & Posix.FD_CLOEXEC) == 0) {
+					GLib.warning("fd %d is not CLOEXEC", fd);
+				}
+			}
+		} catch (GLib.FileError e) {
+			var open_max = Posix.sysconf(Posix._SC_OPEN_MAX);
+			for (var fd = 0; fd < (int) open_max; fd++) {
+				if (fd < 3) {
+					continue;
+				}
+				var r = Posix.fcntl(fd, Posix.F_GETFD);
+				if (r < 0) {
+					continue;
+				}
+				if ((r & Posix.FD_CLOEXEC) == 0) {
+					GLib.warning("fd %d is not CLOEXEC", fd);
+				}
+			}
+		}
+		GLib.info("Open fd CLOEXEC check complete");
+	}
+
+	/**
+	 * Stock {@code shell_util_create_pixbuf_from_data} — introspectable
+	 * {@code gdk_pixbuf_new_from_data} (owns {@code data}, frees with
+	 * {@code g_free}).
+	 */
+	public Gdk.Pixbuf util_create_pixbuf_from_data(
+		[CCode (array_length_type = "gsize", array_length_cname = "len")] owned uint8[] data,
+		Gdk.Colorspace colorspace,
+		bool has_alpha,
+		int bits_per_sample,
+		int width,
+		int height,
+		int rowstride
+	)
+	{
+		return new Gdk.Pixbuf.from_data(
+			(owned) data, colorspace, has_alpha, bits_per_sample,
+			width, height, rowstride);
 	}
 
 	/** Nested Wayland — no X11 display extension probe. */

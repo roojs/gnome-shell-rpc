@@ -40,6 +40,7 @@ namespace GnomeShellRpc.Rpc
 			Rpc.Helper.rpc_register();
 			Rpc.Helper.Settings.bind(display);
 			Rpc.Helper.GLSLEffect.bind(display);
+			Rpc.Helper.BlurEffect.bind(display);
 
 			this.ui_display = new Ui.Display(display);
 			OLLMrpc.Request.register("RPC-Daemon", new Daemon());

@@ -85,6 +85,17 @@ namespace Shell
 		}
 
 		/**
+		 * Nested B2 prove — virtual keyboard keyval (+ modifiers) on the
+		 * compositor seat (Helper-Actor.fire_key). Not stock Shell.
+		 */
+		public void fire_key(uint keyval, Clutter.ModifierType modifiers)
+		{
+			GnomeShellRpc.call_value(
+				"Helper-Actor.fire_key", null,
+				OLLMrpc.args("uu", keyval, (uint) modifiers));
+		}
+
+		/**
 		 * Stock {@code shell_global_get} — singleton after {@link bind_display}.
 		 */
 		public static new unowned Global get()

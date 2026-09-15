@@ -33,6 +33,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		ShapedTexture.rpc_register();
 		ShaderEffect.rpc_register();
 		GLSLEffect.rpc_register();
+		BlurEffect.rpc_register();
 		ClutterThreads.rpc_register();
 		Constraint.rpc_register();
 		St.rpc_register();

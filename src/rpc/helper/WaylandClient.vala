@@ -20,7 +20,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request.add_class(
 				"Helper-WaylandClient", typeof(WaylandClient),
 				"create", "ou",
-				"spawnv", "osS",
+				/* ''as'' = one FFI pointer (null-terminated). ''S'' would
+				 * pass get_boxed().length which is -1 after wire decode. */
+				"spawnv", "osas",
 				"wait", "",
 				"get_if_exited", "",
 				"get_exit_status", "",
@@ -74,13 +76,15 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * ''Helper-WaylandClient.spawnv'' — {@code this} is the leased row.
-		 * Typed Ffi {@code osas}: length-bearing {@code string[]} for {@code as}
-		 * (same shape as {@link ThemeContext.set_theme}).
+		 * Typed Ffi {@code osas}: {@code as} is one pointer — match with
+		 * null-terminated argv (length-bearing needs Ffi {@code S}, but wire
+		 * {@code get_boxed().length} is {@code -1}).
 		 */
 		public void spawnv(
 			OLLMrpc.Request request,
 			Meta.Display display,
 			string cwd,
+			[CCode (array_length = false, array_null_terminated = true)]
 			string[] argv
 		) {
 			if (this.peer == null) {
@@ -103,7 +107,12 @@ namespace GnomeShellRpc.Rpc.Helper
 				);
 				return;
 			}
-			string[] wire = argv ?? new string[0];
+			string[] wire = {};
+			if (argv != null) {
+				for (int i = 0; argv[i] != null; i++) {
+					wire += argv[i];
+				}
+			}
 			GLib.message(
 				"Helper-WaylandClient.spawnv argv_len=%d cwd='%s'",
 				wire.length, cwd ?? "(null)"

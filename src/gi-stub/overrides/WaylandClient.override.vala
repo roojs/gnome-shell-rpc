@@ -32,8 +32,8 @@
 		 * Stock {@code meta_wayland_client_spawnv}. Returns
 		 * {@link Meta.RpcSubprocess} (Gio.Subprocess is foreign / not on wire).
 		 *
-		 * Wire pack: {@code osas} (display, cwd, string[]). Helper
-		 * {@code add_class} uses {@code osS} so Vala gets array length.
+		 * Wire: typed Ffi {@code osas} — display, cwd, argv strv.
+		 * Helper matches null-terminated {@code as} (one FFI pointer).
 		 */
 		public RpcSubprocess? spawnv(
 			Display display,

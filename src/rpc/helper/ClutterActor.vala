@@ -135,6 +135,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				"base_preferred_height", "d",
 				"pointer_click", "dd",
 				"fire_button_press", "",
+				"fire_key", "uu",
 				null);
 			OLLMrpc.Request.register_live("Helper-Actor", helper);
 		}
@@ -223,6 +224,25 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public override void allocate(Clutter.ActorBox box)
 		{
+			/* DBG placement — remove after pin; no behaviour change. */
+			uint n = 0;
+			bool any_enabled = false;
+			string? first_type = null;
+			if (this.has_constraints()) {
+				foreach (var c in this.get_constraints()) {
+					n++;
+					var meta = (Clutter.ActorMeta) c;
+					if (meta.enabled)
+						any_enabled = true;
+					if (first_type == null)
+						first_type = c.get_type().name();
+				}
+			}
+			GLib.message(
+				"Helper-Actor.allocate name=%s n_constraints=%u enabled=%s first=%s",
+				this.name ?? "?", n, any_enabled.to_string(),
+				first_type ?? "-");
+
 			var hook = this.vfuncs.get("allocate");
 			if (hook == null) {
 				base.allocate(box);
@@ -349,6 +369,65 @@ namespace GnomeShellRpc.Rpc.Helper
 				(double) (ax + actor.get_width() / 2.0f),
 				(double) (ay + actor.get_height() / 2.0f),
 				(uint32) Clutter.Button.PRIMARY));
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Helper-Actor.fire_key'' — nested B2 prove. Virtual keyboard
+		 * keyval (+ optional Super/Ctrl/Alt/Shift) through mutter grabs.
+		 * Not stock Shell; same seat pattern as {@link pointer_click}.
+		 */
+		public void fire_key(
+			OLLMrpc.Request request,
+			uint keyval,
+			uint modifiers
+		) {
+			var backend = Clutter.get_default_backend();
+			var seat = backend.get_default_seat();
+			var virt = seat.create_virtual_device(
+				Clutter.InputDeviceType.KEYBOARD_DEVICE);
+			if (virt == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR);
+				return;
+			}
+			var mods = (Clutter.ModifierType) modifiers;
+			if ((mods & Clutter.ModifierType.SUPER_MASK) != 0) {
+				virt.notify_keyval(0, Clutter.Key.Super_L,
+					Clutter.KeyState.PRESSED);
+			}
+			if ((mods & Clutter.ModifierType.CONTROL_MASK) != 0) {
+				virt.notify_keyval(0, Clutter.Key.Control_L,
+					Clutter.KeyState.PRESSED);
+			}
+			if ((mods & Clutter.ModifierType.MOD1_MASK) != 0) {
+				virt.notify_keyval(0, Clutter.Key.Alt_L,
+					Clutter.KeyState.PRESSED);
+			}
+			if ((mods & Clutter.ModifierType.SHIFT_MASK) != 0) {
+				virt.notify_keyval(0, Clutter.Key.Shift_L,
+					Clutter.KeyState.PRESSED);
+			}
+			virt.notify_keyval(0, keyval, Clutter.KeyState.PRESSED);
+			virt.notify_keyval(0, keyval, Clutter.KeyState.RELEASED);
+			if ((mods & Clutter.ModifierType.SHIFT_MASK) != 0) {
+				virt.notify_keyval(0, Clutter.Key.Shift_L,
+					Clutter.KeyState.RELEASED);
+			}
+			if ((mods & Clutter.ModifierType.MOD1_MASK) != 0) {
+				virt.notify_keyval(0, Clutter.Key.Alt_L,
+					Clutter.KeyState.RELEASED);
+			}
+			if ((mods & Clutter.ModifierType.CONTROL_MASK) != 0) {
+				virt.notify_keyval(0, Clutter.Key.Control_L,
+					Clutter.KeyState.RELEASED);
+			}
+			if ((mods & Clutter.ModifierType.SUPER_MASK) != 0) {
+				virt.notify_keyval(0, Clutter.Key.Super_L,
+					Clutter.KeyState.RELEASED);
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

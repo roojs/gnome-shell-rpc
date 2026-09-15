@@ -45,6 +45,8 @@ namespace GnomeShellRpc.Rpc.Helper
 			Clutter.Actor actor,
 			Clutter.ActorBox allocation
 		) {
+			/* DBG placement — remove after pin; no behaviour change. */
+			GLib.message("Helper-Constraint.update_allocation entered");
 			if (this.update_hook == null) {
 				return;
 			}

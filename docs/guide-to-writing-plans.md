@@ -12,7 +12,7 @@ Plan files live in **`docs/plans/`**. Completed work is archived under **`docs/p
 
 ## Agent rule: product goal follows the active plan
 
-**🔷 CRITICAL.** The **only active plan** is [`0.8-init-complete-and-interaction.md`](plans/0.8-init-complete-and-interaction.md): prove **init finished**, then **pointer/keyboard interaction** in nested Wayland. Index: [`plans/README.md`](plans/README.md).
+**🔷 CRITICAL.** The **only active plan** is [`0.8-init-complete-and-interaction.md`](plans/0.8-init-complete-and-interaction.md): prove **init finished**, then **pointer/keyboard interaction** in nested Wayland.
 
 - Boot-through-`init.js` is **✔️** archived under [`done/0.7.7-thin-shell-bootstrap.md`](plans/done/0.7.7-thin-shell-bootstrap.md). Plans **0.1–0.7** live in [`plans/done/`](plans/done/) — reference only.
 - Treat stub completeness, header %, and full API parity as **means** — only pursue them when they unblock the **current** plan phase.

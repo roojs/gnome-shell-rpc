@@ -126,6 +126,11 @@ Actor.get_transition
 # client-owned; child meta / set_container stay local (no rpc_lid).
 # layout_changed: deny RPC method (name clash with GIR signal). C symbol for
 # GJS is LayoutManager.override layout_changed_invoke [CCode cname=…].
+# allocate / get_preferred_*: RPC wrappers; rpc_lid==0 = GJS chain-up no-op.
+# GJS real work is *_vfunc (Actor.allocate calls allocate_vfunc locally).
+LayoutManager.allocate
+LayoutManager.get_preferred_width
+LayoutManager.get_preferred_height
 LayoutManager.child_set_property
 LayoutManager.child_get_property
 LayoutManager.get_child_meta

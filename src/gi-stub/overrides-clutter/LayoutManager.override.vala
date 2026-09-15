@@ -20,6 +20,61 @@
 		this.layout_changed();
 	}
 
+	/**
+	 * Base {@code allocate} / measure Class slots are the RPC wrappers.
+	 * GJS overrides {@code *_vfunc}. {@code rpc_lid == 0} here is chain-up
+	 * from JS ({@code super.allocate}) — no lease, no RPC.
+	 */
+	public virtual void get_preferred_width(
+		Actor container,
+		float for_height,
+		out float min_width_p,
+		out float nat_width_p
+	) {
+		if (this.rpc_lid == 0) {
+			min_width_p = 0.0f;
+			nat_width_p = 0.0f;
+			return;
+		}
+		var response = GnomeShellRpc.call_value(
+			"Clutter-LayoutManager.get_preferred_width", this,
+			OLLMrpc.args("of", container, (double) for_height));
+		min_width_p = (float) response.args.get(0).get_float();
+		nat_width_p = (float) response.args.get(1).get_float();
+	}
+
+	public virtual void get_preferred_height(
+		Actor container,
+		float for_width,
+		out float min_height_p,
+		out float nat_height_p
+	) {
+		if (this.rpc_lid == 0) {
+			min_height_p = 0.0f;
+			nat_height_p = 0.0f;
+			return;
+		}
+		var response = GnomeShellRpc.call_value(
+			"Clutter-LayoutManager.get_preferred_height", this,
+			OLLMrpc.args("of", container, (double) for_width));
+		min_height_p = (float) response.args.get(0).get_float();
+		nat_height_p = (float) response.args.get(1).get_float();
+	}
+
+	public virtual void allocate(Actor container, ActorBox allocation)
+	{
+		if (this.rpc_lid == 0) {
+			return;
+		}
+		GLib.Bytes allocation_bytes;
+		uint8[] _allocation_data = new uint8[sizeof(ActorBox)];
+		*((ActorBox*) _allocation_data) = allocation;
+		allocation_bytes = new GLib.Bytes(_allocation_data);
+		GnomeShellRpc.call_value(
+			"Clutter-LayoutManager.allocate", this,
+			OLLMrpc.args("oay", container, allocation_bytes));
+	}
+
 	public virtual void set_container(Actor? container)
 	{
 		if (this.rpc_lid == 0) {

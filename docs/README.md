@@ -11,7 +11,7 @@ User-facing docs (no plan numbers):
 | [`coding-standards-router.md`](coding-standards-router.md) | Which standards apply to a change |
 | [`../src/README.md`](../src/README.md) | What each `src/` folder is for |
 
-Agent / design history: active plan [`plans/0.8-init-complete-and-interaction.md`](plans/0.8-init-complete-and-interaction.md); archive [`plans/done/`](plans/done/) + [`plans/README.md`](plans/README.md). See [`guide-to-writing-plans.md`](guide-to-writing-plans.md).
+Agent / design history: active plan [`plans/0.8-init-complete-and-interaction.md`](plans/0.8-init-complete-and-interaction.md); archive [`plans/done/`](plans/done/). See [`guide-to-writing-plans.md`](guide-to-writing-plans.md).
 
 Closed bug write-ups: [`bugs/done/`](bugs/done/).
 

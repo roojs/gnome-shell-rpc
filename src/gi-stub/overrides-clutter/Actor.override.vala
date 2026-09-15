@@ -205,6 +205,13 @@
 			natural_width_p = 0.0f;
 			return;
 		}
+		var lm = this.priv_layout_manager;
+		if (lm != null && lm.rpc_lid == 0) {
+			lm.get_preferred_width_vfunc(
+				this, for_height,
+				out min_width_p, out natural_width_p);
+			return;
+		}
 		var response = GnomeShellRpc.call_value(
 			"Clutter-Actor.get_preferred_width", this,
 			OLLMrpc.args("f", (double) for_height));
@@ -223,6 +230,13 @@
 			natural_height_p = 0.0f;
 			return;
 		}
+		var lm = this.priv_layout_manager;
+		if (lm != null && lm.rpc_lid == 0) {
+			lm.get_preferred_height_vfunc(
+				this, for_width,
+				out min_height_p, out natural_height_p);
+			return;
+		}
 		var response = GnomeShellRpc.call_value(
 			"Clutter-Actor.get_preferred_height", this,
 			OLLMrpc.args("f", (double) for_width));
@@ -234,6 +248,12 @@
 	{
 		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
 			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+			return;
+		}
+		var lm = this.priv_layout_manager;
+		if (lm != null && lm.rpc_lid == 0) {
+			/* GJS hooks allocate_vfunc (not allocate — that slot is RPC). */
+			lm.allocate_vfunc(this, box);
 			return;
 		}
 		uint8[] data = new uint8[sizeof(ActorBox)];
@@ -443,8 +463,8 @@
 
 	/**
 	 * GJS {@link LayoutManager} subclasses (WorkspaceLayout, …) are
-	 * client-owned — no {@code rpc_lid}. RPC only when the manager is a
-	 * leased stock type ({@link BinLayout}, {@link BoxLayout}, …).
+	 * client-owned — no {@code rpc_lid}. Keep the compositor’s stock
+	 * manager; GJS layout runs via {@code *_vfunc} on the client.
 	 */
 	private LayoutManager? priv_layout_manager;
 
@@ -459,6 +479,16 @@
 				if (previous != null && previous.rpc_lid == 0) {
 					previous.set_container(null);
 				}
+				/*
+				 * GJS often writes layout_manager=null on construct while
+				 * priv is still unset. RPCing that clears the compositor’s
+				 * default manager (St.Bin → BinLayout) and yields
+				 * CLUTTER_IS_LAYOUT_MANAGER on allocate. No prior client
+				 * manager → nothing to clear on the wire.
+				 */
+				if (previous == null) {
+					return;
+				}
 				GnomeShellRpc.call_value(
 					"Clutter-Actor.set_layout_manager",
 					this,
@@ -471,16 +501,9 @@
 					this,
 					OLLMrpc.args("o", value));
 			} else {
-				/* GJS LayoutManager — client-owned (no rpc_lid). Clear any
-				 * stock manager on the compositor; layout runs on the client
-				 * (deny Actor.layout_manager + LayoutManager.* local path). */
 				if (previous != null && previous != value && previous.rpc_lid == 0) {
 					previous.set_container(null);
 				}
-				GnomeShellRpc.call_value(
-					"Clutter-Actor.set_layout_manager",
-					this,
-					OLLMrpc.args("o", null));
 				value.set_container(this);
 			}
 		}

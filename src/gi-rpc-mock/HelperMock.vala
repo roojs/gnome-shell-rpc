@@ -448,6 +448,14 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
+				case "Helper-BlurEffect":
+					if (name == "create") {
+						this.reply_args_lease(request, "Shell-BlurEffect");
+						return true;
+					}
+					/* Props: stock Shell-BlurEffect.set_property — not Helper. */
+					break;
+
 				case "Helper-ClutterThreads":
 					if (name == "threads_add_repaint_func") {
 						this.reply_retval_u(request, 1);
