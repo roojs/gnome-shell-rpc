@@ -116,8 +116,6 @@ function main() {
 		+ ' layoutChangedSignals=' + layoutChangedSignals);
 	if (!resolved) {
 		smokeLog('FAIL A ensureAllocation-never-resolved');
-	} else {
-		smokeLog('A PASS');
 	}
 
 	/* ---- B: stock-shaped signal → queue_relayout (what set_container
@@ -248,13 +246,77 @@ function main() {
 	smokeLog('E after ' + WAIT_MS + 'ms resolvedE=' + resolvedE
 		+ ' actorVfuncHits=' + actorVfuncHits
 		+ ' lmVfuncHits=' + lmVfuncHits);
-	if (lmVfuncHits < 1)
-		smokeLog('FAIL E queue_relayout-no-lm-allocate');
+	if (actorVfuncHits < 1)
+		smokeLog('FAIL E queue_relayout-no-actor-vfunc');
+	else if (lmVfuncHits < 1)
+		smokeLog('FAIL E actor-vfunc-no-lm-allocate');
 	else if (!resolvedE)
-		smokeLog('FAIL E lm-ran-callback-missed');
+		smokeLog('FAIL E vfuncs-ran-callback-missed');
 	else
-		smokeLog('E PASS queue_relayout→lm allocate'
-			+ (actorVfuncHits > 0 ? '+actor vfunc' : ' (hook→lm)'));
+		smokeLog('E PASS queue_relayout→actor vfunc→lm allocate');
+
+	/* ---- F: regression gate — sketch that did layout_changed→queue_relayout
+	 * *inside* allocate (plus allocate Hook) re-entered allocate; nest later
+	 * died (mutter ec=133). A/E alone went green; this must FAIL that mess.
+	 *
+	 * Arm, then one client allocate; vfunc calls layout_changed() once.
+	 * Safe: hits === 1. Bad: layout_changed queues another allocate → hits>1. ---- */
+	let fHits = 0;
+	let fArmed = false;
+	const LmF = GObject.registerClass(
+	class LmF extends Clutter.LayoutManager {
+		vfunc_get_preferred_width() {
+			return [60, 60];
+		}
+
+		vfunc_get_preferred_height() {
+			return [20, 20];
+		}
+
+		vfunc_allocate(container, box) {
+			if (!fArmed) {
+				container.set_allocation(box);
+				return;
+			}
+			fHits++;
+			smokeLog('F lm vfunc_allocate hit=' + fHits);
+			if (fHits === 1) {
+				try {
+					this.layout_changed();
+				} catch (e) {
+					smokeLog('F layout_changed threw ' + e);
+				}
+			}
+			container.set_allocation(box);
+		}
+	});
+	const lmF = new LmF();
+	const actorF = new St.Widget({
+		name: 'startup-allocate-smoke-F',
+		reactive: true,
+	});
+	actorF.set_size(60, 20);
+	actorF.layout_manager = lmF;
+	stage.add_child(actorF);
+	/* No show — avoid map allocate before the armed probe. */
+
+	fArmed = true;
+	try {
+		const boxF = new Clutter.ActorBox();
+		boxF.init_rect(0, 0, 60, 20);
+		smokeLog('F actor.allocate once (layout_changed inside vfunc)');
+		actorF.allocate(boxF);
+	} catch (e) {
+		smokeLog('FAIL F allocate-threw ' + e);
+	}
+	waitMs(WAIT_MS);
+	smokeLog('F after ' + WAIT_MS + 'ms hits=' + fHits);
+	if (fHits < 1)
+		smokeLog('FAIL F no-allocate');
+	else if (fHits > 1)
+		smokeLog('FAIL F layout_changed-reenter-storm hits=' + fHits);
+	else
+		smokeLog('F PASS no-reenter hits=1');
 
 	smokeLog('done');
 }

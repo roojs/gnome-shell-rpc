@@ -31,7 +31,7 @@
 > plan) — do not re-splat onto other bugs/docs. Prove without modifying
 > the main codebase until the smoke names the fix.
 
-**Status:** ⏳ open — user 2026-09-16 redirect  
+**Status:** ⏳ open — sketch **reverted** (nest regression)  
 **Hit:** 2026-09-16 — nest after Interval/Transition corridor land  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -109,15 +109,21 @@ startup still never completes).
 
 ## Evidence (2026-09-16) — prove only
 
-### LayoutManager sketch applied (2026-09-16 later)
+### LayoutManager sketch — **reverted** (2026-09-16)
 
-| Gate | Result |
-| ---- | ------ |
-| `startup-allocate-smoke` **A** / **E** | **PASS** |
-| Nest cast `StViewport` → Helper.Actor | **gone** (soft `as` + `priv_helper_actor_peer` guard) |
-| Nest `gsr-chrome: waiting startingUp` | still ×N — moved past allocate into `_startupAnimationSession` |
-| New pin | **`clutter_actor_box_copy` undefined** — Vala exports `_dup`; stock GIR/GJS looks up `_copy`. Hits `layout.js` `findMonitorForActor` / `getWorkAreaForMonitor` during `_startupAnimationSession`. |
-| ActorBox.copy alias landed | **symbol present**; nest no longer throws that ERROR. **`_startingUp` still stuck** (probe still `waiting startingUp`; no `post-startup`). |
+Smoke A/E went PASS, but nest chrome did **not** clear `_startingUp`.
+Stay-up runs ended **client EOS + mutter ec=133** (~11–13s). Earlier
+chrome observes were **READY+settle ec=0** (stuck, stable). Treating the
+sketch as a **nest regression**, not progress.
+
+**Reverted:** LM `priv_container` / `layout_changed→queue_relayout` /
+`allocate`→`allocate_vfunc` / Actor allocate-Hook on GJS LM.
+**Kept:** `clutter_actor_box_copy` alias (independent ABI; Vala emits `_dup`).
+**Kept:** Helper-Actor.add_hook soft `as Actor` (safe).
+
+**Smoke F** (after revert): gates the mess — `layout_changed` from inside
+allocate must not re-enter allocate. Sketch → `FAIL F …-reenter-storm`;
+reverted → `F PASS no-reenter hits=1`.
 
 ### Nest observe (`GI_RPC_JS_OVERRIDE_DIR=src/shell-js-probe`)
 
@@ -153,6 +159,7 @@ GI_META_SMOKE=startup-allocate-smoke GSR_WESTON_MODE=prove \
 | **B** connect `layout-changed` → `actor.queue_relayout` (stock in-process shape) | **FAIL** `signal-queue_relayout-no-allocate` · signal handler ran · still `allocateHits=0` |
 | **C** `queue_relayout` alone + pending cb | **FAIL** `queue_relayout-alone-no-allocate` |
 | **E** GJS `St.Widget` + `vfunc_allocate` + GJS LM; `queue_relayout` | actor `vfunc_allocate` ran **once** at map (`hit=1` before `queue_relayout`); after relayout still `hit=1` · **`lmVfuncHits=0`** · **FAIL** `actor-vfunc-no-lm-allocate` — GJS `lm.allocate()` does not reach `vfunc_allocate` |
+| **F** allocate once; LM `vfunc` calls `layout_changed()` once | **PASS** `hits=1` (reverted). Under reverted sketch: **FAIL** `layout_changed-reenter-storm hits=2` — stub `layout_changed→queue_relayout` re-entered allocate. **A/E green was not enough.** |
 
 **Contract named:**
 
@@ -226,7 +233,9 @@ tried the wrong way today and rolled back; two other pieces are new.
 
 ## Proposed sketch (**💩** — review before any main-tree edit)
 
-**🔷** Gate: `startup-allocate-smoke` **A** PASS. **🚫** `GLib.idle_add` / Idle.
+**🔷** Gate: `startup-allocate-smoke` **A** PASS **and** **F** PASS
+(no `layout_changed-reenter-storm`). **🚫** `GLib.idle_add` / Idle.
+**🚫** Shipping a fix that makes A/E green while F FAILs.
 
 ### 1 — `src/gi-stub/overrides-clutter/LayoutManager.override.vala`
 

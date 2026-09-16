@@ -1,18 +1,10 @@
-	/* Client-side caches / flags (not on the wire). */
-	private Content? priv_content;
-	private LayoutManager? priv_layout_manager;
-	private bool priv_gjs_layout_allocate_hook;
-	/* True after Helper-Actor.create (relay_attach). Stock St* peers
-	 * cannot take Helper-Actor.add_hook. */
-	private bool priv_helper_actor_peer;
-	/* TEMPORARY mock a11y — see accessible property. */
-	private Atk.Object? priv_accessible;
-
 	/**
 	 * Content = actor paint delegate. RPC when the Content has a lease
 	 * (e.g. {@link Meta.BackgroundContent}); client-only Content (no
 	 * {@code rpc_lid}) stays attached locally for GJS identity only.
 	 */
+	private Content? priv_content;
+
 	public Content? content {
 		get {
 			if (this.priv_content != null) {
@@ -94,7 +86,6 @@
 			OLLMrpc.args("s", this.get_type().name()));
 		this.rpc_lid = response.args.get(0).get_uint64();
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
-		this.priv_helper_actor_peer = true;
 		foreach (var name in overridden) {
 			var id = this.bind_vfunc(name);
 			if (id == 0) {
@@ -164,11 +155,6 @@
 			box.y1 = (float) call.args.get(2).get_double();
 			box.x2 = (float) call.args.get(3).get_double();
 			box.y2 = (float) call.args.get(4).get_double();
-			var lm = this.priv_layout_manager;
-			if (lm != null && lm.rpc_lid == 0) {
-				lm.allocate_vfunc(this, box);
-				return OLLMrpc.args("b", false);
-			}
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			try {
 				this.allocate_vfunc(box);
@@ -480,6 +466,8 @@
 	 * client-owned — no {@code rpc_lid}. Keep the compositor’s stock
 	 * manager; GJS layout runs via {@code *_vfunc} on the client.
 	 */
+	private LayoutManager? priv_layout_manager;
+
 	public LayoutManager? layout_manager {
 		get {
 			return this.priv_layout_manager;
@@ -517,17 +505,6 @@
 					previous.set_container(null);
 				}
 				value.set_container(this);
-				if (!this.priv_gjs_layout_allocate_hook
-						&& this.priv_helper_actor_peer
-						&& this.rpc_lid != 0) {
-					var id = this.relay_allocate();
-					if (id != 0) {
-						GnomeShellRpc.call_value(
-							"Helper-Actor.add_hook", this,
-							OLLMrpc.args("st", "allocate", id));
-						this.priv_gjs_layout_allocate_hook = true;
-					}
-				}
 			}
 		}
 	}
@@ -565,6 +542,8 @@
 	 * Lazy-mint so GJS {@code get_accessible()} is never null (quickSettings
 	 * {@code add_relationship}, etc.). Explicit set (GenericAccessible) wins.
 	 */
+	private Atk.Object? priv_accessible;
+
 	public Atk.Object? accessible {
 		get {
 			if (this.priv_accessible == null) {
