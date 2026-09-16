@@ -3,6 +3,7 @@
 # (close the Weston window). Used by weston-gsr-session.sh (interactive).
 #
 # Short auto-stop prove: ./scripts/weston-gsr-prove.sh → nested-weston-prove.sh
+# Hold has no A4/READY SIGKILL. Classify deaths: docs/nested-debug.md
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

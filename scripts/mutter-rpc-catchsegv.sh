@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Temp: run mutter-rpc under gdb; dump bt on SIGSEGV. Not for ship.
+# Do not add catch SIGTRAP. Classify prove SIGKILL vs real death first:
+# docs/nested-debug.md
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN="$ROOT/build/src/mutter-rpc"

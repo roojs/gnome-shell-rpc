@@ -106,7 +106,10 @@ pkill -9 -f gnome-shell-rpc
 pkill -9 -f 'weston.*wayland-gsr'
 ```
 
-Build/run details and smoke overrides: [`build.md`](build.md).
+Build/run details and smoke overrides: [`build.md`](build.md).  
+If the nest “crashes” after READY / `Meta.is_restart`: read
+[`nested-debug.md`](nested-debug.md) **before** gdb — default prove
+**SIGKILLs** on A4 and the client log looks like a crash.
 
 ---
 

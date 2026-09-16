@@ -10,6 +10,7 @@
 # ./scripts/weston-gsr-session.sh
 # Stay-up (no READY/A4 early-stop, run to nest timeout):
 #   GSR_NESTED_STAYUP=1 ./scripts/weston-gsr-prove.sh
+# Classify prove SIGKILL vs real death before gdb: docs/nested-debug.md
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

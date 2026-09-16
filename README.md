@@ -65,6 +65,7 @@ Debug: `~/.cache/gnome-shell-rpc/{mutter-rpc,org.gnome.ShellRpc}.debug.log`
 
 Why Weston-in-X11 (and why not host GNOME):
 [`docs/weston-nested-test-env.md`](docs/weston-nested-test-env.md).  
+Prove SIGKILL vs real death / gdb: [`docs/nested-debug.md`](docs/nested-debug.md).  
 Build / install / older `dbus-run-session` notes: [`docs/build.md`](docs/build.md).
 
 ```bash

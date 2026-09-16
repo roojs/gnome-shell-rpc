@@ -6,6 +6,7 @@ User-facing docs (no plan numbers):
 | ---- | ---- |
 | [`build.md`](build.md) | Prerequisites, meson/ninja, nested run, install |
 | [`weston-nested-test-env.md`](weston-nested-test-env.md) | Why Weston-in-X11 is the default nested prove env |
+| [`nested-debug.md`](nested-debug.md) | Prove SIGKILL vs real death; do not gdb your own kill |
 | [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md) | `GI_TYPELIB_PATH` / pkg-config for client Meta |
 | [`clutter-layout-allocate.md`](clutter-layout-allocate.md) | Stock Clutter/GJS allocate program — chrome chases follow this |
 | [`coding-standards.md`](coding-standards.md) | Vala style |

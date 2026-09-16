@@ -21,6 +21,7 @@
 # sit idle for the full timeout when init already passed the bar.
 # ℹ️ Early stop SIGKILLs mutter — client log looks like a crash (socket closed,
 # pending RPC). Session/hold has no settle kill; if that dies, mutter exited for real.
+# Classify the stop before gdb: docs/nested-debug.md
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

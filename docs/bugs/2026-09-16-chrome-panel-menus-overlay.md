@@ -90,7 +90,8 @@ GI_META_SMOKE=startup-allocate-smoke GSR_WESTON_MODE=prove \
 # A PASS · E PASS · F PASS (hits=1)
 ```
 
-Logs: `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`.
+Logs: `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`.  
+Stop reason (prove SIGKILL vs real death): [`nested-debug.md`](../nested-debug.md).
 
 ---
 

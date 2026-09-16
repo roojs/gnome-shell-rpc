@@ -10,6 +10,9 @@ namespace GnomeShellRpc.Rpc
 	 * {@code wait} (gdbserver on {@code GI_META_GDB_PORT}, default 9234),
 	 * {@code 1} / {@code interactive} ({@code gdb --args}). Extra {@code -ex}
 	 * commands: {@code GI_META_GDB_EX} (semicolon-separated).
+	 *
+	 * 🚫 Do not {@code catch signal SIGTRAP} (ld.so / {@code GLib.error}).
+	 * Classify the nest stop first: {@code docs/nested-debug.md}.
 	 */
 	public class GdbSpawnWrap : GLib.Object
 	{
