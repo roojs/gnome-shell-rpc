@@ -1,10 +1,14 @@
 		/**
 		 * GJS: {@code new Clutter.Interval({ value_type: pspec.value_type })}.
-		 * GIR {@code value-type} is construct-only — own it locally; mint via
-		 * Helper-Interval.create with the GLib type name (no type switch).
-		 * See docs/bugs/done/2026-09-16-interval-value-type-mint.md (1.0 D1.8).
+		 * Mint via Helper-Interval.create. set_*_value: capital-V over stock
+		 * Gi. peek/get keep a local mirror (GValue* ABI — stock returns an
+		 * interior pointer).
 		 */
 		private GLib.Type priv_value_type = GLib.Type.INVALID;
+		private GLib.Value priv_initial;
+		private GLib.Value priv_final;
+		private bool priv_has_initial;
+		private bool priv_has_final;
 
 		public GLib.Type value_type {
 			get {
@@ -29,4 +33,61 @@
 		public Interval()
 		{
 			Object();
+		}
+
+		public void set_initial_value(GLib.Value value)
+		{
+			this.store_and_relay(true, value);
+		}
+
+		public void set_final_value(GLib.Value value)
+		{
+			this.store_and_relay(false, value);
+		}
+
+		public void get_initial_value(out GLib.Value value)
+		{
+			value = GLib.Value(this.priv_has_initial
+				? this.priv_initial.type() : this.priv_value_type);
+			if (this.priv_has_initial) {
+				this.priv_initial.copy(ref value);
+			}
+		}
+
+		public void get_final_value(out GLib.Value value)
+		{
+			value = GLib.Value(this.priv_has_final
+				? this.priv_final.type() : this.priv_value_type);
+			if (this.priv_has_final) {
+				this.priv_final.copy(ref value);
+			}
+		}
+
+		[CCode (cname = "clutter_interval_peek_initial_value")]
+		public GLib.Value* peek_initial_value()
+		{
+			return this.priv_has_initial ? &this.priv_initial : null;
+		}
+
+		[CCode (cname = "clutter_interval_peek_final_value")]
+		public GLib.Value* peek_final_value()
+		{
+			return this.priv_has_final ? &this.priv_final : null;
+		}
+
+		void store_and_relay(bool is_initial, GLib.Value value)
+		{
+			if (is_initial) {
+				this.priv_initial = GLib.Value(value.type());
+				value.copy(ref this.priv_initial);
+				this.priv_has_initial = true;
+			} else {
+				this.priv_final = GLib.Value(value.type());
+				value.copy(ref this.priv_final);
+				this.priv_has_final = true;
+			}
+			var method = is_initial
+				? "Clutter-Interval.set_initial_value"
+				: "Clutter-Interval.set_final_value";
+			GnomeShellRpc.call_value(method, this, OLLMrpc.args("V", value));
 		}

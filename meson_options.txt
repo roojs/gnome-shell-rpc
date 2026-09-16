@@ -1,8 +1,8 @@
 option(
   'ocrpc_libdir',
   type: 'string',
-  value: '/home/alan/gitlive/OLLMchat/build/libocrpc',
-  description: 'Directory containing libocrpc.so and ocrpc.vapi from an OLLMchat build',
+  value: '',
+  description: 'libocrpc.so + ocrpc.vapi directory (OLLMchat build tree). Empty = system install (/usr lib + /usr/share/vala/vapi)',
 )
 
 option(

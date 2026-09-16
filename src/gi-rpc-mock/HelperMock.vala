@@ -236,13 +236,6 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
-				case "Helper-Transition":
-					if (name == "set_relay_value") {
-						this.reply_void(request);
-						return true;
-					}
-					break;
-
 				case "Helper-Interval":
 					if (name == "create") {
 						this.reply_args_lease(request, "Clutter-Interval");

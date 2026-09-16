@@ -1,6 +1,7 @@
 /**
- * Helper-Interval — mint stock Interval from a type-name indicator
- * (no GType int on the wire). See docs/bugs/done/2026-09-16-interval-value-type-mint.md.
+ * Helper-Interval — mint only. set_initial/final use capital-V on stock
+ * Clutter-Interval.set_*_value (no kind casting).
+ * See docs/bugs/done/2026-09-16-interval-value-type-mint.md.
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
@@ -9,7 +10,8 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class("Helper-Interval", typeof(Interval),
-				"create", "s", null);
+				"create", "s",
+				null);
 			OLLMrpc.Request.register_live("Helper-Interval", new Interval());
 		}
 

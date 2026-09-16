@@ -246,7 +246,9 @@
 		natural_height_p = (float) response.args.get(1).get_float();
 	}
 
-	public virtual void allocate(ActorBox box)
+	/* Not virtual — Vala would put allocate on a Class slot GJS never uses. */
+	[CCode (cname = "clutter_actor_allocate")]
+	public void allocate(ActorBox box)
 	{
 		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
 			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;

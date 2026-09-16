@@ -91,7 +91,7 @@ namespace Shell
 			theme_node.adjust_preferred_height(ref min_height_p, ref natural_height_p);
 		}
 
-		public override void allocate(Clutter.ActorBox box)
+		public override void allocate_vfunc(Clutter.ActorBox box)
 		{
 			this.set_allocation(box);
 

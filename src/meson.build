@@ -41,7 +41,6 @@ compositor_sources = files(
   'rpc/helper/InvertLightnessEffect.vala',
   'rpc/helper/ClutterThreads.vala',
   'rpc/helper/Clutter.vala',
-  'rpc/helper/Transition.vala',
   'rpc/helper/Interval.vala',
   'rpc/helper/Constraint.vala',
   'rpc/helper/St.vala',
@@ -115,7 +114,10 @@ rpc_config = configure_file(
   }),
 )
 
-compositor_rpath = mutter_typelib_dir + ':' + gnome_shell_pkglibdir + ':' + ocrpc_rpath
+compositor_rpath = mutter_typelib_dir + ':' + gnome_shell_pkglibdir
+if ocrpc_rpath != ''
+  compositor_rpath += ':' + ocrpc_rpath
+endif
 
 rpc_client_sources = files(
   'ApplicationInterface.vala',
@@ -951,7 +953,7 @@ ollmrpc_typelib = custom_target(
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
-    '--shared-library', ocrpc_lib,
+    '--shared-library', ocrpc_shared_library,
     '@INPUT@',
   ],
   build_by_default: true,

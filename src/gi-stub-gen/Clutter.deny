@@ -126,20 +126,25 @@ Actor.get_transition
 Transition.set_animatable
 Transition.get_animatable
 
-# Transition.override — typed Helper-Transition.set_relay_value (bsid);
+# Transition.override — capital-V on stock set_*_value (Gi pin).
 # varargs set_to/set_from stay denied (GIR skip → set_*_value).
-# See bugs/2026-09-16-transition-interval-gvalue-wire.md (1.0 D1.7).
 Transition.set_to
 Transition.set_from
 Transition.set_to_value
 Transition.set_from_value
 
-# Interval.override — Helper-Interval.create (kind letter); local value_type.
-# See bugs/2026-09-16-interval-value-type-mint.md (1.0 D1.8).
+# Interval.override — Helper-Interval.create; set_* via capital-V on stock
+# Gi. peek/get local mirror for GValue* ABI.
 Interval.with_values
 Interval.get_value_type
 Interval.set_initial
 Interval.set_final
+Interval.set_initial_value
+Interval.set_final_value
+Interval.peek_initial_value
+Interval.peek_final_value
+Interval.get_initial_value
+Interval.get_final_value
 
 # LayoutManager.override — GJS subclasses (QuickSettingsLayout, …) are
 # client-owned; child meta / set_container stay local (no rpc_lid).

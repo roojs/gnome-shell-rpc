@@ -131,7 +131,9 @@ got the allocate hook so `vfunc_allocate` never ran.
 | GJS `lm.allocate(container, box)` | `rpc_lid==0` no-op | B4 — `allocate_vfunc` |
 
 **Gate:** `GI_META_SMOKE=startup-allocate-smoke` — **A** PASS · **E** PASS ·
-**F** PASS (`hits=1`). Nest stay-up after READY.
+**F** PASS (`hits=1`). Nest stay-up after READY — **open FAIL**: client
+SIGSEGV 139 in GJS around stub `clutter_actor_allocate` (chrome bug
+**Boot death**). Do not treat mutter `ec=133` as the root.
 
 ### B1 — ⏳ 🔷 **Add** `src/rpc/helper/ClutterLayoutManager.vala`
 

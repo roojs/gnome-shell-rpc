@@ -355,7 +355,15 @@ async function _initializeUI() {
                 if (messageTray) {
                     const [tx, ty] = messageTray.get_transformed_position();
                     const [tw, th] = messageTray.get_transformed_size();
-                    log(`gsr-chrome: messageTray geom @ ${tx.toFixed(0)},${ty.toFixed(0)} ${tw.toFixed(0)}x${th.toFixed(0)}`);
+                    let boxS = 'n/a';
+                    try {
+                        const b = messageTray.get_allocation_box();
+                        boxS = `${b.get_x()},${b.get_y()} ${b.get_width()}x${b.get_height()}`
+                            + ` init=${b.is_initialized()} alloc=${messageTray.has_allocation()}`;
+                    } catch (e) {
+                        boxS = `err:${e}`;
+                    }
+                    log(`gsr-chrome: messageTray geom @ ${tx.toFixed(0)},${ty.toFixed(0)} ${tw.toFixed(0)}x${th.toFixed(0)} box=${boxS}`);
                 }
             } catch (e) {
                 log(`gsr-chrome: layoutManager probe threw ${e}`);

@@ -27,6 +27,28 @@
 > probe) — **no** speculative stub / Helper / deny / JS thrash on the main
 > tree. **No** `GLib.idle_add` / Idle / defer. No layout.js ship hacks.
 >
+> ## 🚫 Do not invent shit in this tree
+>
+> **User call 2026-09-16:** a stack frame / Class-offset theory / “same as
+> Transition” pattern is **not** a license to dump Helper methods, local
+> GValue caches, deny lists, or ABI “fixes” into `src/`. That is wasting
+> everyone’s time and polluting the codebase.
+>
+> Required order — **no exceptions** for Boot death:
+>
+> 1. Reproduce on stay-up (client 139 / stack). File the frame here.
+> 2. Write a **FAIL** smoke in `src/gjs-embed/` that dies (or asserts) on
+>    **that** frame — not a smoke that already PASSes while chrome dies.
+> 3. Only then a **minimal** change that makes **that** smoke PASS.
+> 4. Re-run stay-up. If chrome still dies on a **new** frame, update this
+>    bug and go to (2). Do **not** invent the next subsystem in the same
+>    turn.
+>
+> **Forbidden:** Helper `set_relay_*` / kind switches / local caches /
+> “while we’re here” deny expansions / renaming half the tree to match a
+> theory — before a FAIL smoke names the fix. Revert speculative dumps;
+> do not leave them “for later.”
+>
 > **User call 2026-09-16:** banner on **this bug only** (plus the active
 > plan) — do not re-splat onto other bugs/docs. Prove without modifying
 > the main codebase until the smoke names the fix.
@@ -38,6 +60,64 @@
 
 ---
 
+## Boot death (CLOSED for stay-up — 2026-09-16 22:36)
+
+**Bar met:** nest reached `READY=1` and stayed until prove **timeout**
+(30s and 45s). No client **139** / mutter **ec=133** on those runs.
+
+| Run | Result |
+| --- | --- |
+| Stay-up 30s (`GSR_NESTED_STAYUP=1`) | `stop (timeout) after 30s` — no SEGV |
+| Stay-up 45s | `READY=1` → `stop (timeout) after 45s` — no SEGV |
+
+Earlier deaths (allocate trampoline → Interval peek) are no longer the
+top of a stay-up crash. Do **not** reopen boot death without a new
+139/133 prove.
+
+### Historical proved (death A / B — for archaeology)
+
+| Fact | Evidence |
+| --- | --- |
+| Death **A**: GJS ← **our** `clutter_actor_allocate+0x71` (virtual Class+464 vs GIR@240) | `/tmp/gsr-segfault.bt` |
+| After non-virtual `allocate`: death **B** `clutter_interval_peek_initial_value+0x1ff` | `/tmp/gsr-segfault-deathA-recheck.txt` |
+| Fix path that cleared stay-up red | non-virtual allocate + Interval peek ABI override (local mirror) + capital-`V` set_* (no `bsid`) |
+
+### Not proved — do not treat as done
+
+| Claim | Reality |
+| --- | --- |
+| Stay-up green = chrome fixed | **False.** Probe FAILs remain (below). |
+| Kind casting / Shared fundamental switch | Dropped; `args("V")` + Gi. |
+| `allocate-segv-smoke` names the chrome fix | Still useless for chrome layout. |
+
+### Live chrome (OPEN — nest survives)
+
+Probe (`GI_RPC_JS_OVERRIDE_DIR=src/shell-js-probe`) on the green stay-up:
+
+| Probe line | Meaning |
+| --- | --- |
+| `FAIL dateMenu-boxpointer-stage-sized w=754` | menu opens via API but boxPointer is stage-wide |
+| `FAIL dateMenu-click-no-open` / `quickSettings-click-no-open` | pointer click does not open |
+| panel-right children `@ NaN,NaN` / `0x32` | geometry still broken |
+| `JS ERROR: TypeError: this._workarea is null` | layout/workarea path still broken |
+| `Unable to resolve arg type 'DesktopAppInfo'` | separate GI hole (not SEGV) |
+
+**Next allowed step:** diagnose chrome geom / workarea / click (not boot
+SEGV). Prefer FAIL smokes that assert finite panel/menu boxes and
+workarea non-null.
+
+### Prove stay-up (expect timeout, not 133)
+
+```bash
+ninja -C build src/gnome-shell-rpc src/mutter-rpc
+GI_RPC_JS_OVERRIDE_DIR=$PWD/src/shell-js-probe \
+  GSR_NESTED_NO_A4=1 GSR_NESTED_STAYUP=1 GSR_NESTED_TIMEOUT=45 \
+  GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
+# expect: nested-weston-prove: stop (timeout) after 45s
+```
+
+---
+
 ## Symptom
 
 | # | Surface | Observed | Stock |
@@ -45,6 +125,7 @@
 | 1 | Workspace selectors | Not vertically centred on the top bar | Centred on panel height |
 | 2 | System menu + clock | Click does nothing | PopupMenu below source |
 | 3 | Desktop | Grey-brown over wallpaper | Wallpaper; no stuck cover |
+| 4 | Geom | `messageTray` `@ NaN` · `alloc=false` · Inf box | Finite allocation |
 
 #1 and #3 are wrong **before** the `ensureAllocation` lock. Do not start
 at that lock.
@@ -63,7 +144,8 @@ at that lock.
 3. **Flow 1 / 3** — ✔️ Helper LM peer + `set_layout_manager` + C
    `layout_changed` on that peer. `hook-o-gate` PASS after OPC.
    Gate: `startup-allocate-smoke` **A** PASS · **E** PASS · **F** PASS
-   (`hits=1`). Nest stay-up after READY still open.
+   (`hits=1`). Nest stay-up after READY — **FAIL**: client SIGSEGV 139
+   (see **Boot death**).
 
 **🚫** Idle · vendor `js/` · client `layout_changed` → `queue_relayout` ·
 Actor allocate Hook as the LM · `rpc_lid` on the GJS LM · destroy
