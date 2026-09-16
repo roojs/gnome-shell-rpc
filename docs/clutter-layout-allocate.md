@@ -49,7 +49,8 @@ the same tick as the container’s allocate.
 | `Class->allocate`: GJS `vfunc_allocate(box)` when gjs replaced the slot (`Panel`, `WorkspaceDot`, GJS `St.Widget`) | | GJS subclass peer: `Helper.Actor.allocate` (`ClutterActor.vala` ~223) emits Live.Hook `allocate` |
 | | hook reply → `relay_allocate` (`Actor.override.vala` ~150) → `this.allocate_vfunc(box)` | |
 | else `clutter_actor_real_allocate` (~2458) — no JS Actor override | | stock `St.*` peer, no hook: `real_allocate` |
-| GJS `actor.layout_manager = lm` — `clutter_actor_set_layout_manager` (~15446) stores the **GJS** LM on `priv->layout_manager` and connects `::layout-changed` | setter: `set_container` + `set_layout_manager(helper_peer)` | |
+| GJS `actor.layout_manager = lm` — `clutter_actor_set_layout_manager` (~15446) stores the **GJS** LM on `priv->layout_manager` and connects `::layout-changed` | setter: `set_container` → **`set_container_vfunc`** (GJS LM) + `set_layout_manager(helper_peer)` | |
+| `clutter_layout_manager_set_container` → GJS `vfunc_set_container` (e.g. WorkspaceLayout fills `_workarea`) | same — **MISS** was rpc_lid==0 no-op; gate `layout-set-container-smoke` | |
 | | | C `clutter_actor_set_layout_manager` on the Helper LM peer (alias `Clutter-LayoutManager`, same as `St-Widget` for Helper.Actor) |
 | `real_allocate` → `clutter_layout_manager_allocate` (~393) → GJS `vfunc_allocate(container, box)` | | Helper LM `klass->allocate` hook: `"odddd"` container GObject + box floats (remaining C args after self) |
 | | `relay_allocate` → `call.args.get(0).get_object()` → `allocate_vfunc(container, box)` | |
@@ -139,8 +140,9 @@ handler calling `allocate` itself.
 **🚫** `GLib.idle_add` as a substitute for `clutter_stage_maybe_relayout`.  
 **🚫** Invented GI methods.
 
-**Proposed changes (review):**
-[`bugs/2026-09-16-allocate-follow-reference.md`](bugs/2026-09-16-allocate-follow-reference.md)
+**Allocate (archived):**
+[`bugs/done/2026-09-16-allocate-follow-reference.md`](bugs/done/2026-09-16-allocate-follow-reference.md).
+Chrome residual: [`bugs/2026-09-16-chrome-panel-menus-overlay.md`](bugs/2026-09-16-chrome-panel-menus-overlay.md).
 
 ---
 

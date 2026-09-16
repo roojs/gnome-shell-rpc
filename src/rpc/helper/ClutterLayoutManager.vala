@@ -2,7 +2,7 @@
  * Helper-LayoutManager — mutter peer for a client GJS LayoutManager.
  * Class slots hook back to GJS {@code vfunc_*} (same split as Helper.Actor).
  *
- * @see docs/bugs/2026-09-16-allocate-follow-reference.md
+ * @see docs/bugs/done/2026-09-16-allocate-follow-reference.md
  */
 namespace GnomeShellRpc.Rpc.Helper
 {

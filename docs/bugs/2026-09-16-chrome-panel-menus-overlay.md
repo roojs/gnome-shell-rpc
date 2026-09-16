@@ -53,8 +53,9 @@
 > plan) — do not re-splat onto other bugs/docs. Prove without modifying
 > the main codebase until the smoke names the fix.
 
-**Status:** ⏳ open — land [`2026-09-16-allocate-follow-reference.md`](2026-09-16-allocate-follow-reference.md) after review  
-**Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Status:** ⏳ open — **primary** chrome bar (panel, menus, grey overlay). Allocate Flow 2/3 archived.  
+**Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)  
+**Allocate (done):** [`done/2026-09-16-allocate-follow-reference.md`](done/2026-09-16-allocate-follow-reference.md)
 
 **Roles:** consumer of the stock allocate program · **not** a new layout.
 
@@ -92,19 +93,37 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 
 ### Live chrome (OPEN — nest survives)
 
-Probe (`GI_RPC_JS_OVERRIDE_DIR=src/shell-js-probe`) on the green stay-up:
+**User live (2026-09-16 ~23:06)** — nest up; score this over early probe:
 
-| Probe line | Meaning |
+| # | Surface | Observed | Stock |
+| - | ------- | -------- | ----- |
+| 1 | Workspace selectors (left) | ✔️ centred + hpadding (`buttonbox-hpadding-smoke` PASS; theme→`_natHPadding`) | Vertically centred; ~12px left pad |
+| 2 | Boot / desktop | Comes up in **overview / app search** (app-chooser) as if Super was pressed — user did not | Wallpaper + idle desktop; overview closed |
+| 3 | Clock (dateMenu) | Click **opens** calendar menu | Same |
+| 4 | Clock menu | Calendar **nav broken**; **cannot close** the menu | Month nav works; click-out / Esc / re-click closes |
+| 5 | System menu (quickSettings) | Mostly laid out; volume icon present; volume block **size balked**; **cannot close** once open | Content-sized tiles; toggle / click-out closes |
+| 6 | Geom (probe) | `messageTray` still odd; BoxPointer dateMenu ~stage-wide preferred | Finite tray; menu ~content |
+
+**Probe after settle (≥15s)** — aligns with user on open; click-close not asserted yet:
+
+| After `delayed15s` (2026-09-16 22:58) | Meaning |
 | --- | --- |
-| `FAIL dateMenu-boxpointer-stage-sized w=754` | menu opens via API but boxPointer is stage-wide |
-| `FAIL dateMenu-click-no-open` / `quickSettings-click-no-open` | pointer click does not open |
-| panel-right children `@ NaN,NaN` / `0x32` | geometry still broken |
-| `JS ERROR: TypeError: this._workarea is null` | layout/workarea path still broken |
-| `Unable to resolve arg type 'DesktopAppInfo'` | separate GI hole (not SEGV) |
+| `startingUp=false` · indicators `n=16` · panel-right / QS finite | setup finished |
+| `dateMenu-click-open-ok` | matches user §3 open |
+| `FAIL overview-still-showing` | matches user §2 app-chooser / overview stuck |
+| `FAIL quickSettings-click-no-open` | probe click path; user can open QS by hand |
+| `FAIL dateMenu-boxpointer-stage-sized w=754` | wide popover (content sum) |
+| ~~`this._workarea is null`~~ | ✔️ `set_container` → `set_container_vfunc` |
+| ~~panel-left hpadding `_natHPadding=0`~~ | ✔️ Helper `style_changed` → client emit (`buttonbox-hpadding-smoke`) |
 
-**Next allowed step:** diagnose chrome geom / workarea / click (not boot
-SEGV). Prefer FAIL smokes that assert finite panel/menu boxes and
-workarea non-null.
+**Early probe lies** (empty QS / `startingUp=true` / panel-right `0x32`) — timing
+only until `QuickSettings._setupIndicators` finishes. Score `delayed15s` +
+user live, not early/later.
+
+**Next allowed step:** **§2 overview stuck open** after startup
+(`FAIL overview-still-showing` / app search without Super). Then menu
+**close** path (clock + QS) and calendar nav. Prove-first smoke, then
+minimal fix. **🚫** layout.js ship hacks.
 
 ### Prove stay-up (expect timeout, not 133)
 
@@ -113,25 +132,28 @@ ninja -C build src/gnome-shell-rpc src/mutter-rpc
 GI_RPC_JS_OVERRIDE_DIR=$PWD/src/shell-js-probe \
   GSR_NESTED_NO_A4=1 GSR_NESTED_STAYUP=1 GSR_NESTED_TIMEOUT=45 \
   GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
-# expect: nested-weston-prove: stop (timeout) after 45s
+# expect: delayed15s indicators-ok · startingUp=false · stop (timeout)
+# score FAILs only from the delayed15s snap, not early/later
 ```
 
 ---
 
 ## Symptom
 
+User live + settle probe (above). Historical one-liners:
+
 | # | Surface | Observed | Stock |
 | - | ------- | -------- | ----- |
-| 1 | Workspace selectors | Not vertically centred on the top bar | Centred on panel height |
-| 2 | System menu + clock | Click does nothing | PopupMenu below source |
-| 3 | Desktop | Grey-brown over wallpaper | Wallpaper; no stuck cover |
-| 4 | Geom | `messageTray` `@ NaN` · `alloc=false` · Inf box | Finite allocation |
+| 1 | Workspace selectors | ✔️ centred (`workspace-dot-align-smoke` **C**) | Centred on panel height |
+| 2 | Overview / app search | Stuck open after boot (as if Super) | Closed; wallpaper idle |
+| 3 | Clock | Opens on click; no close; calendar nav dead | Open/close + month nav |
+| 4 | System menu | Opens; layout rough (volume size); no close | Toggle close; sane tile size |
+| 5 | Geom | `messageTray` / BoxPointer still off | Finite allocation |
 
-#1 and #3 are wrong **before** the `ensureAllocation` lock. Do not start
-at that lock.
+Do **not** start at the `ensureAllocation` lock for §1/§2.
 
 **Contract:** [`clutter-layout-allocate.md`](../clutter-layout-allocate.md).  
-**Fix to review:** [`2026-09-16-allocate-follow-reference.md`](2026-09-16-allocate-follow-reference.md).
+**Allocate (archived):** [`done/2026-09-16-allocate-follow-reference.md`](done/2026-09-16-allocate-follow-reference.md).
 
 ---
 
@@ -144,8 +166,17 @@ at that lock.
 3. **Flow 1 / 3** — ✔️ Helper LM peer + `set_layout_manager` + C
    `layout_changed` on that peer. `hook-o-gate` PASS after OPC.
    Gate: `startup-allocate-smoke` **A** PASS · **E** PASS · **F** PASS
-   (`hits=1`). Nest stay-up after READY — **FAIL**: client SIGSEGV 139
-   (see **Boot death**).
+   (`hits=1`). Nest stay-up after READY — ✔️ (see **Boot death** CLOSED).
+4. **`set_container` → `set_container_vfunc`** — ✔️ for GJS LM
+   (`rpc_lid==0`). Gate: `layout-set-container-smoke` **A/B/C/D** PASS.
+5. **WorkspaceDot / GJS `Clutter.Actor` subclass** — ✔️ Helper-Actor
+   attach when leaf type ≠ `Clutter.Actor` (stock `WorkspaceDot` extends
+   Actor, not `St.Widget`). Gate: `workspace-dot-align-smoke` **C** PASS
+   (`midDy=0`).
+6. **ButtonBox hpadding / `style-changed`** — ✔️ Helper override
+   `style_changed` → client `Signal.emit` (`buttonbox-hpadding-smoke`
+   PASS). Residual: overview stuck / menu close / calendar nav /
+   QS volume size (see **Live chrome**).
 
 **🚫** Idle · vendor `js/` · client `layout_changed` → `queue_relayout` ·
 Actor allocate Hook as the LM · `rpc_lid` on the GJS LM · destroy
@@ -163,13 +194,21 @@ GI_META_SMOKE=workspace-dot-align-smoke GSR_WESTON_MODE=prove \
 # C PASS (A/B stay PASS)
 
 GI_RPC_JS_OVERRIDE_DIR=$PWD/src/shell-js-probe \
-  GSR_NESTED_NO_A4=1 GSR_NESTED_SETTLE=12 GSR_WESTON_MODE=prove \
-  ./scripts/weston-gsr-session.sh
-# gsr-chrome: early startingUp=…  (dots + SystemBackground + wallpaper)
+  GSR_NESTED_NO_A4=1 GSR_NESTED_STAYUP=1 GSR_NESTED_TIMEOUT=45 \
+  GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
+# delayed15s: indicators-ok · startingUp=false; score that snap
 
-GI_META_SMOKE=startup-allocate-smoke GSR_WESTON_MODE=prove \
+GI_META_SMOKE=layout-set-container-smoke GSR_WESTON_MODE=prove \
   ./scripts/weston-gsr-session.sh
-# A PASS · E PASS · F PASS (hits=1)
+# A/B/C/D PASS
+
+GI_META_SMOKE=buttonbox-hpadding-smoke GSR_WESTON_MODE=prove \
+  ./scripts/weston-gsr-session.sh
+# ok nat=12 min=6
+
+GI_META_SMOKE=gjs-binlayout-super-smoke GSR_WESTON_MODE=prove \
+  ./scripts/weston-gsr-session.sh
+# A/B/C PASS (super.vfunc BinLayout/BoxLayout not the BoxPointer miss)
 ```
 
 Logs: `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`.  
@@ -181,28 +220,43 @@ Stop reason (prove SIGKILL vs real death): [`nested-debug.md`](../nested-debug.m
 
 Not the work. Agents: do not repeat these. Do not promote them into **Do**.
 
-**Current FAIL numbers (so you know the gates):**
-`workspace-dot-align-smoke` **C** `midDy=-12` (preferred 12×8 at origin).
-**A/B** PASS (BoxLayout / `St.Bin` compute a centred child box).
-`startup-allocate-smoke` **A** never resolves · **B/C** `queue_relayout`
-reaches mutter, no later GJS LM vfunc · **E** `lm.allocate()` no-op
-(`rpc_lid==0`) · **F** `hits=1` after revert.
+**Workarea MISS (closed):** `LayoutManager.set_container` for
+`rpc_lid==0` was a no-op — never called `set_container_vfunc`. Stock
+`clutter_layout_manager_set_container` always hits the Class slot.
+WorkspaceLayout only sets `_workarea` there. Fix in
+`LayoutManager.override.vala`. Smoke: `layout-set-container-smoke`.
+
+**WorkspaceDot (closed):** stock extends `Clutter.Actor`; smoke used
+`St.Widget` → false green. Helper-Actor attach for leaf types whose
+first Bin ancestor is `Clutter-Actor` but `get_type() != Actor`. Chrome
+`workspace-dot` midDy=0.
+
+**ButtonBox hpadding (closed):** theme `get_length` returned 6/12 but
+`_natHPadding` stayed 0 — server peer `style-changed` never reached GJS
+`connect`. Helper `style_changed` + client emit. Gate:
+`buttonbox-hpadding-smoke`.
+
+**Early probe lies:** empty QS / `startingUp=true` / panel-right `0x32`
+before `QuickSettings._setupIndicators` finishes (~10–15s). Use
+`delayed15s`. Residual: menus **do not close** (user); overview / app
+search **stuck**; QS volume size; calendar nav.
+
+**BinLayout super (ruled out):** `gjs-binlayout-super-smoke` **A/B/C**
+PASS — not the stage-wide BoxPointer cause.
 
 **Client rewrite of C (reverted).** `layout_changed_invoke` → client
 `queue_relayout` + Actor allocate Hook as LM. **F** reenter-storm; nest
-EOS / mutter ec=133. A/E went green; chrome did not clear `_startingUp`.
+EOS / mutter ec=133.
 
-**Observe (already used):** probe must snapshot early — do not wait for
-`startingUp`. `_coverPane` opacity 0. Wallpaper is `_backgroundGroup`.
-`dateMenu.menu.open(0)` / `quickSettings.menu.open(0)` set `isOpen=true`
-(click path is the break). dateMenu BoxPointer still ~stage-sized when
-forced. Hang site: `await this.layout_manager.ensureAllocation()`.
+**Observe:** score `delayed15s` + user live. Wallpaper on
+`_backgroundGroup`. Programmatic `menu.open(0)` works; click-close and
+calendar nav not yet gated.
 
 **Not this chrome:** Interval / Transition / Animatable corridor already
-landed. Right pull-down used to open (wrong size); now does not — after
-Flow 2.
+landed.
 
 **Supersedes leftover chase on:**
 [`done/2026-09-15-chrome-placement.md`](done/2026-09-15-chrome-placement.md)
 · [`done/2026-09-15-adjustment-animatable-startup-grey.md`](done/2026-09-15-adjustment-animatable-startup-grey.md)
-· [`2026-09-15-boot-blank-background.md`](2026-09-15-boot-blank-background.md)
+· [`done/2026-09-15-boot-blank-background.md`](done/2026-09-15-boot-blank-background.md)
+· [`done/2026-09-16-allocate-follow-reference.md`](done/2026-09-16-allocate-follow-reference.md)

@@ -1,8 +1,8 @@
 # Nested boot blanks background — start with user extensions off
 
-**Status:** ⏳ parked — grey/overlay chase owns residual under [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md); keep this for extensions-off bisect only  
+**Status:** ✔️ archived 2026-09-16 — blank / grey / wallpaper owned by [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md) (user: same conglomeration; no separate extensions-off track)  
 **Hit:** 2026-09-15 — user: something blanks the background during boot  
-**Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
 **Roles:** **consumer** boot / `ExtensionManager` / background chrome
 
@@ -38,7 +38,7 @@ Ubuntu dock / DING) can still load — next bisect step if blank remains.
 
 ## Next
 
-Parked behind
-[`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md).
-Revisit only if that chase shows the grey is **not** overview/cover and
-extensions-off still matters.
+Closed into
+[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md).
+Do not reopen a separate boot-blank / extensions-off bisect unless chrome
+proves the grey is **not** the overlay conglomeration.

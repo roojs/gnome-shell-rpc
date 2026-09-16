@@ -144,6 +144,9 @@
 	public virtual void set_container(Actor? container)
 	{
 		if (this.rpc_lid == 0) {
+			/* Stock clutter_layout_manager_set_container → Class slot.
+			 * GJS WorkspaceLayout fills _workarea only in vfunc_set_container. */
+			this.set_container_vfunc(container);
 			return;
 		}
 		GnomeShellRpc.call_value(

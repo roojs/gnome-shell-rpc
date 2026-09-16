@@ -5,5 +5,8 @@ namespace St {
 	public class Widget : Clutter.Actor {
 		[CCode (has_construct_function = false)]
 		protected Widget ();
+
+		/* Class slot @ StWidgetClass.style_changed (st-widget-peer.h). */
+		public virtual void style_changed ();
 	}
 }

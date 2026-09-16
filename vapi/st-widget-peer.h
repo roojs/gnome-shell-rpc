@@ -10,6 +10,13 @@ G_BEGIN_DECLS
 typedef struct _StWidget StWidget;
 typedef struct _StWidgetClass StWidgetClass;
 
+#define ST_TYPE_WIDGET (st_widget_get_type ())
+#define ST_WIDGET(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), ST_TYPE_WIDGET, StWidget))
+#define ST_WIDGET_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), ST_TYPE_WIDGET, StWidgetClass))
+#define ST_IS_WIDGET(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), ST_TYPE_WIDGET))
+#define ST_IS_WIDGET_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), ST_TYPE_WIDGET))
+#define ST_WIDGET_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), ST_TYPE_WIDGET, StWidgetClass))
+
 /* Match G_DECLARE_DERIVABLE_TYPE instance (parent only; priv is private). */
 struct _StWidget {
 	ClutterActor parent_instance;

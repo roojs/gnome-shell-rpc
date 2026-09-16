@@ -205,6 +205,20 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
+		 * St.Widget::style-changed default handler (Class offset). Stock
+		 * emit runs this; GJS {@code connect('style-changed')} needs the
+		 * client Live.Hook (buttonbox-hpadding-smoke).
+		 */
+		public override void style_changed()
+		{
+			var hook = this.vfuncs.get("style_changed");
+			if (hook != null) {
+				LayoutHooks.measure_style_changed(hook, this);
+			}
+			base.style_changed();
+		}
+
+		/**
 		 * ''Helper-Actor.pointer_click'' — stage coords; virtual pointer
 		 * motion + primary press/release (B3 hit-test prove).
 		 */

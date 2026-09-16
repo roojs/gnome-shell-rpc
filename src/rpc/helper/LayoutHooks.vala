@@ -92,6 +92,18 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * {@code false} = fall through — caller returns false (propagate).
 		 * 🚫 Do not {@code base.event}: St.Widget parent class slot is NULL.
 		 */
+		/**
+		 * Emit style-changed hook (void). Client emits
+		 * {@code St.Widget::style-changed} for GJS connect handlers.
+		 */
+		public static void measure_style_changed(
+			OLLMrpc.Live.Hook hook,
+			Actor actor
+		) {
+			hook.emit(OLLMrpc.args("t",
+				hook.connection.export(actor)));
+		}
+
 		public static bool measure_event(
 			OLLMrpc.Live.Hook hook,
 			Actor actor,

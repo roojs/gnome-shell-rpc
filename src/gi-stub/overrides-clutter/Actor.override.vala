@@ -57,12 +57,24 @@
 				continue;
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
-			if (alias == "St-Widget") {
-				this.relay_attach();
-				return;
-			}
-			if (alias == "Meta-BackgroundActor") {
-				return;
+			switch (alias) {
+				case "St-Widget":
+					/* Helper-Actor + Class hooks (GJS St.Widget subclasses). */
+					this.relay_attach();
+					return;
+				case "Meta-BackgroundActor":
+					/* Leaf Helper construct elsewhere — no Clutter-Actor mint. */
+					return;
+				case "Clutter-Actor":
+					/* Exact Actor → Clutter-Actor.new. GJS/Vala subclasses
+					* (WorkspaceDot, …) need Helper hooks like St.Widget. */
+					if (this.get_type() != typeof(Actor)) {
+						this.relay_attach();
+						return;
+					}
+					break;
+				default:
+					break;
 			}
 			var response = GnomeShellRpc.call_value(alias + ".new", null);
 			this.rpc_lid =
@@ -97,6 +109,27 @@
 				"Helper-Actor.add_hook", this,
 				OLLMrpc.args("st", name, id));
 		}
+		/* St.Widget::style-changed — not a Clutter.Actor Class slot, so
+		 * VfuncRelay.overridden never names it. Always register. */
+		var style_id = this.relay_style_changed();
+		if (style_id != 0) {
+			GnomeShellRpc.call_value(
+				"Helper-Actor.add_hook", this,
+				OLLMrpc.args("st", "style_changed", style_id));
+		}
+	}
+
+	uint64 relay_style_changed()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			/* ButtonBox connect('style-changed') — not vfunc_style_changed.
+			 * Clutter stub lib has no St dep; only emit when the type has
+			 * the signal (St.Widget / GJS subclasses). */
+			if (GLib.Signal.lookup("style-changed", this.get_type()) != 0) {
+				GLib.Signal.emit_by_name(this, "style-changed");
+			}
+			return OLLMrpc.args("");
+		});
 	}
 
 	uint64 relay_get_preferred_width()

@@ -90,12 +90,12 @@ function main() {
 	binB.show();
 	childB.show();
 
-	/* ---- C: WorkspaceDot.vfunc_allocate — pass full box to y_align CENTER ----
-	 * WorkspaceDot extends St.Widget — Helper-Actor allocate hook is
-	 * Class->allocate. A Clutter.Actor subclass never gets that hook, so
-	 * vfunc_allocate never runs and inner.allocate is never the GJS call. */
+	/* ---- C: stock WorkspaceDot — extends Clutter.Actor, not St.Widget ----
+	 * panel.js WorkspaceDot.vfunc_allocate: set_allocation then
+	 * _dot.allocate(full box) with y_align CENTER. St.Widget Dotish was a
+	 * false green (Helper-Actor hooks); Clutter.Actor is the real shape. */
 	const Dotish = GObject.registerClass(
-	class Dotish extends St.Widget {
+	class Dotish extends Clutter.Actor {
 		vfunc_get_preferred_width(_forHeight) {
 			return [DOT_W, DOT_W];
 		}
@@ -118,11 +118,14 @@ function main() {
 	});
 	const innerC = new St.Widget({
 		name: 'workspace-dot-align-C-dot',
+		style_class: 'workspace-dot',
 		y_align: Clutter.ActorAlign.CENTER,
 		x_align: Clutter.ActorAlign.CENTER,
+		request_mode: Clutter.RequestMode.WIDTH_FOR_HEIGHT,
 	});
 	innerC.set_size(DOT_W, DOT_H);
-	smokeLog('C inner y_align=' + innerC.y_align
+	smokeLog('C outer type=' + outerC.constructor.$gtype.name
+		+ ' inner y_align=' + innerC.y_align
 		+ ' (CENTER=' + Clutter.ActorAlign.CENTER + ')');
 	outerC.add_child(innerC);
 	const boxC = new St.BoxLayout({

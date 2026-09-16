@@ -437,25 +437,98 @@ async function _initializeUI() {
                     const panelMid = y + h / 2;
                     const dy = mid - panelMid;
                     log(`gsr-chrome: panel-${name} child${i} class=${cls} @ ${cx.toFixed(0)},${cy.toFixed(0)} ${cw.toFixed(0)}x${ch.toFixed(0)} midDy=${dy.toFixed(1)}`);
-                    /* Descend one level — Activities / workspace switcher content. */
-                    try {
-                        const grand = c.get_children?.() ?? [];
-                        for (let j = 0; j < Math.min(grand.length, 6); j++) {
-                            const g = grand[j];
-                            const gcls = g.get_style_class_name?.() ?? '';
-                            const [gx, gy] = g.get_transformed_position();
-                            const [gw, gh] = g.get_transformed_size();
-                            const gdy = (gy + gh / 2) - panelMid;
-                            log(`gsr-chrome: panel-${name} child${i}.${j} class=${gcls} @ ${gx.toFixed(0)},${gy.toFixed(0)} ${gw.toFixed(0)}x${gh.toFixed(0)} midDy=${gdy.toFixed(1)}`);
-                            if (name === 'left' && Math.abs(gdy) > 2)
-                                log(`gsr-chrome: FAIL panel-left-not-centred child${i}.${j} midDy=${gdy.toFixed(1)}`);
+                    /* PanelMenu.ButtonBox horizontal padding from theme. */
+                    if (name === 'left' && i === 0) {
+                        try {
+                            const btn = c.get_first_child?.() ?? c;
+                            const tn = btn.get_theme_node?.();
+                            let minH = '?', natH = '?';
+                            if (tn) {
+                                minH = tn.get_length('-minimum-hpadding');
+                                natH = tn.get_length('-natural-hpadding');
+                            }
+                            const pad = btn._natHPadding ?? btn._minHPadding;
+                            log(`gsr-chrome: panel-left hpadding theme min=${minH} nat=${natH} buttonBox._natHPadding=${btn._natHPadding} ._minHPadding=${btn._minHPadding}`);
+                            if (typeof natH === 'number' && natH < 6)
+                                log(`gsr-chrome: FAIL panel-left-hpadding-tight theme-nat=${natH}`);
+                        } catch (e) {
+                            log(`gsr-chrome: panel-left hpadding threw ${e}`);
                         }
+                    }
+                    /* Descend — Activities → WorkspaceIndicators → WorkspaceDot → _dot. */
+                    try {
+                        const walkDots = (actor, depth, path) => {
+                            if (!actor || depth > 5)
+                                return;
+                            const cls = actor.get_style_class_name?.() ?? '';
+                            if (cls === 'workspace-dot' || depth >= 2) {
+                                try {
+                                    const [gx, gy] = actor.get_transformed_position();
+                                    const [gw, gh] = actor.get_transformed_size();
+                                    const gdy = (gy + gh / 2) - panelMid;
+                                    log(`gsr-chrome: panel-${name} ${path} class=${cls} @ ${gx.toFixed(0)},${gy.toFixed(0)} ${gw.toFixed(0)}x${gh.toFixed(0)} midDy=${gdy.toFixed(1)}`);
+                                    if (name === 'left' && cls === 'workspace-dot' && Math.abs(gdy) > 2)
+                                        log(`gsr-chrome: FAIL panel-left-not-centred ${path} midDy=${gdy.toFixed(1)}`);
+                                    if (name === 'left' && cls === 'workspace-dot' && Math.abs(gdy) <= 2)
+                                        log(`gsr-chrome: panel-left-dot-centred ${path} midDy=${gdy.toFixed(1)}`);
+                                } catch (e) {}
+                            }
+                            const kids = actor.get_children?.() ?? [];
+                            for (let j = 0; j < Math.min(kids.length, 8); j++)
+                                walkDots(kids[j], depth + 1, `${path}.${j}`);
+                        };
+                        walkDots(c, 1, `child${i}`);
                     } catch (e) {}
                 }
             }
 
             const roles = panel.statusArea ? Object.keys(panel.statusArea) : [];
             log(`gsr-chrome: statusArea roles=${roles.join(',')}`);
+            /* panel-right collapse — preferred of the box and quickSettings. */
+            try {
+                const rb = panel._rightBox;
+                if (rb) {
+                    const ps = rb.get_preferred_size();
+                    const pref = Array.isArray(ps)
+                        ? ps.map(v => Math.round(v)).join(',')
+                        : String(ps);
+                    log(`gsr-chrome: panel-right preferred=${pref}`);
+                }
+                const qs = panel.statusArea?.quickSettings;
+                if (qs) {
+                    const ps = qs.get_preferred_size();
+                    const pref = Array.isArray(ps)
+                        ? ps.map(v => Math.round(v)).join(',')
+                        : String(ps);
+                    const vis = qs.visible;
+                    const [w, h] = qs.get_size();
+                    log(`gsr-chrome: quickSettings preferred=${pref} visible=${vis} size=${w.toFixed(0)}x${h.toFixed(0)}`);
+                    const kids = qs.get_children?.() ?? [];
+                    for (let i = 0; i < Math.min(kids.length, 4); i++) {
+                        const k = kids[i];
+                        let kp = '?';
+                        try {
+                            const kps = k.get_preferred_size();
+                            kp = Array.isArray(kps)
+                                ? kps.map(v => Math.round(v)).join(',')
+                                : String(kps);
+                        } catch (e) {
+                            kp = `err:${e}`;
+                        }
+                        const kn = k.get_n_children?.() ?? -1;
+                        let visN = 0;
+                        try {
+                            for (const c of k.get_children?.() ?? []) {
+                                if (c.visible)
+                                    visN++;
+                            }
+                        } catch (e) {}
+                        log(`gsr-chrome: quickSettings child${i} class=${k.get_style_class_name?.() ?? ''} preferred=${kp} n=${kn} visibleKids=${visN} visible=${k.visible}`);
+                    }
+                }
+            } catch (e) {
+                log(`gsr-chrome: panel-right preferred threw ${e}`);
+            }
 
             const stageW = global.screen_width || 800;
 
@@ -501,6 +574,35 @@ async function _initializeUI() {
                     /* dateMenu historically stage-sized — pin still broken. */
                     if (role === 'dateMenu' && bw > stageW * 0.8)
                         log(`gsr-chrome: FAIL ${role}-boxpointer-stage-sized w=${bw.toFixed(0)}`);
+                    /* Walk preferred tree — find who reports stage-wide nat. */
+                    if (role === 'dateMenu') {
+                        const walkPref = (actor, depth, tag) => {
+                            if (!actor || depth > 4)
+                                return;
+                            let p = '?';
+                            try {
+                                const ps = actor.get_preferred_size();
+                                p = Array.isArray(ps)
+                                    ? ps.map(v => Math.round(v)).join(',')
+                                    : String(ps);
+                            } catch (e) {
+                                p = `err:${e}`;
+                            }
+                            const cls = actor.get_style_class_name?.() ?? '';
+                            const name = actor.get_name?.() ?? '';
+                            log(`gsr-chrome: ${role} pref d${depth} ${tag} name=${name} class=${cls} preferred=${p}`);
+                            try {
+                                const kids = actor.get_children?.() ?? [];
+                                for (let i = 0; i < Math.min(kids.length, 8); i++)
+                                    walkPref(kids[i], depth + 1, `c${i}`);
+                            } catch (e) {}
+                        };
+                        try {
+                            walkPref(bp.bin, 0, 'bin');
+                        } catch (e) {
+                            log(`gsr-chrome: ${role} pref-walk threw ${e}`);
+                        }
+                    }
                     const [sx, sy] = btn.get_transformed_position();
                     const [sw, sh] = btn.get_transformed_size();
                     log(`gsr-chrome: ${role} source @ ${sx.toFixed(0)},${sy.toFixed(0)} ${sw.toFixed(0)}x${sh.toFixed(0)}`);
@@ -576,6 +678,24 @@ async function _initializeUI() {
         return GLib.SOURCE_REMOVE;
     });
     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, chromeProbe);
+    /* Delayed — QuickSettings._setupIndicators is async; empty box early
+     * is not proof the setup failed. */
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 15000, () => {
+        try {
+            const qs = panel?.statusArea?.quickSettings;
+            const box = qs?._indicators ?? qs?.get_first_child?.();
+            const n = box?.get_n_children?.() ?? -1;
+            log(`gsr-chrome: delayed15s quickSettings indicators n=${n} startingUp=${layoutManager?._startingUp}`);
+            if (n === 0)
+                log('gsr-chrome: FAIL quickSettings-indicators-empty-after-15s');
+            else
+                log(`gsr-chrome: quickSettings-indicators-ok n=${n}`);
+            chromeProbe();
+        } catch (e) {
+            log(`gsr-chrome: delayed15s threw ${e}`);
+        }
+        return GLib.SOURCE_REMOVE;
+    });
 
     _startDate = new Date();
 
