@@ -44,6 +44,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		ThemeContext.rpc_register();
 		Icon.rpc_register();
 		Actor.rpc_register();
+		LayoutManager.rpc_register();
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();
 		WaylandClient.rpc_register();

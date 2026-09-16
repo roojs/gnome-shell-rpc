@@ -122,6 +122,23 @@ executable('proxy-reuse-gate',
   install: false,
 )
 
+# Live.Hook.emit GObject "o" must decode on the client (get_object).
+executable('hook-o-gate',
+  [
+    'hook-o-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Ffi add_class "o" must resolve wire lease uint64 (like Gi).
 executable('ffi-o-lease-gate',
   [

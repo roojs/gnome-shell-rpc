@@ -315,23 +315,30 @@ async function _initializeUI() {
     // initiate logouts.
     endSessionDialog = new EndSessionDialog.EndSessionDialog();
 
-    // We're ready for the session manager to move to the next phase
-    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-        Shell.util_sd_notify();
-        global.context.notify_ready();
-        return GLib.SOURCE_REMOVE;
-    });
-
     /* DBG chrome probe — observe only (bug 2026-09-16-chrome-panel-menus-overlay).
-     * Wait until layoutManager._startingUp clears so startup grey / ease finish. */
+     * User 2026-09-16: dots + wallpaper already wrong *before* ensureAllocation
+     * locks the main loop. Snapshot *synchronously* here (and on the READY
+     * idle). A 500ms timeout never ran — the lock eats the loop first. */
+    let chromeSnaps = 0;
+    const actorGeom = (actor) => {
+        if (!actor)
+            return 'null';
+        try {
+            const [x, y] = actor.get_transformed_position();
+            const [w, h] = actor.get_transformed_size();
+            const vis = actor.visible;
+            const op = actor.opacity;
+            return `vis=${vis} op=${op} @ ${x.toFixed(0)},${y.toFixed(0)} ${w.toFixed(0)}x${h.toFixed(0)}`;
+        } catch (e) {
+            return `err:${e}`;
+        }
+    };
     const chromeProbe = () => {
+        chromeSnaps++;
+        const tag = chromeSnaps === 1 ? 'early' : 'later';
         try {
             const lm = layoutManager;
-            if (lm && lm._startingUp) {
-                log('gsr-chrome: waiting startingUp');
-                return true; /* keep timeout */
-            }
-            log('gsr-chrome: post-startup probe');
+            log(`gsr-chrome: ${tag} startingUp=${lm ? lm._startingUp : 'n/a'}`);
             try {
                 const n = lm.monitors ? lm.monitors.length : -1;
                 const pm = lm.primaryMonitor;
@@ -354,7 +361,30 @@ async function _initializeUI() {
                 log(`gsr-chrome: layoutManager probe threw ${e}`);
             }
 
-            /* §3 overlay — overview / cover after startup. */
+            /* Background *before* lock — SystemBackground is #282828; coverPane
+             * is opacity 0 (click-eater, not the grey). Wallpaper lives on
+             * _backgroundGroup under window_group. */
+            try {
+                log(`gsr-chrome: systemBackground ${actorGeom(lm._systemBackground)}`);
+                log(`gsr-chrome: coverPane ${actorGeom(lm._coverPane)}`);
+                const bgGroup = lm._backgroundGroup;
+                if (!bgGroup) {
+                    log('gsr-chrome: FAIL backgroundGroup-null');
+                } else {
+                    const kids = bgGroup.get_children();
+                    log(`gsr-chrome: backgroundGroup ${actorGeom(bgGroup)} n=${kids.length}`);
+                    for (let i = 0; i < Math.min(kids.length, 6); i++)
+                        log(`gsr-chrome: wallpaper${i} ${actorGeom(kids[i])}`);
+                    if (kids.length === 0)
+                        log('gsr-chrome: FAIL wallpaper-actors-missing');
+                }
+                const managers = lm._bgManagers;
+                log(`gsr-chrome: bgManagers n=${managers ? managers.length : 'n/a'}`);
+            } catch (e) {
+                log(`gsr-chrome: background probe threw ${e}`);
+            }
+
+            /* Overview / cover — log, do not wait. */
             try {
                 const ov = overview;
                 if (!ov) {
@@ -364,19 +394,7 @@ async function _initializeUI() {
                     const shown = ov._shown;
                     const anim = ov.animationInProgress;
                     const cover = ov._coverPane;
-                    let coverVis = 'n/a';
-                    let coverGeom = 'n/a';
-                    if (cover) {
-                        coverVis = String(cover.visible);
-                        try {
-                            const [cx, cy] = cover.get_transformed_position();
-                            const [cw, ch] = cover.get_transformed_size();
-                            coverGeom = `${cx.toFixed(0)},${cy.toFixed(0)} ${cw.toFixed(0)}x${ch.toFixed(0)}`;
-                        } catch (e) {
-                            coverGeom = `err:${e}`;
-                        }
-                    }
-                    log(`gsr-chrome: overview visible=${vis} _shown=${shown} animationInProgress=${anim} cover.visible=${coverVis} cover@${coverGeom}`);
+                    log(`gsr-chrome: overview visible=${vis} _shown=${shown} animationInProgress=${anim} cover ${actorGeom(cover)}`);
                     if (vis || shown)
                         log('gsr-chrome: FAIL overview-still-showing');
                     else
@@ -531,12 +549,24 @@ async function _initializeUI() {
             tryPointerClick('dateMenu', dateBtn);
             tryPointerClick('quickSettings', sysBtn);
 
-            log('gsr-chrome: probe-scheduled-done');
+            log(`gsr-chrome: ${tag} probe-done`);
         } catch (e) {
-            log(`gsr-chrome: post-startup threw ${e}`);
+            log(`gsr-chrome: ${tag} threw ${e}`);
         }
-        return false;
+        /* Second snap ~1s later — same surfaces, still not gated on startingUp. */
+        return chromeSnaps < 2;
     };
+    chromeProbe();
+    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+        try {
+            chromeProbe();
+        } catch (e) {
+            log(`gsr-chrome: ready-idle threw ${e}`);
+        }
+        Shell.util_sd_notify();
+        global.context.notify_ready();
+        return GLib.SOURCE_REMOVE;
+    });
     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, chromeProbe);
 
     _startDate = new Date();

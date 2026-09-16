@@ -1,126 +1,10 @@
 /**
- * Layout relay for GJS {@code St.Widget} subclasses — name-keyed
- * {@link Actor.vfuncs}; emit helpers take the hook.
- *
- * 🚫 Do not revive emit_guard / {@code suppress_emit} / measure-depth skips.
+ * Helper-Actor — GJS {@code St.Widget} subclass peer; name-keyed
+ * {@link Actor.vfuncs}. Measure/allocate/event emit lives in
+ * {@link LayoutHooks}.
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
-	public class LayoutHooks
-	{
-		/**
-		 * Emit preferred-width hook. {@code true} = sizes in outs;
-		 * {@code false} = error / empty — caller runs {@code base}.
-		 */
-		public static bool measure_width(
-			OLLMrpc.Live.Hook hook,
-			Actor actor,
-			float for_height,
-			out float min_width_p,
-			out float natural_width_p
-		) {
-			hook.emit(OLLMrpc.args("td",
-				hook.connection.export(actor),
-				(double) for_height));
-			var args = hook.reply_args;
-			if ((args.size == 1 && args.get(0).holds(typeof(OLLMrpc.Error)))
-					|| args.size < 2) {
-				min_width_p = 0.0f;
-				natural_width_p = 0.0f;
-				return false;
-			}
-			min_width_p = (float) args.get(0).get_double();
-			natural_width_p = (float) args.get(1).get_double();
-			return true;
-		}
-
-		/**
-		 * Emit preferred-height hook. {@code true} = sizes;
-		 * {@code false} = error / empty — caller runs {@code base}.
-		 */
-		public static bool measure_height(
-			OLLMrpc.Live.Hook hook,
-			Actor actor,
-			float for_width,
-			out float min_height_p,
-			out float natural_height_p
-		) {
-			hook.emit(OLLMrpc.args("td",
-				hook.connection.export(actor),
-				(double) for_width));
-			var args = hook.reply_args;
-			if ((args.size == 1 && args.get(0).holds(typeof(OLLMrpc.Error)))
-					|| args.size < 2) {
-				min_height_p = 0.0f;
-				natural_height_p = 0.0f;
-				return false;
-			}
-			min_height_p = (float) args.get(0).get_double();
-			natural_height_p = (float) args.get(1).get_double();
-			return true;
-		}
-
-		/**
-		 * Emit allocate hook. {@code true} = JS applied;
-		 * {@code false} = chain — caller runs {@code base.allocate}.
-		 *
-		 * Non-chain: GJS Class->allocate must {@code set_allocation} (Clutter
-		 * contract). Do not re-apply the pre-hook box — that wiped
-		 * BoxPointer._reposition (actor-allocate-box-smoke / chrome menus).
-		 */
-		public static bool measure_allocate(
-			OLLMrpc.Live.Hook hook,
-			Actor actor,
-			Clutter.ActorBox box
-		) {
-			hook.emit(OLLMrpc.args("tdddd",
-				hook.connection.export(actor),
-				(double) box.x1, (double) box.y1,
-				(double) box.x2, (double) box.y2));
-			if (hook.reply_args.size < 1) {
-				return false;
-			}
-			var chain = hook.reply_args.get(0).type() == GLib.Type.BOOLEAN
-				&& hook.reply_args.get(0).get_boolean();
-			if (chain) {
-				return false;
-			}
-			return true;
-		}
-
-		/**
-		 * Emit event hook. {@code true} = JS handled (EVENT_STOP);
-		 * {@code false} = fall through — caller returns false (propagate).
-		 * 🚫 Do not {@code base.event}: St.Widget parent class slot is NULL.
-		 */
-		public static bool measure_event(
-			OLLMrpc.Live.Hook hook,
-			Actor actor,
-			Clutter.Event event
-		) {
-			float x = 0.0f, y = 0.0f;
-			event.get_coords(out x, out y);
-			var et = event.get_type();
-			uint32 button = 0;
-			if (et == Clutter.EventType.BUTTON_PRESS
-					|| et == Clutter.EventType.BUTTON_RELEASE
-					|| et == Clutter.EventType.PAD_BUTTON_PRESS
-					|| et == Clutter.EventType.PAD_BUTTON_RELEASE) {
-				button = event.get_button();
-			}
-			hook.emit(OLLMrpc.args("tiddu",
-				hook.connection.export(actor),
-				(int) et,
-				(double) x, (double) y,
-				button));
-			if (hook.reply_args.size < 1) {
-				return false;
-			}
-			return hook.reply_args.get(0).type() == GLib.Type.BOOLEAN
-				&& hook.reply_args.get(0).get_boolean();
-		}
-	}
-
 	public class Actor : global::St.Widget
 	{
 		public Gee.HashMap<string, OLLMrpc.Live.Hook> vfuncs
@@ -134,6 +18,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				"Helper-Actor", typeof(Actor),
 				"create", "s",
 				"add_hook", "st",
+				"allocate_public", "ay",
 				"base_preferred_width", "d",
 				"base_preferred_height", "d",
 				"pointer_click", "dd",
@@ -234,6 +119,31 @@ namespace GnomeShellRpc.Rpc.Helper
 			this.vfuncs = new Gee.HashMap<string, OLLMrpc.Live.Hook>();
 			base.allocate(box);
 			this.vfuncs = saved;
+		}
+
+		[CCode (cname = "clutter_actor_allocate")]
+		static extern void clutter_actor_allocate_public(
+			Clutter.Actor actor,
+			Clutter.ActorBox box
+		);
+
+		/**
+		 * ''Helper-Actor.allocate_public'' — C {@code clutter_actor_allocate}
+		 * (adjust_allocation then Class->allocate). GI
+		 * {@code Clutter-Actor.allocate} hits klass->allocate and skips
+		 * that wrapper (workspace-dot-align-smoke C).
+		 */
+		public void allocate_public(OLLMrpc.Request request, GLib.Bytes box_bytes)
+		{
+			var peer = request.connection.leases.get((int) request.lease_id) as Actor;
+			if (peer == null || box_bytes.length < sizeof(Clutter.ActorBox)) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			Clutter.ActorBox box = *((Clutter.ActorBox*) box_bytes.get_data());
+			clutter_actor_allocate_public(peer, box);
+			request.reply(new OLLMrpc.Response());
 		}
 
 		/**

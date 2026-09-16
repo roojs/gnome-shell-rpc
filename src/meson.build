@@ -47,7 +47,10 @@ compositor_sources = files(
   'rpc/helper/St.vala',
   'rpc/helper/ThemeContext.vala',
   'rpc/helper/Icon.vala',
+  'rpc/helper/LayoutHooks.vala',
   'rpc/helper/ClutterActor.vala',
+  'rpc/helper/ClutterLayoutManager.vala',
+  'rpc/helper/ClutterPaintContext.vala',
   'rpc/helper/ClutterStage.vala',
   'rpc/helper/shader-uniform-apply.c',
 )

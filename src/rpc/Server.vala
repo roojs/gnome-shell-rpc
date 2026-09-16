@@ -60,6 +60,8 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Rpc.Helper.Constraint));
 			/* Layout-relay peer — Gi convert needs gtype_to_alias (add_child…). */
 			OLLMrpc.Bin.register_alias("St-Widget", typeof(Rpc.Helper.Actor));
+			OLLMrpc.Bin.register_alias(
+				"Clutter-LayoutManager", typeof(Rpc.Helper.LayoutManager));
 			/* Align/Bind/Snap: real mutter GTypes from Gi.register — do not alias. */
 			var monitor_manager = display.get_context().get_backend().get_monitor_manager();
 			if (monitor_manager != null) {

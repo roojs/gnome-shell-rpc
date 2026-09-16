@@ -8,16 +8,81 @@
 	 * export that symbol under a different Vala name for GJS.
 	 */
 	private static Quark child_meta_quark;
+	internal LayoutManager? helper_peer;
 
 	static construct {
-		child_meta_quark = Quark.from_string(
-			"gsr-clutter-layout-manager-child-meta");
+		child_meta_quark = Quark.from_string("gsr-clutter-layout-manager-child-meta");
 	}
 
 	[CCode (cname = "clutter_layout_manager_layout_changed")]
 	public void layout_changed_invoke()
 	{
 		this.layout_changed();
+		if (this.helper_peer == null) {
+			return;
+		}
+		GnomeShellRpc.call_value("Clutter-LayoutManager.layout_changed", this.helper_peer);
+	}
+
+	internal uint64 relay_get_preferred_width()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			float min = 0.0f, nat = 0.0f;
+			var container = (Actor) call.args.get(0).get_object();
+			this.get_preferred_width_vfunc(container,
+				(float) call.args.get(1).get_double(),
+				out min, out nat);
+			return OLLMrpc.args("dd", (double) min, (double) nat);
+		});
+	}
+
+	internal uint64 relay_get_preferred_height()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			float min = 0.0f, nat = 0.0f;
+			var container = (Actor) call.args.get(0).get_object();
+			this.get_preferred_height_vfunc(container,
+				(float) call.args.get(1).get_double(),
+				out min, out nat);
+			return OLLMrpc.args("dd", (double) min, (double) nat);
+		});
+	}
+
+	internal uint64 relay_allocate()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			var container = (Actor) call.args.get(0).get_object();
+			var box = ActorBox();
+			box.x1 = (float) call.args.get(1).get_double();
+			box.y1 = (float) call.args.get(2).get_double();
+			box.x2 = (float) call.args.get(3).get_double();
+			box.y2 = (float) call.args.get(4).get_double();
+			this.allocate_vfunc(container, box);
+			return OLLMrpc.args("");
+		});
+	}
+
+	internal LayoutManager ensure_helper_peer()
+	{
+		if (this.helper_peer != null) {
+			return this.helper_peer;
+		}
+		var minted = GnomeShellRpc.call_value(
+			"Helper-LayoutManager.create", null);
+		var peer = (LayoutManager) GLib.Object.new(typeof(LayoutManager));
+		peer.rpc_lid = minted.args.get(0).get_uint64();
+		GnomeShellRpc.GiStub.Runtime.register_handle(peer);
+		this.helper_peer = peer;
+		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
+			OLLMrpc.args("st", "get_preferred_width", this.relay_get_preferred_width()));
+
+		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
+			OLLMrpc.args("st", "get_preferred_height", this.relay_get_preferred_height()));
+
+		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
+			OLLMrpc.args("st", "allocate",this.relay_allocate()));
+			
+		return peer;
 	}
 
 	/**
@@ -64,6 +129,7 @@
 	public virtual void allocate(Actor container, ActorBox allocation)
 	{
 		if (this.rpc_lid == 0) {
+			this.allocate_vfunc(container, allocation);
 			return;
 		}
 		GLib.Bytes allocation_bytes;

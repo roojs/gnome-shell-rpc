@@ -22,6 +22,8 @@ GATE_PROXY=./build/tests/call-sync-repro/proxy-reuse-gate
 timeout 5 $GATE_PROXY      # live decode identity — PASS after OPC FIXED
 GATE_FFI_O=./build/tests/call-sync-repro/ffi-o-lease-gate
 timeout 5 $GATE_FFI_O     # Ffi "o" lease resolve — FAIL until OPC
+GATE_HOOK_O=./build/tests/call-sync-repro/hook-o-gate
+timeout 5 $GATE_HOOK_O    # Live.Hook.emit "od" GObject — FAIL until OPC
 ```
 
 `stack` matches live after OPC send fix: reply is recv’d at depth=1, not
@@ -99,5 +101,23 @@ Shape: `Gate.make` exports Peer → client calls `Gate.echo` with wire arg
 | 2026-09-14 | **FAIL** — Ffi `pack("o")` does `get_object` on UINT64 |
 | 2026-09-14 | **PASS** after OPC Ffi lease resolve |
 
-→ [`docs/bugs/2026-09-14-ffi-o-lease-resolve.md`](../../docs/bugs/2026-09-14-ffi-o-lease-resolve.md).
+→ [`docs/bugs/done/2026-09-14-ffi-o-lease-resolve.md`](../../docs/bugs/done/2026-09-14-ffi-o-lease-resolve.md).
 Helpers (`Helper-WaylandClient`, Background, pad/grab) use GObject `"o"`.
+
+## hook-o-gate
+
+Shape: `Gate.make` returns lease `"t"` only (Helper-Actor.create; no
+Response.retval object). `Gate.emit_od` does
+`hook.emit(args("od", peer, 1.5))`. Client Invoke `get_object()` must
+be the minted Peer.
+
+Helper.LayoutManager remaining C args after self are the container
+GObject — not `export()` `"t"` + `proxies.get`.
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-16 | **FAIL** — `Client.vala:659: unsupported bin array type 0x7F` on emit |
+| 2026-09-16 | **PASS** after OPC `StreamValue.read` skip `0xFF` |
+
+OPC: [`OLLMchat/docs/bugs/2026-09-16-any-args-token-reg-type.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-16-any-args-token-reg-type.md).
+Helper.LayoutManager `"od"` / `"odddd"` + `get_object()`.

@@ -74,6 +74,8 @@
 			this.get_type().name());
 	}
 
+	bool helper_attached;
+
 	void relay_attach()
 	{
 		/* event: GJS vfunc_event often matches StWidget Class.event at
@@ -81,10 +83,10 @@
 		string[] always = { "event" };
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
-		var response = GnomeShellRpc.call_value(
-			"Helper-Actor.create", null,
+		var response = GnomeShellRpc.call_value("Helper-Actor.create", null,
 			OLLMrpc.args("s", this.get_type().name()));
 		this.rpc_lid = response.args.get(0).get_uint64();
+		this.helper_attached = true;
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
 		foreach (var name in overridden) {
 			var id = this.bind_vfunc(name);
@@ -250,9 +252,15 @@
 			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			return;
 		}
+		if (this.helper_attached) {
+			uint8[] helper_data = new uint8[sizeof(ActorBox)];
+			*((ActorBox*) helper_data) = box;
+			GnomeShellRpc.call_value("Helper-Actor.allocate_public", this,
+				OLLMrpc.args("ay", new GLib.Bytes(helper_data)));
+			return;
+		}
 		var lm = this.priv_layout_manager;
 		if (lm != null && lm.rpc_lid == 0) {
-			/* GJS hooks allocate_vfunc (not allocate — that slot is RPC). */
 			lm.allocate_vfunc(this, box);
 			return;
 		}
@@ -505,6 +513,8 @@
 					previous.set_container(null);
 				}
 				value.set_container(this);
+				GnomeShellRpc.call_value("Clutter-Actor.set_layout_manager",
+					this, OLLMrpc.args("o", value.ensure_helper_peer()));
 			}
 		}
 	}
