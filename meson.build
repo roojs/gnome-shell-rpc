@@ -16,6 +16,9 @@ add_project_arguments([
   '--target-glib=2.78',
 ], language: 'vala')
 
+# memfd_create (Helper paint/selection) — gcc 14 errors without this.
+add_project_arguments('-D_GNU_SOURCE', language: 'c')
+
 libmutter_dep = dependency('libmutter-16', version: ['>= 48', '< 49'])
 mutter_dep = [
   libmutter_dep,

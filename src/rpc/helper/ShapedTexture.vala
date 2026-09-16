@@ -9,6 +9,9 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class ShapedTexture : GLib.Object
 	{
+		[CCode (cname = "memfd_create", cheader_filename = "sys/mman.h")]
+		private static extern int memfd_create(string name, uint flags);
+
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
@@ -62,27 +65,17 @@ namespace GnomeShellRpc.Rpc.Helper
 			var pixels = new uint8[nbytes];
 			GLib.Memory.copy(pixels, img.get_data(), (size_t) nbytes);
 
-			string path;
-			GLib.IOStream iostream;
-			try {
-				var file = GLib.File.new_tmp("gsr-shape-XXXXXX", out iostream);
-				path = file.get_path();
-				size_t written;
-				iostream.output_stream.write_all(pixels, out written);
-				iostream.close();
-			} catch (GLib.Error e) {
-				request.connection.reply_error(request,
-					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e);
-				return;
-			}
-			var fd = Posix.open(path, Posix.O_RDONLY);
-			GLib.FileUtils.unlink(path);
-			if (fd < 0) {
+			var fd = memfd_create("gsr-shape", 1);
+			if (fd < 0 || Posix.write(fd, pixels, nbytes) != nbytes) {
+				if (fd >= 0) {
+					Posix.close(fd);
+				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 				});
 				return;
 			}
+			Posix.lseek(fd, 0, Posix.SEEK_SET);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("iii", img.get_width(), height, stride),

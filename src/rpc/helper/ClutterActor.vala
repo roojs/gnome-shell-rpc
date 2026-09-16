@@ -91,6 +91,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			if (hook == null) {
 				base.get_preferred_height(
 					for_width, out min_height_p, out natural_height_p);
+				GLib.debug("preferred-height base type=%s for=%g min=%g nat=%g",
+					this.client_type_name != null ? this.client_type_name : "?",
+					for_width, min_height_p, natural_height_p);
 				return;
 			}
 			if (LayoutHooks.measure_height(
@@ -103,6 +106,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			base.get_preferred_height(
 				for_width, out min_height_p, out natural_height_p);
 			this.vfuncs = saved;
+			GLib.debug("preferred-height fallthrough type=%s for=%g min=%g nat=%g",
+				this.client_type_name != null ? this.client_type_name : "?",
+				for_width, min_height_p, natural_height_p);
 		}
 
 		public override void allocate(Clutter.ActorBox box)

@@ -216,3 +216,29 @@ executable('call-poll-buffer-fd-gate',
   install: false,
 )
 
+# call_poll cannot send Live.Buffer with Request (ImageContent.set_data).
+executable('request-buffer-gate',
+  [
+    'request-buffer-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args + ['--pkg=posix'],
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+# IconTheme.get_icon_sizes — Bytes/ay int32 slab (not Variant ai).
+executable('icon-sizes-ay-gate',
+  ['icon-sizes-ay-gate.vala'],
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+

@@ -86,6 +86,13 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			min_height_p = (float) args.get(0).get_double();
 			nat_height_p = (float) args.get(1).get_double();
+			var helper = container as Actor;
+			GLib.debug("lm-preferred-height type=%s name=%s scale_y=%g min=%g nat=%g for=%g",
+				helper != null && helper.client_type_name != null
+					? helper.client_type_name : container.get_type().name(),
+				container.name != null ? container.name : "?",
+				container.scale_y,
+				min_height_p, nat_height_p, for_width);
 		}
 
 		public override void allocate(

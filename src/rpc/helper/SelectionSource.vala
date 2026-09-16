@@ -9,6 +9,9 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class SelectionSource : GLib.Object
 	{
+		[CCode (cname = "memfd_create", cheader_filename = "sys/mman.h")]
+		private static extern int memfd_create(string name, uint flags);
+
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
@@ -61,28 +64,18 @@ namespace GnomeShellRpc.Rpc.Helper
 				}
 				var bytes = mem.steal_as_bytes();
 				var data = bytes.get_data();
-				string path;
-				GLib.IOStream iostream;
-				try {
-					var file = GLib.File.new_tmp("gsr-selsrc-XXXXXX", out iostream);
-					path = file.get_path();
-					size_t written;
-					iostream.output_stream.write_all(data, out written);
-					iostream.close();
-				} catch (GLib.Error e) {
-					request.connection.reply_error(request,
-						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e);
-					return;
-				}
-				var fd = Posix.open(path, Posix.O_RDONLY);
-				GLib.FileUtils.unlink(path);
-				if (fd < 0) {
+				var fd = memfd_create("gsr-selsrc", 1);
+				if (fd < 0 || Posix.write(fd, data, data.length) != data.length) {
+					if (fd >= 0) {
+						Posix.close(fd);
+					}
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						args = OLLMrpc.args("b", false),
 					});
 					return;
 				}
+				Posix.lseek(fd, 0, Posix.SEEK_SET);
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					args = OLLMrpc.args("bx", true, (int64) data.length),

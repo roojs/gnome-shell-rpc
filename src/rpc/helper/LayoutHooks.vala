@@ -30,6 +30,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			min_width_p = (float) args.get(0).get_double();
 			natural_width_p = (float) args.get(1).get_double();
+			GLib.debug("preferred-width type=%s min=%g nat=%g",
+				actor.client_type_name != null ? actor.client_type_name : "?",
+				min_width_p, natural_width_p);
 			return true;
 		}
 
@@ -56,6 +59,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			min_height_p = (float) args.get(0).get_double();
 			natural_height_p = (float) args.get(1).get_double();
+			GLib.debug("preferred-height type=%s min=%g nat=%g",
+				actor.client_type_name != null ? actor.client_type_name : "?",
+				min_height_p, natural_height_p);
 			return true;
 		}
 
@@ -92,18 +98,6 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * {@code false} = fall through — caller returns false (propagate).
 		 * 🚫 Do not {@code base.event}: St.Widget parent class slot is NULL.
 		 */
-		/**
-		 * Emit style-changed hook (void). Client emits
-		 * {@code St.Widget::style-changed} for GJS connect handlers.
-		 */
-		public static void measure_style_changed(
-			OLLMrpc.Live.Hook hook,
-			Actor actor
-		) {
-			hook.emit(OLLMrpc.args("t",
-				hook.connection.export(actor)));
-		}
-
 		public static bool measure_event(
 			OLLMrpc.Live.Hook hook,
 			Actor actor,
@@ -129,6 +123,15 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			return hook.reply_args.get(0).type() == GLib.Type.BOOLEAN
 				&& hook.reply_args.get(0).get_boolean();
+		}
+
+		/**
+		 * Emit style-changed hook (void). Client emits
+		 * {@code St.Widget::style-changed} for GJS connect handlers.
+		 */
+		public static void measure_style_changed(OLLMrpc.Live.Hook hook, Actor actor) 
+		{
+			hook.emit(OLLMrpc.args("t",	hook.connection.export(actor)));
 		}
 	}
 }

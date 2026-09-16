@@ -57,19 +57,22 @@
 		public float y;
 		public uint32 button;
 		public uint32 state;
+		public uint32 keyval;
 
 		public Event.local(
 			EventType type,
 			float x,
 			float y,
 			uint32 button,
-			uint32 state = 0
+			uint32 state = 0,
+			uint32 keyval = 0
 		) {
 			this.event_type = type;
 			this.x = x;
 			this.y = y;
 			this.button = button;
 			this.state = state;
+			this.keyval = keyval;
 		}
 
 		public static Event from_local(
@@ -77,15 +80,17 @@
 			float x,
 			float y,
 			uint32 button,
-			uint32 state = 0
+			uint32 state = 0,
+			uint32 keyval = 0
 		) {
-			return new Event.local(type, x, y, button, state);
+			return new Event.local(type, x, y, button, state, keyval);
 		}
 
 		[CCode (cname = "clutter_event_copy")]
 		public Event copy() {
 			return new Event.local(
-				this.event_type, this.x, this.y, this.button, this.state);
+				this.event_type, this.x, this.y, this.button,
+				this.state, this.keyval);
 		}
 
 		[CCode (cname = "clutter_event_type")]
@@ -107,6 +112,11 @@
 		[CCode (cname = "clutter_event_get_state")]
 		public ModifierType get_state() {
 			return (ModifierType) this.state;
+		}
+
+		[CCode (cname = "clutter_event_get_key_symbol")]
+		public uint get_key_symbol() {
+			return this.keyval;
 		}
 	}
 

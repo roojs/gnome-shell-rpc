@@ -403,6 +403,16 @@ async function _initializeUI() {
                     const anim = ov.animationInProgress;
                     const cover = ov._coverPane;
                     log(`gsr-chrome: overview visible=${vis} _shown=${shown} animationInProgress=${anim} cover ${actorGeom(cover)}`);
+                    try {
+                        const controls = ov._overview?.controls ?? ov.controls;
+                        const adj = controls?._stateAdjustment;
+                        const state = adj?.value;
+                        const search = controls?._searchController ?? controls?._searchEntry;
+                        const appDisp = controls?._appDisplay;
+                        log(`gsr-chrome: overview-controls state=${state} searchMapped=${search?.mapped} searchVis=${search?.visible} appDisplayMapped=${appDisp?.mapped} appDisplayVis=${appDisp?.visible} appDisplay ${actorGeom(appDisp)}`);
+                    } catch (e2) {
+                        log(`gsr-chrome: overview-controls probe threw ${e2}`);
+                    }
                     if (vis || shown)
                         log('gsr-chrome: FAIL overview-still-showing');
                     else

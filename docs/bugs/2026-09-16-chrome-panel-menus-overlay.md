@@ -97,8 +97,8 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 
 | # | Surface | Observed | Stock |
 | - | ------- | -------- | ----- |
-| 1 | Workspace selectors (left) | ✔️ centred + hpadding (`buttonbox-hpadding-smoke` PASS; theme→`_natHPadding`) | Vertically centred; ~12px left pad |
-| 2 | Boot / desktop | Comes up in **overview / app search** (app-chooser) as if Super was pressed — user did not | Wallpaper + idle desktop; overview closed |
+| 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
+| 2 | Boot / desktop | **⏳ chasing** — stock GNOME **starts in overview** (search entry + dash via `runStartupAnimation` → `SHOWN`). User sees app-search overlay; nest also dies `mutter ec=133` ~9s (`preferred height: -12` → GLib fatal). | Stock: overview **shown** after startup (not idle wallpaper). Idle = user Esc / hide. |
 | 3 | Clock (dateMenu) | Click **opens** calendar menu | Same |
 | 4 | Clock menu | Calendar **nav broken**; **cannot close** the menu | Month nav works; click-out / Esc / re-click closes |
 | 5 | System menu (quickSettings) | Mostly laid out; volume icon present; volume block **size balked**; **cannot close** once open | Content-sized tiles; toggle / click-out closes |
