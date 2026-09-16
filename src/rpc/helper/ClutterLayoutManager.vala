@@ -60,7 +60,8 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			hook.emit(OLLMrpc.args("od", container, (double) for_height));
 			var args = hook.reply_args;
-			if (args.size < 2) {
+			if ((args.size == 1 && args.get(0).holds(typeof(OLLMrpc.Error)))
+					|| args.size < 2) {
 				return;
 			}
 			min_width_p = (float) args.get(0).get_double();
@@ -81,18 +82,27 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			hook.emit(OLLMrpc.args("od", container, (double) for_width));
 			var args = hook.reply_args;
-			if (args.size < 2) {
+			if ((args.size == 1 && args.get(0).holds(typeof(OLLMrpc.Error)))
+					|| args.size < 2) {
 				return;
 			}
 			min_height_p = (float) args.get(0).get_double();
 			nat_height_p = (float) args.get(1).get_double();
 			var helper = container as Actor;
-			GLib.debug("lm-preferred-height type=%s name=%s scale_y=%g min=%g nat=%g for=%g",
+			var parent = container.get_parent();
+			GLib.debug("lm-preferred-height type=%s name=%s scale_y=%g min=%g nat=%g for=%g visible=%s mapped=%s parent=%s parent_visible=%s parent_mapped=%s",
 				helper != null && helper.client_type_name != null
 					? helper.client_type_name : container.get_type().name(),
 				container.name != null ? container.name : "?",
 				container.scale_y,
-				min_height_p, nat_height_p, for_width);
+				min_height_p, nat_height_p, for_width,
+				container.visible ? "1" : "0",
+				container.is_mapped() ? "1" : "0",
+				parent != null
+					? (parent.name != null ? parent.name : parent.get_type().name())
+					: "-",
+				parent != null && parent.visible ? "1" : "0",
+				parent != null && parent.is_mapped() ? "1" : "0");
 		}
 
 		public override void allocate(

@@ -627,12 +627,31 @@ async function _initializeUI() {
 
             const dateBtn = tryProgrammaticOpen('dateMenu');
             let sysBtn = null;
-            if (panel.statusArea?.quickSettings)
-                sysBtn = tryProgrammaticOpen('quickSettings');
-            else if (panel.statusArea?.aggregateMenu)
+            /*
+             * Do not open QuickSettings while _setupIndicators is still
+             * filling the grid. Empty grid + theme row-spacing → preferred
+             * height -12 → ClutterBoxLayout g_error (mutter ec=133). See
+             * quicksettings-layout-neg-smoke / chrome bug § Boot death.
+             */
+            const qsReady = () => {
+                const qs = panel.statusArea?.quickSettings;
+                if (!qs)
+                    return false;
+                const grid = qs.menu?._grid;
+                const n = grid?.get_n_children?.() ?? 0;
+                /* placeholder only → n===1; wait for at least one item. */
+                return n > 1;
+            };
+            if (panel.statusArea?.quickSettings) {
+                if (qsReady())
+                    sysBtn = tryProgrammaticOpen('quickSettings');
+                else
+                    log('gsr-chrome: skip quickSettings-open (grid empty / indicators pending)');
+            } else if (panel.statusArea?.aggregateMenu) {
                 sysBtn = tryProgrammaticOpen('aggregateMenu');
-            else
+            } else {
                 log('gsr-chrome: FAIL no-system-menu-role');
+            }
 
             /* §2 click path — seat pointer_click at source centre (not fire_button_press). */
             const tryPointerClick = (role, btn) => {
@@ -667,7 +686,11 @@ async function _initializeUI() {
             };
 
             tryPointerClick('dateMenu', dateBtn);
-            tryPointerClick('quickSettings', sysBtn);
+            if (sysBtn && qsReady())
+                tryPointerClick('quickSettings', sysBtn);
+            else if (panel.statusArea?.quickSettings && !qsReady())
+                log('gsr-chrome: skip quickSettings-click (grid empty / indicators pending)');
+
 
             log(`gsr-chrome: ${tag} probe-done`);
         } catch (e) {

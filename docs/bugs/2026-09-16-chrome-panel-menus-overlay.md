@@ -98,7 +98,7 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | # | Surface | Observed | Stock |
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
-| 2 | Boot / desktop | **⏳ chasing** — stock GNOME **starts in overview** (search entry + dash via `runStartupAnimation` → `SHOWN`). User sees app-search overlay; nest also dies `mutter ec=133` ~9s (`preferred height: -12` → GLib fatal). | Stock: overview **shown** after startup (not idle wallpaper). Idle = user Esc / hide. |
+| 2 | Boot / desktop | **⏳** overview stuck + QS `-12` (todo: Helper measure guard + child-set vs lifecycle). **🚫** JS override / `LiveCallback` sniff. | Overview shown after startup; idle = Esc. |
 | 3 | Clock (dateMenu) | Click **opens** calendar menu | Same |
 | 4 | Clock menu | Calendar **nav broken**; **cannot close** the menu | Month nav works; click-out / Esc / re-click closes |
 | 5 | System menu (quickSettings) | Mostly laid out; volume icon present; volume block **size balked**; **cannot close** once open | Content-sized tiles; toggle / click-out closes |
@@ -120,10 +120,43 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 only until `QuickSettings._setupIndicators` finishes. Score `delayed15s` +
 user live, not early/later.
 
-**Next allowed step:** **§2 overview stuck open** after startup
-(`FAIL overview-still-showing` / app search without Super). Then menu
-**close** path (clock + QS) and calendar nav. Prove-first smoke, then
-minimal fix. **🚫** layout.js ship hacks.
+**Paused (2026-09-17).** Resume at the list below. **🚫** vendor `js/` /
+`GI_RPC_JS_OVERRIDE_DIR` production fix for QSLayout. **🚫** sniffing preferred
+sizes inside `RPC-Live-Callback.reply` (wrong layer — reverted).
+
+### QS preferred `-12` (2026-09-17)
+
+| Fact | Evidence |
+| --- | --- |
+| Client measure | stock `spacing = (rows.length - 1) * row_spacing`; empty rows + spacing 12 → **-12** |
+| Gate | `GI_META_SMOKE=quicksettings-layout-neg-smoke` → **FAIL** `min=-12 nat=-12` (client formula) |
+| Mutter death | `ClutterBoxLayout` `g_error` when that value reaches **allocate** on a mapped child → **ec=133** |
+| **🚫** | JS override / `Math.max` in stock `quickSettings.js` |
+| **🚫** | `LiveCallback.reply` validating every two-double reply (wrong layer) |
+
+**Working assumption (to prove or kill):** we differ from stock — either
+**wrong lifecycle** (map / show / `layout_changed` / parent allocate of the QS
+grid while it should stay unmapped) or **wrong child set** (Helper / client
+walk sees only placeholder when stock would already have item rows). Do **not**
+treat “stock race + we are slower” as the answer.
+
+### Todo (resume here)
+
+1. **Server preferred-size guard** — at the Helper preferred-width/height
+   boundary (after Hook reply, before Clutter outs): if `min < 0` or
+   `nat < min`, **do not** feed Clutter; **throw / `reply_error` back to the
+   client** so mutter stays up. Not warn-and-clamp. Not `LiveCallback.reply`
+   type-sniffing. Pick the layer that owns measure (Helper LM / Actor
+   preferred), not the generic callback demux.
+2. **Our delta vs stock** — at the `-12` hit, same log line:
+   - **Child set** — Helper sibling walk vs client `menu._grid` child count /
+     items. Client has rows, Helper only placeholder → parenting MISS.
+   - **Lifecycle** — who mapped/opened QS `StBoxLayout` / menu. We map or
+     force allocate while stock keeps closed menu unmapped → lifecycle MISS.
+3. Then **§2 overview** / menu close / calendar.
+
+Probe already skips early QS open while `grid` children ≤ 1 — one self-kill
+path only; does **not** close (1)–(2).
 
 ### Prove stay-up (expect timeout, not 133)
 

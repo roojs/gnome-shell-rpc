@@ -44,9 +44,11 @@
 			this.get_preferred_height_vfunc(container,
 				(float) call.args.get(1).get_double(),
 				out min, out nat);
-			GLib.debug("lm-relay preferred-height type=%s min=%g nat=%g for=%g",
+			GLib.debug("lm-relay preferred-height type=%s min=%g nat=%g for=%g container=%s visible=%s",
 				this.get_type().name(), min, nat,
-				call.args.get(1).get_double());
+				call.args.get(1).get_double(),
+				container.name != null ? container.name : container.get_type().name(),
+				container.visible ? "1" : "0");
 			return OLLMrpc.args("dd", (double) min, (double) nat);
 		});
 	}
