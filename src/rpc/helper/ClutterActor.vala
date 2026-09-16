@@ -146,16 +146,11 @@ namespace GnomeShellRpc.Rpc.Helper
 		/**
 		 * ''Helper-Actor.add_hook'' — bind one named vfunc hook on the lease.
 		 */
-		public void add_hook(
-			OLLMrpc.Request request,
-			string vfunc_name,
-			uint64 callback_id
-		) {
-			var peer = (Actor) request.connection.leases.get(
-				(int) request.lease_id);
+		public void add_hook(OLLMrpc.Request request,string vfunc_name, uint64 callback_id)
+		{
+			var peer = request.connection.leases.get((int) request.lease_id) as Actor;
 			if (peer == null
-					|| !request.connection.callbacks.has_key(
-						(int) callback_id)) {
+					|| !request.connection.callbacks.has_key((int) callback_id)) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;

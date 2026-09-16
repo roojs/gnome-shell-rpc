@@ -109,6 +109,16 @@ startup still never completes).
 
 ## Evidence (2026-09-16) — prove only
 
+### LayoutManager sketch applied (2026-09-16 later)
+
+| Gate | Result |
+| ---- | ------ |
+| `startup-allocate-smoke` **A** / **E** | **PASS** |
+| Nest cast `StViewport` → Helper.Actor | **gone** (soft `as` + `priv_helper_actor_peer` guard) |
+| Nest `gsr-chrome: waiting startingUp` | still ×N — moved past allocate into `_startupAnimationSession` |
+| New pin | **`clutter_actor_box_copy` undefined** — Vala exports `_dup`; stock GIR/GJS looks up `_copy`. Hits `layout.js` `findMonitorForActor` / `getWorkAreaForMonitor` during `_startupAnimationSession`. |
+| ActorBox.copy alias landed | **symbol present**; nest no longer throws that ERROR. **`_startingUp` still stuck** (probe still `waiting startingUp`; no `post-startup`). |
+
 ### Nest observe (`GI_RPC_JS_OVERRIDE_DIR=src/shell-js-probe`)
 
 - `layoutManager._startingUp` stays **true** for the whole prove window

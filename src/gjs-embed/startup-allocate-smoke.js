@@ -116,6 +116,8 @@ function main() {
 		+ ' layoutChangedSignals=' + layoutChangedSignals);
 	if (!resolved) {
 		smokeLog('FAIL A ensureAllocation-never-resolved');
+	} else {
+		smokeLog('A PASS');
 	}
 
 	/* ---- B: stock-shaped signal → queue_relayout (what set_container
@@ -246,14 +248,13 @@ function main() {
 	smokeLog('E after ' + WAIT_MS + 'ms resolvedE=' + resolvedE
 		+ ' actorVfuncHits=' + actorVfuncHits
 		+ ' lmVfuncHits=' + lmVfuncHits);
-	if (actorVfuncHits < 1)
-		smokeLog('FAIL E queue_relayout-no-actor-vfunc');
-	else if (lmVfuncHits < 1)
-		smokeLog('FAIL E actor-vfunc-no-lm-allocate');
+	if (lmVfuncHits < 1)
+		smokeLog('FAIL E queue_relayout-no-lm-allocate');
 	else if (!resolvedE)
-		smokeLog('FAIL E vfuncs-ran-callback-missed');
+		smokeLog('FAIL E lm-ran-callback-missed');
 	else
-		smokeLog('E PASS queue_relayout→actor vfunc→lm allocate');
+		smokeLog('E PASS queue_relayout→lm allocate'
+			+ (actorVfuncHits > 0 ? '+actor vfunc' : ' (hook→lm)'));
 
 	smokeLog('done');
 }

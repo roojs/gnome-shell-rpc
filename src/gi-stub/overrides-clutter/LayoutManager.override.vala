@@ -8,6 +8,7 @@
 	 * export that symbol under a different Vala name for GJS.
 	 */
 	private static Quark child_meta_quark;
+	private weak Actor? priv_container;
 
 	static construct {
 		child_meta_quark = Quark.from_string(
@@ -18,12 +19,16 @@
 	public void layout_changed_invoke()
 	{
 		this.layout_changed();
+		if (this.rpc_lid == 0 && this.priv_container != null) {
+			this.priv_container.queue_relayout();
+		}
 	}
 
 	/**
 	 * Base {@code allocate} / measure Class slots are the RPC wrappers.
-	 * GJS overrides {@code *_vfunc}. {@code rpc_lid == 0} here is chain-up
-	 * from JS ({@code super.allocate}) — no lease, no RPC.
+	 * GJS overrides {@code *_vfunc}. {@code rpc_lid == 0} measure = chain-up
+	 * zeros; {@code allocate} dispatches {@code allocate_vfunc} (GJS
+	 * {@code lm.allocate()} / allocate Hook).
 	 */
 	public virtual void get_preferred_width(
 		Actor container,
@@ -64,6 +69,7 @@
 	public virtual void allocate(Actor container, ActorBox allocation)
 	{
 		if (this.rpc_lid == 0) {
+			this.allocate_vfunc(container, allocation);
 			return;
 		}
 		GLib.Bytes allocation_bytes;
@@ -78,6 +84,7 @@
 	public virtual void set_container(Actor? container)
 	{
 		if (this.rpc_lid == 0) {
+			this.priv_container = container;
 			return;
 		}
 		GnomeShellRpc.call_value(

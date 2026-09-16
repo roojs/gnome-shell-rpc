@@ -1,7 +1,18 @@
 		/**
 		 * Local geometry helpers — {@code ActorBox} is a client-side struct
 		 * (no {@code rpc_lid}). Deny generated error stubs; field math only.
+		 *
+		 * Vala GBoxed auto-emits {@code clutter_actor_box_dup}; stock GIR/GJS
+		 * looks up {@code clutter_actor_box_copy} (same body).
 		 */
+		[CCode (cname = "clutter_actor_box_copy")]
+		public void* copy()
+		{
+			var out = (ActorBox*) GLib.malloc(sizeof(ActorBox));
+			*out = this;
+			return out;
+		}
+
 		public void init_rect(float x, float y, float width, float height)
 		{
 			this.x1 = x;
