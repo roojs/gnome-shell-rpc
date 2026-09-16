@@ -6,6 +6,7 @@ BIN=./build/tests/call-sync-repro/call-sync-repro
 GATE=./build/tests/call-sync-repro/after-reply-gate
 BUF=./build/tests/call-sync-repro/buffer-invoke-gate
 GVAL=./build/tests/call-sync-repro/gvalue-omit-gate
+GVAL_IN=./build/tests/call-sync-repro/gvalue-in-gate
 
 timeout 3 $BIN idle        # FAIL — Idle(default) reply
 timeout 3 $BIN opc-head    # FAIL — OPC head-only send (fixed upstream)
@@ -16,6 +17,7 @@ timeout 3 $BIN child       # PASS — child GI + reenter
 timeout 5 $GATE            # Response then Hook.emit B same turn (after emit A)
 timeout 5 $BUF             # Response then Hook.emit, no prior emit A
 timeout 5 $GVAL            # Gi get_property omit — PASS after OPC FIXED
+timeout 5 $GVAL_IN         # Gi set_property GValue IN — shape for set_to
 GATE_PROXY=./build/tests/call-sync-repro/proxy-reuse-gate
 timeout 5 $GATE_PROXY      # live decode identity — PASS after OPC FIXED
 GATE_FFI_O=./build/tests/call-sync-repro/ffi-o-lease-gate
@@ -60,6 +62,19 @@ server `type id '0'` CRITICAL.
 
 → Archived: [`docs/bugs/done/2026-09-13-gi-gvalue-omit-invalid-critical.md`](../../docs/bugs/done/2026-09-13-gi-gvalue-omit-invalid-critical.md).
 PASS → chase consumer (post-READY SIGSEGV).
+
+## gvalue-in-gate
+
+Shape: lease `Gio.SimpleAction` → `set_property("enabled", Value(bool))`
+via `OLLMrpc.args("sb",…)` **and** explicit `ArrayList.add(Value)` →
+`get_property` round-trip. No Clutter / stubs / generator.
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-16 | **PASS** — OPC GValue IN shape OK |
+
+PASS → undeny `Transition.set_to*` + generator: not `ay` memcpy; pack
+Value into `call_value` args. FAIL → OPC only.
 
 ## proxy-reuse-gate
 

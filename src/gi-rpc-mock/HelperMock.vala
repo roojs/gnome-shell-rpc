@@ -236,6 +236,13 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
+				case "Helper-Transition":
+					if (name == "set_relay_value") {
+						this.reply_void(request);
+						return true;
+					}
+					break;
+
 				case "St-FocusManager":
 					if (name == "get_for_stage") {
 						this.reply_retval_leased(request, boot.focus_manager);

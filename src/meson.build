@@ -41,6 +41,7 @@ compositor_sources = files(
   'rpc/helper/InvertLightnessEffect.vala',
   'rpc/helper/ClutterThreads.vala',
   'rpc/helper/Clutter.vala',
+  'rpc/helper/Transition.vala',
   'rpc/helper/Constraint.vala',
   'rpc/helper/St.vala',
   'rpc/helper/ThemeContext.vala',

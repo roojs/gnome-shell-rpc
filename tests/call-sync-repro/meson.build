@@ -59,6 +59,52 @@ executable('gvalue-omit-gate',
   install: false,
 )
 
+# GValue* IN: append held Value to args (not ay memcpy of GValue struct).
+executable('gvalue-in-gate',
+  [
+    'gvalue-in-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [
+    ocrpc_dep,
+    dependency('gio-unix-2.0'),
+    dependency('gobject-introspection-1.0'),
+  ],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+# Clutter.Interval.set_final_value(GValue*) over Gi — external prove for set_to.
+executable('clutter-interval-gvalue-gate',
+  [
+    'clutter-interval-gvalue-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [
+    ocrpc_dep,
+    dependency('gio-unix-2.0'),
+    dependency('gobject-introspection-1.0'),
+    dependency('mutter-clutter-16'),
+  ],
+  vala_args: ocrpc_vala_args + [
+    '--pkg=mutter-clutter-16',
+    '--vapidir', meson.project_build_root() / 'vapi',
+  ],
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath + ':/usr/lib/x86_64-linux-gnu/mutter-16',
+  install: false,
+)
+
 # Live decode must reuse Client.proxies (object identity).
 executable('proxy-reuse-gate',
   [
