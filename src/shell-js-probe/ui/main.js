@@ -322,100 +322,222 @@ async function _initializeUI() {
         return GLib.SOURCE_REMOVE;
     });
 
-    /* DBG placement probe — runs after READY chrome exists */
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+    /* DBG chrome probe — observe only (bug 2026-09-16-chrome-panel-menus-overlay).
+     * Wait until layoutManager._startingUp clears so startup grey / ease finish. */
+    const chromeProbe = () => {
         try {
-            log('gsr-place: post-READY probe');
+            const lm = layoutManager;
+            if (lm && lm._startingUp) {
+                log('gsr-chrome: waiting startingUp');
+                return true; /* keep timeout */
+            }
+            log('gsr-chrome: post-startup probe');
             try {
-                const lm = layoutManager;
                 const n = lm.monitors ? lm.monitors.length : -1;
                 const pm = lm.primaryMonitor;
-                log(`gsr-place: monitors=${n} primaryIndex=${lm.primaryIndex} startingUp=${lm._startingUp}`);
+                log(`gsr-chrome: monitors=${n} primaryIndex=${lm.primaryIndex} startingUp=${lm._startingUp}`);
                 if (pm)
-                    log(`gsr-place: primaryMonitor @ ${pm.x},${pm.y} ${pm.width}x${pm.height}`);
+                    log(`gsr-chrome: primaryMonitor @ ${pm.x},${pm.y} ${pm.width}x${pm.height}`);
                 else
-                    log('gsr-place: primaryMonitor null');
+                    log('gsr-chrome: primaryMonitor null');
                 if (lm.panelBox) {
                     const [px, py] = lm.panelBox.get_transformed_position();
                     const [pw, ph] = lm.panelBox.get_transformed_size();
-                    log(`gsr-place: panelBox @ ${px.toFixed(0)},${py.toFixed(0)} ${pw.toFixed(0)}x${ph.toFixed(0)}`);
+                    log(`gsr-chrome: panelBox @ ${px.toFixed(0)},${py.toFixed(0)} ${pw.toFixed(0)}x${ph.toFixed(0)}`);
                 }
                 if (messageTray) {
                     const [tx, ty] = messageTray.get_transformed_position();
                     const [tw, th] = messageTray.get_transformed_size();
-                    const ncon = messageTray.get_n_constraints?.() ?? messageTray.constraints;
-                    log(`gsr-place: messageTray geom @ ${tx.toFixed(0)},${ty.toFixed(0)} ${tw.toFixed(0)}x${th.toFixed(0)}`);
+                    log(`gsr-chrome: messageTray geom @ ${tx.toFixed(0)},${ty.toFixed(0)} ${tw.toFixed(0)}x${th.toFixed(0)}`);
                 }
             } catch (e) {
-                log(`gsr-place: layoutManager probe threw ${e}`);
+                log(`gsr-chrome: layoutManager probe threw ${e}`);
             }
-            notify('gsr-place', 'banner placement probe');
-            if (panel) {
-                let st = null;
-                try { st = panel.get_style(); } catch (e) { st = `err:${e}`; }
-                log(`gsr-place: panel style=${st}`);
-                for (const [name, box] of [['left', panel._leftBox], ['center', panel._centerBox], ['right', panel._rightBox]]) {
-                    if (!box) continue;
-                    const [x, y] = box.get_transformed_position();
-                    const [w, h] = box.get_transformed_size();
-                    log(`gsr-place: panel-${name} @ ${x.toFixed(0)},${y.toFixed(0)} ${w.toFixed(0)}x${h.toFixed(0)}`);
-                    const kids = box.get_children();
-                    for (let i = 0; i < Math.min(kids.length, 8); i++) {
-                        const c = kids[i];
-                        const cls = c.get_style_class_name?.() ?? '';
-                        log(`gsr-place: panel-${name} child${i} type=${c.get_type?.()?.name ?? c.constructor?.name} class=${cls}`);
-                    }
-                }
-                /* DBG menus — log around open; geom after idle. */
-                try {
-                    const roles = panel.statusArea ? Object.keys(panel.statusArea) : [];
-                    log(`gsr-place: statusArea roles=${roles.join(',')}`);
-                    const dm = panel.statusArea?.dateMenu;
-                    if (!dm) {
-                        log('gsr-place: dateMenu missing');
-                    } else {
-                        log(`gsr-place: dateMenu present hasMenu=${!!dm.menu}`);
+
+            /* §3 overlay — overview / cover after startup. */
+            try {
+                const ov = overview;
+                if (!ov) {
+                    log('gsr-chrome: FAIL overview-null');
+                } else {
+                    const vis = ov.visible;
+                    const shown = ov._shown;
+                    const anim = ov.animationInProgress;
+                    const cover = ov._coverPane;
+                    let coverVis = 'n/a';
+                    let coverGeom = 'n/a';
+                    if (cover) {
+                        coverVis = String(cover.visible);
                         try {
-                            log('gsr-place: dateMenu open enter');
-                            dm.menu.open(0);
-                            log('gsr-place: dateMenu open returned');
+                            const [cx, cy] = cover.get_transformed_position();
+                            const [cw, ch] = cover.get_transformed_size();
+                            coverGeom = `${cx.toFixed(0)},${cy.toFixed(0)} ${cw.toFixed(0)}x${ch.toFixed(0)}`;
                         } catch (e) {
-                            log(`gsr-place: dateMenu open threw ${e}`);
+                            coverGeom = `err:${e}`;
                         }
-                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
-                            try {
-                                const bp = dm.menu._boxPointer;
-                                const [x, y] = bp.get_transformed_position();
-                                const [w, h] = bp.get_transformed_size();
-                                let pref = '?';
-                                try {
-                                    const ps = bp.get_preferred_size();
-                                    pref = Array.isArray(ps)
-                                        ? ps.map(v => Math.round(v)).join(',')
-                                        : String(ps);
-                                } catch (e) { pref = `err:${e}`; }
-                                log(`gsr-place: dateMenu open @ ${x.toFixed(0)},${y.toFixed(0)} ${w.toFixed(0)}x${h.toFixed(0)} preferred=${pref}`);
-                                const [sx, sy] = dm.get_transformed_position();
-                                const [sw, sh] = dm.get_transformed_size();
-                                log(`gsr-place: dateMenu source @ ${sx.toFixed(0)},${sy.toFixed(0)} ${sw.toFixed(0)}x${sh.toFixed(0)}`);
-                            } catch (e) {
-                                log(`gsr-place: dateMenu geom threw ${e}`);
-                            }
-                            try { dm.menu.close(0); } catch (e) {}
-                            return GLib.SOURCE_REMOVE;
-                        });
                     }
-                } catch (e) {
-                    log(`gsr-place: menu probe threw ${e}`);
+                    log(`gsr-chrome: overview visible=${vis} _shown=${shown} animationInProgress=${anim} cover.visible=${coverVis} cover@${coverGeom}`);
+                    if (vis || shown)
+                        log('gsr-chrome: FAIL overview-still-showing');
+                    else
+                        log('gsr-chrome: overview-idle-ok');
                 }
-            } else {
-                log('gsr-place: panel is null');
+            } catch (e) {
+                log(`gsr-chrome: overview probe threw ${e}`);
             }
+
+            if (!panel) {
+                log('gsr-chrome: FAIL panel-null');
+                log('gsr-chrome: probe-done');
+                return false;
+            }
+
+            const panelH = panel.height || 0;
+            log(`gsr-chrome: panel height=${panelH}`);
+
+            for (const [name, box] of [['left', panel._leftBox], ['center', panel._centerBox], ['right', panel._rightBox]]) {
+                if (!box)
+                    continue;
+                const [x, y] = box.get_transformed_position();
+                const [w, h] = box.get_transformed_size();
+                log(`gsr-chrome: panel-${name} @ ${x.toFixed(0)},${y.toFixed(0)} ${w.toFixed(0)}x${h.toFixed(0)}`);
+                const kids = box.get_children();
+                for (let i = 0; i < Math.min(kids.length, 8); i++) {
+                    const c = kids[i];
+                    const cls = c.get_style_class_name?.() ?? '';
+                    const [cx, cy] = c.get_transformed_position();
+                    const [cw, ch] = c.get_transformed_size();
+                    const mid = cy + ch / 2;
+                    const panelMid = y + h / 2;
+                    const dy = mid - panelMid;
+                    log(`gsr-chrome: panel-${name} child${i} class=${cls} @ ${cx.toFixed(0)},${cy.toFixed(0)} ${cw.toFixed(0)}x${ch.toFixed(0)} midDy=${dy.toFixed(1)}`);
+                    /* Descend one level — Activities / workspace switcher content. */
+                    try {
+                        const grand = c.get_children?.() ?? [];
+                        for (let j = 0; j < Math.min(grand.length, 6); j++) {
+                            const g = grand[j];
+                            const gcls = g.get_style_class_name?.() ?? '';
+                            const [gx, gy] = g.get_transformed_position();
+                            const [gw, gh] = g.get_transformed_size();
+                            const gdy = (gy + gh / 2) - panelMid;
+                            log(`gsr-chrome: panel-${name} child${i}.${j} class=${gcls} @ ${gx.toFixed(0)},${gy.toFixed(0)} ${gw.toFixed(0)}x${gh.toFixed(0)} midDy=${gdy.toFixed(1)}`);
+                            if (name === 'left' && Math.abs(gdy) > 2)
+                                log(`gsr-chrome: FAIL panel-left-not-centred child${i}.${j} midDy=${gdy.toFixed(1)}`);
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            const roles = panel.statusArea ? Object.keys(panel.statusArea) : [];
+            log(`gsr-chrome: statusArea roles=${roles.join(',')}`);
+
+            const stageW = global.screen_width || 800;
+
+            const tryProgrammaticOpen = (role) => {
+                const btn = panel.statusArea?.[role];
+                if (!btn) {
+                    log(`gsr-chrome: ${role} missing`);
+                    return null;
+                }
+                if (!btn.menu) {
+                    log(`gsr-chrome: FAIL ${role}-no-menu`);
+                    return null;
+                }
+                try {
+                    btn.menu.close(0);
+                } catch (e) {}
+                log(`gsr-chrome: ${role} present isOpen=${btn.menu.isOpen}`);
+                try {
+                    log(`gsr-chrome: ${role} open enter`);
+                    btn.menu.open(0);
+                    log(`gsr-chrome: ${role} open returned isOpen=${btn.menu.isOpen}`);
+                    if (!btn.menu.isOpen)
+                        log(`gsr-chrome: FAIL ${role}-not-open`);
+                    else
+                        log(`gsr-chrome: ${role}-open-ok`);
+                } catch (e) {
+                    log(`gsr-chrome: FAIL ${role}-open-threw ${e}`);
+                }
+                try {
+                    const bp = btn.menu._boxPointer;
+                    const [bx, by] = bp.get_transformed_position();
+                    const [bw, bh] = bp.get_transformed_size();
+                    let pref = '?';
+                    try {
+                        const ps = bp.get_preferred_size();
+                        pref = Array.isArray(ps)
+                            ? ps.map(v => Math.round(v)).join(',')
+                            : String(ps);
+                    } catch (e) {
+                        pref = `err:${e}`;
+                    }
+                    log(`gsr-chrome: ${role} boxPointer @ ${bx.toFixed(0)},${by.toFixed(0)} ${bw.toFixed(0)}x${bh.toFixed(0)} preferred=${pref} isOpen=${btn.menu.isOpen}`);
+                    /* dateMenu historically stage-sized — pin still broken. */
+                    if (role === 'dateMenu' && bw > stageW * 0.8)
+                        log(`gsr-chrome: FAIL ${role}-boxpointer-stage-sized w=${bw.toFixed(0)}`);
+                    const [sx, sy] = btn.get_transformed_position();
+                    const [sw, sh] = btn.get_transformed_size();
+                    log(`gsr-chrome: ${role} source @ ${sx.toFixed(0)},${sy.toFixed(0)} ${sw.toFixed(0)}x${sh.toFixed(0)}`);
+                } catch (e) {
+                    log(`gsr-chrome: ${role} geom threw ${e}`);
+                }
+                try {
+                    btn.menu.close(0);
+                } catch (e) {}
+                return btn;
+            };
+
+            const dateBtn = tryProgrammaticOpen('dateMenu');
+            let sysBtn = null;
+            if (panel.statusArea?.quickSettings)
+                sysBtn = tryProgrammaticOpen('quickSettings');
+            else if (panel.statusArea?.aggregateMenu)
+                sysBtn = tryProgrammaticOpen('aggregateMenu');
+            else
+                log('gsr-chrome: FAIL no-system-menu-role');
+
+            /* §2 click path — seat pointer_click at source centre (not fire_button_press). */
+            const tryPointerClick = (role, btn) => {
+                if (!btn?.menu)
+                    return;
+                try {
+                    btn.menu.close(0);
+                } catch (e) {}
+                const [sx, sy] = btn.get_transformed_position();
+                const [sw, sh] = btn.get_transformed_size();
+                const cx = sx + sw / 2;
+                const cy = sy + sh / 2;
+                log(`gsr-chrome: ${role} pointer_click @ ${cx.toFixed(0)},${cy.toFixed(0)} (before isOpen=${btn.menu.isOpen})`);
+                try {
+                    global.pointer_click(cx, cy);
+                } catch (e) {
+                    log(`gsr-chrome: FAIL ${role}-pointer_click-threw ${e}`);
+                    return;
+                }
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 400, () => {
+                    const open = btn.menu.isOpen;
+                    log(`gsr-chrome: ${role} after pointer_click isOpen=${open}`);
+                    if (!open)
+                        log(`gsr-chrome: FAIL ${role}-click-no-open`);
+                    else
+                        log(`gsr-chrome: ${role}-click-open-ok`);
+                    try {
+                        btn.menu.close(0);
+                    } catch (e) {}
+                    return GLib.SOURCE_REMOVE;
+                });
+            };
+
+            tryPointerClick('dateMenu', dateBtn);
+            tryPointerClick('quickSettings', sysBtn);
+
+            log('gsr-chrome: probe-scheduled-done');
         } catch (e) {
-            log(`gsr-place: post-READY threw ${e}`);
+            log(`gsr-chrome: post-startup threw ${e}`);
         }
-        return GLib.SOURCE_REMOVE;
-    });
+        return false;
+    };
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, chromeProbe);
 
     _startDate = new Date();
 

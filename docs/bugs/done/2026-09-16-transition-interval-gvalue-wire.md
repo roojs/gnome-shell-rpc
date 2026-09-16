@@ -1,9 +1,9 @@
 # Transition / Interval GValue wire — typed from/to relay
 
-**Status:** ⏳ code landed — nest ease also needs Interval mint (D1.8)  
+**Status:** ✔️ code archived — nest ease / grey → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
 **Hit:** 2026-09-15 — nest `ease` / `transition.set_to` after Animatable land  
 **Related:** [`2026-09-15-adjustment-animatable-startup-grey.md`](2026-09-15-adjustment-animatable-startup-grey.md) §2 ·
-[`2026-09-16-interval-value-type-mint.md`](2026-09-16-interval-value-type-mint.md) (D1.8)
+[`2026-09-16-interval-value-type-mint.md`](2026-09-16-interval-value-type-mint.md) (D1.8 ✔️)
 
 **Landed:** `Helper-Transition.set_relay_value` (`bsid`) +
 `Transition.override` thin `set_*_value` → `relay_value(is_to, value)`.
@@ -355,8 +355,6 @@ GI_META_SMOKE=adjustment-animatable-smoke GSR_WESTON_MODE=prove \
 
 ## Next
 
-1. Lock wire: `bsid` — `is_to` + kind + int + double.
-2. Transition override: thin `set_*_value` → local `relay_value(is_to, value)`.
-3. Helper: **one** `set_relay_value` — kind switch; `if (is_to)` stock.
-4. Nest ease; boxed via Bin register + table lookup later if needed.
-5. Tick adjustment bug §2 / plan D1.7 when ease paints.
+Wire + override + Helper **landed**. Nest ease / grey paint →
+[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md).
+Boxed via Bin later if needed.

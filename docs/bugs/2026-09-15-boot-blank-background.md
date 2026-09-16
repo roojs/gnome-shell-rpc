@@ -1,6 +1,6 @@
 # Nested boot blanks background — start with user extensions off
 
-**Status:** ⏳ debug — extensions-off is the first bisect step  
+**Status:** ⏳ parked — grey/overlay chase owns residual under [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md); keep this for extensions-off bisect only  
 **Hit:** 2026-09-15 — user: something blanks the background during boot  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -38,6 +38,7 @@ Ubuntu dock / DING) can still load — next bisect step if blank remains.
 
 ## Next
 
-1. Nest → no `get_runtime_state` TypeError; confirm blank / magic-button.
-2. If blank remains → mode extensions / wallpaper / coverPane.
-3. Only then stop installing the memory override to reintroduce user extensions.
+Parked behind
+[`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md).
+Revisit only if that chase shows the grey is **not** overview/cover and
+extensions-off still matters.

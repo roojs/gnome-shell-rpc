@@ -1,8 +1,8 @@
 # St.Adjustment missing Clutter.Animatable — startup grey + menus stick
 
-**Status:** ⏳ Animatable iface ✔️; set_to relay ✔️; Interval mint → D1.8  
+**Status:** ✔️ corridor archived (Animatable + D1.7 + D1.8 code) — residual grey/menus → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
 **Hit:** 2026-09-15 — ibus menu hangs / grey over background; position OK  
-**Plan:** [`1.0-run-to-end.md`](../plans/1.0-run-to-end.md) D1.7–D1.8
+**Plan:** [`1.0-run-to-end.md`](../../plans/1.0-run-to-end.md) D1.7–D1.8
 
 **Roles:** **consumer** `St.Adjustment` + **generator** GValue IN args
 
@@ -36,37 +36,29 @@ in `Adjustment.override` (GObject property defaults + `get_actor`).
 
 Smoke: `instanceof Animatable` + `find_property('value')` ✔️.
 
-### 2. GValue from/to on Transition (D1.7 — code landed)
+### 2. GValue from/to on Transition (D1.7 — ✔️)
 
 [`2026-09-16-transition-interval-gvalue-wire.md`](2026-09-16-transition-interval-gvalue-wire.md)
 
-### 3. Interval `value_type` mint (D1.8 — next for ease)
+### 3. Interval `value_type` mint (D1.8 — ✔️ smoke)
 
-[`2026-09-16-interval-value-type-mint.md`](2026-09-16-interval-value-type-mint.md) —
-same kind letters; Helper creates the compositor Interval. D1.7 alone
-does not mint it.
+[`2026-09-16-interval-value-type-mint.md`](2026-09-16-interval-value-type-mint.md)
+
+### Residual (moved)
+
+Nest ease / stuck grey / menus no longer open →
+[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md).
 
 ---
 
 ## Prove
 
 ```bash
-meson compile -C build gvalue-in-gate
-timeout 5 ./build/tests/call-sync-repro/gvalue-in-gate
-
 GI_META_SMOKE=adjustment-animatable-smoke GSR_WESTON_MODE=prove \
   ./scripts/weston-gsr-session.sh
 ```
 
 | Gate | Meaning |
 | --- | --- |
-| Animatable + find_property | §1 ✔️ |
-| nest ease / Adjustment value | after D1.7 + D1.8 (Interval mint) |
-
----
-
-## Next
-
-1. ~~D1.7 Transition relay~~ code ✔️
-2. Land D1.8 Interval mint
-3. Nest ease / clear grey
+| Animatable + find_property + Interval mint | ✔️ |
+| nest ease / clear grey | → chrome overlay bug |

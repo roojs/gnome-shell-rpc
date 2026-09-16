@@ -1,12 +1,12 @@
 # Clutter.Interval mint — value_type without shipping a GType
 
-**Status:** ✔️ code + smoke (Interval mint via type name; nest ease still open)  
+**Status:** ✔️ code + smoke archived — nest ease / grey → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
 **Hit:** 2026-09-16 — nest ease after Transition `set_relay_value` lands  
 **Related:**
 [`2026-09-16-transition-interval-gvalue-wire.md`](2026-09-16-transition-interval-gvalue-wire.md)
-(D1.7 — GValue from/to; **landed**) ·
+(D1.7 ✔️) ·
 [`2026-09-15-adjustment-animatable-startup-grey.md`](2026-09-15-adjustment-animatable-startup-grey.md)  
-**Plan:** [`1.0-run-to-end.md`](../plans/1.0-run-to-end.md) **D1.8**
+**Plan:** [`1.0-run-to-end.md`](../../plans/1.0-run-to-end.md) **D1.8**
 
 **Roles:** **Helper** Interval create-by-name + **client** Interval
 construct / `value_type` override · **not** generator GType wire ·
@@ -117,6 +117,5 @@ GI_META_SMOKE=adjustment-animatable-smoke GSR_WESTON_MODE=prove \
 
 ## Next
 
-1. Code as above (in progress).
-2. Smoke: Interval construct with `pspec.value_type`.
-3. Nest ease; tick D1.7/D1.8/adjustment.
+Code + smoke **landed**. Nest ease / grey →
+[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md).

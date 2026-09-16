@@ -1,7 +1,7 @@
 /**
  * Helper-Transition — typed from/to relay for stock set_to_value /
  * set_from_value (GValue not on the wire). See
- * docs/bugs/2026-09-16-transition-interval-gvalue-wire.md (1.0 D1.7).
+ * docs/bugs/done/2026-09-16-transition-interval-gvalue-wire.md (1.0 D1.7).
  */
 namespace GnomeShellRpc.Rpc.Helper
 {

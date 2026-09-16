@@ -4,7 +4,7 @@
 		 * before {@code start}.
 		 *
 		 * set_to_value / set_from_value: typed Helper-Transition.set_relay_value
-		 * (bsid) — see docs/bugs/2026-09-16-transition-interval-gvalue-wire.md.
+		 * (bsid) — see docs/bugs/done/2026-09-16-transition-interval-gvalue-wire.md.
 		 */
 		public void set_animatable(Animatable? animatable)
 		{

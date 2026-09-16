@@ -3,7 +3,7 @@
 		 * GJS: {@code new AlignConstraint({ name: 'align', … })}.
 		 * {@code enabled} must GParamSpec-default true (stock ActorMeta);
 		 * construct FALSE was syncing set_enabled(false) and skipping
-		 * update_allocation — see bugs/2026-09-15-chrome-placement.md.
+		 * update_allocation — see bugs/done/2026-09-15-chrome-placement.md.
 		 */
 		public string name { get; set construct; }
 		public bool enabled { get; set construct; default = true; }

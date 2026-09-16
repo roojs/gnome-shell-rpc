@@ -1,8 +1,8 @@
 # Notification / chrome placement wrong after layout CRITICAL fix
 
-**Status:** ⏳ allocate wipe ✔️ (smoke PASS); dateMenu **y** OK, size/`x` open  
+**Status:** ✔️ allocate path archived — open chrome → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
 **Hit:** 2026-09-15 — user: banners/menus not in the right place; panel bold  
-**Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
 **Roles:** **consumer** MessageTray / panel / BoxPointer allocate (client + Helper)
 
@@ -63,9 +63,12 @@ After §B: `dateMenu open @ 23,32 754×574` · source `@ 339,0 122×32`.
 (`754×600`); min `220×436` is closer to a real calendar.
 
 `_reposition` only `set_origin` — width/height come from parent allocate
-using natural preferred. Next: why BoxPointer natural preferred is
-stage-sized (theme `-arrow-*` / child measure / LM), **prove only**.
+using natural preferred.
 
+**2026-09-16:** menus/clock no longer open; panel centre + grey overlay
+also open. Chase continues under
+[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)
+(do not reopen size/`x` until menus toggle again).
 
 ---
 

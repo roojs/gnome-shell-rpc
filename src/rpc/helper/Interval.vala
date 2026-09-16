@@ -1,6 +1,6 @@
 /**
  * Helper-Interval — mint stock Interval from a type-name indicator
- * (no GType int on the wire). See docs/bugs/2026-09-16-interval-value-type-mint.md.
+ * (no GType int on the wire). See docs/bugs/done/2026-09-16-interval-value-type-mint.md.
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
