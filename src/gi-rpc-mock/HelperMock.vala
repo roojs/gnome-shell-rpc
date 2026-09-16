@@ -243,6 +243,13 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
+				case "Helper-Interval":
+					if (name == "create") {
+						this.reply_args_lease(request, "Clutter-Interval");
+						return true;
+					}
+					break;
+
 				case "St-FocusManager":
 					if (name == "get_for_stage") {
 						this.reply_retval_leased(request, boot.focus_manager);

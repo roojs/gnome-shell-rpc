@@ -134,6 +134,13 @@ Transition.set_from
 Transition.set_to_value
 Transition.set_from_value
 
+# Interval.override — Helper-Interval.create (kind letter); local value_type.
+# See bugs/2026-09-16-interval-value-type-mint.md (1.0 D1.8).
+Interval.with_values
+Interval.get_value_type
+Interval.set_initial
+Interval.set_final
+
 # LayoutManager.override — GJS subclasses (QuickSettingsLayout, …) are
 # client-owned; child meta / set_container stay local (no rpc_lid).
 # layout_changed: deny RPC method (name clash with GIR signal). C symbol for

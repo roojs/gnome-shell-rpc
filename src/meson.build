@@ -42,6 +42,7 @@ compositor_sources = files(
   'rpc/helper/ClutterThreads.vala',
   'rpc/helper/Clutter.vala',
   'rpc/helper/Transition.vala',
+  'rpc/helper/Interval.vala',
   'rpc/helper/Constraint.vala',
   'rpc/helper/St.vala',
   'rpc/helper/ThemeContext.vala',
@@ -432,6 +433,7 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/PaintContext.override.vala',
   'gi-stub/overrides-clutter/PaintNode.override.vala',
   'gi-stub/overrides-clutter/Transition.override.vala',
+  'gi-stub/overrides-clutter/Interval.override.vala',
 )
 clutter_generated = custom_target('Clutter_generated.vala',
   output: 'Clutter_generated.vala',

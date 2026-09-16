@@ -1,9 +1,9 @@
 # Transition / Interval GValue wire — typed from/to relay
 
-**Status:** ⏳ code landed — nest ease prove next  
+**Status:** ⏳ code landed — nest ease also needs Interval mint (D1.8)  
 **Hit:** 2026-09-15 — nest `ease` / `transition.set_to` after Animatable land  
-**Related:** [`2026-09-15-adjustment-animatable-startup-grey.md`](2026-09-15-adjustment-animatable-startup-grey.md) §2  
-**Plan:** [`1.0-run-to-end.md`](../plans/1.0-run-to-end.md) **D1.7** / Clutter TEMP `Transition.set_to*`
+**Related:** [`2026-09-15-adjustment-animatable-startup-grey.md`](2026-09-15-adjustment-animatable-startup-grey.md) §2 ·
+[`2026-09-16-interval-value-type-mint.md`](2026-09-16-interval-value-type-mint.md) (D1.8)
 
 **Landed:** `Helper-Transition.set_relay_value` (`bsid`) +
 `Transition.override` thin `set_*_value` → `relay_value(is_to, value)`.

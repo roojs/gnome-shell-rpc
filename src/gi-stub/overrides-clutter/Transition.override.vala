@@ -8,9 +8,7 @@
 		 */
 		public void set_animatable(Animatable? animatable)
 		{
-			GnomeShellRpc.call_value(
-				"Clutter-Transition.set_animatable",
-				this,
+			GnomeShellRpc.call_value("Clutter-Transition.set_animatable", this,
 				OLLMrpc.args("o", animatable));
 		}
 
@@ -67,11 +65,9 @@
 					d = value.get_double();
 					break;
 				default:
-					GLib.warning("Transition.relay_value: unsupported %s",
-						t.name());
+					GLib.warning("Transition.relay_value: unsupported %s", t.name());
 					return;
 			}
-			GnomeShellRpc.call_value(
-				"Helper-Transition.set_relay_value", this,
+			GnomeShellRpc.call_value("Helper-Transition.set_relay_value", this,
 				OLLMrpc.args("bsid", is_to, kind, i, d));
 		}

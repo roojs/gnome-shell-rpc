@@ -1,12 +1,8 @@
 /**
- * Smoke — St.Adjustment must be Clutter.Animatable (find_property / ease).
+ * Smoke — St.Adjustment Animatable + Interval mint (D1.7/D1.8 corridor).
  *
  *   GI_META_SMOKE=adjustment-animatable-smoke GSR_WESTON_MODE=prove \
  *     ./scripts/weston-gsr-session.sh
- *
- * Gates Animatable only. PropertyTransition / Interval / set_to stay
- * out until GValue IN + Interval construct have an isolated smoke
- * outside this tree (see bug §2).
  */
 
 imports.gi.versions.Meta = '16';
@@ -62,6 +58,28 @@ function main() {
 		return;
 	}
 	smokeLog(`find_property value ok type=${pspec.value_type}`);
+
+	let interval;
+	try {
+		interval = new Clutter.Interval({ value_type: pspec.value_type });
+	} catch (e) {
+		smokeLog(`FAIL: Interval construct threw ${e}`);
+		smokeLog('done');
+		return;
+	}
+	if (interval == null) {
+		smokeLog('FAIL: Interval construct returned null');
+		smokeLog('done');
+		return;
+	}
+	const got = interval.get_value_type();
+	smokeLog(`Interval value_type=${got}`);
+	if (got !== pspec.value_type) {
+		smokeLog('FAIL: Interval value_type mismatch');
+		smokeLog('done');
+		return;
+	}
+
 	smokeLog('PASS');
 	smokeLog('done');
 }

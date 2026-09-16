@@ -9,11 +9,8 @@ namespace GnomeShellRpc.Rpc.Helper
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Request.add_class(
-				"Helper-Transition", typeof(Transition),
-				"set_relay_value", "bsid",
-				null
-			);
+			OLLMrpc.Request.add_class("Helper-Transition", typeof(Transition),
+				"set_relay_value", "bsid", null);
 			OLLMrpc.Request.register_live(
 				"Helper-Transition", new Transition());
 		}
