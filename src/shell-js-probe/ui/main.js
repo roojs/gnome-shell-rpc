@@ -411,10 +411,52 @@ async function _initializeUI() {
                         const search = controls?._searchController ?? controls?._searchEntry;
                         const appDisp = controls?._appDisplay;
                         const showApps = controls?.dash?.showAppsButton?.checked;
+                        const entry = controls?._searchEntry;
+                        const results = search?._searchResults;
+                        const thumbs = controls?._thumbnailsBox;
+                        const workspaces = controls?._workspacesDisplay;
+                        const dash = controls?.dash;
+                        const entryBin = controls?._searchEntryBin;
+                        let nWs = -1;
+                        let dynWs = '?';
+                        try {
+                            nWs = global.workspace_manager?.n_workspaces ?? -1;
+                            dynWs = `${new Gio.Settings({schema_id: 'org.gnome.mutter'}).get_boolean('dynamic-workspaces')}`;
+                        } catch (e3) {
+                            dynWs = `err:${e3}`;
+                        }
                         /* 0=HIDDEN 1=WINDOW_PICKER 2=APP_GRID — stock boot ends ~1. */
-                        log(`gsr-chrome: overview-controls state=${state} showAppsChecked=${showApps} searchMapped=${search?.mapped} searchVis=${search?.visible} appDisplayMapped=${appDisp?.mapped} appDisplayVis=${appDisp?.visible} appDisplay ${actorGeom(appDisp)}`);
+                        log(`gsr-chrome: overview-controls state=${state} showAppsChecked=${showApps} searchMapped=${search?.mapped} searchVis=${search?.visible} searchActive=${search?.searchActive} entryText=${JSON.stringify(entry?.text ?? '')} resultsVis=${results?.visible} appDisplayMapped=${appDisp?.mapped} appDisplayVis=${appDisp?.visible} appDisplay ${actorGeom(appDisp)}`);
+                        log(`gsr-chrome: overview-entryBin ${actorGeom(entryBin)} dash ${actorGeom(dash)} nWorkspaces=${nWs} dynamic-workspaces=${dynWs}`);
+                        log(`gsr-chrome: overview-thumbs shouldShow=${thumbs?.shouldShow} vis=${thumbs?.visible} mapped=${thumbs?.mapped} n=${thumbs?.get_n_children?.() ?? -1} expand=${thumbs?._expandFraction} ${actorGeom(thumbs)}`);
+                        log(`gsr-chrome: overview-workspaces vis=${workspaces?.visible} mapped=${workspaces?.mapped} n=${workspaces?.get_n_children?.() ?? -1} ${actorGeom(workspaces)}`);
+                        try {
+                            const views = workspaces?._workspacesViews ?? [];
+                            for (let i = 0; i < Math.min(views.length, 3); i++) {
+                                const view = views[i];
+                                const wss = view?._workspaces ?? view?.get_children?.() ?? [];
+                                log(`gsr-chrome: overview-wsview${i} n=${wss.length} ${actorGeom(view)}`);
+                                for (let j = 0; j < Math.min(wss.length, 3); j++) {
+                                    const ws = wss[j];
+                                    const bg = ws?._background;
+                                    const ba = bg?._bgManager?.backgroundActor;
+                                    log(`gsr-chrome: overview-ws${i}.${j} ${actorGeom(ws)} bg ${actorGeom(bg)} bin ${actorGeom(bg?._bin)} group ${actorGeom(bg?._backgroundGroup)} actor ${actorGeom(ba)}`);
+                                }
+                            }
+                        } catch (e4) {
+                            log(`gsr-chrome: overview-wsview probe threw ${e4}`);
+                        }
                         if (state >= 1.5 || showApps)
                             log('gsr-chrome: FAIL overview-app-grid');
+                        if (search?.searchActive || search?.visible)
+                            log('gsr-chrome: FAIL overview-search-results-visible');
+                        if (state >= 0.5 && state < 1.5) {
+                            const [ww, wh] = workspaces?.get_transformed_size?.() ?? [0, 0];
+                            if (!workspaces || !workspaces.visible || !(ww > 8 && wh > 8))
+                                log('gsr-chrome: FAIL overview-workspaces-pane');
+                            if (thumbs?.shouldShow && !thumbs.visible)
+                                log('gsr-chrome: FAIL overview-thumbs-hidden');
+                        }
                     } catch (e2) {
                         log(`gsr-chrome: overview-controls probe threw ${e2}`);
                     }

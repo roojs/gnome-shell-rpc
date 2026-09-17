@@ -8,8 +8,9 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class LayoutManager : Clutter.LayoutManager
 	{
-		public Gee.HashMap<string, OLLMrpc.Live.Hook> vfuncs
-			= new Gee.HashMap<string, OLLMrpc.Live.Hook>();
+		public Gee.HashMap<int, OLLMrpc.Live.Hook> vfuncs {
+			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
+		}
 
 		public static void rpc_register()
 		{
@@ -17,23 +18,24 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request.add_class(
 				"Helper-LayoutManager", typeof(LayoutManager),
 				"create", "",
-				"add_hook", "st",
+				"add_hook", "it",
 				null);
 			OLLMrpc.Request.register_live("Helper-LayoutManager", helper);
+			LayoutManagerVfuncIds.register_vfunc_ids();
 		}
 
 		public void add_hook(
 			OLLMrpc.Request request,
-			string vfunc_name,
-			uint64 callback_id
+			int vfunc_id,
+			uint64 hook_id
 		) {
 			var peer = request.connection.leases.get((int) request.lease_id)
 				as LayoutManager;
-			if (peer == null || !request.connection.callbacks.has_key((int) callback_id)) {
+			if (peer == null || !request.connection.callbacks.has_key((int) hook_id)) {
 				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			peer.vfuncs.set(vfunc_name, request.connection.callbacks.get((int) callback_id));
+			peer.vfuncs.set(vfunc_id, request.connection.callbacks.get((int) hook_id));
 			request.reply(new OLLMrpc.Response());
 		}
 
@@ -54,10 +56,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		) {
 			min_width_p = 0.0f;
 			nat_width_p = 0.0f;
-			var hook = this.vfuncs.get("get_preferred_width");
-			if (hook == null) {
-				return;
-			}
+			var hook = this.vfuncs.get(LayoutManagerVfuncIds.get_preferred_width_id);
 			hook.emit(OLLMrpc.args("od", container, (double) for_height));
 			var args = hook.reply_args;
 			if ((args.size == 1 && args.get(0).holds(typeof(OLLMrpc.Error)))
@@ -76,10 +75,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		) {
 			min_height_p = 0.0f;
 			nat_height_p = 0.0f;
-			var hook = this.vfuncs.get("get_preferred_height");
-			if (hook == null) {
-				return;
-			}
+			var hook = this.vfuncs.get(LayoutManagerVfuncIds.get_preferred_height_id);
 			hook.emit(OLLMrpc.args("od", container, (double) for_width));
 			var args = hook.reply_args;
 			if ((args.size == 1 && args.get(0).holds(typeof(OLLMrpc.Error)))
@@ -109,10 +105,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			Clutter.Actor container,
 			Clutter.ActorBox allocation
 		) {
-			var hook = this.vfuncs.get("allocate");
-			if (hook == null) {
-				return;
-			}
+			var hook = this.vfuncs.get(LayoutManagerVfuncIds.allocate_id);
 			hook.emit(OLLMrpc.args("odddd", container,
 				(double) allocation.x1, (double) allocation.y1,
 				(double) allocation.x2, (double) allocation.y2));

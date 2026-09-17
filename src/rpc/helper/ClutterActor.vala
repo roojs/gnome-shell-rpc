@@ -1,14 +1,16 @@
 /**
- * Helper-Actor — GJS {@code St.Widget} subclass peer; name-keyed
- * {@link Actor.vfuncs}. Measure/allocate/event emit lives in
- * {@link LayoutHooks}.
+ * Helper-Actor — GJS {@code St.Widget} subclass peer; slot-keyed
+ * {@link Actor.vfuncs} ({@code vfunc_id}). Measure/allocate/event emit
+ * lives in {@link LayoutHooks}.
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
 	public class Actor : global::St.Widget
 	{
-		public Gee.HashMap<string, OLLMrpc.Live.Hook> vfuncs
-			= new Gee.HashMap<string, OLLMrpc.Live.Hook>();
+		public Gee.HashMap<int, OLLMrpc.Live.Hook> vfuncs {
+			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
+		}
+		static int style_changed_id;
 		public string? client_type_name;
 
 		public static void rpc_register()
@@ -17,7 +19,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request.add_class(
 				"Helper-Actor", typeof(Actor),
 				"create", "s",
-				"add_hook", "st",
+				"add_hook", "it",
 				"allocate_public", "ay",
 				"base_preferred_width", "d",
 				"base_preferred_height", "d",
@@ -26,22 +28,24 @@ namespace GnomeShellRpc.Rpc.Helper
 				"fire_key", "uu",
 				null);
 			OLLMrpc.Request.register_live("Helper-Actor", helper);
+			ActorVfuncIds.register_vfunc_ids();
+			style_changed_id = OLLMrpc.Gi.vfunc_offset("St", "Widget", "style_changed");
 		}
 
 		/**
-		 * ''Helper-Actor.add_hook'' — bind one named vfunc hook on the lease.
+		 * ''Helper-Actor.add_hook'' — bind one vfunc hook on the lease.
 		 */
-		public void add_hook(OLLMrpc.Request request,string vfunc_name, uint64 callback_id)
+		public void add_hook(OLLMrpc.Request request, int vfunc_id, uint64 hook_id)
 		{
 			var peer = request.connection.leases.get((int) request.lease_id) as Actor;
 			if (peer == null
-					|| !request.connection.callbacks.has_key((int) callback_id)) {
+					|| !request.connection.callbacks.has_key((int) hook_id)) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			peer.vfuncs.set(vfunc_name,
-				request.connection.callbacks.get((int) callback_id));
+			peer.vfuncs.set(vfunc_id,
+				request.connection.callbacks.get((int) hook_id));
 			request.reply(new OLLMrpc.Response());
 		}
 
@@ -64,7 +68,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_width_p,
 			out float natural_width_p
 		) {
-			var hook = this.vfuncs.get("get_preferred_width");
+			var hook = this.vfuncs.get(ActorVfuncIds.get_preferred_width_id);
 			if (hook == null) {
 				base.get_preferred_width(
 					for_height, out min_width_p, out natural_width_p);
@@ -76,7 +80,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var saved = this.vfuncs;
-			this.vfuncs = new Gee.HashMap<string, OLLMrpc.Live.Hook>();
+			this.vfuncs = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
 			base.get_preferred_width(
 				for_height, out min_width_p, out natural_width_p);
 			this.vfuncs = saved;
@@ -87,7 +91,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			out float min_height_p,
 			out float natural_height_p
 		) {
-			var hook = this.vfuncs.get("get_preferred_height");
+			var hook = this.vfuncs.get(ActorVfuncIds.get_preferred_height_id);
 			if (hook == null) {
 				base.get_preferred_height(
 					for_width, out min_height_p, out natural_height_p);
@@ -102,7 +106,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var saved = this.vfuncs;
-			this.vfuncs = new Gee.HashMap<string, OLLMrpc.Live.Hook>();
+			this.vfuncs = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
 			base.get_preferred_height(
 				for_width, out min_height_p, out natural_height_p);
 			this.vfuncs = saved;
@@ -113,7 +117,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public override void allocate(Clutter.ActorBox box)
 		{
-			var hook = this.vfuncs.get("allocate");
+			var hook = this.vfuncs.get(ActorVfuncIds.allocate_id);
 			if (hook == null) {
 				base.allocate(box);
 				return;
@@ -122,7 +126,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var saved = this.vfuncs;
-			this.vfuncs = new Gee.HashMap<string, OLLMrpc.Live.Hook>();
+			this.vfuncs = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
 			base.allocate(box);
 			this.vfuncs = saved;
 		}
@@ -160,7 +164,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			double for_height
 		) {
 			var saved = this.vfuncs;
-			this.vfuncs = new Gee.HashMap<string, OLLMrpc.Live.Hook>();
+			this.vfuncs = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
 			float min_width_p = 0.0f, natural_width_p = 0.0f;
 			if (this.get_stage() != null) {
 				base.get_preferred_width(
@@ -182,7 +186,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			double for_width
 		) {
 			var saved = this.vfuncs;
-			this.vfuncs = new Gee.HashMap<string, OLLMrpc.Live.Hook>();
+			this.vfuncs = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
 			float min_height_p = 0.0f, natural_height_p = 0.0f;
 			if (this.get_stage() != null) {
 				base.get_preferred_height(
@@ -198,10 +202,22 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public override bool event(Clutter.Event clutter_event)
 		{
-			var hook = this.vfuncs.get("event");
+			var hook = this.vfuncs.get(ActorVfuncIds.event_id);
 			if (hook == null) {
 				/* Parent ClutterActorClass.event is NULL on St.Widget —
 				 * Vala base.event would call through 0 (motion SIGSEGV). */
+				return false;
+			}
+			if (LayoutHooks.measure_event(hook, this, clutter_event)) {
+				return true;
+			}
+			return false;
+		}
+
+		public override bool captured_event(Clutter.Event clutter_event)
+		{
+			var hook = this.vfuncs.get(ActorVfuncIds.captured_event_id);
+			if (hook == null) {
 				return false;
 			}
 			if (LayoutHooks.measure_event(hook, this, clutter_event)) {
@@ -217,7 +233,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public override void style_changed()
 		{
-			var hook = this.vfuncs.get("style_changed");
+			var hook = this.vfuncs.get(style_changed_id);
 			if (hook != null) {
 				LayoutHooks.measure_style_changed(hook, this);
 			}
@@ -264,7 +280,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			var hook = actor.vfuncs.get("event");
+			var hook = actor.vfuncs.get(ActorVfuncIds.event_id);
 			if (hook == null) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);

@@ -53,7 +53,7 @@ fi
 # Phase B1/B2: GI_META_SMOKE=key-smoke → key-smoke: ok
 # Phase B3: GI_META_SMOKE=panel-click-smoke → panel-click-smoke: ok
 # Phase B4: GI_META_SMOKE=focus-smoke → focus-smoke: ok
-SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok|focus-smoke: ok|layout-allocate-smoke: done|constraint-allocate-smoke: done|actor-allocate-box-smoke: done|adjustment-animatable-smoke: done|startup-allocate-smoke: done|workspace-dot-align-smoke: done|transformed-geom-smoke: done|allocate-segv-smoke: done|interval-peek-smoke: done|st-temp-smoke: ok)'
+SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok|focus-smoke: ok|layout-allocate-smoke: done|constraint-allocate-smoke: done|actor-allocate-box-smoke: done|adjustment-animatable-smoke: done|startup-allocate-smoke: done|workspace-dot-align-smoke: done|transformed-geom-smoke: done|allocate-segv-smoke: done|interval-peek-smoke: done|st-temp-smoke: ok|captured-event-smoke: ok|workspace-background-allocate-smoke: done)'
 # When proving a smoke script, do not early-stop on A4 (init is not running).
 SMOKE_MODE=0
 if [[ -n "${GI_META_SMOKE:-}" && "${GI_META_SMOKE}" != "init" && "${GI_META_SMOKE}" != "init.js" ]]; then

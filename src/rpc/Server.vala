@@ -36,6 +36,12 @@ namespace GnomeShellRpc.Rpc
 			Rpc.Daemon.rpc_register();
 			Rpc.Bootstrap.rpc_register();
 
+			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
+			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
+			OLLMrpc.Gi.register("Meta", "16");
+			OLLMrpc.Gi.register("Clutter", "16");
+			OLLMrpc.Gi.register("St", "16");
+
 			Rpc.CancellableBridge.register();
 			Rpc.Helper.rpc_register();
 			Rpc.Helper.Settings.bind(display);
@@ -48,12 +54,6 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Request.register_live("Meta-Display", this.ui_display);
 			OLLMrpc.Request.register_live("Meta-Compositor",
 				new Ui.Compositor(display.get_compositor()));
-
-			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
-			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
-			OLLMrpc.Gi.register("Meta", "16");
-			OLLMrpc.Gi.register("Clutter", "16");
-			OLLMrpc.Gi.register("St", "16");
 			OLLMrpc.Bin.register_alias("Meta-Compositor", display.get_compositor().get_type());
 			OLLMrpc.Bin.register_alias("Meta-Context", display.get_context().get_type());
 			OLLMrpc.Bin.register_alias("Meta-Backend", display.get_context().get_backend().get_type());

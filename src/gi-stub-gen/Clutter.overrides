@@ -57,7 +57,14 @@ Actor.get_preferred_width vfunc_fallback=hand
 Actor.get_preferred_height vfunc_fallback=hand
 
 # Live.Hook registration — generator emits bind_vfunc calls; override defines relay_*.
+# helper=1: emit Helper ID statics + register_vfunc_ids() into --helper-out.
+Actor helper=1
 Actor.get_preferred_width  relay=1
 Actor.get_preferred_height relay=1
 Actor.allocate             relay=1
 Actor.event                relay=1
+Actor.captured_event       relay=1
+LayoutManager helper=1
+LayoutManager.get_preferred_width  relay=1
+LayoutManager.get_preferred_height relay=1
+LayoutManager.allocate             relay=1

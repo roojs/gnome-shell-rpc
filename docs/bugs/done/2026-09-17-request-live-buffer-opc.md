@@ -1,8 +1,8 @@
 # Request outbound `Live.Buffer` — OPC gap (D2.2)
 
-**Status:** ✔️ PASS — OPC installed; consumer Helper + gate **PASS** 2026-09-17  
+**Status:** ✅ closed 2026-09-17 — OPC installed; consumer Helper + gate **PASS**  
 **Hit:** 2026-09-17 `St.ImageContent.set_data`  
-**Plan:** [`1.0-run-to-end.md`](../plans/1.0-run-to-end.md) **D2.2**  
+**Plan:** [`1.0-run-to-end.md`](../../plans/1.0-run-to-end.md) **D2.2**  
 **Gate:** `tests/call-sync-repro/request-buffer-gate.vala` — **PASS** 2026-09-17  
 **Upstream:** [`OLLMchat/docs/bugs/done/2026-09-17-FIXED-request-live-buffer-outbound.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/done/2026-09-17-FIXED-request-live-buffer-outbound.md)
 

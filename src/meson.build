@@ -443,12 +443,30 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/Transition.override.vala',
   'gi-stub/overrides-clutter/Interval.override.vala',
 )
+# Two single-output emits — Meson 1.7 Vala cannot compile CustomTargetIndex
+# (clutter_generated[0] / [1]) as a source.
 clutter_generated = custom_target('Clutter_generated.vala',
   output: 'Clutter_generated.vala',
   command: [
     gi_stub_gen,
     '--out=@OUTPUT@',
     '--missing-out=' + meson.current_build_dir() / 'Clutter_generated.missing.md',
+    '--typelib-dir=' + mutter_typelib_dir,
+    '--deny-file=@INPUT0@',
+    '--overrides-file=@INPUT1@',
+    '--override-path=' + clutter_override_dir,
+    'emit', 'Clutter', '16',
+  ],
+  input: [clutter_deny_file, clutter_overrides_file] + clutter_override_files,
+  depends: [gi_stub_gen],
+  build_by_default: true,
+)
+clutter_helper_vfunc_ids = custom_target('Clutter_helper_vfunc_ids.vala',
+  output: 'Clutter_helper_vfunc_ids.vala',
+  command: [
+    gi_stub_gen,
+    '--out=' + meson.current_build_dir() / 'Clutter_generated_for_helper.vala',
+    '--helper-out=@OUTPUT@',
     '--typelib-dir=' + mutter_typelib_dir,
     '--deny-file=@INPUT0@',
     '--overrides-file=@INPUT1@',
@@ -1229,6 +1247,7 @@ endif
 
 mutter_rpc = executable('mutter-rpc',
   compositor_sources,
+  clutter_helper_vfunc_ids,
   files(meson.project_source_root() / 'vapi' / 'gsr-clutter-event-key.c'),
   rpc_config,
   dependencies: [

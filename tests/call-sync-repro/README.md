@@ -134,4 +134,4 @@ an inbound `Live.Buffer` on the **Request** (pixmap path for
 | 2026-09-17 | **PASS** after OPC FIXED + consumer `Request.buffer` |
 
 OPC: [`FIXED`](file:///home/alan/gitlive/OLLMchat/docs/bugs/done/2026-09-17-FIXED-request-live-buffer-outbound.md).
-Consumer: [`2026-09-17-request-live-buffer-opc.md`](../../docs/bugs/2026-09-17-request-live-buffer-opc.md).
+Consumer: [`2026-09-17-request-live-buffer-opc.md`](../../docs/bugs/done/2026-09-17-request-live-buffer-opc.md).

@@ -120,22 +120,33 @@ echo 'kernel.yama.ptrace_scope = 0' | sudo tee /etc/sysctl.d/10-ptrace.conf
 coredumps (`systemd-coredump`) if you do not want this session-wide.
 
 **GJS symbols:** Ubuntu 25.04 (plucky) has **no** `ddebs.ubuntu.com` suite
-(404). Do not add that repo — `apt update` will fail. Remove it:
+(404 on `dists/plucky/Release`; pool has no `libgjs0g-dbgsym` 1.82.1-1).
+Do not add that repo — `apt update` will fail. Remove it:
 
 ```bash
 sudo rm -f /etc/apt/sources.list.d/ddebs.sources
 ```
 
-Use debuginfod instead of a `-dbgsym` package:
+Install the matching `.ddeb` from Launchpad (must equal `dpkg -s libgjs0g`
+Version). For this host (`1.82.1-1` amd64):
 
 ```bash
-export DEBUGINFOD_URLS=https://debuginfod.ubuntu.com
-# ~/.gdbinit
-set debuginfod enabled on
+wget -O /tmp/libgjs0g-dbgsym_1.82.1-1_amd64.ddeb \
+  https://launchpadlibrarian.net/757604290/libgjs0g-dbgsym_1.82.1-1_amd64.ddeb
+sudo apt install /tmp/libgjs0g-dbgsym_1.82.1-1_amd64.ddeb
+# optional, names mozjs frames:
+wget -O /tmp/libmozjs-128-0-dbgsym_128.9.0-1_amd64.ddeb \
+  https://launchpadlibrarian.net/786138859/libmozjs-128-0-dbgsym_128.9.0-1_amd64.ddeb
+sudo apt install /tmp/libmozjs-128-0-dbgsym_128.9.0-1_amd64.ddeb
 ```
 
-gdb `-batch` answers **N** to the prompt unless that is set. Or install the
-`.ddeb` from Launchpad (`libgjs0g-dbgsym` 1.82.1-1) — it is not in apt.
+**debuginfod** (`DEBUGINFOD_URLS=https://debuginfod.ubuntu.com`) is the
+Jammy+ default, but gdb’s setting is **ask** and `-batch` answers **N**.
+`set debuginfod enabled on` in `~/.gdbinit` (or `-iex`) still left a
+**0-byte** `~/.cache/debuginfod_client/<build-id>/debuginfo` here — gdb
+then skips GJS names. Delete that empty file if it appears. Prefer the
+Launchpad `.ddeb` until a `info functions gjs_callback_closure` in gdb
+actually lists symbols.
 
 Do not wrap gdb until:
 

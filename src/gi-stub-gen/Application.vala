@@ -17,6 +17,7 @@ namespace GnomeShellRpc.GiStubGen
 		private static bool opt_debug_critical = false;
 		private static string opt_typelib_dir = "";
 		private static string opt_out = "";
+		private static string opt_helper_out = "";
 		private static string opt_outdir = "";
 		private static string opt_headers_config = "";
 		private static string opt_missing_out = "";
@@ -57,6 +58,8 @@ Examples:
 				"Directory of {Type}.override.vala client bodies", "DIR" },
 			{ "out", 0, 0, GLib.OptionArg.FILENAME, ref opt_out,
 				"Output Vala path (emit)", "FILE" },
+			{ "helper-out", 0, 0, GLib.OptionArg.FILENAME, ref opt_helper_out,
+				"Output Helper vfunc-id fragment (emit)", "FILE" },
 			{ "outdir", 0, 0, GLib.OptionArg.FILENAME, ref opt_outdir,
 				"Output include root (emit-headers); parent of subdir/", "DIR" },
 			{ "headers-config", 0, 0, GLib.OptionArg.FILENAME, ref opt_headers_config,
@@ -87,6 +90,7 @@ Examples:
 			Application.opt_debug_critical = false;
 			Application.opt_typelib_dir = "";
 			Application.opt_out = "";
+			Application.opt_helper_out = "";
 			Application.opt_outdir = "";
 			Application.opt_headers_config = "";
 			Application.opt_missing_out = "";
@@ -186,6 +190,7 @@ Examples:
 						overrides = overrides,
 						signal_prefer = signal_prefer,
 						missing_out_path = Application.opt_missing_out,
+						helper_out_path = Application.opt_helper_out,
 					};
 					gen.emit(ns, Application.opt_out);
 				} else {

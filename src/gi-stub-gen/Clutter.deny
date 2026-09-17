@@ -122,6 +122,10 @@ Actor.set_layout_manager
 # Transition::stopped so environment.js ease() onComplete can run.
 Actor.get_transition
 
+# Stage.override — Event is Compact / not wireable; pick at event coords
+# (captured-event-smoke / PopupMenuManager close).
+Stage.get_event_actor
+
 # Transition.override — Animatable iface args not wireable by generator.
 Transition.set_animatable
 Transition.get_animatable

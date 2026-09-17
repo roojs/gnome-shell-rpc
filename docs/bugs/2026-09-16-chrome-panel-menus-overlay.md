@@ -98,10 +98,10 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | # | Surface | Observed | Stock |
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
-| 2 | Boot / desktop | ✔️ overview ends WINDOW_PICKER (`state=1`) after `set_to` wire rename — stock boot. User Esc → idle. Was stuck `state=0` (−32601 on `set_to_value`). | Stock: WINDOW_PICKER after startup; Esc hides |
-| 3 | Clock (dateMenu) | Click **opens** calendar menu | Same |
-| 4 | Clock menu | Calendar **nav broken**; **cannot close**. Probe: `close(0)`/`toggle` OK; **pointer re-click leaves `isOpen=true`** (`after pointer_reclick`). | Month nav works; click-out / Esc / re-click closes |
-| 5 | System menu (quickSettings) | Mostly laid out; volume icon present; volume block **size balked**; **cannot close** once open | Content-sized tiles; toggle / click-out closes |
+| 2 | Boot / desktop | **~50%.** Search bar ✔️. Workspace-thumbnail row **missing**. Current-desktop pane / wallpaper **missing**. Esc → idle. See **Boot search**. | Search bar → workspace row → wallpaper pane (empty of windows at startup) |
+| 3 | Clock (dateMenu) | Click **opens**; re-click / click-out **hides** (user 2026-09-17) | Same |
+| 4 | Clock menu | **Open/close ✔️.** Buttons inside dead (month nav, events, …) — backlog | Month nav + items work |
+| 5 | System menu (quickSettings) | **Open/close ✔️.** Tiles / sliders / settings row dead — same backlog. Volume size later | Tiles click; sane size |
 | 6 | Geom (probe) | `messageTray` still odd; BoxPointer dateMenu ~stage-wide preferred | Finite tray; menu ~content |
 
 **Probe after settle (≥15s)** — aligns with user on open; click-close not asserted yet:
@@ -110,7 +110,7 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | --- | --- |
 | `startingUp=false` · indicators `n=16` · panel-right / QS finite | setup finished |
 | `dateMenu-click-open-ok` | matches user §3 open |
-| `FAIL overview-still-showing` | matches user §2 app-chooser / overview stuck |
+| `overview-shown-after-boot` · `state=1` | stock WINDOW_PICKER (was mis-scored as stuck chooser) |
 | `FAIL quickSettings-click-no-open` | probe click path; user can open QS by hand |
 | `FAIL dateMenu-boxpointer-stage-sized w=754` | wide popover (content sum) |
 | ~~`this._workarea is null`~~ | ✔️ `set_container` → `set_container_vfunc` |
@@ -120,10 +120,10 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 only until `QuickSettings._setupIndicators` finishes. Score `delayed15s` +
 user live, not early/later.
 
-**Resumed (2026-09-17).** Primary: **§4/§5 menu close** (clock + QS) +
-calendar nav. §2 overview wire rename landed (`state=1`). QS `-12`
-deferred. **🚫** ImageContent / unrelated TEMP while this chrome bar is open.
-**🚫** vendor `js/` production fix.
+**Resumed (2026-09-17).** Menu **open/close** ✔️ (user live). **Backlog:**
+no control inside any popdown works (user). Likely Compact Event coords
+(`0,0` / `222,1`) so inside clicks look like click-out / miss the child.
+QS `-12` later. Boot landing is stock WINDOW_PICKER but **content incomplete** (below). **🚫** ImageContent / vendor `js/`.
 
 ### §2 diagnosis (2026-09-17 — debug only, no fix yet)
 
@@ -137,6 +137,69 @@ deferred. **🚫** ImageContent / unrelated TEMP while this chrome bar is open.
 | Probe (host) | `/tmp/gi-find-method`: `find_method(set_to) → clutter_transition_set_to_value`; `find_method(set_to_value) → NULL`. Interval: `set_final` hits, `set_final_value` NULL. |
 | **Fix (2026-09-17)** | Wire rename only: `Clutter-Transition.set_to` / `set_from`, `Clutter-Interval.set_initial` / `set_final`, still `args("V")`. No Helper relay. |
 | Prove | nest `delayed15s`: `_shownState=SHOWN` · **`state=1`** (WINDOW_PICKER) · `showAppsChecked=false` · `Clutter-Transition.set_to` (no `-32601`). Was `state=0`. |
+
+### Boot search / “app chooser” (2026-09-17)
+
+**Why it shows:** not a miss. Nested session is stock **`user`**,
+`hasOverview: true`. `LayoutManager._startupAnimationSession` then
+`await Main.overview.runStartupAnimation()`:
+
+1. `Overview.runStartupAnimation` sets `_shown` / `_visible` and
+   `layoutManager.showOverview()`.
+2. `ControlsManager.runStartupAnimation` eases `_stateAdjustment`
+   **HIDDEN → WINDOW_PICKER** (`state=1`), `showAppsButton.checked=false`,
+   and **drops `_searchEntryBin` from the top** (“Type to search”).
+3. `SearchController` is constructed `visible: false`,
+   `searchActive=false`. App grid is visible only when `state > WINDOW_PICKER`.
+
+**Stock look (user, 2026-09-17)** — same stack on real nested Shell:
+
+```bash
+dbus-run-session -- gnome-shell --wayland --nested --sm-disable --mode=user
+```
+
+Top to bottom after boot:
+
+1. **Search bar** (“Type to search”).
+2. **Workspace row** — virtual-desktop thumbnails underneath the search bar.
+3. **Current desktop** — wallpaper with window thumbnails of running apps.
+   At startup that is usually **empty** (just the screen / wallpaper; no
+   windows yet). Dash still sits at the bottom.
+
+That is WINDOW_PICKER, not `SearchResultsView` and not the app grid
+(`APP_GRID` / `showApps`). Esc hides to idle (user). Wallpaper-only
+boot without this overview would be `overview.hide()` after startup — a
+**product deviation** from stock `user` JS. **🚫** vendor `js/` hide,
+Idle, layout.js.
+
+**User live (2026-09-17 ~15:49):** landing is **~50%**. Search bar is
+there. **Not** there: virtual-desktop thumbnail row
+(`ThumbnailsBox`) and the current-desktop / background pane
+(`WorkspacesDisplay` / `WorkspaceBackground`). Not a “hide after boot”
+fix.
+
+**delayed15s 15:51:16** — actors exist, wallpaper child was 0×0:
+
+| Actor | Geom |
+| ----- | ---- |
+| search entryBin | `215,0 370x55` |
+| thumbs | `shouldShow=true` mapped `305,62 190x30` (`nWorkspaces=4`, static) |
+| workspaces pane | mapped `0,97 800x395` · ws0 `121,97 557x395` |
+| `WorkspaceBackground` preferred | `min=0 nat=0` — stock C allocate missing |
+
+**Fix (2026-09-17):** owned `Shell.WorkspaceBackground.allocate_vfunc`
+matches stock `shell-workspace-background.c` (first child + grandchild).
+Gate: `GI_META_SMOKE=workspace-background-allocate-smoke` — was **FAIL**
+`inner=0x0`, now **PASS** `inner=800x400`. Re-score the big pane live.
+Thumbs at boot have **no** BackgroundManager (stock JS) — empty CSS
+frames until windows exist; if the row still looks absent after wallpaper
+lands, that is a separate paint/CSS miss.
+
+| Probe | Meaning |
+| ----- | ------- |
+| `delayed15s` 13:09:17 | `_shownState=SHOWN` · `state=1` · `showAppsChecked=false` · `searchVis=false` · `appDisplayVis=false` |
+| extra snap | `searchActive=false` · `entryText=""` · `resultsVis=true` is a **child** of hidden SearchController — not results on stage |
+| Early snaps (`state=0`, `overview-idle-ok`) | before `runStartupAnimation` sets `_shown` |
 
 ### QS preferred `-12` (DEFERRED — 2026-09-17)
 
@@ -158,18 +221,20 @@ until §2 moves.
 | Fact | Evidence |
 | --- | --- |
 | `menu.close(0)` / `toggle` after settle | **OK** — `isOpen=false`, BoxPointer hidden (+250ms) |
-| Pointer **re-click** dateMenu source | **FAIL** — `after pointer_reclick isOpen=true boxPointer.visible=true` |
-| QS pointer click-open | still often `isOpen=false` (probe); user can open by hand |
 | Stock close path | `PopupMenuManager._onCapturedEvent` → `get_event_actor` + `!actor.contains(target)` → `menu.close(FULL)` |
-
-**Next prove:** whether `global.stage.get_event_actor` / captured-event / grab sees the re-click. Not BoxPointer.ease (animated toggle already hides).
+| Gate | `GI_META_SMOKE=captured-event-smoke` → **ok** (`stop (smoke-ok)`). Was `sawCaptured=0`. |
+| Landed | Helper `captured_event` + always-hook (connect path, not only vfunc). `Stage.get_event_actor` local pick (`get_actor_at_pos` REACTIVE / key-focus). Event is Compact — not on the wire. |
+| Probe delayed15s | programmatic close/toggle still OK. Pointer **click-open** still often `FAIL *-click-no-open` (QS historically; dateMenu this run too). User live open still the score for open. |
+| Residual | Compact Event coords on the GJS `Event` are wrong (`0,0` / `222,1`) so `get_event_actor(event)` often returns the **stage**. That is enough for **close**. Inside-popdown clicks miss the child. |
+| **User (2026-09-17)** | Open/close **mostly done**. **Backlog:** none of the buttons on any popdown work. |
 
 ### Todo (resume here)
 
 1. ~~**§2 overview**~~ — ✔️ `set_to` wire; nest `state=1`.
-2. **Menu close** — pointer re-click / click-out (above). Prove `get_event_actor` / grab.
-3. **Calendar nav** — month prev/next.
-4. **Later:** QS volume / `-12`.
+2. ~~**Menu close**~~ — ✔️ `captured-event-smoke` **ok** + **user** hide-after-show.
+3. **WINDOW_PICKER content** — workspace wallpaper pane: allocate ✔️ (`workspace-background-allocate-smoke` PASS). Re-score live. Thumbs row still if user says missing.
+4. **Backlog — popdown buttons** — calendar, QS tiles, settings row, … (Event coords).
+5. **Later:** QS volume / `-12`.
 5. Soft: interval gate `final=0` — not chrome.
 
 
@@ -193,9 +258,9 @@ User live + settle probe (above). Historical one-liners:
 | # | Surface | Observed | Stock |
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors | ✔️ centred (`workspace-dot-align-smoke` **C**) | Centred on panel height |
-| 2 | Overview / app search | Stuck open after boot (as if Super) | Closed; wallpaper idle |
-| 3 | Clock | Opens on click; no close; calendar nav dead | Open/close + month nav |
-| 4 | System menu | Opens; layout rough (volume size); no close | Toggle close; sane tile size |
+| 2 | Overview / search entry | WINDOW_PICKER after boot; search bar only (~50%) | Search bar → workspace row → wallpaper pane |
+| 3 | Clock | Opens + closes ✔️; buttons inside dead | Open/close + month nav |
+| 4 | System menu | Opens + closes ✔️; tiles dead; volume size later | Toggle close; tiles click |
 | 5 | Geom | `messageTray` / BoxPointer still off | Finite allocation |
 
 Do **not** start at the `ensureAllocation` lock for §1/§2.
@@ -223,8 +288,7 @@ Do **not** start at the `ensureAllocation` lock for §1/§2.
    (`midDy=0`).
 6. **ButtonBox hpadding / `style-changed`** — ✔️ Helper override
    `style_changed` → client `Signal.emit` (`buttonbox-hpadding-smoke`
-   PASS). Residual: overview stuck / menu close / calendar nav /
-   QS volume size (see **Live chrome**).
+   PASS). Residual: popdown **buttons** (backlog) / QS volume.
 
 **🚫** Idle · vendor `js/` · client `layout_changed` → `queue_relayout` ·
 Actor allocate Hook as the LM · `rpc_lid` on the GJS LM · destroy
@@ -257,6 +321,14 @@ GI_META_SMOKE=buttonbox-hpadding-smoke GSR_WESTON_MODE=prove \
 GI_META_SMOKE=gjs-binlayout-super-smoke GSR_WESTON_MODE=prove \
   ./scripts/weston-gsr-session.sh
 # A/B/C PASS (super.vfunc BinLayout/BoxLayout not the BoxPointer miss)
+
+GI_META_SMOKE=captured-event-smoke GSR_WESTON_MODE=prove \
+  ./scripts/weston-gsr-session.sh
+# ok — grab + captured-event + !contains (PopupMenuManager close)
+
+GI_META_SMOKE=workspace-background-allocate-smoke GSR_WESTON_MODE=prove \
+  ./scripts/weston-gsr-session.sh
+# PASS inner=800x400 — stock WorkspaceBackground.allocate sizes wallpaper child
 ```
 
 Logs: `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`.  
@@ -286,8 +358,8 @@ first Bin ancestor is `Clutter-Actor` but `get_type() != Actor`. Chrome
 
 **Early probe lies:** empty QS / `startingUp=true` / panel-right `0x32`
 before `QuickSettings._setupIndicators` finishes (~10–15s). Use
-`delayed15s`. Residual: menus **do not close** (user); overview / app
-search **stuck**; QS volume size; calendar nav.
+`delayed15s`. Residual: popdown buttons (Event coords); QS volume;
+boot search = stock WINDOW_PICKER (not a miss).
 
 **BinLayout super (ruled out):** `gjs-binlayout-super-smoke` **A/B/C**
 PASS — not the stage-wide BoxPointer cause.
@@ -297,8 +369,7 @@ PASS — not the stage-wide BoxPointer cause.
 EOS / mutter ec=133.
 
 **Observe:** score `delayed15s` + user live. Wallpaper on
-`_backgroundGroup`. Programmatic `menu.open(0)` works; click-close and
-calendar nav not yet gated.
+`_backgroundGroup`. Menu open/close ✔️ (user). Popdown buttons backlog.
 
 **Not this chrome:** Interval / Transition / Animatable corridor already
 landed.

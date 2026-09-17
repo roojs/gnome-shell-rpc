@@ -91,8 +91,9 @@
 	void relay_attach()
 	{
 		/* event: GJS vfunc_event often matches StWidget Class.event at
-		 * attach — force-register (B3 panel path). */
-		string[] always = { "event" };
+		 * attach — force-register (B3 panel path). captured_event:
+		 * PopupMenuManager uses connect(), not a vfunc — same force. */
+		string[] always = { "event", "captured_event" };
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
 		var response = GnomeShellRpc.call_value("Helper-Actor.create", null,
@@ -101,21 +102,22 @@
 		this.helper_attached = true;
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
 		foreach (var name in overridden) {
-			var id = this.bind_vfunc(name);
-			if (id == 0) {
+			var vfunc_id = -1;
+			var hook_id = this.bind_vfunc(name, out vfunc_id);
+			if (hook_id == 0) {
 				continue;
 			}
 			GnomeShellRpc.call_value(
 				"Helper-Actor.add_hook", this,
-				OLLMrpc.args("st", name, id));
+				OLLMrpc.args("it", vfunc_id, hook_id));
 		}
-		/* St.Widget::style-changed — not a Clutter.Actor Class slot, so
-		 * VfuncRelay.overridden never names it. Always register. */
-		var style_id = this.relay_style_changed();
-		if (style_id != 0) {
+		/* St.Widget::style-changed — not a Clutter.Actor Class slot. */
+		var style_hook_id = this.relay_style_changed();
+		if (style_hook_id != 0) {
+			var style_vfunc_id = OLLMrpc.Gi.vfunc_offset("St", "Widget", "style_changed");
 			GnomeShellRpc.call_value(
 				"Helper-Actor.add_hook", this,
-				OLLMrpc.args("st", "style_changed", style_id));
+				OLLMrpc.args("it", style_vfunc_id, style_hook_id));
 		}
 	}
 
@@ -224,6 +226,32 @@
 			}
 			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
 				return OLLMrpc.args("b", false);
+			}
+			return OLLMrpc.args("b", stop);
+		});
+	}
+
+	/**
+	 * Same pack as {@link relay_event}. Emit {@code captured-event} so
+	 * GJS {@code connect()} runs (PopupMenuManager); then the vfunc
+	 * (BoxPointer mute).
+	 */
+	uint64 relay_captured_event()
+	{
+		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			var type = (EventType) call.args.get(1).get_int();
+			var x = (float) call.args.get(2).get_double();
+			var y = (float) call.args.get(3).get_double();
+			var button = (uint32) call.args.get(4).get_uint();
+			var ev = Event.from_local(type, x, y, button);
+			bool stop = this.captured_event(ev);
+			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			try {
+				if (this.captured_event_vfunc(ev)) {
+					stop = true;
+				}
+			} finally {
+				GnomeShellRpc.GiStub.VfuncRelay.end();
 			}
 			return OLLMrpc.args("b", stop);
 		});

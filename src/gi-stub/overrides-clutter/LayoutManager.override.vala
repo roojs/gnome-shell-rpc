@@ -78,14 +78,16 @@
 		peer.rpc_lid = minted.args.get(0).get_uint64();
 		GnomeShellRpc.GiStub.Runtime.register_handle(peer);
 		this.helper_peer = peer;
+		var vfunc_id = -1;
+		var hook_id = this.bind_vfunc("get_preferred_width", out vfunc_id);
 		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
-			OLLMrpc.args("st", "get_preferred_width", this.relay_get_preferred_width()));
-
+			OLLMrpc.args("it", vfunc_id, hook_id));
+		hook_id = this.bind_vfunc("get_preferred_height", out vfunc_id);
 		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
-			OLLMrpc.args("st", "get_preferred_height", this.relay_get_preferred_height()));
-
+			OLLMrpc.args("it", vfunc_id, hook_id));
+		hook_id = this.bind_vfunc("allocate", out vfunc_id);
 		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
-			OLLMrpc.args("st", "allocate",this.relay_allocate()));
+			OLLMrpc.args("it", vfunc_id, hook_id));
 			
 		return peer;
 	}
