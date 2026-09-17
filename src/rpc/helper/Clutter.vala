@@ -21,7 +21,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * Pack stock {@code clutter_get_current_event} as
-		 * type / x / y / button / state ({@code idddu}); empty args = none.
+		 * type / x / y / button / state / keyval ({@code iddduu}); empty args = none.
 		 */
 		public void get_current_event(OLLMrpc.Request request)
 		{
@@ -44,9 +44,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("idddu",
+				args = OLLMrpc.args("iddduu",
 					(int) et, (double) x, (double) y, button,
-					(uint) ev.get_state()),
+					(uint) ev.get_state(), ev.get_key_symbol()),
 			});
 		}
 	}

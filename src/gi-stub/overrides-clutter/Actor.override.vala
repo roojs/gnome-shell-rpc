@@ -206,8 +206,8 @@
 	}
 
 	/**
-	 * Live.Hook args: actor lease, event type, x, y, button ({@code tiddu}).
-	 * Reply: bool (EVENT_STOP = true).
+	 * Live.Hook args: actor lease, event type, x, y, button, keyval
+	 * ({@code tidduu}). Reply: bool (EVENT_STOP = true).
 	 */
 	uint64 relay_event()
 	{
@@ -216,13 +216,27 @@
 			var x = (float) call.args.get(2).get_double();
 			var y = (float) call.args.get(3).get_double();
 			var button = (uint32) call.args.get(4).get_uint();
-			var ev = Event.from_local(type, x, y, button);
+			var keyval = 0u;
+			if (call.args.size > 5) {
+				keyval = call.args.get(5).get_uint();
+			}
+			var ev = Event.from_local(type, x, y, button, 0, keyval);
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			bool stop = false;
 			try {
 				stop = this.event_vfunc(ev);
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();
+			}
+			switch (type) {
+				case EventType.key_press:
+					GLib.Signal.emit_by_name(this, "key-press-event", ev);
+					break;
+				case EventType.key_release:
+					GLib.Signal.emit_by_name(this, "key-release-event", ev);
+					break;
+				default:
+					break;
 			}
 			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
 				return OLLMrpc.args("b", false);
@@ -243,7 +257,11 @@
 			var x = (float) call.args.get(2).get_double();
 			var y = (float) call.args.get(3).get_double();
 			var button = (uint32) call.args.get(4).get_uint();
-			var ev = Event.from_local(type, x, y, button);
+			var keyval = 0u;
+			if (call.args.size > 5) {
+				keyval = call.args.get(5).get_uint();
+			}
+			var ev = Event.from_local(type, x, y, button, 0, keyval);
 			bool stop = this.captured_event(ev);
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			try {

@@ -837,6 +837,8 @@ mutter_rpc_client_dep = declare_dependency(
 )
 
 # 0.7.7 — owned Shell-16 facade (not libshell). GIR from Vala (vala_gir).
+# AppSystem.search is C gtk-doc (element-type GStrv), compiled into this
+# library — not a Vala method (vala_gir would emit gpointer).
 # libsystemd has no Vala vapi — assert found, link with -lsystemd only.
 dependency('libsystemd')
 shell_gi_lib = shared_library(
@@ -849,6 +851,7 @@ shell_gi_lib = shared_library(
     'shell-gi/Util.vala',
     'shell-gi/App.vala',
     'shell-gi/AppSystem.vala',
+    'shell-gi/app-system-search.c',
     'shell-gi/GLSLEffect.vala',
     'shell-gi/BlurMode.vala',
     'shell-gi/BlurEffect.vala',
@@ -877,6 +880,8 @@ shell_gi_lib = shared_library(
   ),
   dependencies: [
     ocrpc_dep,
+    dependency('gio-2.0'),
+    dependency('gio-unix-2.0'),
     dependency('libnm'),
     dependency('libsecret-1'),
     dependency('polkit-agent-1'),

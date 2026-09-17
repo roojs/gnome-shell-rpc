@@ -37,15 +37,35 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public void add_hook(OLLMrpc.Request request, int vfunc_id, uint64 hook_id)
 		{
-			var peer = request.connection.leases.get((int) request.lease_id) as Actor;
-			if (peer == null
-					|| !request.connection.callbacks.has_key((int) hook_id)) {
+			if (!request.connection.callbacks.has_key((int) hook_id)) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			peer.vfuncs.set(vfunc_id,
-				request.connection.callbacks.get((int) hook_id));
+			var hook = request.connection.callbacks.get((int) hook_id);
+			var peer = request.connection.leases.get((int) request.lease_id) as Actor;
+			if (peer != null) {
+				peer.vfuncs.set(vfunc_id, hook);
+				request.reply(new OLLMrpc.Response());
+				return;
+			}
+			var clutter_actor = request.connection.leases.get(
+				(int) request.lease_id) as Clutter.Actor;
+			if (clutter_actor == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			if (vfunc_id == ActorVfuncIds.event_id) {
+				clutter_actor.key_press_event.connect((a, ev) => {
+					LayoutHooks.measure_event(hook, clutter_actor, ev);
+					return false;
+				});
+				clutter_actor.key_release_event.connect((a, ev) => {
+					LayoutHooks.measure_event(hook, clutter_actor, ev);
+					return false;
+				});
+			}
 			request.reply(new OLLMrpc.Response());
 		}
 
