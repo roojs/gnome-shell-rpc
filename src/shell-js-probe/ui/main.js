@@ -628,6 +628,50 @@ async function _initializeUI() {
                 }
                 try {
                     btn.menu.close(0);
+                } catch (e) {
+                    log(`gsr-chrome: FAIL ${role}-close-threw ${e}`);
+                }
+                try {
+                    const stillOpen = btn.menu.isOpen;
+                    const bpVis = btn.menu._boxPointer?.visible;
+                    log(`gsr-chrome: ${role} after-close isOpen=${stillOpen} boxPointer.visible=${bpVis}`);
+                    if (stillOpen)
+                        log(`gsr-chrome: FAIL ${role}-still-open-after-close`);
+                    else if (bpVis)
+                        log(`gsr-chrome: FAIL ${role}-boxpointer-visible-after-close`);
+                    else
+                        log(`gsr-chrome: ${role}-close-ok`);
+                } catch (e) {
+                    log(`gsr-chrome: ${role} after-close probe threw ${e}`);
+                }
+                /* Re-open then toggle (animated FULL close). Score after
+                 * POPUP_ANIMATION_TIME — sync MainContext spin deadlocks. */
+                try {
+                    btn.menu.open(0);
+                    if (btn.menu.isOpen) {
+                        btn.menu.toggle();
+                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
+                            try {
+                                const afterToggle = btn.menu.isOpen;
+                                const bpVis2 = btn.menu._boxPointer?.visible;
+                                log(`gsr-chrome: ${role} after-toggle(+250ms) isOpen=${afterToggle} boxPointer.visible=${bpVis2}`);
+                                if (afterToggle)
+                                    log(`gsr-chrome: FAIL ${role}-still-open-after-toggle`);
+                                else if (bpVis2)
+                                    log(`gsr-chrome: FAIL ${role}-boxpointer-visible-after-toggle`);
+                                else
+                                    log(`gsr-chrome: ${role}-toggle-close-ok`);
+                            } catch (e) {
+                                log(`gsr-chrome: FAIL ${role}-toggle-check-threw ${e}`);
+                            }
+                            return GLib.SOURCE_REMOVE;
+                        });
+                    }
+                } catch (e) {
+                    log(`gsr-chrome: FAIL ${role}-toggle-threw ${e}`);
+                }
+                try {
+                    btn.menu.close(0);
                 } catch (e) {}
                 return btn;
             };
@@ -660,7 +704,7 @@ async function _initializeUI() {
                 log('gsr-chrome: FAIL no-system-menu-role');
             }
 
-            /* §2 click path — seat pointer_click at source centre (not fire_button_press). */
+            /* Click open, then click again to close — user stuck-open path. */
             const tryPointerClick = (role, btn) => {
                 if (!btn?.menu)
                     return;
@@ -681,13 +725,33 @@ async function _initializeUI() {
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 400, () => {
                     const open = btn.menu.isOpen;
                     log(`gsr-chrome: ${role} after pointer_click isOpen=${open}`);
-                    if (!open)
+                    if (!open) {
                         log(`gsr-chrome: FAIL ${role}-click-no-open`);
-                    else
-                        log(`gsr-chrome: ${role}-click-open-ok`);
+                        return GLib.SOURCE_REMOVE;
+                    }
+                    log(`gsr-chrome: ${role}-click-open-ok`);
                     try {
-                        btn.menu.close(0);
-                    } catch (e) {}
+                        global.pointer_click(cx, cy);
+                    } catch (e) {
+                        log(`gsr-chrome: FAIL ${role}-pointer_reclick-threw ${e}`);
+                        return GLib.SOURCE_REMOVE;
+                    }
+                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 400, () => {
+                        try {
+                            const still = btn.menu.isOpen;
+                            const bpVis = btn.menu._boxPointer?.visible;
+                            log(`gsr-chrome: ${role} after pointer_reclick isOpen=${still} boxPointer.visible=${bpVis}`);
+                            if (still)
+                                log(`gsr-chrome: FAIL ${role}-click-still-open`);
+                            else if (bpVis)
+                                log(`gsr-chrome: FAIL ${role}-click-boxpointer-visible`);
+                            else
+                                log(`gsr-chrome: ${role}-click-close-ok`);
+                        } catch (e) {
+                            log(`gsr-chrome: FAIL ${role}-reclick-check-threw ${e}`);
+                        }
+                        return GLib.SOURCE_REMOVE;
+                    });
                     return GLib.SOURCE_REMOVE;
                 });
             };

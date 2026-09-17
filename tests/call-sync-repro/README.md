@@ -131,5 +131,7 @@ an inbound `Live.Buffer` on the **Request** (pixmap path for
 | Run | Result |
 | --- | ------ |
 | 2026-09-17 | **FAIL** — `Request` has no `buffer`; `call_poll` `bin.write` only |
+| 2026-09-17 | **PASS** after OPC FIXED + consumer `Request.buffer` |
 
-OPC: [`OLLMchat/docs/bugs/2026-09-17-request-live-buffer-outbound.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-17-request-live-buffer-outbound.md).
+OPC: [`FIXED`](file:///home/alan/gitlive/OLLMchat/docs/bugs/done/2026-09-17-FIXED-request-live-buffer-outbound.md).
+Consumer: [`2026-09-17-request-live-buffer-opc.md`](../../docs/bugs/2026-09-17-request-live-buffer-opc.md).

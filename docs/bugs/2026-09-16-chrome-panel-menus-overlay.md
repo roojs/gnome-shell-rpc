@@ -100,7 +100,7 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
 | 2 | Boot / desktop | ✔️ overview ends WINDOW_PICKER (`state=1`) after `set_to` wire rename — stock boot. User Esc → idle. Was stuck `state=0` (−32601 on `set_to_value`). | Stock: WINDOW_PICKER after startup; Esc hides |
 | 3 | Clock (dateMenu) | Click **opens** calendar menu | Same |
-| 4 | Clock menu | Calendar **nav broken**; **cannot close** the menu | Month nav works; click-out / Esc / re-click closes |
+| 4 | Clock menu | Calendar **nav broken**; **cannot close**. Probe: `close(0)`/`toggle` OK; **pointer re-click leaves `isOpen=true`** (`after pointer_reclick`). | Month nav works; click-out / Esc / re-click closes |
 | 5 | System menu (quickSettings) | Mostly laid out; volume icon present; volume block **size balked**; **cannot close** once open | Content-sized tiles; toggle / click-out closes |
 | 6 | Geom (probe) | `messageTray` still odd; BoxPointer dateMenu ~stage-wide preferred | Finite tray; menu ~content |
 
@@ -120,10 +120,10 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 only until `QuickSettings._setupIndicators` finishes. Score `delayed15s` +
 user live, not early/later.
 
-**Resumed (2026-09-17).** Primary: **§2 overview / app-search at boot**.
-QS `-12` / mutter death **deferred** (nest does not crash currently).
-**🚫** vendor `js/` / `GI_RPC_JS_OVERRIDE_DIR` production fix for QSLayout.
-**🚫** sniffing preferred sizes inside `RPC-Live-Callback.reply`.
+**Resumed (2026-09-17).** Primary: **§4/§5 menu close** (clock + QS) +
+calendar nav. §2 overview wire rename landed (`state=1`). QS `-12`
+deferred. **🚫** ImageContent / unrelated TEMP while this chrome bar is open.
+**🚫** vendor `js/` production fix.
 
 ### §2 diagnosis (2026-09-17 — debug only, no fix yet)
 
@@ -153,12 +153,25 @@ until §2 moves.
 | Live now | preferred `-12` still logged; parent/grid **mapped=0** → no stay-up death |
 | **🚫** | JS override / `Math.max` in stock `quickSettings.js` · `LiveCallback.reply` sniff |
 
+### Menu close (2026-09-17)
+
+| Fact | Evidence |
+| --- | --- |
+| `menu.close(0)` / `toggle` after settle | **OK** — `isOpen=false`, BoxPointer hidden (+250ms) |
+| Pointer **re-click** dateMenu source | **FAIL** — `after pointer_reclick isOpen=true boxPointer.visible=true` |
+| QS pointer click-open | still often `isOpen=false` (probe); user can open by hand |
+| Stock close path | `PopupMenuManager._onCapturedEvent` → `get_event_actor` + `!actor.contains(target)` → `menu.close(FULL)` |
+
+**Next prove:** whether `global.stage.get_event_actor` / captured-event / grab sees the re-click. Not BoxPointer.ease (animated toggle already hides).
+
 ### Todo (resume here)
 
-1. ~~**§2 overview / app-search at boot**~~ — ✔️ wire `set_to` / `set_final` (typelib names); nest `state=1`.
-2. Menu **close** (clock + QS) + calendar nav.
-3. **Later:** QS `-12` guard / child-set vs lifecycle (deferred above).
-4. Soft: `clutter-interval-gvalue-gate` still `final=0` after rename (no −32601) — peek/set stick separate from chrome; not blocking.
+1. ~~**§2 overview**~~ — ✔️ `set_to` wire; nest `state=1`.
+2. **Menu close** — pointer re-click / click-out (above). Prove `get_event_actor` / grab.
+3. **Calendar nav** — month prev/next.
+4. **Later:** QS volume / `-12`.
+5. Soft: interval gate `final=0` — not chrome.
+
 
 ### Prove stay-up (expect timeout, not 133)
 
