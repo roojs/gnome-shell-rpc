@@ -57,6 +57,8 @@ IdleMonitor.add_user_active_watch
 # GSourceFunc not RPC-marshallable (Laters.override.vala).
 Laters.add
 Laters.remove
+# Hand: emit Display::workareas-changed after RPC (OPC notify missed).
+Workspace.set_builtin_struts
 Display.add_keybinding
 Display.get_startup_notification
 keybindings_set_custom_handler

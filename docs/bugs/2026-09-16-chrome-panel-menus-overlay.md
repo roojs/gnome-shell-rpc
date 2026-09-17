@@ -98,7 +98,7 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | # | Surface | Observed | Stock |
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
-| 2 | Boot / desktop | **~50%.** Search bar ✔️. Workspace-thumbnail row **missing**. Current-desktop pane / wallpaper **missing**. Esc → idle. See **Boot search**. | Search bar → workspace row → wallpaper pane (empty of windows at startup) |
+| 2 | Boot / desktop | **Better (user 2026-09-17 ~16:37).** App-picker / WINDOW_PICKER now shows **wallpaper / app thumbnails**. Search **too high**. Desktop panes **too high** (same). Workspace-thumbnail row (tiny per-desktop squares) **still missing**. Grey square + red dot ~2/3 along. See **Panel inset**. | Search below panel → thumbs row → wallpaper pane |
 | 3 | Clock (dateMenu) | Click **opens**; re-click / click-out **hides** (user 2026-09-17) | Same |
 | 4 | Clock menu | **Open/close ✔️.** Buttons inside dead (month nav, events, …) — backlog | Month nav + items work |
 | 5 | System menu (quickSettings) | **Open/close ✔️.** Tiles / sliders / settings row dead — same backlog. Volume size later | Tiles click; sane size |
@@ -178,6 +178,34 @@ there. **Not** there: virtual-desktop thumbnail row
 (`WorkspacesDisplay` / `WorkspaceBackground`). Not a “hide after boot”
 fix.
 
+**User live (2026-09-17 ~16:37):** wallpaper / app thumbnails **now
+show** on the picker. Remaining: search too high; desktop panes too
+high (same); thumbs row still not there; grey square + red dot ~2/3
+along. User: not taking the menu bar into account.
+
+### Panel inset (2026-09-17)
+
+Stock (`vendor/gnome-shell/js/ui/`):
+
+| Piece | Rule |
+| ----- | ---- |
+| `layout.js` | `panelBox` `addChrome({affectsStruts: true})` → `_updateRegions` → `Meta.Strut` TOP → `Workspace.set_builtin_struts` |
+| `getWorkAreaForMonitor` | `ws.get_work_area_for_monitor` |
+| `overviewControls.js` | `startY = work.y - mon.y`; search / thumbs / wallpaper origin at `startY` |
+
+Probe `delayed15s` (15:51): `entryBin @ 215,0` — `startY=0` means workarea
+equals the monitor (no panel strut). Same miss for wallpaper sitting too
+high. Thumbs were mapped `305,62 190x30` then; if they still look absent
+after inset, that is a separate paint miss. Grey/red-dot leftover open.
+
+Gate **A** `workarea-panel-inset-smoke` — **PASS** `startY=32`.
+Gate **B** `workarea-panel-chrome-smoke` (Weston): **A/B PASS**,
+**FAIL C** `workareasHits=0` — mutter `Display::workareas-changed`
+never reached GJS, so `ControlsManagerLayout._workAreaBox` stays at
+construct `startY=0`. Fix: `ensure_signal_subscribe` + Runtime
+Notification re-emit (same as `Transition::stopped`). **🚫** layout.js.
+**🚫** mutter-rpc on the host DISPLAY.
+
 **delayed15s 15:51:16** — actors exist, wallpaper child was 0×0:
 
 | Actor | Geom |
@@ -232,10 +260,10 @@ until §2 moves.
 
 1. ~~**§2 overview**~~ — ✔️ `set_to` wire; nest `state=1`.
 2. ~~**Menu close**~~ — ✔️ `captured-event-smoke` **ok** + **user** hide-after-show.
-3. **WINDOW_PICKER content** — workspace wallpaper pane: allocate ✔️ (`workspace-background-allocate-smoke` PASS). Re-score live. Thumbs row still if user says missing.
+3. **WINDOW_PICKER content** — wallpaper pane visible (user). **Panel inset** next (search + panes too high). Thumbs row still missing visually. Grey/red-dot leftover.
 4. **Backlog — popdown buttons** — calendar, QS tiles, settings row, … (Event coords).
 5. **Later:** QS volume / `-12`.
-5. Soft: interval gate `final=0` — not chrome.
+6. Soft: interval gate `final=0` — not chrome.
 
 
 ### Prove stay-up (expect timeout, not 133)
@@ -258,7 +286,7 @@ User live + settle probe (above). Historical one-liners:
 | # | Surface | Observed | Stock |
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors | ✔️ centred (`workspace-dot-align-smoke` **C**) | Centred on panel height |
-| 2 | Overview / search entry | WINDOW_PICKER after boot; search bar only (~50%) | Search bar → workspace row → wallpaper pane |
+| 2 | Overview / search entry | Wallpaper visible; search + panes too high (no panel inset) | Search below panel → thumbs → wallpaper |
 | 3 | Clock | Opens + closes ✔️; buttons inside dead | Open/close + month nav |
 | 4 | System menu | Opens + closes ✔️; tiles dead; volume size later | Toggle close; tiles click |
 | 5 | Geom | `messageTray` / BoxPointer still off | Finite allocation |
@@ -329,6 +357,14 @@ GI_META_SMOKE=captured-event-smoke GSR_WESTON_MODE=prove \
 GI_META_SMOKE=workspace-background-allocate-smoke GSR_WESTON_MODE=prove \
   ./scripts/weston-gsr-session.sh
 # PASS inner=800x400 — stock WorkspaceBackground.allocate sizes wallpaper child
+
+GI_META_SMOKE=workarea-panel-inset-smoke GSR_WESTON_MODE=prove \
+  ./scripts/weston-gsr-session.sh
+# PASS startY=32 — Meta strut→workarea OK
+
+GI_META_SMOKE=workarea-panel-chrome-smoke GSR_WESTON_MODE=prove \
+  ./scripts/weston-gsr-session.sh
+# A later / B monitor-index / C workareas-changed — Weston only
 ```
 
 Logs: `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`.  

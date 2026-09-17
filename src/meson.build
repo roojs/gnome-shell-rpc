@@ -366,6 +366,7 @@ meta_override_files = files(
   'gi-stub/overrides/Settings.override.vala',
   'gi-stub/overrides/IdleMonitor.override.vala',
   'gi-stub/overrides/Laters.override.vala',
+  'gi-stub/overrides/Workspace.override.vala',
   'gi-stub/overrides/Display.override.vala',
   'gi-stub/overrides/Window.override.vala',
   'gi-stub/overrides/Meta.override.vala',

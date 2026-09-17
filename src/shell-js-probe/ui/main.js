@@ -352,6 +352,22 @@ async function _initializeUI() {
                     const [pw, ph] = lm.panelBox.get_transformed_size();
                     log(`gsr-chrome: panelBox @ ${px.toFixed(0)},${py.toFixed(0)} ${pw.toFixed(0)}x${ph.toFixed(0)}`);
                 }
+                try {
+                    const display = global.display;
+                    const idx = lm.primaryIndex ?? 0;
+                    const mon = display.get_monitor_geometry(idx);
+                    const ws0 = global.workspace_manager?.get_workspace_by_index(0);
+                    const work = ws0?.get_work_area_for_monitor(idx);
+                    const panelH = lm.panelBox?.height || 0;
+                    if (mon && work) {
+                        const startY = work.y - mon.y;
+                        log(`gsr-chrome: workarea vs monitor mon=${mon.x},${mon.y} ${mon.width}x${mon.height} work=${work.x},${work.y} ${work.width}x${work.height} startY=${startY} panelH=${panelH}`);
+                        if (panelH > 8 && startY < panelH - 2)
+                            log(`gsr-chrome: FAIL workarea-not-inset-for-panel startY=${startY} panelH=${panelH}`);
+                    }
+                } catch (eWa) {
+                    log(`gsr-chrome: workarea probe threw ${eWa}`);
+                }
                 if (messageTray) {
                     const [tx, ty] = messageTray.get_transformed_position();
                     const [tw, th] = messageTray.get_transformed_size();

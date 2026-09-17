@@ -174,21 +174,37 @@ namespace GnomeShellRpc.GiStub
 				}
 			});
 			Runtime.client.notification.connect((notif) => {
-				if (notif.method == "RPC-Live-Callback.unregister") {
-					if (Runtime.handlers != null) {
-						Runtime.handlers.unset(notif.id);
-					}
-					return;
-				}
 				/*
-				 * Live.Subscribe → Notification (no reply). Re-emit on the
-				 * client proxy so GJS .connect() handlers run. OPC emit
-				 * packs no signal args; stopped assumes finished=true.
+				 * Front-load the few methods that are not a void 0-arg
+				 * GObject signal. Everything we subscribed via
+				 * {@link ensure_signal_subscribe} is emit_by_name of
+				 * notif.method (OPC packs no signal args).
 				 */
-				if (notif.method == "stopped"
-						&& Runtime.client.proxies.has_key(notif.id)) {
-					var proxy = Runtime.client.proxies.get(notif.id);
-					GLib.Signal.emit_by_name(proxy, "stopped", true);
+				switch (notif.method) {
+					case "RPC-Live-Callback.unregister":
+						if (Runtime.handlers != null) {
+							Runtime.handlers.unset(notif.id);
+						}
+						return;
+					case "stopped":
+						if (Runtime.client.proxies.has_key(notif.id)) {
+							GLib.Signal.emit_by_name(
+								Runtime.client.proxies.get(notif.id),
+								"stopped", true);
+						}
+						return;
+					default:
+						if (!Runtime.client.proxies.has_key(notif.id)) {
+							return;
+						}
+						if (!Runtime.signal_subs.has_key(notif.id)
+								|| !Runtime.signal_subs.get(notif.id).contains(notif.method)) 
+						{
+							return;
+						}
+						GLib.Signal.emit_by_name(Runtime.client.proxies.get(notif.id),
+							notif.method);
+						return;
 				}
 			});
 
