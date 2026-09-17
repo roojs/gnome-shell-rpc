@@ -1,6 +1,7 @@
 /**
- * External prove: Clutter.Interval.set_final_value(GValue*) over Gi with
- * the held Value in Request.args — not ay-memcpy of the GValue struct.
+ * External prove: Clutter.Interval.set_final (typelib name; C
+ * set_final_value) over Gi with held Value in Request.args — not
+ * ay-memcpy of the GValue struct.
  *
  * No gi-stub, no generator, no Transition override. FAIL → OPC.
  * PASS → generator may pack GObject.Value the same way.
@@ -203,12 +204,10 @@ int main(string[] args)
 
 		var final_v = GLib.Value(typeof(double));
 		final_v.set_double(2.5);
-		var packed = new Gee.ArrayList<GLib.Value?>();
-		packed.add(final_v);
 		client.call_poll(new OLLMrpc.Request() {
-			method = "Clutter-Interval.set_final_value",
+			method = "Clutter-Interval.set_final",
 			lease_id = lid,
-			args = packed,
+			args = OLLMrpc.args("V", final_v),
 		});
 
 		var peeked = client.call_poll(new OLLMrpc.Request() {
@@ -239,7 +238,7 @@ int main(string[] args)
 	server.force_exit();
 	FileUtils.unlink(sock);
 	stderr.printf(
-		"PASS clutter-interval-gvalue-gate: set_final_value GValue IN\n");
+		"PASS clutter-interval-gvalue-gate: set_final GValue IN\n");
 	stderr.flush();
 	return 0;
 }

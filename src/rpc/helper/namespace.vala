@@ -43,6 +43,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		ThemeContext.rpc_register();
 		Icon.rpc_register();
 		IconTheme.rpc_register();
+		ImageContent.rpc_register();
 		FocusManager.rpc_register();
 		Actor.rpc_register();
 		LayoutManager.rpc_register();

@@ -1,8 +1,8 @@
 		/**
 		 * GJS: {@code new Clutter.Interval({ value_type: pspec.value_type })}.
-		 * Mint via Helper-Interval.create. set_*_value: capital-V over stock
-		 * Gi. peek/get keep a local mirror (GValue* ABI — stock returns an
-		 * interior pointer).
+		 * Mint via Helper-Interval.create. Client Vala is set_*_value;
+		 * Gi typelib name is set_initial / set_final (GIR shadows). Wire
+		 * that + capital-V. peek/get keep a local mirror (GValue* ABI).
 		 */
 		private GLib.Type priv_value_type = GLib.Type.INVALID;
 		private GLib.Value priv_initial;
@@ -87,7 +87,7 @@
 				this.priv_has_final = true;
 			}
 			var method = is_initial
-				? "Clutter-Interval.set_initial_value"
-				: "Clutter-Interval.set_final_value";
+				? "Clutter-Interval.set_initial"
+				: "Clutter-Interval.set_final";
 			GnomeShellRpc.call_value(method, this, OLLMrpc.args("V", value));
 		}

@@ -8,6 +8,9 @@ Namespace emit_implements=1
 # Stock St.Adjustment implements Clutter.Animatable (find_property / ease).
 Adjustment implements=Clutter.Animatable
 
+# Stock St.ImageContent implements Clutter.Content (Actor.content).
+ImageContent implements=Clutter.Content
+
 # Class vfunc slots (Button.clicked/transition, Widget.get_focus_chain, …).
 Namespace emit_class_slots=1
 # Slot/signal clash → keep GIR signal (rename slot *_vfunc). Exact names.

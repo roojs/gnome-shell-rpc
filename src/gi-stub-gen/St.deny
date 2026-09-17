@@ -10,9 +10,6 @@
 # TEMPORARY — revisit / undeny when implementing (keep this block together)
 # ************************************************************************
 
-# Client→server pixmap: needs Request+Live.Buffer (OPC call_poll sends bin only).
-ImageContent.set_data noop
-
 # ************************************************************************
 # PERMANENT — not deferred RPC work
 # ************************************************************************
@@ -57,6 +54,10 @@ Theme.get_custom_stylesheets
 
 # IconTheme.override — int[] via Bytes/ay int32 slab (StreamValue BOXED).
 IconTheme.get_icon_sizes
+
+# ImageContent.override — mint + pixmap memfd on Request.buffer (not ay).
+ImageContent.new_with_preferred_size
+ImageContent.set_data
 
 # FocusManager.override — pack type/keyval/state; Helper rebuilds key event.
 FocusManager.navigate_from_event

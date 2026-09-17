@@ -400,21 +400,28 @@ async function _initializeUI() {
                 } else {
                     const vis = ov.visible;
                     const shown = ov._shown;
+                    const shownState = ov._shownState;
                     const anim = ov.animationInProgress;
                     const cover = ov._coverPane;
-                    log(`gsr-chrome: overview visible=${vis} _shown=${shown} animationInProgress=${anim} cover ${actorGeom(cover)}`);
+                    log(`gsr-chrome: overview visible=${vis} _shown=${shown} _shownState=${shownState} animationInProgress=${anim} cover ${actorGeom(cover)}`);
                     try {
                         const controls = ov._overview?.controls ?? ov.controls;
                         const adj = controls?._stateAdjustment;
                         const state = adj?.value;
                         const search = controls?._searchController ?? controls?._searchEntry;
                         const appDisp = controls?._appDisplay;
-                        log(`gsr-chrome: overview-controls state=${state} searchMapped=${search?.mapped} searchVis=${search?.visible} appDisplayMapped=${appDisp?.mapped} appDisplayVis=${appDisp?.visible} appDisplay ${actorGeom(appDisp)}`);
+                        const showApps = controls?.dash?.showAppsButton?.checked;
+                        /* 0=HIDDEN 1=WINDOW_PICKER 2=APP_GRID — stock boot ends ~1. */
+                        log(`gsr-chrome: overview-controls state=${state} showAppsChecked=${showApps} searchMapped=${search?.mapped} searchVis=${search?.visible} appDisplayMapped=${appDisp?.mapped} appDisplayVis=${appDisp?.visible} appDisplay ${actorGeom(appDisp)}`);
+                        if (state >= 1.5 || showApps)
+                            log('gsr-chrome: FAIL overview-app-grid');
                     } catch (e2) {
                         log(`gsr-chrome: overview-controls probe threw ${e2}`);
                     }
+                    /* Stock session boot leaves overview SHOWN (WINDOW_PICKER).
+                     * User bar is app-grid / stuck chooser — not merely shown. */
                     if (vis || shown)
-                        log('gsr-chrome: FAIL overview-still-showing');
+                        log('gsr-chrome: overview-shown-after-boot (stock lands here; Esc→idle)');
                     else
                         log('gsr-chrome: overview-idle-ok');
                 }

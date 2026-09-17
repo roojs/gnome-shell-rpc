@@ -121,3 +121,15 @@ GObject — not `export()` `"t"` + `proxies.get`.
 
 OPC: [`OLLMchat/docs/bugs/2026-09-16-any-args-token-reg-type.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-16-any-args-token-reg-type.md).
 Helper.LayoutManager `"od"` / `"odddd"` + `get_object()`.
+
+## request-buffer-gate
+
+Shape: `live_handles` client `call_poll` to `Gate.eat_fd`. Server must see
+an inbound `Live.Buffer` on the **Request** (pixmap path for
+`ImageContent.set_data`). No `"ay"` on bin.
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-17 | **FAIL** — `Request` has no `buffer`; `call_poll` `bin.write` only |
+
+OPC: [`OLLMchat/docs/bugs/2026-09-17-request-live-buffer-outbound.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-17-request-live-buffer-outbound.md).

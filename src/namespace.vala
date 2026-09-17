@@ -25,11 +25,14 @@ namespace GnomeShellRpc
 	 * @param instance leased stub; {@link OLLMrpc.Live.Handle.rpc_lid}
 	 *     → {@link OLLMrpc.Request.lease_id}
 	 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
+	 * @param buffer optional client→server {@link OLLMrpc.Live.Buffer}
+	 *     (memfd / SCM_RIGHTS); not pixel {@code ay} on the bin
 	 */
 	public OLLMrpc.Response call_value(
 		string method,
 		GLib.Object? instance = null,
-		Gee.ArrayList<GLib.Value?>? args = null
+		Gee.ArrayList<GLib.Value?>? args = null,
+		OLLMrpc.Live.Buffer? buffer = null
 	) throws GLib.Error {
 		uint64 lease_id = 0;
 		if (instance != null) {
@@ -38,6 +41,7 @@ namespace GnomeShellRpc
 		var req = new OLLMrpc.Request() {
 			method = method,
 			lease_id = lease_id,
+			buffer = buffer,
 		};
 		if (args == null) {
 			return GiStub.Runtime.do_call(req);

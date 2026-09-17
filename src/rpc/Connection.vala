@@ -120,6 +120,10 @@ namespace GnomeShellRpc.Rpc
 				GLib.debug("recv id=%d method=%s conn=%p", request.id,
 					 request.method, this);
 				request.connection = this;
+				if (this.buffer_stream != null) {
+					this.buffer_stream.read_fd();
+					request.buffer = this.buffer_stream.take_pending();
+				}
 				if (!request.dispatch()) {
 					this.reply_error(request,
 						(int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND);

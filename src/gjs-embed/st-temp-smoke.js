@@ -1,5 +1,5 @@
 /**
- * Smoke — St TEMP D2.1 / D2.3 / D2.4 (theme customs, icon sizes, navigate).
+ * Smoke — St D2.1 / D2.2 / D2.3 / D2.4 (theme, set_data, icon sizes, navigate).
  *
  *   GI_META_SMOKE=st-temp-smoke GSR_WESTON_MODE=prove \
  *     ./scripts/weston-gsr-session.sh
@@ -84,6 +84,36 @@ function main() {
 	const navigated = fm.navigate_from_event(ev);
 	smokeLog(`navigate_from_event Tab → ${navigated}`);
 	smokeLog('D2.4 ok');
+
+	/* D2.2 — ImageContent.set_data via Request Live.Buffer */
+	let Cogl = null;
+	try {
+		imports.gi.versions.Cogl = '16';
+		Cogl = imports.gi.Cogl;
+	} catch (e) {
+		smokeLog(`Cogl import: ${e}`);
+	}
+	const image = St.ImageContent.new_with_preferred_size(1, 1);
+	const pixels = new Uint8Array([255, 0, 0, 255]);
+	let cogl = null;
+	try {
+		const backend = Clutter.get_default_backend();
+		if (backend && typeof backend.get_cogl_context === 'function') {
+			cogl = backend.get_cogl_context();
+		}
+	} catch (e) {
+		smokeLog(`client cogl: ${e}`);
+	}
+	if (Cogl == null || Cogl.PixelFormat == null) {
+		throw new Error('st-temp-smoke: Cogl.PixelFormat missing');
+	}
+	const uploaded = image.set_data(
+		cogl, pixels, Cogl.PixelFormat.RGBA_8888, 1, 1, 4);
+	smokeLog(`set_data 1x1 → ${uploaded}`);
+	if (!uploaded) {
+		throw new Error('st-temp-smoke: ImageContent.set_data failed');
+	}
+	smokeLog('D2.2 ok');
 
 	smokeLog('ok');
 }

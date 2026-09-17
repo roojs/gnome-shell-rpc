@@ -1,42 +1,40 @@
 /**
  * Gate: client→server {@link OLLMrpc.Live.Buffer} on a {@link OLLMrpc.Request}.
  *
- * D2.2 {@code ImageContent.set_data} needs pixmap bytes via SCM_RIGHTS on
- * the call. {@code Client.call_poll} only {@code bin.write(request)} — no
- * outbound buffer — and {@code Request} has no {@code buffer} field.
+ * D2.2 {@code ImageContent.set_data} pixmap path. OPC
+ * {@code Request.buffer} + {@code call_poll} {@code write_with}.
  *
  *   meson compile -C build request-buffer-gate
  *   timeout 5 ./build/tests/call-sync-repro/request-buffer-gate
  *
- * FAIL → OPC: outbound Request + Live.Buffer (call_poll / write path) and
- * server attach before dispatch. No OPC edits from this tree.
+ * PASS → consumer may undeny {@code ImageContent.set_data}.
+ * FAIL → OPC outbound Request buffer still missing / not installed.
+ *
+ * OPC: OLLMchat/docs/bugs/done/2026-09-17-FIXED-request-live-buffer-outbound.md
  */
 
 class Gate : GLib.Object
 {
-	public static bool saw_buffer = false;
-
 	public static void rpc_register()
 	{
 		OLLMrpc.Request.add_class(
 			"Gate", typeof(Gate),
-			"eat_fd", "x",
+			"eat_fd", "",
 			null
 		);
 		OLLMrpc.Request.register("Gate", new Gate());
 	}
 
-	/**
-	 * Would read pixels from request buffer if OPC attached one.
-	 */
-	public void eat_fd(OLLMrpc.Request request, int64 nbytes)
+	public void eat_fd(OLLMrpc.Request request)
 	{
-		stderr.printf("server eat_fd nbytes=%lld saw_buffer=%s\n",
-			nbytes, Gate.saw_buffer.to_string());
+		var got = request.buffer != null ? request.buffer.fd : -1;
+		uint8 b = 0;
+		var ok = got >= 0 && Posix.read(got, &b, 1) == 1 && b == 0xAB;
+		stderr.printf("server eat_fd got_fd=%d ok=%s\n", got, ok.to_string());
 		stderr.flush();
 		request.reply(new OLLMrpc.Response() {
 			id = request.id,
-			args = OLLMrpc.args("b", Gate.saw_buffer),
+			args = OLLMrpc.args("b", ok),
 		});
 	}
 }
@@ -138,10 +136,6 @@ int main(string[] args)
 		return 2;
 	}
 
-	/*
-	 * Prove the gap: call_poll has no buffer parameter; Request has no
-	 * buffer property. Client cannot attach a memfd to the call.
-	 */
 	if (client.buffer_stream == null) {
 		stderr.printf(
 			"FAIL request-buffer-gate: no buffer_stream (live_handles)\n"
@@ -150,17 +144,35 @@ int main(string[] args)
 		return 1;
 	}
 
+	int[] pipe_fds = { -1, -1 };
+	if (Posix.pipe(pipe_fds) != 0) {
+		stderr.printf("FAIL request-buffer-gate: pipe\n");
+		server.force_exit();
+		return 2;
+	}
+	uint8 payload = 0xAB;
+	if (Posix.write(pipe_fds[1], &payload, 1) != 1) {
+		stderr.printf("FAIL request-buffer-gate: pipe write\n");
+		Posix.close(pipe_fds[0]);
+		Posix.close(pipe_fds[1]);
+		server.force_exit();
+		return 2;
+	}
+	Posix.close(pipe_fds[1]);
+
 	OLLMrpc.Response response;
 	try {
 		response = client.call_poll(new OLLMrpc.Request() {
 			method = "Gate.eat_fd",
-			args = OLLMrpc.args("x", (int64) 5),
+			buffer = new OLLMrpc.Live.Buffer(pipe_fds[0]),
 		});
 	} catch (GLib.Error e) {
 		stderr.printf("FAIL request-buffer-gate: call %s\n", e.message);
+		Posix.close(pipe_fds[0]);
 		server.force_exit();
 		return 2;
 	}
+	Posix.close(pipe_fds[0]);
 
 	var ok = false;
 	if (response.args.size >= 1) {
@@ -174,9 +186,8 @@ int main(string[] args)
 		return 0;
 	}
 	stderr.printf(
-		"FAIL request-buffer-gate: call_poll cannot send Live.Buffer with "
-		+ "Request (ImageContent.set_data). OPC: outbound Request buffer + "
-		+ "server attach before dispatch.\n"
+		"FAIL request-buffer-gate: call_poll Live.Buffer on Request not "
+		+ "delivered (ImageContent.set_data).\n"
 	);
 	return 1;
 }

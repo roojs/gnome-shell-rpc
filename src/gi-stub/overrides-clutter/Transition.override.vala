@@ -3,8 +3,8 @@
 		 * not_wired. Adjustment.ease needs the helper Transition bound
 		 * before {@code start}.
 		 *
-		 * set_to_value / set_from_value: capital-V over stock Gi
-		 * (OLLMchat docs/bugs/2026-09-16-bin-capital-v-value.md).
+		 * Client Vala is set_*_value (GJS); Gi typelib name is set_to /
+		 * set_from (GIR shadows). Wire that name + capital-V.
 		 */
 		public void set_animatable(Animatable? animatable)
 		{
@@ -21,12 +21,12 @@
 
 		public void set_to_value(GLib.Value value)
 		{
-			GnomeShellRpc.call_value("Clutter-Transition.set_to_value", this,
+			GnomeShellRpc.call_value("Clutter-Transition.set_to", this,
 				OLLMrpc.args("V", value));
 		}
 
 		public void set_from_value(GLib.Value value)
 		{
-			GnomeShellRpc.call_value("Clutter-Transition.set_from_value", this,
+			GnomeShellRpc.call_value("Clutter-Transition.set_from", this,
 				OLLMrpc.args("V", value));
 		}

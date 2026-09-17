@@ -98,7 +98,7 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | # | Surface | Observed | Stock |
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
-| 2 | Boot / desktop | **⏳** overview stuck + QS `-12` (todo: Helper measure guard + child-set vs lifecycle). **🚫** JS override / `LiveCallback` sniff. | Overview shown after startup; idle = Esc. |
+| 2 | Boot / desktop | ✔️ overview ends WINDOW_PICKER (`state=1`) after `set_to` wire rename — stock boot. User Esc → idle. Was stuck `state=0` (−32601 on `set_to_value`). | Stock: WINDOW_PICKER after startup; Esc hides |
 | 3 | Clock (dateMenu) | Click **opens** calendar menu | Same |
 | 4 | Clock menu | Calendar **nav broken**; **cannot close** the menu | Month nav works; click-out / Esc / re-click closes |
 | 5 | System menu (quickSettings) | Mostly laid out; volume icon present; volume block **size balked**; **cannot close** once open | Content-sized tiles; toggle / click-out closes |
@@ -120,43 +120,45 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 only until `QuickSettings._setupIndicators` finishes. Score `delayed15s` +
 user live, not early/later.
 
-**Paused (2026-09-17).** Resume at the list below. **🚫** vendor `js/` /
-`GI_RPC_JS_OVERRIDE_DIR` production fix for QSLayout. **🚫** sniffing preferred
-sizes inside `RPC-Live-Callback.reply` (wrong layer — reverted).
+**Resumed (2026-09-17).** Primary: **§2 overview / app-search at boot**.
+QS `-12` / mutter death **deferred** (nest does not crash currently).
+**🚫** vendor `js/` / `GI_RPC_JS_OVERRIDE_DIR` production fix for QSLayout.
+**🚫** sniffing preferred sizes inside `RPC-Live-Callback.reply`.
 
-### QS preferred `-12` (2026-09-17)
+### §2 diagnosis (2026-09-17 — debug only, no fix yet)
+
+| Fact | Evidence |
+| --- | --- |
+| After settle | overview `SHOWN` but `_stateAdjustment.value=0` (want ~1 WINDOW_PICKER) |
+| RPC | client `Clutter-Transition.set_to_value` + `args("V")` → reply **-32601** |
+| Same miss | `clutter-interval-gvalue-gate` FAIL on `Clutter-Interval.set_final_value` (same empty WARNING) |
+| `value-v-gate` | **PASS** — capital-V transport OK on Helper `"V"`; not a wire packing miss |
+| **Root** | typelib `find_method("set_to_value")` / `find_method("set_final_value")` → **NULL**. GIR shadows collapse the name: listed method is **`set_to`** / **`set_final`**, symbol still `clutter_*_set_*_value`. Gi.dispatch looks up the wire method name → METHOD_NOT_FOUND. |
+| Probe (host) | `/tmp/gi-find-method`: `find_method(set_to) → clutter_transition_set_to_value`; `find_method(set_to_value) → NULL`. Interval: `set_final` hits, `set_final_value` NULL. |
+| **Fix (2026-09-17)** | Wire rename only: `Clutter-Transition.set_to` / `set_from`, `Clutter-Interval.set_initial` / `set_final`, still `args("V")`. No Helper relay. |
+| Prove | nest `delayed15s`: `_shownState=SHOWN` · **`state=1`** (WINDOW_PICKER) · `showAppsChecked=false` · `Clutter-Transition.set_to` (no `-32601`). Was `state=0`. |
+
+### QS preferred `-12` (DEFERRED — 2026-09-17)
+
+**User call 2026-09-17:** nest does **not** crash currently. `-12` still
+logs (`mapped=0` on the QS grid peer) but is **not** the live bar — push
+below overview / menus. Do not spend turns on the Helper measure guard
+until §2 moves.
 
 | Fact | Evidence |
 | --- | --- |
 | Client measure | stock `spacing = (rows.length - 1) * row_spacing`; empty rows + spacing 12 → **-12** |
-| Gate | `GI_META_SMOKE=quicksettings-layout-neg-smoke` → **FAIL** `min=-12 nat=-12` (client formula) |
-| Mutter death | `ClutterBoxLayout` `g_error` when that value reaches **allocate** on a mapped child → **ec=133** |
-| **🚫** | JS override / `Math.max` in stock `quickSettings.js` |
-| **🚫** | `LiveCallback.reply` validating every two-double reply (wrong layer) |
-
-**Working assumption (to prove or kill):** we differ from stock — either
-**wrong lifecycle** (map / show / `layout_changed` / parent allocate of the QS
-grid while it should stay unmapped) or **wrong child set** (Helper / client
-walk sees only placeholder when stock would already have item rows). Do **not**
-treat “stock race + we are slower” as the answer.
+| Gate | `GI_META_SMOKE=quicksettings-layout-neg-smoke` → **FAIL** `min=-12 nat=-12` |
+| Historical mutter death | `ClutterBoxLayout` `g_error` when that value reaches **allocate** on a **mapped** child → `ec=133` |
+| Live now | preferred `-12` still logged; parent/grid **mapped=0** → no stay-up death |
+| **🚫** | JS override / `Math.max` in stock `quickSettings.js` · `LiveCallback.reply` sniff |
 
 ### Todo (resume here)
 
-1. **Server preferred-size guard** — at the Helper preferred-width/height
-   boundary (after Hook reply, before Clutter outs): if `min < 0` or
-   `nat < min`, **do not** feed Clutter; **throw / `reply_error` back to the
-   client** so mutter stays up. Not warn-and-clamp. Not `LiveCallback.reply`
-   type-sniffing. Pick the layer that owns measure (Helper LM / Actor
-   preferred), not the generic callback demux.
-2. **Our delta vs stock** — at the `-12` hit, same log line:
-   - **Child set** — Helper sibling walk vs client `menu._grid` child count /
-     items. Client has rows, Helper only placeholder → parenting MISS.
-   - **Lifecycle** — who mapped/opened QS `StBoxLayout` / menu. We map or
-     force allocate while stock keeps closed menu unmapped → lifecycle MISS.
-3. Then **§2 overview** / menu close / calendar.
-
-Probe already skips early QS open while `grid` children ≤ 1 — one self-kill
-path only; does **not** close (1)–(2).
+1. ~~**§2 overview / app-search at boot**~~ — ✔️ wire `set_to` / `set_final` (typelib names); nest `state=1`.
+2. Menu **close** (clock + QS) + calendar nav.
+3. **Later:** QS `-12` guard / child-set vs lifecycle (deferred above).
+4. Soft: `clutter-interval-gvalue-gate` still `final=0` after rename (no −32601) — peek/set stick separate from chrome; not blocking.
 
 ### Prove stay-up (expect timeout, not 133)
 
