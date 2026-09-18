@@ -183,6 +183,10 @@ show** on the picker. Remaining: search too high; desktop panes too
 high (same); thumbs row still not there; grey square + red dot ~2/3
 along. User: not taking the menu bar into account.
 
+**User live (2026-09-18):** hang after settle **closed** (session stays
+up). App search: **text fills**, **results list (icons) stays empty**.
+Tracked on the 0.8 Search row; not this chrome-placement leftover.
+
 ### Panel inset (2026-09-17)
 
 Stock (`vendor/gnome-shell/js/ui/`):

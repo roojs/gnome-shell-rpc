@@ -4,7 +4,7 @@
 (rare on old states, ~every-time at HEAD), so a revert / git-bisect scored by
 pass/fail **cannot localise it** — a “no hang” is luck, not a fix. Approach
 abandoned. Superseded by the smoke/debug dissection:
-[`../2026-09-18-hang-after-settle-race.md`](../2026-09-18-hang-after-settle-race.md).
+[`2026-09-18-hang-after-settle-race.md`](2026-09-18-hang-after-settle-race.md).
 
 **Kept for reuse:** the file-level audit (Parts 1–2) and the **sync-RPC /
 re-entrant-emit call-site table** (PIVOT section) — the new bug builds on those.

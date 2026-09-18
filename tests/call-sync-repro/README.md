@@ -37,7 +37,7 @@ Shape: server `Gate.provoke` → `hook.emit` (server blocked in emit); client
 `in_emit`. Models the live "hang after settle": a GJS signal/vfunc/notification
 handler makes a blocking RPC (`get_current_event` / `set_builtin_struts` +
 `workareas-changed` re-emit) while a server vfunc-relay `hook.emit` is in
-flight. Bug: [`../../docs/bugs/2026-09-18-hang-after-settle-race.md`](../../docs/bugs/2026-09-18-hang-after-settle-race.md).
+flight. Bug: [`../../docs/bugs/done/2026-09-18-hang-after-settle-race.md`](../../docs/bugs/done/2026-09-18-hang-after-settle-race.md) (closed).
 
 ```bash
 ninja -C build tests/call-sync-repro/reentrant-emit-call-gate

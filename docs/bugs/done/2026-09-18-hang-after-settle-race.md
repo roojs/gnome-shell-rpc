@@ -28,16 +28,18 @@
 > Helper / stub / deny / JS / layout hacks in `src/` before a FAIL smoke or gate
 > **names** the fix. Revert prototypes; do not leave them “for later.”
 
-**Status:** ⏳ open — **OPC fix landed + gate-verified; needs the live prove**.
-Nested session **hangs** at/near the **IBus notification dismiss**. Intermittent
-on old states, **~every time at HEAD** (`8765ee3`).
+**Status:** ✔️ **closed** (2026-09-18) — user: nested session **stays up**, **not hanging**.
+Gates already green (`nested-relay-storm-gate` PASS, `same-hook-reentrant-emit-gate`
+PASS against stock `Live.Hook.complete`). Archived.
+
+**Plan:** [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
+— next is **app search** (text fills; results list empty).
 
 **2026-09-18 — OPC fixed it** (OLLMchat `0bd32a82` "hopefully fix deadlock on
 gsr"): both pending tests now read `bin.in_stream.get_available()`. Against the
 rebuilt library `nested-relay-storm-gate` goes **FAIL → PASS 3/3** (~1.1 s, 400
-rounds, 1600 invokes, depth 4, 4800 notifications) with no mitigation, and the
-other 16 transport gates still pass. ⏳ **The live nested session is still the
-real test — user runs it.**
+rounds, 1600 invokes, depth 4, 4800 notifications) with no mitigation. Live
+prove: user, session stays up.
 
 **Cause (P6, 2026-09-18):** `OLLMrpc.Client.call_poll` blocks forever on a reply
 that is **already in its own `bin.in_stream` buffer**. Measured, not inferred —
@@ -55,7 +57,7 @@ with no OPC change, but it hard-codes an assumption about framing and is kept
 only as a stopgap if we need the session unwedged before the fix lands.
 
 **Supersedes (git approach rejected):**
-[`done/2026-09-18-hang-after-settle-git-bisect-rejected.md`](done/2026-09-18-hang-after-settle-git-bisect-rejected.md)
+[`2026-09-18-hang-after-settle-git-bisect-rejected.md`](2026-09-18-hang-after-settle-git-bisect-rejected.md)
 — reuse its **file-level audit** and **sync-RPC / re-entrant-emit call-site
 table**.
 
@@ -322,9 +324,9 @@ prove the diagnosis; the seam is still the fix to land.
 
 | # | Step | Area | Status |
 | - | ---- | ---- | ------ |
-| P1 | **Classify the stop** — confirm it is a real freeze, not a prove SIGKILL (`weston-autolaunch-prove.log` tail; see [`../nested-debug.md`](../nested-debug.md) §1) | debug | ✔️ real freeze — both mains blocked in `poll`, client debug log silent ~9 s before capture (not a SIGKILL) |
+| P1 | **Classify the stop** — confirm it is a real freeze, not a prove SIGKILL (`weston-autolaunch-prove.log` tail; see [`../../nested-debug.md`](../../nested-debug.md) §1) | debug | ✔️ real freeze — both mains blocked in `poll`, client debug log silent ~9 s before capture (not a SIGKILL) |
 | P2 | **Prove the hang programmatically** — stay-up run to the freeze; capture **paired backtraces** of **both** `gnome-shell-rpc` (client) and `mutter-rpc` (server) at the hang (coredump or `gdb -p` with `ptrace_scope=0`). Identify the two blocked ends (sync send ↔ blocked recv/emit) and the **last in-flight RPC id/method** on each side | debug | ✔️ captured 09:40 — both ends + in-flight ids in the P2 result above (**raw capture since lost to tmp cleanup**, see P2b) |
-| P2b | **Re-capture, durably** — the 09:40 folder under `/tmp` is gone, so every later question has to be re-asked of a live freeze. `scripts/hang-backtrace.sh` now writes to `~/.cache/gnome-shell-rpc/hang-*` (tmp fallback), keeps **whole** gzipped logs, adds `socket-queues.txt` (unread bytes in a receive queue = written-but-not-drained) and `in-flight.txt` (last send / last recv, plus which `Connection.vala` line read it → inside `hook.emit` or from the main loop). **Needs user to run at the next freeze** | debug | ☐ needs prove |
+| P2b | **Re-capture, durably** — superseded; hang gone | debug | 🚫 hang closed |
 | P3 | **Reproduce in a smoke** — `src/gjs-embed/workarea-reentrant-emit-smoke.js` (drafted): asserts `set_builtin_struts` does **not** emit `workareas-changed` **on-stack** (the re-entrant corridor). Registered `workarea-reentrant-emit-smoke: done` in `SMOKE_OK_PAT`. **Needs user to run** (agent does not run the prove) | test area | ◑ drafted — needs prove (source read says it will FAIL: `Workspace.override.vala:15` emits inline, `syncHits>0`) |
 | P4 | **Isolate outside the product** — `tests/call-sync-repro/reentrant-emit-call-gate.vala`: nested **sync** `call_poll` from inside a `Live.Invoke` handler while server blocked in `hook.emit`. **PASS (2026-09-18)** → transport is safe; **not** a raw OPC deadlock | test area | ✔️ PASS |
 | P4b | **Isolate the remaining transport shape** — `tests/call-sync-repro/poll-burst-strand-gate.vala`: burst of Notifications coalesced ahead of the Invoke, server then silent inside `hook.emit`; client must drain past them. **PASS (2026-09-18)** → no starvation; fifth transport reduction to pass | test area | ✔️ PASS |
@@ -334,7 +336,7 @@ prove the diagnosis; the seam is still the fix to land.
 | P6 | **Propose + test the fix outside** — both pending tests to read `bin.in_stream.get_available()`; filed with verbatim fences, **applied upstream as `0bd32a82`** | test area | ✔️ fixed upstream |
 | P6b | **Stopgap if we need the session before then** — cap the client's underlying reads below the smallest wire message; `GSR_STORM_CAP=8\|16` → **PASS** | test area | 🚫 not needed — P6 landed |
 | P7 | **Verify against the fixed library** — `nested-relay-storm-gate` **FAIL → PASS 3/3**; full gate sweep 17 PASS; `clutter-interval-gvalue-gate` FAIL is a separate open FFI bug | test area | ✔️ PASS |
-| P8 | **Live prove** — nested stay-up run to the IBus dismiss: does the freeze go away? **Needs user to run** (agent does not run the prove) | debug | ☐ needs prove |
+| P8 | **Live prove** — nested stay-up: freeze gone, session stays up | debug | ✔️ user 2026-09-18 |
 | P9 | **P4d landed in OPC** — per-emit frames are stock `Live.Hook` + `Hook.complete`; `src/rpc/Hook.vala` deleted. `LiveCallback.reply` still owns the error-reply path, now routes through stock `complete`. | product | ✔️ |
 
 ### P5 fork (the rule)
@@ -350,7 +352,7 @@ prove the diagnosis; the seam is still the fix to land.
 
 ## Prove commands
 
-Stop-reason + stay-up + smoke (per [`../nested-debug.md`](../nested-debug.md)):
+Stop-reason + stay-up + smoke (per [`../../nested-debug.md`](../../nested-debug.md)):
 
 ```bash
 # Does it stay up / where does it freeze? (no A4/READY SIGKILL)
@@ -387,7 +389,7 @@ ninja -C build tests/call-sync-repro/nested-relay-storm-gate
 Logs: `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`
 (last `method=` per side = in-flight at freeze).
 Backtrace prep (`ptrace_scope`, coredumps, GJS symbols):
-[`../nested-debug.md`](../nested-debug.md) §3–3b.
+[`../../nested-debug.md`](../../nested-debug.md) §3–3b.
 
 ---
 

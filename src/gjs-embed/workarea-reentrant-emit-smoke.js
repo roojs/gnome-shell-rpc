@@ -3,7 +3,7 @@
  * `Display::workareas-changed` **inline / on-stack** (re-entrant).
  *
  * Regression corridor (`e1a7c46..HEAD`, see
- * docs/bugs/2026-09-18-hang-after-settle-race.md P2):
+ * docs/bugs/done/2026-09-18-hang-after-settle-race.md P2):
  *   - `overrides/Workspace.override.set_builtin_struts` RPCs the server and
  *     then `emit_by_name(display, "workareas-changed")` **synchronously**.
  *   - `overrides/Meta.override.get_display` subscribes the client Display
