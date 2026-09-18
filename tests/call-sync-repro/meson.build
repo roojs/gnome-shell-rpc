@@ -74,6 +74,80 @@ executable('poll-coalesced-reply-gate',
   install: false,
 )
 
+# Coalesced [Notification][Response] to a NESTED call_poll, server parked in
+# hook.emit — the one-deep version of this passes.
+executable('poll-nested-coalesced-reply-gate',
+  [
+    'poll-nested-coalesced-reply-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+# Live shape at volume: deep nesting + re-entrant emits + sync calls in invoke
+# handlers + notifications mid-dispatch. Looks for a wedge the one-shot gates miss.
+executable('nested-relay-storm-gate',
+  [
+    'nested-relay-storm-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+# Nested Hook.emit on ONE callback id — inner reply must not release the outer.
+executable('same-hook-reentrant-emit-gate',
+  [
+    'same-hook-reentrant-emit-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+# Burst of Notifications ahead of the Invoke — client must drain its bin
+# buffer, not one message per readable event (server blocked in hook.emit).
+executable('poll-burst-strand-gate',
+  [
+    'poll-burst-strand-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Gi get_property omit GValue — must not CRITICAL via Value(Type.INVALID).
 executable('gvalue-omit-gate',
   [

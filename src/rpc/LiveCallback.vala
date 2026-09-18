@@ -73,27 +73,32 @@ namespace GnomeShellRpc.Rpc
 				return;
 			}
 			var correlation = (int) request.args.get(0).get_uint64();
+			var error_code = 0;
+			var values = new Gee.ArrayList<GLib.Value?>();
+			if (request.args.size == 2
+					&& request.args.get(1).type() == GLib.Type.INT) {
+				error_code = request.args.get(1).get_int();
+				var err = new OLLMrpc.Error(error_code, "live callback error");
+				var val = GLib.Value(typeof(OLLMrpc.Error));
+				val.set_object(err);
+				values.add(val);
+			} else {
+				for (var i = 1; i < request.args.size; i++) {
+					values.add(request.args.get(i));
+				}
+			}
+
+			/* Route by waiting reply_id — nested emits share a row
+			 * (OLLMrpc.Live.Hook.complete). */
 			foreach (var id in request.connection.callbacks.keys) {
 				var row = request.connection.callbacks.get(id);
-				if (row.reply_id != correlation) {
+				if (!row.complete(correlation, values)) {
 					continue;
 				}
-				row.reply_args.clear();
-				if (request.args.size == 2
-						&& request.args.get(1).type() == GLib.Type.INT) {
-					var code = request.args.get(1).get_int();
-					var err = new OLLMrpc.Error(code, "live callback error");
-					var val = GLib.Value(typeof(OLLMrpc.Error));
-					val.set_object(err);
-					row.reply_args.add(val);
-					row.replied = true;
-					request.connection.reply_error(request, code);
+				if (error_code != 0) {
+					request.connection.reply_error(request, error_code);
 					return;
 				}
-				for (var i = 1; i < request.args.size; i++) {
-					row.reply_args.add(request.args.get(i));
-				}
-				row.replied = true;
 				request.reply(new OLLMrpc.Response());
 				return;
 			}

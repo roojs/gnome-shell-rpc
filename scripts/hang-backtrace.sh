@@ -14,8 +14,15 @@
 # It writes everything into one folder and prints the path to paste back.
 set -u
 
-OUT="/tmp/gsr-hang-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$OUT"
+# Not /tmp: the 2026-09-18 09:40 capture was lost to tmp cleanup before it
+# could be read back. Keep captures beside the logs they explain.
+STAMP="hang-$(date +%Y%m%d-%H%M%S)"
+OUT="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc/$STAMP"
+if ! mkdir -p "$OUT" 2>/dev/null; then
+	OUT="/tmp/gsr-$STAMP"
+	mkdir -p "$OUT"
+	echo "!! cache dir not writable — captured to $OUT (copy it out before tmp cleanup)"
+fi
 
 # gdb attach needs ptrace_scope=0 on Ubuntu (default 1 blocks -p). Sudo prompt.
 scope="$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo 0)"
@@ -52,10 +59,38 @@ dump() {   # $1 = label   $2 = exact process name (comm)
 dump client gnome-shell-rpc
 dump server mutter-rpc
 
+# Socket queues decide the argument: unread bytes sitting in a receive queue
+# mean the reply WAS written and the peer is not draining (consumer/poll bug);
+# empty queues both ways mean nobody wrote (a real cross-wait).
+{
+	echo "== unix socket queues (rq = unread by the reader) =="
+	ss -x -m -p 2>/dev/null | grep -aE 'mutter-rpc|gnome-shell-rpc|State|Recv-Q' || true
+} > "$OUT/socket-queues.txt" 2>/dev/null || true
+
 L=~/.cache/gnome-shell-rpc
+# Whole logs, not tails: the in-flight id usually has to be traced back through
+# several thousand lines of the emit storm.
+gzip -c "$L/org.gnome.ShellRpc.debug.log" > "$OUT/client.debug.log.gz" 2>/dev/null || true
+gzip -c "$L/mutter-rpc.debug.log"         > "$OUT/server.debug.log.gz" 2>/dev/null || true
 tail -n 80 "$L/org.gnome.ShellRpc.debug.log"  > "$OUT/client.log.tail.txt" 2>/dev/null || true
 tail -n 80 "$L/mutter-rpc.debug.log"          > "$OUT/server.log.tail.txt" 2>/dev/null || true
 tail -n 25 "$L/weston-autolaunch-prove.log"   > "$OUT/stop-reason.tail.txt" 2>/dev/null || true
+
+# The two ends of the deadlock, straight out of the logs: last request the
+# client sent, last request the server read, and every server connection seen.
+{
+	echo "== client: last call_poll sends (Client.vala id=… method=…) =="
+	grep -a "method=" "$L/org.gnome.ShellRpc.debug.log" 2>/dev/null | tail -n 10
+	echo
+	echo "== server: last recv (Connection.vala recv id=… method=…) =="
+	echo "   src/rpc/Connection.vala:NNN  = drain_readable → read INSIDE hook.emit"
+	echo "   OPC Connection.vala:NNN      = on_input_ready → read from the main loop"
+	grep -a "recv id=" "$L/mutter-rpc.debug.log" 2>/dev/null | tail -n 10
+	echo
+	echo "== server: connections seen (emit_wait_poll polls ONE conn fd) =="
+	grep -ao "conn=0x[0-9a-f]*" "$L/mutter-rpc.debug.log" 2>/dev/null \
+		| sort | uniq -c | sort -rn
+} > "$OUT/in-flight.txt" 2>/dev/null || true
 
 echo
 echo "=================================================================="
