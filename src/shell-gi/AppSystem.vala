@@ -160,6 +160,14 @@ namespace Shell
 			return this.lookup_app(id);
 		}
 
+		/**
+		 * Stock wrapper around {@code g_desktop_app_info_search}.
+		 */
+		public static string**[] search(string search_string)
+		{
+			return GLib.DesktopAppInfo.search(search_string);
+		}
+
 		internal void notify_app_state(App app)
 		{
 			switch (app.state) {

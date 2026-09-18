@@ -82,11 +82,6 @@ namespace GnomeShellRpc.ShellClient
 					"GnomeShellRpc typelib require failed: %s", e.message
 				);
 			}
-			try {
-				GI.Repository.get_default().require("Clutter", "16", 0);
-			} catch (GLib.Error e) {
-				GLib.warning("Clutter typelib require failed: %s", e.message);
-			}
 			GLib.resources_register(shell_js_resources_get_resource());
 
 			var override_dir = GLib.Environment.get_variable("GI_RPC_JS_OVERRIDE_DIR");

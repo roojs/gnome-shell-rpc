@@ -193,14 +193,6 @@ namespace GnomeShellRpc.GiStub
 								"stopped", true);
 						}
 						return;
-					case "key-press-event":
-						if (Runtime.client.proxies.has_key(notif.id)) {
-							GLib.Signal.emit_by_name(
-								Runtime.client.proxies.get(notif.id),
-								"key-press-event",
-								Clutter.get_current_event());
-						}
-						return;
 					default:
 						if (!Runtime.client.proxies.has_key(notif.id)) {
 							return;

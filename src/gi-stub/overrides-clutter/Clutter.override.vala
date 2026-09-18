@@ -19,17 +19,12 @@
 			current_event_cache = null;
 			return null;
 		}
-		var keyval = 0u;
-		if (response.args.size > 5) {
-			keyval = response.args.get(5).get_uint();
-		}
 		current_event_cache = new Event.local(
 			(EventType) response.args.get(0).get_int(),
 			(float) response.args.get(1).get_double(),
 			(float) response.args.get(2).get_double(),
 			response.args.get(3).get_uint(),
-			response.args.get(4).get_uint(),
-			keyval);
+			response.args.get(4).get_uint());
 		return current_event_cache;
 	}
 

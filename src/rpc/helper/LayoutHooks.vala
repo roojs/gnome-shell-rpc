@@ -100,7 +100,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public static bool measure_event(
 			OLLMrpc.Live.Hook hook,
-			Clutter.Actor actor,
+			Actor actor,
 			Clutter.Event event
 		) {
 			float x = 0.0f, y = 0.0f;
@@ -113,12 +113,11 @@ namespace GnomeShellRpc.Rpc.Helper
 					|| et == Clutter.EventType.PAD_BUTTON_RELEASE) {
 				button = event.get_button();
 			}
-			hook.emit(OLLMrpc.args("tidduu",
+			hook.emit(OLLMrpc.args("tiddu",
 				hook.connection.export(actor),
 				(int) et,
 				(double) x, (double) y,
-				button,
-				event.get_key_symbol()));
+				button));
 			if (hook.reply_args.size < 1) {
 				return false;
 			}
