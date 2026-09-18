@@ -29,6 +29,32 @@ timeout 5 $GATE_HOOK_O    # Live.Hook.emit "od" GObject — FAIL until OPC
 `stack` matches live after OPC send fix: reply is recv’d at depth=1, not
 dispatched, emit times out, parent never responds.
 
+## reentrant-emit-call-gate (real libocrpc, two processes)
+
+Shape: server `Gate.provoke` → `hook.emit` (server blocked in emit); client
+`invoke` handler issues a **nested synchronous** `call_poll("Gate.ping")`
+**before** `RPC-Live-Callback.reply`. Server must dispatch `ping` while
+`in_emit`. Models the live "hang after settle": a GJS signal/vfunc/notification
+handler makes a blocking RPC (`get_current_event` / `set_builtin_struts` +
+`workareas-changed` re-emit) while a server vfunc-relay `hook.emit` is in
+flight. Bug: [`../../docs/bugs/2026-09-18-hang-after-settle-race.md`](../../docs/bugs/2026-09-18-hang-after-settle-race.md).
+
+```bash
+ninja -C build tests/call-sync-repro/reentrant-emit-call-gate
+timeout 8 ./build/tests/call-sync-repro/reentrant-emit-call-gate
+```
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-18 | **PASS** — `ping (in_emit=true)` dispatched; nested sync `call_poll → 42`; `hook.emit END replied=true` |
+
+→ **PASS (observed):** transport dispatches a nested request during `hook.emit`
+(re-entrant sync call safe) → the live hang is **NOT** a raw OPC sync-in-emit
+deadlock → chase the **consumer** (our re-entrant emit / relayout pattern). **Do
+not file OPC** on this shape.
+(**FAIL** would have been: OPC cannot service a request while emit is in flight →
+file in **OLLMchat**, keep the FAIL gate, do not edit OLLMchat from this tree.)
+
 ## after-reply-gate (real libocrpc, two processes)
 
 Shape: emit A → in-flow reply → `request.reply` → **emit B same turn** →
