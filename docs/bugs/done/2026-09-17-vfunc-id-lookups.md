@@ -1,10 +1,8 @@
 # Vfunc hot path still hashes the name string
 
-**Status:** ⏳ open — performance follow-on to 0.8.2, not a stay-up crash.
+**Status:** ✔️ archived 2026-09-19 — fire path is `vfuncs.get(vfunc_id)`, not the name string. Landed in `e1a7c46` (2026-09-17); nested chrome since then still emits (menus / workarea / stay-up).
 
-**GitHub:** https://github.com/roojs/gnome-shell-rpc/issues/1
-
-**Plan:** [`../plans/0.8.5-vfunc-id-lookups.md`](../plans/0.8.5-vfunc-id-lookups.md)
+**Plan:** [`../../plans/done/0.8.5-vfunc-id-lookups.md`](../../plans/done/0.8.5-vfunc-id-lookups.md)
 
 **Upstream contract:** OLLMchat `docs/plans/RPC-1.10-vfunc-id-lookups.md` — libocrpc already has the ints. Nothing to land there.
 
@@ -25,10 +23,10 @@ Expected: register once with `vfunc_id` + `hook_id`. Fire looks up `vfunc_id`, t
 
 ## Conclusions
 
+- **✔️** Helper `vfuncs` is `HashMap<int, Live.Hook>`. Fire uses `ActorVfuncIds.*_id` / `LayoutManagerVfuncIds.*_id`. `add_hook` is `"it"`.
 - **🔷** libocrpc will not add another string map. Consumer owns `add_hook` and the peer map (RPC-1.8).
 - **🔷** `vfunc_id` = offset. `hook_id` = trampoline row. Do not mix them.
 - **ℹ️** `bind_vfunc` is **generated** (`Generator.emit_object_class_slots`, `relay=1`). Helper `$(rname)_id` + `register_vfunc_ids()` are **generated** (`--helper-out`, type `helper=1`). `relay_attach`, Helper `add_hook`, and fire stay **hand**. LayoutManager `ensure_helper_peer` is **hand** (uses generated `bind_vfunc`).
-- **ℹ️** How to implement: the plan, including generator emit.
 
 ---
 

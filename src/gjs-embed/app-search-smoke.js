@@ -1,31 +1,34 @@
 /**
- * 0.8 Search FAIL smoke — printable key with overview shown.
+ * 0.8 Search FAIL smoke — live miss: text fills, results list empty.
  *
- * Boots product {@code main.start} (not a GI_META_SMOKE that skips init),
- * {@code overview.show()}, injects {@code KEY_f}, then names the miss:
- * {@code AppSystem.search} / Event / {@code Clutter.Text} / results-layout.
+ * Boots product {@code main.start}, sets the search entry text (bypass
+ * Event / {@code fire_key}), then names the miss:
+ * {@code AppSystem.search} / parental / {@code getInitialResultSet} /
+ * {@code lookup_app} / {@code text-changed} / {@code setTerms} /
+ * {@code getResultMetas} / IconGrid.
  *
  *   GSR_NESTED_TIMEOUT=40 GI_META_SMOKE=app-search-smoke \
  *     GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
  *
  * Weston only. 🚫 vendor search.js.
+ * See docs/bugs/2026-09-19-overview-app-search-empty.md
  */
 
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
-import Clutter from 'gi://Clutter';
 import Shell from 'gi://Shell';
 
 import 'resource:///org/gnome/shell/ui/environment.js';
 import {formatError} from 'resource:///org/gnome/shell/misc/errorUtils.js';
 
 const SMOKE = 'app-search-smoke';
+const SEARCH_WAIT_MS = 2000;
 
 /**
  * @param {string} message
  */
 function smokeLog(message) {
-	console.log(SMOKE + ': ' + message);
+	log(SMOKE + ': ' + message);
 }
 
 /**
@@ -45,122 +48,175 @@ function countHits(groups) {
 }
 
 /**
+ * @param {string[][]} groups
+ * @returns {string}
+ */
+function firstHitId(groups) {
+	if (groups == null)
+		return '';
+	for (let i = 0; i < groups.length; i++) {
+		const g = groups[i];
+		if (g != null && g.length > 0 && g[0])
+			return String(g[0]);
+	}
+	return '';
+}
+
+/**
  * @param {object} main
  */
 function runSearchProve(main) {
-	const globalObj = Shell.Global.get();
 	const layout = main.layoutManager;
+	const search = main.overview.searchController;
+	const entry = main.overview.searchEntry;
+	const resultsView = search._searchResults;
+	const parental = resultsView._parentalControlsManager;
+
 	smokeLog(
 		'post-start startingUp=' + layout._startingUp
 			+ ' overview.visible=' + main.overview.visible
-	);
-
-	/* show() during _startingUp hits _syncGrab too early (stock
-	 * runStartupAnimation defers the grab) and never returns. */
-
-	smokeLog(
-		'overview visible=' + main.overview.visible
-			+ ' animation=' + main.overview.animationInProgress
-			+ ' modalCount=' + main.modalCount
+			+ ' parental.initialized=' + (parental ? parental.initialized : 'n/a')
 	);
 
 	let nHits = 0;
+	let hitId = '';
+	let lookupOk = false;
 	try {
 		const groups = Shell.AppSystem.search('f');
 		nHits = countHits(groups);
-		smokeLog('AppSystem.search(f) hits=' + nHits);
+		hitId = firstHitId(groups);
+		smokeLog('AppSystem.search(f) hits=' + nHits + ' first=' + JSON.stringify(hitId));
+		if (hitId.length > 0) {
+			try {
+				const app = Shell.AppSystem.get_default().lookup_app(hitId);
+				lookupOk = app != null;
+				smokeLog(
+					'lookup_app ok=' + lookupOk
+						+ ' id=' + JSON.stringify(app ? app.get_id() : null)
+						+ ' name=' + JSON.stringify(app ? app.get_name() : null)
+				);
+			} catch (e) {
+				smokeLog('lookup_app threw ' + formatError(e));
+			}
+		}
 	} catch (e) {
 		smokeLog('FAIL AppSystem.search threw ' + formatError(e));
 	}
 
-	const search = main.overview.searchController;
-	const entry = main.overview.searchEntry;
-	const stage = globalObj.get_stage();
-
-	let sawPress = 0;
-	let lastSymbol = -1;
-	const pressId = stage.connect('key-press-event', (actor, event) => {
-		sawPress++;
+	const providers = resultsView._providers || [];
+	const appProv = providers.find(p => p.id === 'applications');
+	let initialN = -1;
+	let initialErr = '';
+	let initialDone = false;
+	if (appProv == null) {
+		smokeLog('FAIL no applications provider');
+		initialDone = true;
+	} else {
 		try {
-			lastSymbol = event.get_key_symbol();
+			const p = appProv.getInitialResultSet(['f'], new Gio.Cancellable());
+			p.then(ids => {
+				initialDone = true;
+				initialN = ids == null ? 0 : ids.length;
+				smokeLog('getInitialResultSet n=' + initialN);
+			}).catch(e => {
+				initialDone = true;
+				initialErr = formatError(e);
+				smokeLog('getInitialResultSet threw ' + initialErr);
+			});
 		} catch (e) {
-			lastSymbol = -2;
-			smokeLog('get_key_symbol threw ' + formatError(e));
-		}
-		smokeLog('key-press-event n=' + sawPress + ' symbol=' + lastSymbol);
-		return Clutter.EVENT_PROPAGATE;
-	});
-
-	const unicodeKind = typeof Clutter.keysym_to_unicode;
-	let unicode = -1;
-	smokeLog('keysym_to_unicode typeof=' + unicodeKind);
-	if (unicodeKind === 'function') {
-		try {
-			unicode = Clutter.keysym_to_unicode(Clutter.KEY_f);
-		} catch (e) {
-			smokeLog('keysym_to_unicode threw ' + formatError(e));
+			initialDone = true;
+			initialErr = formatError(e);
+			smokeLog('getInitialResultSet sync-threw ' + initialErr);
 		}
 	}
-	smokeLog('KEY_f=' + Clutter.KEY_f + ' unicode=' + unicode);
 
-	smokeLog('fire_key KEY_f');
-	globalObj.fire_key(Clutter.KEY_f, 0);
-	smokeLog('fire_key returned');
+	smokeLog('set clutter_text.text=f');
+	entry.clutter_text.text = 'f';
 
-	GLib.timeout_add(GLib.PRIORITY_HIGH, 50, () => {
-		stage.disconnect(pressId);
-
+	GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
 		const searchActive = search.searchActive;
 		const entryText = entry.text;
-		const results = search._searchResults;
-		let resultsVis = false;
-		let resultsMapped = false;
-		if (results != null) {
-			resultsVis = results.visible;
-			resultsMapped = results.mapped;
+		const terms = resultsView.terms;
+		const starting = resultsView._startingSearch;
+		const inProgress = resultsView.searchInProgress;
+		const status = resultsView._statusText ? resultsView._statusText.text : '';
+		const defaultResult = resultsView._defaultResult;
+		const appResults = resultsView._results ? resultsView._results.applications : null;
+		const appN = appResults == null ? -1 : appResults.length;
+		const display = appProv ? appProv.display : null;
+		let first = null;
+		let nGrid = -1;
+		let displayVis = false;
+		let displayMapped = false;
+		if (display != null) {
+			displayVis = display.visible;
+			displayMapped = display.mapped;
+			try {
+				first = display.getFirstResult();
+			} catch (e) {
+				smokeLog('getFirstResult threw ' + formatError(e));
+			}
+			if (display._grid != null)
+				nGrid = display._grid.get_n_children();
 		}
+
 		smokeLog(
-			'after-key searchActive=' + searchActive
+			'after-text searchActive=' + searchActive
 				+ ' entryText=' + JSON.stringify(entryText)
-				+ ' resultsVis=' + resultsVis
-				+ ' resultsMapped=' + resultsMapped
-				+ ' sawPress=' + sawPress
-				+ ' lastSymbol=' + lastSymbol
-				+ ' overview.visible=' + main.overview.visible
+				+ ' terms=' + JSON.stringify(terms)
+				+ ' startingSearch=' + starting
+				+ ' searchInProgress=' + inProgress
+				+ ' status=' + JSON.stringify(status)
+				+ ' appResults=' + appN
+				+ ' defaultResult=' + (defaultResult != null)
+				+ ' displayVis=' + displayVis
+				+ ' displayMapped=' + displayMapped
+				+ ' nGrid=' + nGrid
+				+ ' first=' + (first != null)
+				+ ' initialDone=' + initialDone
+				+ ' initialN=' + initialN
+				+ ' parental.initialized=' + (parental ? parental.initialized : 'n/a')
 		);
 
 		let miss = '';
 		if (nHits === 0)
 			miss = 'AppSystem.search';
-		else if (sawPress === 0)
-			miss = 'Event';
-		else if (lastSymbol !== Clutter.KEY_f)
-			miss = 'Event';
-		else if (unicodeKind !== 'function' || unicode === 0)
-			miss = 'Event';
-		else if (!main.overview.visible)
-			miss = 'overview';
+		else if (!initialDone)
+			miss = parental && !parental.initialized ? 'parental' : 'getInitialResultSet';
+		else if (initialErr.length > 0)
+			miss = 'getInitialResultSet';
+		else if (initialN === 0)
+			miss = lookupOk ? 'getInitialResultSet' : 'lookup_app';
+		else if (entryText !== 'f')
+			miss = 'text-changed';
 		else if (!searchActive)
-			miss = 'Clutter.Text';
-		else if (!resultsVis && !resultsMapped)
-			miss = 'results-layout';
+			miss = 'text-changed';
+		else if (!terms || terms.length === 0)
+			miss = 'setTerms';
+		else if (first == null && nGrid <= 0)
+			miss = appN > 0 ? 'getResultMetas' : 'IconGrid';
+		else if (first == null)
+			miss = 'IconGrid';
 
 		if (miss.length > 0)
 			smokeLog('miss ' + miss);
 		else
 			smokeLog('ok');
+		smokeLog('done');
 		global.context.terminate();
 		return GLib.SOURCE_REMOVE;
 	});
 }
 
 imports._promiseNative.setMainLoopHook(() => {
+	smokeLog('hook');
 	GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
 		import('resource:///org/gnome/shell/ui/main.js').then(main => {
 			return main.start().then(() => {
 				runSearchProve(main);
 			});
 		}).catch(e => {
+			smokeLog('FAIL start ' + formatError(e));
 			const error = new GLib.Error(
 				Gio.IOErrorEnum, Gio.IOErrorEnum.FAILED, formatError(e));
 			global.context.terminate_with_error(error);

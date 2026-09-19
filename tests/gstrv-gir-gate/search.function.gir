@@ -1,0 +1,14 @@
+		<function name="search" c:identifier="gsr_search_app_system_search">
+			<return-value transfer-ownership="full">
+				<array zero-terminated="1" c:type="char***">
+					<array zero-terminated="1">
+						<type name="utf8"/>
+					</array>
+				</array>
+			</return-value>
+			<parameters>
+				<parameter name="search_string" transfer-ownership="none">
+					<type name="utf8" c:type="const char*"/>
+				</parameter>
+			</parameters>
+		</function>

@@ -1,4 +1,9 @@
-/* Thin wrapper — Vala cannot return (array)(element-type GStrv) for GJS. */
+/*
+ * Workaround: Vala cannot GIR-generate this type (stacked arrays).
+ * Nested GStrv reaches the typelib via a nasty clutch that hacks GIR
+ * generation: scripts/gir-inject-placeholder.sh swaps a dummy vala_gir
+ * marker for search.function.gir.
+ */
 #include "app-system-search.h"
 
 #include <gio/gdesktopappinfo.h>
@@ -27,4 +32,11 @@ shell_app_system_search (const char *search_string)
 				**ids = '\0';
 
 	return results;
+}
+
+/* Vala [CCode] extern — not the GI identifier. */
+char ***
+gsr_app_system_search_groups (const char *search_string)
+{
+	return shell_app_system_search (search_string);
 }

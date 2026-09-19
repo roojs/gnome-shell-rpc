@@ -1,9 +1,13 @@
 /**
- * GJS must marshal nested GStrv from GsrSearch.AppSystem.search.
- * Vala string**[] GIR (gpointer inner) throws Unknown Array element-type 0.
+ * GJS must marshal nested GStrv from GsrSearch.AppSystem.search after
+ * vala_gir + inject.sh + g-ir-compiler. ping stays from Vala.
  */
 
 import GsrSearch from 'gi://GsrSearch';
+
+if (GsrSearch.AppSystem.ping() !== 'pong') {
+	throw new Error('gstrv-gir-gate: ping=' + GsrSearch.AppSystem.ping());
+}
 
 const groups = GsrSearch.AppSystem.search('bar');
 if (groups === null || groups === undefined) {

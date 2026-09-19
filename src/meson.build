@@ -836,9 +836,10 @@ mutter_rpc_client_dep = declare_dependency(
   compile_args: ['-I' + mutter_includedir],
 )
 
-# 0.7.7 — owned Shell-16 facade (not libshell). GIR from Vala (vala_gir).
-# AppSystem.search is C gtk-doc (element-type GStrv), compiled into this
-# library — not a Vala method (vala_gir would emit gpointer).
+# 0.7.7 — owned Shell-16 facade (not libshell).
+# valac requires NAME-VERSION.gir (cannot be *.vala.gir). That file is the
+# stamp, never installed. Inject writes Shell-16.injected.gir — typelib and
+# any install use that (installed name Shell-16.gir).
 # libsystemd has no Vala vapi — assert found, link with -lsystemd only.
 dependency('libsystemd')
 shell_gi_lib = shared_library(
@@ -952,10 +953,22 @@ shell_gi_lib = shared_library(
   install: false,
 )
 
-# Do not pass the Vala-generated GIR as custom_target input via
-# meson.current_build_dir() / 'Shell-16.gir' — Meson cannot turn that into a
-# File (warning → hard error in 2.0), and Ninja then depends on an absolute
-# path with no rule. Same pattern as Meta/St typelibs: path in command + depends.
+# Injected GIR is what the typelib / install ship (as Shell-16.gir).
+shell_gi_gir = custom_target(
+  'Shell-16.injected.gir',
+  output: 'Shell-16.injected.gir',
+  command: [
+    find_program('sh'),
+    meson.project_source_root() / 'scripts/gir-inject-placeholder.sh',
+    meson.current_build_dir() / 'Shell-16.gir',
+    files('shell-gi/search.function.gir'),
+    '@OUTPUT@',
+  ],
+  depends: [shell_gi_lib],
+  build_by_default: true,
+  install: false,
+)
+
 shell_gi_typelib = custom_target(
   'Shell-16.typelib',
   output: 'Shell-16.typelib',
@@ -966,7 +979,7 @@ shell_gi_typelib = custom_target(
     '--includedir', mutter_typelib_dir,
     '--includedir', gnome_shell_girdir,
     '--includedir', meson.current_build_dir(),
-    meson.current_build_dir() / 'Shell-16.gir',
+    shell_gi_gir,
   ],
   depends: [shell_gi_lib],
   build_by_default: true,
