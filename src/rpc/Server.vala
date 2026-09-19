@@ -41,6 +41,8 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Gi.register("Meta", "16");
 			OLLMrpc.Gi.register("Clutter", "16");
 			OLLMrpc.Gi.register("St", "16");
+			/* Opaque boxed {@code ClutterStage::before-update} arg. */
+			OLLMrpc.Bin.register("Clutter-Frame", typeof(Clutter.Frame));
 
 			Rpc.CancellableBridge.register();
 			Rpc.Helper.rpc_register();
@@ -68,39 +70,30 @@ namespace GnomeShellRpc.Rpc
 					&& !OLLMrpc.Bin.gtype_to_alias.has_key(monitor_manager.get_type())) {
 				/* Concrete subclass (e.g. Native) — Gi return encode needs
 				 * gtype_to_alias or get_monitor_manager replies -32602. */
-				OLLMrpc.Bin.register_alias("Meta-MonitorManager",
-					monitor_manager.get_type());
+				OLLMrpc.Bin.register_alias("Meta-MonitorManager", monitor_manager.get_type());
 			}
 			var sn = display.get_startup_notification();
-			if (sn != null
-					&& !OLLMrpc.Bin.gtype_to_alias.has_key(sn.get_type())) {
-				OLLMrpc.Bin.register_alias("Meta-StartupNotification",
-					sn.get_type());
+			if (sn != null && !OLLMrpc.Bin.gtype_to_alias.has_key(sn.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-StartupNotification", sn.get_type());
 			}
 			var player = display.get_sound_player();
-			if (player != null
-					&& !OLLMrpc.Bin.gtype_to_alias.has_key(player.get_type())) {
-				OLLMrpc.Bin.register_alias("Meta-SoundPlayer",
-					player.get_type());
+			if (player != null && !OLLMrpc.Bin.gtype_to_alias.has_key(player.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-SoundPlayer", player.get_type());
 			}
 			var idle = display.get_context().get_backend()
 				.get_core_idle_monitor();
-			if (idle != null
-					&& !OLLMrpc.Bin.gtype_to_alias.has_key(idle.get_type())) {
-				OLLMrpc.Bin.register_alias("Meta-IdleMonitor",
-					idle.get_type());
+			if (idle != null && !OLLMrpc.Bin.gtype_to_alias.has_key(idle.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-IdleMonitor", idle.get_type());
 			}
 			var stage = display.get_context().get_backend().get_stage();
 			var ctx = stage != null ? stage.get_context() : null;
 			var clutter_backend = ctx != null ? ctx.get_backend() : null;
-			var seat = clutter_backend != null
-				? clutter_backend.get_default_seat() : null;
+			var seat = clutter_backend != null ? clutter_backend.get_default_seat() : null;
 			unowned GLib.List<Clutter.StageView>? views = null;
 			if (stage != null) {
 				views = stage.peek_stage_views();
 			}
-			if (stage != null
-					&& !OLLMrpc.Bin.gtype_to_alias.has_key(stage.get_type())) {
+			if (stage != null && !OLLMrpc.Bin.gtype_to_alias.has_key(stage.get_type())) {
 				OLLMrpc.Bin.register_alias("Clutter-Stage", stage.get_type());
 			}
 			/*

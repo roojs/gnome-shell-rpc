@@ -39,6 +39,7 @@ Namespace signal_prefer=parent_set
 Namespace signal_prefer=pick
 
 # Event (sole Clutter GIR union) — denied; Compact in Clutter.override.vala.
+# Frame (opaque boxed) — denied; Compact in Clutter.override.vala.
 
 # Opaque boxed records (size 0) → class + methods for St C ABI.
 PaintContext emit=opaque-as-class

@@ -4,6 +4,11 @@
 		 * subscribe the server emit never reaches the client (empty
 		 * overview results while the field still fills). After the lease
 		 * exists — not in Text construct (nested RPC during parse hung).
+		 *
+		 * Do not subscribe {@code key-press-event}: {@code ClutterEvent} is
+		 * Compact / not on the wire. Packing it resets the client
+		 * ({@code unsupported bin value type 'ClutterEvent'}). Keys still
+		 * insert on the server text; Helper {@code relay_event} emits locally.
 		 */
 		public Clutter.Text clutter_text {
 			[CCode (cname = "st_entry_get_clutter_text")]
@@ -13,8 +18,6 @@
 				var text = (Clutter.Text) response.retval.get_object();
 				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
 					text, "text-changed");
-				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-					text, "key-press-event");
 				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
 					text, "key-focus-in");
 				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(

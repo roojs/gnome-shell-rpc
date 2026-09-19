@@ -85,8 +85,7 @@ namespace GnomeShellRpc.GiStub
 		) {
 			uint signal_id = 0;
 			GLib.Quark detail = 0;
-			if (!GLib.Signal.parse_name(
-					signal_name, obj.get_type(),
+			if (!GLib.Signal.parse_name(signal_name, obj.get_type(),
 					out signal_id, out detail, false)
 					|| signal_id == 0) {
 				return;
@@ -100,19 +99,27 @@ namespace GnomeShellRpc.GiStub
 			for (var i = 0; i < (int) query.n_params; i++) {
 				var param_type = query.param_types[i];
 				vals[i + 1] = GLib.Value(param_type);
-				if (args == null || i >= args.size) {
+				if (args != null && i < args.size) {
+					var src = args.get(i);
+					if (src != null && src.type() != GLib.Type.INVALID) {
+						if (!src.transform(ref vals[i + 1])
+								&& src.holds(GLib.Type.OBJECT)
+								&& param_type.is_a(GLib.Type.OBJECT)) {
+							vals[i + 1].set_object(src.get_object());
+						}
+					}
+				}
+				/*
+				 * Size-0 boxed (ClutterFrame) arrives as an unset GValue.
+				 * Compact marshal asserts non-NULL — mint an empty Frame.
+				 */
+				if (param_type != typeof(Clutter.Frame)) {
 					continue;
 				}
-				var src = args.get(i);
-				if (src == null || src.type() == GLib.Type.INVALID) {
+				if (vals[i + 1].get_boxed() != null) {
 					continue;
 				}
-				if (src.transform(ref vals[i + 1])) {
-					continue;
-				}
-				if (src.holds(GLib.Type.OBJECT) && param_type.is_a(GLib.Type.OBJECT)) {
-					vals[i + 1].set_object(src.get_object());
-				}
+				vals[i + 1].set_boxed(new Clutter.Frame());
 			}
 			Runtime.signal_emitv(vals, signal_id, detail, null);
 		}
@@ -167,6 +174,7 @@ namespace GnomeShellRpc.GiStub
 			OLLMrpc.Bin.register("Clutter-ActorMeta", typeof(Clutter.ActorMeta));
 			OLLMrpc.Bin.register("Clutter-Effect", typeof(Clutter.Effect));
 			OLLMrpc.Bin.register("Clutter-OffscreenEffect", typeof(Clutter.OffscreenEffect));
+			OLLMrpc.Bin.register("Clutter-Frame", typeof(Clutter.Frame));
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {

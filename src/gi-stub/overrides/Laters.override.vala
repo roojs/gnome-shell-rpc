@@ -6,7 +6,8 @@
 		 *
 		 * Queue + {@code schedule_update}. Subscribe {@code before-update};
 		 * Runtime re-emits {@link OLLMrpc.Notification.args} onto the
-		 * client Stage.
+		 * client Stage. {@code Clutter-Frame} is {@link OLLMrpc.Bin.register}ed
+		 * (opaque boxed). Do not Idle.
 		 */
 		private class LaterEntry
 		{

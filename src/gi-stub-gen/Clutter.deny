@@ -215,6 +215,9 @@ BindingPool.override_closure
 Event
 EventSequence
 
+# Opaque boxed ClutterFrame — Compact in Clutter.override.vala (before-update).
+Frame
+
 # GSourceFunc not DBus-marshallable; Helper / Live.Callback instead.
 threads_add_repaint_func
 

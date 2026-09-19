@@ -497,6 +497,7 @@ mutter_clutter_rpc_lib = shared_library(
     'gi-stub/VfuncRelay.vala',
     'gi-stub/c-clutter-st-abi-gaps.c',
     'gi-stub/c-clutter-event-type.c',
+    'gi-stub/c-clutter-frame-type.c',
     'gi-stub/c-clutter-effect-abi.c',
     'shared/namespace.vala',
     'shared/Rectangle.vala',

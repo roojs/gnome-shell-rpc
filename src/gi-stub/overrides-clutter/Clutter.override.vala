@@ -48,6 +48,31 @@
 	}
 
 	/**
+	 * Opaque boxed {@code ClutterFrame} (GIR record, size 0). Compact so
+	 * {@code typeof(Frame)} is a boxed GType for {@code Bin.register}
+	 * {@code Clutter-Frame} — {@code before-update} arg. GType lives in
+	 * {@code c-clutter-frame-type.c} (same boxed pattern as Event).
+	 *
+	 * GIR {@code get_count} / {@code set_result} / … take mutter's
+	 * {@code ClutterFrame*}. This peer has no such object (size-0 boxed,
+	 * no {@code rpc_lid}). Do not stub them.
+	 */
+	[CCode (cname = "ClutterFrame", cheader_filename = "gsr-clutter-effect-abi.h", copy_function = "clutter_frame_copy", free_function = "clutter_frame_free", type_id = "CLUTTER_TYPE_FRAME")]
+	[Compact]
+	public class Frame
+	{
+		public uint8 _unused;
+
+		[CCode (cname = "clutter_frame_copy")]
+		public Frame copy()
+		{
+			var copy = new Frame();
+			copy._unused = this._unused;
+			return copy;
+		}
+	}
+
+	/**
 	 * Compact ClutterEvent* (GJS typelib union). Sole Clutter GIR union —
 	 * denied in generator; fields match header-overrides/Event.h.
 	 * copy_function is required for Vala to emit clutter_event_get_type.

@@ -360,6 +360,23 @@ executable('subscribe-signal-args-gate',
   install: false,
 )
 
+# Named-signal boxed arg that is not GLib.Bytes (ClutterFrame analog).
+executable('subscribe-boxed-signal-arg-gate',
+  [
+    'subscribe-boxed-signal-arg-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # IconTheme.get_icon_sizes — Bytes/ay int32 slab (not Variant ai).
 executable('icon-sizes-ay-gate',
   ['icon-sizes-ay-gate.vala'],

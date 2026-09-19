@@ -25,7 +25,9 @@ timeout 5 $GATE_FFI_O     # Ffi "o" lease resolve — FAIL until OPC
 GATE_HOOK_O=./build/tests/call-sync-repro/hook-o-gate
 timeout 5 $GATE_HOOK_O    # Live.Hook.emit "od" GObject — FAIL until OPC
 GATE_SUB_ARGS=./build/tests/call-sync-repro/subscribe-signal-args-gate
-| 2026-09-19 | **PASS** — `Notification.args[0] == "hello"` after libocrpc `Subscription.emit` packs named-signal args |
+timeout 5 $GATE_SUB_ARGS   # named-signal string args — PASS 2026-09-19
+GATE_SUB_BOX=./build/tests/call-sync-repro/subscribe-boxed-signal-arg-gate
+timeout 5 $GATE_SUB_BOX    # named-signal boxed (not Bytes) — PASS 2026-09-19
 ```
 
 `stack` matches live after OPC send fix: reply is recv’d at depth=1, not
@@ -265,3 +267,36 @@ an inbound `Live.Buffer` on the **Request** (pixmap path for
 
 OPC: [`FIXED`](file:///home/alan/gitlive/OLLMchat/docs/bugs/done/2026-09-17-FIXED-request-live-buffer-outbound.md).
 Consumer: [`2026-09-17-request-live-buffer-opc.md`](../../docs/bugs/done/2026-09-17-request-live-buffer-opc.md).
+
+## subscribe-signal-args-gate
+
+Named GObject signal parameters on `Notification.args`. String payload.
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-19 | **PASS** — `Notification.args[0] == "hello"` |
+
+OPC: [`FIXED`](file:///home/alan/gitlive/OLLMchat/docs/bugs/done/2026-09-19-FIXED-subscription-emit-drops-signal-args.md).
+
+## subscribe-boxed-signal-arg-gate
+
+Shape: subscribe `framed(GLib.VariantType)` (boxed, not `GLib.Bytes`), emit.
+`StreamValue.write` must pack that boxed onto `Notification.args`.
+
+Nested analog: `ClutterStage::before-update` `(StageView, ClutterFrame)`.
+Frame is compact boxed. Nested 2026-09-19: `unsupported bin value type
+'ClutterFrame'` then client reset (boot looks locked).
+
+```bash
+ninja -C build tests/call-sync-repro/subscribe-boxed-signal-arg-gate
+timeout 5 ./build/tests/call-sync-repro/subscribe-boxed-signal-arg-gate
+```
+
+| Run | Result |
+| --- | ------ |
+| 2026-09-19 | **FAIL** — `unsupported bin value type 'GVariantType'` then client EOS |
+| 2026-09-19 | **PASS** after OPC registered boxed + consumer `Bin.register("GLib.VariantType")` |
+
+OPC: [`OLLMchat/docs/bugs/2026-09-19-streamvalue-boxed-not-bytes.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-19-streamvalue-boxed-not-bytes.md).
+**Do not** Idle / skip-subscribe as a product fix. Consumer Laters parks
+wire `before-update` subscribe until this PASSes.
