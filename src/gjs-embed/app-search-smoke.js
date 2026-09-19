@@ -130,8 +130,13 @@ function runSearchProve(main) {
 		}
 	}
 
+	const ct = entry.clutter_text;
+	let textChangedN = 0;
+	ct.connect('text-changed', () => {
+		textChangedN++;
+	});
 	smokeLog('set clutter_text.text=f');
-	entry.clutter_text.text = 'f';
+	ct.text = 'f';
 
 	GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
 		const searchActive = search.searchActive;
@@ -162,6 +167,8 @@ function runSearchProve(main) {
 
 		smokeLog(
 			'after-text searchActive=' + searchActive
+				+ ' textChangedN=' + textChangedN
+				+ ' get_text=' + JSON.stringify(entry.get_text())
 				+ ' entryText=' + JSON.stringify(entryText)
 				+ ' terms=' + JSON.stringify(terms)
 				+ ' startingSearch=' + starting

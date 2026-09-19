@@ -34,7 +34,7 @@ Stock: type a letter → `SearchController` becomes active → `SearchResultsVie
 | Stock GIR is nested utf8 | `/usr/share/gnome-shell/Shell-16.gir` `char***` → `<array><array><type name="utf8"/></array></array>` |
 | Product GIR clutch | valac → `Shell-16.gir` (stamp, not installed). Inject → `Shell-16.injected.gir`. Typelib / install use that (installed name `Shell-16.gir`). Gate PASS. Nested GJS: nested `string[][]`, 136 hits for `f`. |
 | Parental controls initialized | smoke `parental.initialized=true` |
-| `clutter_text.text` after inject | Nested 2026-09-19: `hits=136` / `getInitialResultSet n=69`, then **`miss text-changed`**: `startingUp=true` `searchActive=false` `terms=[]` `entryText="f"`. Live typing still fills; results list still the open miss. |
+| `clutter_text.text` after inject | Nested 2026-09-19: `hits=136` / `getInitialResultSet n=69`. After `St.Entry.clutter_text` live subscribe: **`searchActive=true` `textChangedN=1` `terms=["f"]` `appResults=69`**, then **`miss getResultMetas`** (`nGrid=0` `displayVis=false` `searchInProgress=true`). |
 | Launch of a hit | Later — 1.0 S.27 |
 
 ## Stock path (do not vendor)
@@ -63,7 +63,9 @@ Clutter.Text 'text-changed'
 1. ~~**FAIL smoke**~~ — ✔️ `app-search-smoke: miss AppSystem.search` (`search is not a function`).
 2. ~~**PoC**~~ — ✔️ `meson test gstrv-gir-gate`.
 3. ~~**Product inject**~~ — ✔️ valac `Shell-16.gir` keeps placeholder; inject → `Shell-16.injected.gir` / typelib. Nested: `AppSystem.search(f) hits=136`, `lookup_app ok`, `getInitialResultSet n=69`. Smoke then **`miss text-changed`** (`startingUp=true`, `searchActive=false`, `terms=[]`).
-4. Launch of a hit stays 1.0 S.27.
+4. ~~**text-changed**~~ — ✔️ `St.Entry.clutter_text` `ensure_signal_subscribe`. Nested: `searchActive=true` `textChangedN=1` `terms=["f"]` `appResults=69`. Then **`miss getResultMetas`**.
+5. **getResultMetas** — 69 ids, grid still empty (`nGrid=0`, `searchInProgress` was still true at 2s).
+6. Launch of a hit stays 1.0 S.27.
 
 ## Prove
 

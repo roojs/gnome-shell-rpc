@@ -79,5 +79,10 @@ ScrollView.set_child
 ScrollView.hscrollbar_policy
 ScrollView.vscrollbar_policy
 
+# Entry.override — subscribe text-changed (and key signals) on the inner
+# Clutter.Text after the lease exists. Generated getter is RPC only.
+Entry.clutter_text
+Entry.get_clutter_text
+
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new
