@@ -179,10 +179,5 @@ namespace Shell
 		 * Vala cannot declare stacked arrays — this extern is Vala-only. */
 		[CCode (cname = "gsr_app_system_search_groups", cheader_filename = "app-system-search.h", array_length = false, array_null_terminated = true)]
 		private static extern string[] groups(string search_string);
-
-		/* Dummy marker for gir-inject-placeholder.sh — not a GI API. */
-		public static void gsr_placeholder_nested_gstrv()
-		{
-		}
 	}
 }

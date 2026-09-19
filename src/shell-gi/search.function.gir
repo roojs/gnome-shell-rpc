@@ -1,4 +1,6 @@
-		<function name="search" c:identifier="shell_app_system_search">
+<function name="search" c:identifier="shell_app_system_search"
+          xmlns="http://www.gtk.org/introspection/core/1.0"
+          xmlns:c="http://www.gtk.org/introspection/c/1.0">
 			<return-value transfer-ownership="full">
 				<array zero-terminated="1" c:type="char***">
 					<array zero-terminated="1">

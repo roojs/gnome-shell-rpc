@@ -956,15 +956,24 @@ shell_gi_lib = shared_library(
 )
 
 # Injected GIR is what the typelib / install ship (as Shell-16.gir).
+# Vala 0.56 GirWriter: no nested GStrv, GLib.DesktopAppInfo. Per-series
+# clutch — drop or replace when this tree moves off Shell-16 / valac 0.56.
 shell_gi_gir = custom_target(
   'Shell-16.injected.gir',
   output: 'Shell-16.injected.gir',
   command: [
     find_program('sh'),
-    meson.project_source_root() / 'scripts/gir-inject-placeholder.sh',
+    meson.project_source_root() / 'scripts/gir-xslt-inject.sh',
     meson.current_build_dir() / 'Shell-16.gir',
-    files('shell-gi/search.function.gir'),
     '@OUTPUT@',
+    meson.project_source_root() / 'scripts/gir-inject.xsl',
+    meson.current_source_dir() / 'shell-gi/search.function.gir',
+    meson.current_source_dir() / 'shell-gi/app-info.gir',
+  ],
+  depend_files: [
+    files('shell-gi/search.function.gir', 'shell-gi/app-info.gir'),
+    meson.project_source_root() / 'scripts/gir-inject.xsl',
+    meson.project_source_root() / 'scripts/gir-xslt-inject.sh',
   ],
   depends: [shell_gi_lib],
   build_by_default: true,

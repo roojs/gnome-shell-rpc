@@ -1,8 +1,8 @@
 /*
  * Workaround: Vala cannot GIR-generate this type (stacked arrays).
  * Nested GStrv reaches the typelib via a nasty clutch that hacks GIR
- * generation: scripts/gir-inject-placeholder.sh swaps a dummy vala_gir
- * marker for search.function.gir.
+ * generation: xsltproc + scripts/gir-inject.xsl appends search.function.gir
+ * onto class AppSystem.
  */
 #include "app-system-search.h"
 

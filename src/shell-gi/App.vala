@@ -13,6 +13,7 @@ namespace Shell
 		private bool window_sort_stale = true;
 		private GLib.Icon? fallback_icon;
 
+		/* Vala 0.56 --gir writes GLib.DesktopAppInfo; gir-inject.xsl rewrites it. */
 		public GLib.DesktopAppInfo? app_info { get; construct; default = null; }
 
 		public string id {

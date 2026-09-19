@@ -55,7 +55,7 @@ Clutter.Text 'text-changed'
 **🚫** vendor `search.js` / `searchController.js`. **🚫** layout.js. **🚫** Idle / Timeout / Runtime flush-delegate as a product fix. **🚫** invented GI methods.  
 **🚫** Python/XML rewrite, scanner merge, in-place overwrite of valac’s GIR.
 
-**Allowed (user 2026-09-19):** dummy vala_gir marker + `scripts/gir-inject-placeholder.sh` + snippet file **for nested GStrv only**. valac’s `Shell-16.gir` kept for ninja, **not** installed. Injected `Shell-16.injected.gir` is what `g-ir-compiler` uses; install ships it as `Shell-16.gir`. **Not** for remapping type names. DesktopAppInfo GIR name: [`2026-09-19-vala-gir-desktopappinfo-glib-vs-gio.md`](2026-09-19-vala-gir-desktopappinfo-glib-vs-gio.md) (**🚫** inject, **🚫** fake `Gio.DesktopAppInfo` subclass vapi).
+**Allowed (user 2026-09-19):** product GIR uses `xsltproc` + `scripts/gir-inject.xsl` (append `AppSystem.search`, rewrite `App.get_app_info` / `app-info` to `Gio.DesktopAppInfo`). Nested GStrv gate still uses `scripts/gir-inject-placeholder.sh`. valac’s `Shell-16.gir` kept for ninja. **🚫** fake `Gio.DesktopAppInfo` subclass vapi. **🚫** `internal` as a GIR dodge. **🚫** upstream Vala issue. **🚫** Vala dummy placeholders on the product GIR.
 
 ---
 
