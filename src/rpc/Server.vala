@@ -64,40 +64,64 @@ namespace GnomeShellRpc.Rpc
 				"Clutter-LayoutManager", typeof(Rpc.Helper.LayoutManager));
 			/* Align/Bind/Snap: real mutter GTypes from Gi.register — do not alias. */
 			var monitor_manager = display.get_context().get_backend().get_monitor_manager();
-			if (monitor_manager != null) {
+			if (monitor_manager != null
+					&& !OLLMrpc.Bin.gtype_to_alias.has_key(monitor_manager.get_type())) {
 				/* Concrete subclass (e.g. Native) — Gi return encode needs
 				 * gtype_to_alias or get_monitor_manager replies -32602. */
-				this.alias_live("Meta-MonitorManager", monitor_manager.get_type());
+				OLLMrpc.Bin.register_alias("Meta-MonitorManager",
+					monitor_manager.get_type());
 			}
 			var sn = display.get_startup_notification();
-			if (sn != null) {
-				this.alias_live("Meta-StartupNotification", sn.get_type());
+			if (sn != null
+					&& !OLLMrpc.Bin.gtype_to_alias.has_key(sn.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-StartupNotification",
+					sn.get_type());
 			}
 			var player = display.get_sound_player();
-			if (player != null) {
-				this.alias_live("Meta-SoundPlayer", player.get_type());
+			if (player != null
+					&& !OLLMrpc.Bin.gtype_to_alias.has_key(player.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-SoundPlayer",
+					player.get_type());
 			}
 			var idle = display.get_context().get_backend()
 				.get_core_idle_monitor();
-			if (idle != null) {
-				this.alias_live("Meta-IdleMonitor", idle.get_type());
+			if (idle != null
+					&& !OLLMrpc.Bin.gtype_to_alias.has_key(idle.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-IdleMonitor",
+					idle.get_type());
 			}
 			var stage = display.get_context().get_backend().get_stage();
+			var ctx = stage != null ? stage.get_context() : null;
+			var clutter_backend = ctx != null ? ctx.get_backend() : null;
+			var seat = clutter_backend != null
+				? clutter_backend.get_default_seat() : null;
+			unowned GLib.List<Clutter.StageView>? views = null;
 			if (stage != null) {
-				this.alias_live("Clutter-Stage", stage.get_type());
-				var ctx = stage.get_context();
-				if (ctx != null) {
-					this.alias_live("Clutter-Context", ctx.get_type());
-					var clutter_backend = ctx.get_backend();
-					if (clutter_backend != null) {
-						this.alias_live("Clutter-Backend", clutter_backend.get_type());
-						var seat = clutter_backend.get_default_seat();
-						if (seat != null) {
-							/* Concrete seat subclass — PadOsd main.js L233. */
-							this.alias_live("Clutter-Seat", seat.get_type());
-						}
-					}
-				}
+				views = stage.peek_stage_views();
+			}
+			if (stage != null
+					&& !OLLMrpc.Bin.gtype_to_alias.has_key(stage.get_type())) {
+				OLLMrpc.Bin.register_alias("Clutter-Stage", stage.get_type());
+			}
+			/*
+			 * {@code ClutterStage::before-update} args are the concrete
+			 * view ({@code MetaRendererView}), not the GIR
+			 * {@code StageView} class name. Same as Seat / Stage: alias
+			 * the live object's type.
+			 */
+			if (views != null && views.data != null
+					&& !OLLMrpc.Bin.gtype_to_alias.has_key(views.data.get_type())) {
+				OLLMrpc.Bin.register_alias("Clutter-StageView", views.data.get_type());
+			}
+			if (ctx != null	&& !OLLMrpc.Bin.gtype_to_alias.has_key(ctx.get_type())) {
+				OLLMrpc.Bin.register_alias("Clutter-Context", ctx.get_type());
+			}
+			if (clutter_backend != null	&& !OLLMrpc.Bin.gtype_to_alias.has_key(clutter_backend.get_type())) {
+				OLLMrpc.Bin.register_alias("Clutter-Backend", clutter_backend.get_type());
+			}
+			if (seat != null && !OLLMrpc.Bin.gtype_to_alias.has_key(seat.get_type())) {
+				/* Concrete seat subclass — PadOsd main.js L233. */
+				OLLMrpc.Bin.register_alias("Clutter-Seat", seat.get_type());
 			}
 			GLib.debug("Gi.register Meta-16 ok (%u types)",
 				OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0);
@@ -120,6 +144,16 @@ namespace GnomeShellRpc.Rpc
 			this.listen = new Listen(socket_path) {
 				live_handles = true,
 			};
+			this.listen.connection_ready.connect((connection) => {
+				if (stage == null) {
+					return;
+				}
+				foreach (var view in stage.peek_stage_views()) {
+					if (view != null) {
+						connection.export(view);
+					}
+				}
+			});
 			if (!this.listen.start()) {
 				GLib.error("failed to start RPC listener on %s", socket_path);
 			}
@@ -270,15 +304,6 @@ namespace GnomeShellRpc.Rpc
 				GLib.warning("client spawn failed: %s", e.message);
 				this.smoke_client = null;
 				return;
-			}
-		}
-
-		private void alias_live(string alias, GLib.Type gtype)
-		{
-			try {
-				OLLMrpc.Bin.register_alias(alias, gtype);
-			} catch (GLib.Error e) {
-				GLib.debug("alias %s for %s: %s", alias, gtype.name(), e.message);
 			}
 		}
 

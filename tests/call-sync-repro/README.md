@@ -24,6 +24,8 @@ GATE_FFI_O=./build/tests/call-sync-repro/ffi-o-lease-gate
 timeout 5 $GATE_FFI_O     # Ffi "o" lease resolve — FAIL until OPC
 GATE_HOOK_O=./build/tests/call-sync-repro/hook-o-gate
 timeout 5 $GATE_HOOK_O    # Live.Hook.emit "od" GObject — FAIL until OPC
+GATE_SUB_ARGS=./build/tests/call-sync-repro/subscribe-signal-args-gate
+| 2026-09-19 | **PASS** — `Notification.args[0] == "hello"` after libocrpc `Subscription.emit` packs named-signal args |
 ```
 
 `stack` matches live after OPC send fix: reply is recv’d at depth=1, not

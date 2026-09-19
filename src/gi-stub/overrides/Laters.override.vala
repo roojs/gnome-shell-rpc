@@ -1,22 +1,30 @@
 		/**
-		 * Client-local laters — {@code GSourceFunc} is not RPC-marshallable.
-		 * Use Vala {@link GLib.SourceFunc} (owned): codegen supplies the C
-		 * {@code user_data} / {@code GDestroyNotify} that GIR/GJS expect.
-		 * {@code when} is ignored (stock phases need a live stage redraw).
+		 * Client-local {@code GSourceFunc} table. Stock mutter runs
+		 * {@link LaterType.before_redraw} from
+		 * {@code ClutterStage::before-update}. Do not Idle or Timeout as a
+		 * stand-in, and do not add a Runtime flush delegate.
+		 *
+		 * Queue + {@code schedule_update}. Subscribe {@code before-update};
+		 * Runtime re-emits {@link OLLMrpc.Notification.args} onto the
+		 * client Stage.
 		 */
 		private class LaterEntry
 		{
-			public uint source_id;
 			public GLib.SourceFunc func;
+			public LaterType when;
 		}
 
 		private uint32 next_later_id = 1;
-		private Gee.HashMap<uint32, LaterEntry> later_entries =
-			new Gee.HashMap<uint32, LaterEntry>();
+		private Gee.HashMap<uint32, LaterEntry> later_entries {
+			get; set; default = new Gee.HashMap<uint32, LaterEntry>();
+		}
+		private Gee.ArrayList<uint32> pending_ids {
+			get; set; default = new Gee.ArrayList<uint32>();
+		}
+		private bool stage_hooked = false;
 
 		public uint32 add(LaterType when, owned GLib.SourceFunc func)
 		{
-			/* when: stock BEFORE_REDRAW / idle; client has no stage redraw. */
 			assert(when >= 0);
 			var later_id = this.next_later_id++;
 			if (later_id == 0) {
@@ -24,30 +32,77 @@
 			}
 			var entry = new LaterEntry();
 			entry.func = (owned) func;
-			entry.source_id = GLib.Idle.add(() => {
-				LaterEntry? cur;
-				if (!this.later_entries.has_key(later_id)) {
-					return GLib.Source.REMOVE;
-				}
-				cur = this.later_entries.get(later_id);
-				bool keep = cur.func();
-				if (!keep) {
-					this.later_entries.unset(later_id);
-				}
-				return keep ? GLib.Source.CONTINUE : GLib.Source.REMOVE;
-			});
+			entry.when = when;
 			this.later_entries.set(later_id, entry);
+			this.pending_ids.add(later_id);
+			this.ensure_before_update();
+			this.schedule_stage_update();
 			return later_id;
+		}
+
+		private Clutter.Stage? lookup_stage()
+		{
+			var display = Meta.get_display();
+			if (display == null) {
+				return null;
+			}
+			var compositor = display.get_compositor();
+			if (compositor == null) {
+				return null;
+			}
+			return compositor.get_stage();
+		}
+
+		private void ensure_before_update()
+		{
+			if (this.stage_hooked) {
+				return;
+			}
+			var stage = this.lookup_stage();
+			if (stage == null) {
+				return;
+			}
+			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+				stage, "before-update");
+			stage.before_update.connect((view, frame) => {
+				this.run_before_redraw();
+			});
+			this.stage_hooked = true;
+		}
+
+		private void run_before_redraw()
+		{
+			var snapshot = new Gee.ArrayList<uint32>();
+			snapshot.add_all(this.pending_ids);
+			foreach (var later_id in snapshot) {
+				if (!this.later_entries.has_key(later_id)) {
+					continue;
+				}
+				var entry = this.later_entries.get(later_id);
+				if (entry.when != LaterType.before_redraw) {
+					continue;
+				}
+				var again = entry.func();
+				if (!again) {
+					this.later_entries.unset(later_id);
+					this.pending_ids.remove(later_id);
+				}
+			}
+		}
+
+		private void schedule_stage_update()
+		{
+			var stage = this.lookup_stage();
+			if (stage == null) {
+				return;
+			}
+			stage.schedule_update();
 		}
 
 		public void remove(uint32 later_id)
 		{
-			LaterEntry entry;
-			if (!this.later_entries.unset(later_id, out entry)) {
+			if (!this.later_entries.unset(later_id)) {
 				return;
 			}
-			if (entry.source_id != 0) {
-				GLib.Source.remove(entry.source_id);
-			}
-			/* owned SourceFunc drops with entry — runs GJS destroy notify */
+			this.pending_ids.remove(later_id);
 		}

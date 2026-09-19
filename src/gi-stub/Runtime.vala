@@ -66,14 +66,63 @@ namespace GnomeShellRpc.GiStub
 			Runtime.client.proxies.set((int) handle.rpc_lid, obj);
 		}
 
+		[CCode (cname = "g_signal_emitv", cheader_filename = "glib-object.h")]
+		private static extern void signal_emitv(
+			[CCode (array_length = false)] GLib.Value[] instance_and_params,
+			uint signal_id,
+			GLib.Quark detail,
+			void* return_value);
+
+		/**
+		 * Re-emit {@code notif.method} on {@code obj} with
+		 * {@link OLLMrpc.Notification.args} (GIR order). Missing slots
+		 * stay the zero GValue of the signal’s declared type.
+		 */
+		private static void emit_signal_from_args(
+			GLib.Object obj,
+			string signal_name,
+			Gee.ArrayList<GLib.Value?> args
+		) {
+			uint signal_id = 0;
+			GLib.Quark detail = 0;
+			if (!GLib.Signal.parse_name(
+					signal_name, obj.get_type(),
+					out signal_id, out detail, false)
+					|| signal_id == 0) {
+				return;
+			}
+			GLib.SignalQuery query;
+			GLib.Signal.query(signal_id, out query);
+			var n = 1 + (int) query.n_params;
+			var vals = new GLib.Value[n];
+			vals[0] = GLib.Value(obj.get_type());
+			vals[0].set_object(obj);
+			for (var i = 0; i < (int) query.n_params; i++) {
+				var param_type = query.param_types[i];
+				vals[i + 1] = GLib.Value(param_type);
+				if (args == null || i >= args.size) {
+					continue;
+				}
+				var src = args.get(i);
+				if (src == null || src.type() == GLib.Type.INVALID) {
+					continue;
+				}
+				if (src.transform(ref vals[i + 1])) {
+					continue;
+				}
+				if (src.holds(GLib.Type.OBJECT) && param_type.is_a(GLib.Type.OBJECT)) {
+					vals[i + 1].set_object(src.get_object());
+				}
+			}
+			Runtime.signal_emitv(vals, signal_id, detail, null);
+		}
+
 		/**
 		 * Subscribe the lease to a named GObject signal on the server and
 		 * re-emit it on the client proxy when the Notification arrives.
 		 *
-		 * Used for {@code Transition::stopped} so stock {@code Actor.ease()}
-		 * {@code onComplete} runs (MessageTray banner timeout). OPC
-		 * {@link OLLMrpc.Live.Subscription.emit} does not pack args — we
-		 * emit {@code stopped(true)} (finished).
+		 * Named-signal parameters land on {@link OLLMrpc.Notification.args}
+		 * ({@code tests/call-sync-repro/subscribe-signal-args-gate}).
 		 */
 		public static void ensure_signal_subscribe(GLib.Object obj, string signal_name)
 		{
@@ -174,46 +223,33 @@ namespace GnomeShellRpc.GiStub
 				}
 			});
 			Runtime.client.notification.connect((notif) => {
-				/*
-				 * Front-load the few methods that are not a void 0-arg
-				 * GObject signal. Everything we subscribed via
-				 * {@link ensure_signal_subscribe} is emit_by_name of
-				 * notif.method (OPC packs no signal args).
-				 */
-				switch (notif.method) {
-					case "RPC-Live-Callback.unregister":
-						if (Runtime.handlers != null) {
-							Runtime.handlers.unset(notif.id);
-						}
-						return;
-					case "stopped":
-						if (Runtime.client.proxies.has_key(notif.id)) {
-							GLib.Signal.emit_by_name(
-								Runtime.client.proxies.get(notif.id),
-								"stopped", true);
-						}
-						return;
-					case "key-press-event":
-						if (Runtime.client.proxies.has_key(notif.id)) {
-							GLib.Signal.emit_by_name(
-								Runtime.client.proxies.get(notif.id),
-								"key-press-event",
-								Clutter.get_current_event());
-						}
-						return;
-					default:
-						if (!Runtime.client.proxies.has_key(notif.id)) {
-							return;
-						}
-						if (!Runtime.signal_subs.has_key(notif.id)
-								|| !Runtime.signal_subs.get(notif.id).contains(notif.method)) 
-						{
-							return;
-						}
-						GLib.Signal.emit_by_name(Runtime.client.proxies.get(notif.id),
-							notif.method);
-						return;
+				if (notif.method == "RPC-Live-Callback.unregister") {
+					if (Runtime.handlers != null) {
+						Runtime.handlers.unset(notif.id);
+					}
+					return;
 				}
+				if (!Runtime.client.proxies.has_key(notif.id)) {
+					return;
+				}
+				if (Runtime.signal_subs == null
+						|| !Runtime.signal_subs.has_key(notif.id)
+						|| !Runtime.signal_subs.get(notif.id).contains(notif.method)) {
+					return;
+				}
+				var obj = Runtime.client.proxies.get(notif.id);
+				/*
+				 * Event is Compact — not on the object wire. Empty
+				 * {@link OLLMrpc.Notification.args} still uses the
+				 * current event, same as {@link Clutter.Stage.get_event_actor}.
+				 */
+				if (notif.method == "key-press-event"
+						&& (notif.args == null || notif.args.size == 0)) {
+					GLib.Signal.emit_by_name(
+						obj, "key-press-event", Clutter.get_current_event());
+					return;
+				}
+				Runtime.emit_signal_from_args(obj, notif.method, notif.args);
 			});
 
 			var connect_ok = false;

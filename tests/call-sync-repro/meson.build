@@ -343,6 +343,23 @@ executable('request-buffer-gate',
   install: false,
 )
 
+# Named GObject signal args must appear on Notification (before-update / stopped).
+executable('subscribe-signal-args-gate',
+  [
+    'subscribe-signal-args-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # IconTheme.get_icon_sizes — Bytes/ay int32 slab (not Variant ai).
 executable('icon-sizes-ay-gate',
   ['icon-sizes-ay-gate.vala'],

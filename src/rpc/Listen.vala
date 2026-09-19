@@ -13,6 +13,8 @@ namespace GnomeShellRpc.Rpc
 			default = new Gee.ArrayList<OLLMrpc.Transport.Connection>();
 		}
 
+		public signal void connection_ready(OLLMrpc.Transport.Connection connection);
+
 		private GLib.SocketService service { get; set; default = new GLib.SocketService(); }
 		private bool listening = false;
 		private OLLMrpc.Live.BufferListen? buffer_listen = null;
@@ -72,6 +74,7 @@ namespace GnomeShellRpc.Rpc
 				}
 				connection.start();
 				this.connections.add(connection);
+				this.connection_ready(connection);
 				return true;
 			});
 			if (this.live_handles) {
