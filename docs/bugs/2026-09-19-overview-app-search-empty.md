@@ -55,7 +55,7 @@ Clutter.Text 'text-changed'
 **🚫** vendor `search.js` / `searchController.js`. **🚫** layout.js. **🚫** Idle / Timeout / Runtime flush-delegate as a product fix. **🚫** invented GI methods.  
 **🚫** Python/XML rewrite, scanner merge, in-place overwrite of valac’s GIR.
 
-**Allowed (user 2026-09-19):** dummy vala_gir marker + `scripts/gir-inject-placeholder.sh` + snippet file. valac’s `Shell-16.gir` kept for ninja, **not** installed. Injected `Shell-16.injected.gir` is what `g-ir-compiler` uses; install ships it as `Shell-16.gir`.
+**Allowed (user 2026-09-19):** dummy vala_gir marker + `scripts/gir-inject-placeholder.sh` + snippet file **for nested GStrv only**. valac’s `Shell-16.gir` kept for ninja, **not** installed. Injected `Shell-16.injected.gir` is what `g-ir-compiler` uses; install ships it as `Shell-16.gir`. **Not** for remapping type names. DesktopAppInfo GIR name: [`2026-09-19-vala-gir-desktopappinfo-glib-vs-gio.md`](2026-09-19-vala-gir-desktopappinfo-glib-vs-gio.md) (**🚫** inject, **🚫** fake `Gio.DesktopAppInfo` subclass vapi).
 
 ---
 
@@ -104,6 +104,7 @@ In tree (`Laters.override.vala`): queue + `stage.schedule_update()` + local `sta
 2. **17:27** (alias + `connection.export` on `connection_ready`): `get_laters` → subscribe `before-update` → `unsupported bin value type 'ClutterFrame'` → client reset. Mutter keeps running; shell is dead. Looks like boot locked.
 3. **OPC boxed ✔️** (`subscribe-boxed-signal-arg-gate` PASS). Both peers `Bin.register("Clutter-Frame")`. Wire subscribe **on**. Compact client Frame for `typeof`.
 4. **19:18** stay-up nest: `before-update` arrives; Compact marshal `frame != NULL` fails (OPC length-0 boxed GValue is unset). Laters handler never runs. First keypress: `unsupported bin value type 'ClutterEvent'` → client EOS. `St.Entry.clutter_text` had subscribed `key-press-event`. Event is Compact / not on the wire (`boxed_ok` rejects the union). Dropped that subscribe (`text-changed` stays). Runtime mints an empty `Clutter.Frame` when the boxed GValue is unset so `before-update` can run Laters.
+5. **19:39** nest stays up; results flash then **Searching…**. Overview folder icons: `Unable to resolve arg type 'DesktopAppInfo'` — valac GIR `GLib.DesktopAppInfo` vs stock/GJS `Gio.DesktopAppInfo`. Separate bug: [`2026-09-19-vala-gir-desktopappinfo-glib-vs-gio.md`](2026-09-19-vala-gir-desktopappinfo-glib-vs-gio.md).
 
 Icons (`style-changed` after mint) are not re-proved on a stay-up nest after this.
 

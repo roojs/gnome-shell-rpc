@@ -8,8 +8,7 @@ namespace Shell
 	public class App : GLib.Object
 	{
 		private Gee.ArrayList<Meta.Window> wins {
-			get; set;
-			default = new Gee.ArrayList<Meta.Window>();
+			get; set; default = new Gee.ArrayList<Meta.Window>();
 		}
 		private bool window_sort_stale = true;
 		private GLib.Icon? fallback_icon;
