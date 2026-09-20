@@ -97,6 +97,11 @@ Actor.pivot_point
 Actor.get_pivot_point
 Actor.set_pivot_point
 
+# Actor.override — allocation ActorBox. Generator skips the GObject
+# property (getter is caller-allocates OUT). GJS actor.allocation uses
+# g_object_class_find_property, not get_allocation_box.
+Actor.allocation
+
 # Actor.override — scale axes via get_scale/set_scale (no GIR get_scale_x).
 # Hand get/set_scale so getters are local (dash vfunc_get_preferred_*).
 Actor.scale_x

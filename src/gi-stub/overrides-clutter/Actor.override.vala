@@ -463,6 +463,21 @@
 	}
 
 	/**
+	 * GIR allocation is ActorBox; getter is caller-allocates OUT so the
+	 * generator skips the GObject property. GJS actor.allocation uses
+	 * g_object_class_find_property, not get_allocation_box. Stock
+	 * GridSearchResults._getMaxDisplayedResults does
+	 * this.allocation.get_width() before updateSearch's try.
+	 */
+	public ActorBox allocation {
+		get {
+			var box = ActorBox();
+			this.get_allocation_box(out box);
+			return box;
+		}
+	}
+
+	/**
 	 * Stock {@code clutter_actor_destroy} C ABI (method body denied —
 	 * name clashes with GIR signal {@code destroy}, emitted by generator).
 	 */

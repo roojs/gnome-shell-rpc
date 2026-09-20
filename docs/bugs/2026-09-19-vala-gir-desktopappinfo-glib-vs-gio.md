@@ -5,7 +5,8 @@
 **Upstream (do not file again):** Vala [!454](https://gitlab.gnome.org/GNOME/vala/-/merge_requests/454) — same GJS `Unable to resolve arg type 'DesktopAppInfo'`, same valac GIR `GLib.DesktopAppInfo`. Closed unmerged 2026-03-19 (ricotz). No Vala **issue** titled DesktopAppInfo. Later Vala main (`16791f5a0`, 2026-05-27) generates `gio-unix-2.0.vapi` from `GioUnix-2.0.gir` → `gir_namespace = "GioUnix"` (not `Gio`). Distro valac here is still 0.56 / `GLib.DesktopAppInfo`. GNOME Shell [!3855](https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/3855) switches JS to `GioUnix.DesktopAppInfo` (49+); our vendor/stock `Shell-16.gir` is still `Gio.DesktopAppInfo`.
 
 **Status:** ⏳ open  
-**Search:** [`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md) Do 5  
+**Search:** [`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md) H1  
+**Gate:** `meson test app-search-empty-gate` (`H-appinfo-gir` / `H-appinfo-call`)  
 **Hit:** nested 2026-09-19 19:39 / 20:02
 
 ---
@@ -84,8 +85,8 @@ Same C type. `GLib-2.0.gir` has no `DesktopAppInfo`. `Gio-2.0.gir` has `<class n
 Product override: `xsltproc` + `scripts/gir-inject.xsl` replaces `App.get_app_info` / `app-info` with `src/shell-gi/app-info.gir` (`Gio.DesktopAppInfo`) and drops `App.new`. **🚫** fake subclass vapi. **🚫** internal. **🚫** Vala dummy placeholders. **🚫** new upstream Vala issue.
 
 ```bash
-rg DesktopAppInfo build/src/Shell-16.gir            # none (hidden)
-rg DesktopAppInfo build/src/Shell-16.injected.gir   # Gio.DesktopAppInfo only
+meson test -C build --print-errorlogs app-search-empty-gate
+# H-appinfo-gir / H-appinfo-call must be ok — not GLib.DesktopAppInfo
 GSR_NESTED_STAYUP=1 ./scripts/weston-gsr-session.sh
 # no: Unable to resolve arg type 'DesktopAppInfo'
 ```

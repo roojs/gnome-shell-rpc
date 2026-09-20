@@ -5,7 +5,8 @@
  * Event / {@code fire_key}), then names the miss:
  * {@code AppSystem.search} / parental / {@code getInitialResultSet} /
  * {@code lookup_app} / {@code text-changed} / {@code setTerms} /
- * {@code getResultMetas} / IconGrid.
+ * {@code getResultMetas} / {@code createResultObject} / {@code Searching} /
+ * {@code empty-grid} / IconGrid.
  *
  *   GSR_NESTED_TIMEOUT=40 GI_META_SMOKE=app-search-smoke \
  *     GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
@@ -87,8 +88,9 @@ function runSearchProve(main) {
 		hitId = firstHitId(groups);
 		smokeLog('AppSystem.search(f) hits=' + nHits + ' first=' + JSON.stringify(hitId));
 		if (hitId.length > 0) {
+			let app = null;
 			try {
-				const app = Shell.AppSystem.get_default().lookup_app(hitId);
+				app = Shell.AppSystem.get_default().lookup_app(hitId);
 				lookupOk = app != null;
 				smokeLog(
 					'lookup_app ok=' + lookupOk
@@ -97,6 +99,17 @@ function runSearchProve(main) {
 				);
 			} catch (e) {
 				smokeLog('lookup_app threw ' + formatError(e));
+			}
+			if (lookupOk && app != null) {
+				try {
+					const info = app.get_app_info();
+					smokeLog(
+						'get_app_info ok=' + (info != null)
+							+ ' id=' + JSON.stringify(info ? info.get_id() : null)
+					);
+				} catch (e) {
+					smokeLog('get_app_info threw ' + formatError(e));
+				}
 			}
 		}
 	} catch (e) {
@@ -108,6 +121,11 @@ function runSearchProve(main) {
 	let initialN = -1;
 	let initialErr = '';
 	let initialDone = false;
+	let metasN = -1;
+	let metasErr = '';
+	let createErr = '';
+	let createOk = false;
+	let updateSearchErr = '';
 	if (appProv == null) {
 		smokeLog('FAIL no applications provider');
 		initialDone = true;
@@ -118,6 +136,30 @@ function runSearchProve(main) {
 				initialDone = true;
 				initialN = ids == null ? 0 : ids.length;
 				smokeLog('getInitialResultSet n=' + initialN);
+				if (ids == null || ids.length === 0) {
+					return;
+				}
+				return appProv.getResultMetas(ids.slice(0, 1)).then(metas => {
+					metasN = metas == null ? 0 : metas.length;
+					smokeLog('getResultMetas n=' + metasN);
+					if (metasN < 1) {
+						return;
+					}
+					try {
+						const obj = appProv.createResultObject(metas[0]);
+						createOk = obj != null;
+						smokeLog(
+							'createResultObject ok=' + createOk
+								+ ' type=' + (obj ? obj.constructor.name : 'null')
+						);
+					} catch (e) {
+						createErr = formatError(e);
+						smokeLog('createResultObject threw ' + createErr);
+					}
+				}).catch(e => {
+					metasErr = formatError(e);
+					smokeLog('getResultMetas threw ' + metasErr);
+				});
 			}).catch(e => {
 				initialDone = true;
 				initialErr = formatError(e);
@@ -131,6 +173,27 @@ function runSearchProve(main) {
 	}
 
 	const ct = entry.clutter_text;
+	if (appProv != null && appProv.display != null) {
+		const display = appProv.display;
+		const baseProto = Object.getPrototypeOf(Object.getPrototypeOf(display));
+		const origBase = baseProto.updateSearch;
+		baseProto.updateSearch = function (...args) {
+			try {
+				const ret = origBase.apply(this, args);
+				if (ret != null && typeof ret.then === 'function') {
+					ret.catch(e => {
+						updateSearchErr = formatError(e);
+						smokeLog('updateSearch threw ' + updateSearchErr);
+					});
+				}
+				return ret;
+			} catch (e) {
+				updateSearchErr = formatError(e);
+				smokeLog('updateSearch sync-threw ' + updateSearchErr);
+				throw e;
+			}
+		};
+	}
 	let textChangedN = 0;
 	ct.connect('text-changed', () => {
 		textChangedN++;
@@ -182,6 +245,9 @@ function runSearchProve(main) {
 				+ ' first=' + (first != null)
 				+ ' initialDone=' + initialDone
 				+ ' initialN=' + initialN
+				+ ' metasN=' + metasN
+				+ ' createOk=' + createOk
+				+ ' updateSearchErr=' + JSON.stringify(updateSearchErr)
 				+ ' parental.initialized=' + (parental ? parental.initialized : 'n/a')
 		);
 
@@ -194,15 +260,26 @@ function runSearchProve(main) {
 			miss = 'getInitialResultSet';
 		else if (initialN === 0)
 			miss = lookupOk ? 'getInitialResultSet' : 'lookup_app';
+		else if (metasErr.length > 0)
+			miss = 'getResultMetas';
+		else if (createErr.length > 0)
+			miss = 'createResultObject';
+		else if (updateSearchErr.length > 0)
+			miss = 'updateSearch';
 		else if (entryText !== 'f')
 			miss = 'text-changed';
 		else if (!searchActive)
 			miss = 'text-changed';
 		else if (!terms || terms.length === 0)
 			miss = 'setTerms';
-		else if (first == null && nGrid <= 0)
-			miss = appN > 0 ? 'getResultMetas' : 'IconGrid';
-		else if (first == null)
+		else if (first == null && nGrid <= 0) {
+			if (inProgress || status.indexOf('Searching') >= 0)
+				miss = 'Searching';
+			else if (appN > 0)
+				miss = createOk ? 'empty-grid' : 'getResultMetas';
+			else
+				miss = 'IconGrid';
+		} else if (first == null)
 			miss = 'IconGrid';
 
 		if (miss.length > 0)
