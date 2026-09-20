@@ -98,6 +98,13 @@
 	}
 
 	bool helper_attached;
+	bool relayout_queued;
+	/* Stock ClutterActor:visible default TRUE — the flag, not is_visible(). */
+	bool actor_visible = true;
+	double cached_scale_x = 1.0;
+	double cached_scale_y = 1.0;
+	string actor_name = "";
+	bool name_known = false;
 
 	void relay_attach()
 	{
@@ -198,6 +205,7 @@
 	uint64 relay_allocate()
 	{
 		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			this.relayout_queued = false;
 			var box = ActorBox();
 			box.x1 = (float) call.args.get(1).get_double();
 			box.y1 = (float) call.args.get(2).get_double();
@@ -399,6 +407,40 @@
 	}
 
 	/**
+	 * Generator requires these once {@code Actor.show}/{@code hide} are
+	 * denied ({@code vfunc_fallback=hand}). The Class slot is renamed
+	 * {@code show_vfunc}/{@code hide_vfunc} so the GIR method can keep
+	 * the stock names. GJS calls the method (cache + RPC below); there
+	 * is no client-side Clutter {@code clutter_actor_show} to chain to,
+	 * and calling {@link show} from here would be a second path into
+	 * the same relay. Empty = no JS override, nothing local to run.
+	 */
+	protected void show_vfunc_fallback()
+	{
+	}
+
+	protected void hide_vfunc_fallback()
+	{
+	}
+
+	/**
+	 * Stock {@code clutter_actor_show}/{@code hide} — relay plus local
+	 * {@link visible} flag so GJS {@code actor.show()} and
+	 * {@code actor.visible} share one cached state.
+	 */
+	public virtual void show()
+	{
+		this.actor_visible = true;
+		GnomeShellRpc.call_value("Clutter-Actor.show", this);
+	}
+
+	public virtual void hide()
+	{
+		this.actor_visible = false;
+		GnomeShellRpc.call_value("Clutter-Actor.hide", this);
+	}
+
+	/**
 	 * GIR pivot-point getter uses float OUTs — generator skips the property
 	 * and we deny get/set_pivot_point (Vala would emit duplicate C symbols for
 	 * the property accessors). Inline RPC for GJS construct literals.
@@ -431,20 +473,82 @@
 	}
 
 	/**
-	 * Generator gap: GIR getter is {@code is_visible}, no setter symbol
-	 * (writable via {@code show}/{@code hide}). Denied generated prop; relay.
+	 * Stock {@code clutter_actor_queue_relayout} — generator body denied so
+	 * we can coalesce. Dash {@code notify::scale-x} calls this every set;
+	 * a sync RPC each time re-enters Helper-Actor allocate. One RPC until
+	 * allocate, like stock {@code needs_relayout}. No extra GObject signal.
+	 */
+	public virtual void queue_relayout()
+	{
+		if (this.relayout_queued) {
+			return;
+		}
+		this.relayout_queued = true;
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			return;
+		}
+		GnomeShellRpc.call_value("Clutter-Actor.queue_relayout", this);
+	}
+
+	/**
+	 * GIR {@code ClutterActor:visible} getter/setter. Get is the cached
+	 * flag; set calls {@link show}/{@link hide} (relay + cache). Not
+	 * {@code is_visible()} — that walks mapped ancestors on the server.
 	 */
 	public bool visible {
 		get {
-			return this.is_visible();
+			return this.actor_visible;
 		}
 		set {
+			if (value == this.actor_visible) {
+				return;
+			}
 			if (value) {
 				this.show();
-			} else {
-				this.hide();
+				return;
 			}
+			this.hide();
 		}
+	}
+
+	/**
+	 * Stock {@code clutter_actor_get_name} / {@code set_name}. First get
+	 * fetches; after that layout/toString reads stay local.
+	 */
+	public string name {
+		owned get {
+			if (!this.name_known) {
+				var response = GnomeShellRpc.call_value("Clutter-Actor.get_name", this);
+				unowned string? s = response.retval.get_string();
+				this.actor_name = s != null ? s.dup() : "";
+				this.name_known = true;
+			}
+			return this.actor_name;
+		}
+		set {
+			this.actor_name = value ?? "";
+			this.name_known = true;
+			GnomeShellRpc.call_value("Clutter-Actor.set_name", this,
+				OLLMrpc.args("s", this.actor_name));
+		}
+	}
+
+	public void get_scale(out double scale_x, out double scale_y)
+	{
+		scale_x = this.cached_scale_x;
+		scale_y = this.cached_scale_y;
+	}
+
+	public void set_scale(double scale_x, double scale_y)
+	{
+		if (this.cached_scale_x == scale_x && this.cached_scale_y == scale_y) {
+			return;
+		}
+		this.cached_scale_x = scale_x;
+		this.cached_scale_y = scale_y;
+		GnomeShellRpc.call_value(
+			"Clutter-Actor.set_scale", this,
+			OLLMrpc.args("dd", scale_x, scale_y));
 	}
 
 	/**
@@ -454,27 +558,19 @@
 	 */
 	public double scale_x {
 		get {
-			double sx, sy;
-			this.get_scale(out sx, out sy);
-			return sx;
+			return this.cached_scale_x;
 		}
 		set {
-			double sx, sy;
-			this.get_scale(out sx, out sy);
-			this.set_scale(value, sy);
+			this.set_scale(value, this.cached_scale_y);
 		}
 	}
 
 	public double scale_y {
 		get {
-			double sx, sy;
-			this.get_scale(out sx, out sy);
-			return sy;
+			return this.cached_scale_y;
 		}
 		set {
-			double sx, sy;
-			this.get_scale(out sx, out sy);
-			this.set_scale(sx, value);
+			this.set_scale(this.cached_scale_x, value);
 		}
 	}
 

@@ -108,6 +108,12 @@ In tree (`Laters.override.vala`): queue + `stage.schedule_update()` + local `sta
 
 Icons (`style-changed` after mint) are not re-proved on a stay-up nest after this.
 
+**21:51:** dash `notify::scale-x` → `queue_relayout()` was a sync RPC per call (~55k + Helper-Actor allocate loop, 1.6 GB log, host secrets bus timeout). Client method coalesces until allocate. No extra signal.
+
+**21:53:** coalesce did not unclog the connection. `queue_relayout` dropped (55k → 416); remaining was layout reads: `.visible` via `is_visible()`, `.name`/`.scale_*` RPCs, plus a preferred-height `GLib.debug` that evaluated those properties on every measure. Visible/scale/name are local on the client (stock flag / last set); debug stripped. `is_visible()` still RPCs (mapped chain). Allocate/preferred Live.Invoke remains.
+
+**09:20:** those caches held (`is_visible` 67, `get_name`/`get_scale` gone). Next flood: `layout.js` `_updateRegions` every `BEFORE_REDRAW` → `set_builtin_struts` (936) + local `workareas-changed` → `queue_relayout` → `notify::allocation` → `_queueUpdateRegions` again, plus `get_workspace_by_index` 4103 / `get_work_area_for_monitor` 3155. Skip identical struts; cache workspace index / n_workspaces / work area / display.
+
 ## Do 6 — not this bug
 
 Launch of a hit stays 1.0 S.27.

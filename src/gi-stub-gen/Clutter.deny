@@ -98,16 +98,29 @@ Actor.get_pivot_point
 Actor.set_pivot_point
 
 # Actor.override — scale axes via get_scale/set_scale (no GIR get_scale_x).
+# Hand get/set_scale so getters are local (dash vfunc_get_preferred_*).
 Actor.scale_x
 Actor.scale_y
+Actor.get_scale
+Actor.set_scale
 
 # Actor.override — translation via get/set_translation (set_property GValue wire).
 Actor.translation_x
 Actor.translation_y
 Actor.translation_z
 
-# Actor.override — visible via is_visible/show/hide; constraints/actions timing.
+# Actor.override — still relay show/hide (Clutter-Actor.show/hide RPC).
+# Deny generated bodies so the hand methods can set the local visible
+# flag in the same call. GIR property is :visible; is_visible() stays
+# generated (mapped chain). Class slots rename to show_vfunc/hide_vfunc.
 Actor.visible
+Actor.show
+Actor.hide
+signal:Actor.show
+signal:Actor.hide
+Actor.name
+Actor.get_name
+Actor.set_name
 Actor.constraints
 Actor.get_constraints
 Actor.effect
@@ -237,6 +250,11 @@ PickContext.unref
 
 # Signal vs method name clash — destroy_rpc in Actor.override.
 Actor.destroy
+
+# Hand body in Actor.override — coalesce until allocate (dash scale flood).
+Actor.queue_relayout
+signal:Actor.queue-relayout
+signal:Actor.queue_relayout
 
 # Vala auto-emits free/dup when struct has methods.
 # copy denied from generator; hand-aliased in ActorBox.override (GIR _copy vs Vala _dup).

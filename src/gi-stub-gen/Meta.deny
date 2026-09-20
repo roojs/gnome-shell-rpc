@@ -58,7 +58,14 @@ IdleMonitor.add_user_active_watch
 Laters.add
 Laters.remove
 # Hand: emit Display::workareas-changed after RPC (OPC notify missed).
+# Skip RPC+emit when struts unchanged (layout.js _updateRegions loop).
 Workspace.set_builtin_struts
+Workspace.get_display
+Workspace.get_work_area_for_monitor
+# layout.js reads these every _updateRegions.
+WorkspaceManager.n_workspaces
+WorkspaceManager.get_n_workspaces
+WorkspaceManager.get_workspace_by_index
 Display.add_keybinding
 Display.get_startup_notification
 keybindings_set_custom_handler
