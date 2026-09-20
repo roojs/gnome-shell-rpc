@@ -220,6 +220,13 @@ DesaturateEffect.factor
 DesaturateEffect.get_factor
 DesaturateEffect.set_factor
 
+# Clone.override — GIR new(source) nullable; generated lease construct
+# called .new with no args (-32602). GJS uses empty / { source }.
+Clone.new
+Clone.source
+Clone.get_source
+Clone.set_source
+
 # GLib.Closure is not a memcpy blob.
 BindingPool.install_closure
 BindingPool.override_closure

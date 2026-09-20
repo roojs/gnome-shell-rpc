@@ -44,10 +44,42 @@
 
 		/**
 		 * Mint the compositor peer. Base = {@code Helper-Constraint.create}
-		 * (JS subclasses). Align/Bind/Snap override to their leaf {@code .new}.
+		 * (JS subclasses). Align/Bind/Snap use their leaf {@code .new}.
+		 * Not virtual — extra Class slots shift GIR offsets.
 		 */
-		protected virtual void mint_server_lease()
+		protected void mint_server_lease()
 		{
+			if (this.get_type().is_a(typeof(AlignConstraint))) {
+				var response = GnomeShellRpc.call_value("Clutter-AlignConstraint.new");
+				this.rpc_lid = response.args.get(0).get_uint64();
+				return;
+			}
+			if (this.get_type().is_a(typeof(BindConstraint))) {
+				var bind = (BindConstraint) this;
+				var response = GnomeShellRpc.call_value("Clutter-BindConstraint.new");
+				bind.rpc_lid = response.args.get(0).get_uint64();
+				GnomeShellRpc.call_value(
+					"Clutter-BindConstraint.set_source", bind,
+					OLLMrpc.args("o", bind.source));
+
+				GnomeShellRpc.call_value(
+					"Clutter-BindConstraint.set_coordinate", bind,
+					OLLMrpc.args("i", (int) bind.coordinate));
+
+				GnomeShellRpc.call_value(
+					"Clutter-BindConstraint.set_offset", bind,
+					OLLMrpc.args("f", (double) bind.offset));
+
+				return;
+			}
+			if (this.get_type().is_a(typeof(SnapConstraint))) {
+				var snap = (SnapConstraint) this;
+				var response = GnomeShellRpc.call_value("Clutter-SnapConstraint.new");
+				snap.rpc_lid = response.args.get(0).get_uint64();
+				GnomeShellRpc.call_value("Clutter-SnapConstraint.set_edges", snap,
+					OLLMrpc.args("ii",(int) snap.from_edge, (int) snap.to_edge));
+				return;
+			}
 			var self = this;
 			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 				var actor = (Actor) GnomeShellRpc.GiStub.Runtime.client.proxies.get(

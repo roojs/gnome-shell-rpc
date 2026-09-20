@@ -21,7 +21,7 @@ namespace Shell
 			this.rpc_lid = stub.rpc_lid;
 		}
 
-		public override void get_preferred_width(
+		public override void get_preferred_width_vfunc(
 			float for_height,
 			out float min_width_p,
 			out float natural_width_p
@@ -56,7 +56,7 @@ namespace Shell
 			theme_node.adjust_preferred_width(ref min_width_p, ref natural_width_p);
 		}
 
-		public override void get_preferred_height(
+		public override void get_preferred_height_vfunc(
 			float for_width,
 			out float min_height_p,
 			out float natural_height_p

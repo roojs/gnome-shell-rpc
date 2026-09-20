@@ -38,16 +38,6 @@
 			}
 		}
 
-		protected override void mint_server_lease()
-		{
-			var response = GnomeShellRpc.call_value(
-				"Clutter-BindConstraint.new", null);
-			this.rpc_lid = response.args.get(0).get_uint64();
-			this.sync_source();
-			this.sync_coordinate();
-			this.sync_offset();
-		}
-
 		private void sync_source()
 		{
 			if (this.rpc_lid == 0) {

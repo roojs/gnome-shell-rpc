@@ -32,14 +32,6 @@
 		}
 	}
 
-	protected override void mint_server_lease()
-	{
-		var response = GnomeShellRpc.call_value(
-			"Clutter-SnapConstraint.new", null);
-		this.rpc_lid = response.args.get(0).get_uint64();
-		this.sync_edges();
-	}
-
 	public void get_edges(out SnapEdge from_edge, out SnapEdge to_edge)
 	{
 		from_edge = this.priv_from_edge;

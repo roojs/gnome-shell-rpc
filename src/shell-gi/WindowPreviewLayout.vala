@@ -65,25 +65,25 @@ namespace Shell
 			}
 		}
 
-		public override void set_container(Clutter.Actor? container)
+		public override void set_container_vfunc(Clutter.Actor? container)
 		{
 			this.container = container;
-			base.set_container(container);
+			base.set_container_vfunc(container);
 		}
 
-		public override void get_preferred_width(Clutter.Actor container, float for_height,
+		public override void get_preferred_width_vfunc(Clutter.Actor container, float for_height,
 				out float min_width_p, out float nat_width_p) {
 			min_width_p = 0f;
 			nat_width_p = this.priv_bounding_box.get_width();
 		}
 
-		public override void get_preferred_height(Clutter.Actor container, float for_width,
+		public override void get_preferred_height_vfunc(Clutter.Actor container, float for_width,
 				out float min_height_p, out float nat_height_p) {
 			min_height_p = 0f;
 			nat_height_p = this.priv_bounding_box.get_height();
 		}
 
-		public override void allocate(Clutter.Actor container, Clutter.ActorBox box)
+		public override void allocate_vfunc(Clutter.Actor container, Clutter.ActorBox box)
 		{
 			var bounding_box_width = this.priv_bounding_box.get_width();
 			var bounding_box_height = this.priv_bounding_box.get_height();
@@ -191,8 +191,10 @@ namespace Shell
 				bounding_rect = bounding_rect.union(frame_rect);
 			}
 
-			this.priv_bounding_box.set_origin((float) bounding_rect.x, (float) bounding_rect.y);
-			this.priv_bounding_box.set_size((float) bounding_rect.width, (float) bounding_rect.height);
+			this.priv_bounding_box.set_origin((float) bounding_rect.x, 
+				(float) bounding_rect.y);
+			this.priv_bounding_box.set_size((float) bounding_rect.width, 
+				(float) bounding_rect.height);
 
 			if (!this.priv_bounding_box.equal(old_bounding_box)) {
 				this.notify_property("bounding-box");

@@ -114,6 +114,8 @@ Icons (`style-changed` after mint) are not re-proved on a stay-up nest after thi
 
 **09:20:** those caches held (`is_visible` 67, `get_name`/`get_scale` gone). Next flood: `layout.js` `_updateRegions` every `BEFORE_REDRAW` → `set_builtin_struts` (936) + local `workareas-changed` → `queue_relayout` → `notify::allocation` → `_queueUpdateRegions` again, plus `get_workspace_by_index` 4103 / `get_work_area_for_monitor` 3155. Skip identical struts; cache workspace index / n_workspaces / work area / display.
 
+**09:28:** workarea loop gone. Boot construction numbers look right. End CRITICALs are Clone mint — [`2026-09-20-clutter-clone-new-source.md`](2026-09-20-clutter-clone-new-source.md). Also `set_label_actor` null `-32602` (not this).
+
 ## Do 6 — not this bug
 
 Launch of a hit stays 1.0 S.27.

@@ -88,19 +88,19 @@
 	}
 
 	/**
-	 * Base {@code allocate} / measure Class slots are the RPC wrappers.
-	 * GJS overrides {@code *_vfunc}. {@code rpc_lid == 0} here is chain-up
-	 * from JS ({@code super.allocate}) — no lease, no RPC.
+	 * RPC wrappers for GJS method calls. Not virtual — extra Class slots
+	 * must not exist past the GIR {@code class_struct} (GJS installs
+	 * {@code vfunc_*} from those field offsets).
 	 */
-	public virtual void get_preferred_width(
+	public void get_preferred_width(
 		Actor container,
 		float for_height,
 		out float min_width_p,
 		out float nat_width_p
 	) {
 		if (this.rpc_lid == 0) {
-			min_width_p = 0.0f;
-			nat_width_p = 0.0f;
+			this.get_preferred_width_vfunc(
+				container, for_height, out min_width_p, out nat_width_p);
 			return;
 		}
 		var response = GnomeShellRpc.call_value(
@@ -110,15 +110,15 @@
 		nat_width_p = (float) response.args.get(1).get_float();
 	}
 
-	public virtual void get_preferred_height(
+	public void get_preferred_height(
 		Actor container,
 		float for_width,
 		out float min_height_p,
 		out float nat_height_p
 	) {
 		if (this.rpc_lid == 0) {
-			min_height_p = 0.0f;
-			nat_height_p = 0.0f;
+			this.get_preferred_height_vfunc(
+				container, for_width, out min_height_p, out nat_height_p);
 			return;
 		}
 		var response = GnomeShellRpc.call_value(
@@ -128,7 +128,7 @@
 		nat_height_p = (float) response.args.get(1).get_float();
 	}
 
-	public virtual void allocate(Actor container, ActorBox allocation)
+	public void allocate(Actor container, ActorBox allocation)
 	{
 		if (this.rpc_lid == 0) {
 			this.allocate_vfunc(container, allocation);
@@ -143,7 +143,7 @@
 			OLLMrpc.args("oay", container, allocation_bytes));
 	}
 
-	public virtual void set_container(Actor? container)
+	public void set_container(Actor? container)
 	{
 		if (this.rpc_lid == 0) {
 			/* Stock clutter_layout_manager_set_container → Class slot.

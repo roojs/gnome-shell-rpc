@@ -58,16 +58,14 @@
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			switch (alias) {
+				case "Meta-BackgroundActor": // leaf Helper
+				case "Clutter-Clone": // Clone.override new(source)
+					return;
 				case "St-Widget":
-					/* Helper-Actor + Class hooks (GJS St.Widget subclasses). */
 					this.relay_attach();
 					return;
-				case "Meta-BackgroundActor":
-					/* Leaf Helper construct elsewhere — no Clutter-Actor mint. */
-					return;
 				case "Clutter-Actor":
-					/* Exact Actor → Clutter-Actor.new. GJS/Vala subclasses
-					* (WorkspaceDot, …) need Helper hooks like St.Widget. */
+					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
 					if (this.get_type() != typeof(Actor)) {
 						this.relay_attach();
 						return;
@@ -114,8 +112,10 @@
 		string[] always = { "event", "captured_event" };
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
+
 		var response = GnomeShellRpc.call_value("Helper-Actor.create", null,
 			OLLMrpc.args("s", this.get_type().name()));
+
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
@@ -125,16 +125,14 @@
 			if (hook_id == 0) {
 				continue;
 			}
-			GnomeShellRpc.call_value(
-				"Helper-Actor.add_hook", this,
+			GnomeShellRpc.call_value("Helper-Actor.add_hook", this,
 				OLLMrpc.args("it", vfunc_id, hook_id));
 		}
 		/* St.Widget::style-changed — not a Clutter.Actor Class slot. */
 		var style_hook_id = this.relay_style_changed();
 		if (style_hook_id != 0) {
 			var style_vfunc_id = OLLMrpc.Gi.vfunc_offset("St", "Widget", "style_changed");
-			GnomeShellRpc.call_value(
-				"Helper-Actor.add_hook", this,
+			GnomeShellRpc.call_value("Helper-Actor.add_hook", this,
 				OLLMrpc.args("it", style_vfunc_id, style_hook_id));
 		}
 	}
@@ -294,7 +292,9 @@
 		});
 	}
 
-	public virtual void get_preferred_width(
+	/* Not virtual — extra Class slots shift every St.* GIR offset (GJS
+	 * then installs vfunc_clicked on style_changed). */
+	public void get_preferred_width(
 		float for_height,
 		out float min_width_p,
 		out float natural_width_p
@@ -319,7 +319,7 @@
 		natural_width_p = (float) response.args.get(1).get_float();
 	}
 
-	public virtual void get_preferred_height(
+	public void get_preferred_height(
 		float for_width,
 		out float min_height_p,
 		out float natural_height_p
@@ -345,7 +345,6 @@
 	}
 
 	/* Not virtual — Vala would put allocate on a Class slot GJS never uses. */
-	[CCode (cname = "clutter_actor_allocate")]
 	public void allocate(ActorBox box)
 	{
 		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
@@ -426,15 +425,16 @@
 	/**
 	 * Stock {@code clutter_actor_show}/{@code hide} — relay plus local
 	 * {@link visible} flag so GJS {@code actor.show()} and
-	 * {@code actor.visible} share one cached state.
+	 * {@code actor.visible} share one cached state. Not virtual: extra
+	 * Class slots shift St.* GIR offsets (clicked vs style_changed).
 	 */
-	public virtual void show()
+	public void show()
 	{
 		this.actor_visible = true;
 		GnomeShellRpc.call_value("Clutter-Actor.show", this);
 	}
 
-	public virtual void hide()
+	public void hide()
 	{
 		this.actor_visible = false;
 		GnomeShellRpc.call_value("Clutter-Actor.hide", this);
@@ -477,8 +477,9 @@
 	 * we can coalesce. Dash {@code notify::scale-x} calls this every set;
 	 * a sync RPC each time re-enters Helper-Actor allocate. One RPC until
 	 * allocate, like stock {@code needs_relayout}. No extra GObject signal.
+	 * Not virtual — see {@link get_preferred_width}.
 	 */
-	public virtual void queue_relayout()
+	public void queue_relayout()
 	{
 		if (this.relayout_queued) {
 			return;

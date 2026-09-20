@@ -1465,8 +1465,11 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * Emit class vfuncs in GIR {@code class_struct} order so Vala class
+		 * Emit class vfuncs in GIR class_struct order so Vala class
 		 * layout matches generated C headers / stock offsets.
+		 * Override files must not add extra virtual methods on these
+		 * types — GJS vfunc_* uses typelib field offsets
+		 * (docs/bugs/2026-09-20-spurious-appicon-clicked.md).
 		 */
 		private int emit_object_class_slots(
 			GLib.FileStream stream,
@@ -1490,10 +1493,11 @@ namespace GnomeShellRpc.Rpc.Helper
 				if (fname == "parent_class" || fname == "parent") {
 					continue;
 				}
-				if (ti.get_tag() == GI.TypeTag.GTYPE) {
+				if (ti.get_tag() == GI.TypeTag.GTYPE
+						|| ti.get_tag() == GI.TypeTag.VOID) {
 					/*
-					 * Pointer-sized pad so class_size matches headers that end
-					 * with a GType field ({@code layout_manager_type}).
+					 * GType layout_manager_type, or a class function
+					 * pointer GI left untyped (create_child_meta).
 					 */
 					stream.puts(@"
 		public virtual void _gsr_$(fname)_pad() {
@@ -1503,10 +1507,34 @@ namespace GnomeShellRpc.Rpc.Helper
 					continue;
 				}
 				if (ti.get_tag() != GI.TypeTag.INTERFACE) {
+					var slot = oi.find_method(fname);
+					if (slot == null) {
+						continue;
+					}
+					vfunc_names.add(fname);
+					emitted += this.emit_callable(
+						stream, ns, class_name, slot, "class", true);
 					continue;
 				}
 				var iface = ti.get_interface();
 				if (iface == null || iface.get_type() != GI.InfoType.CALLBACK) {
+					var slot = oi.find_method(fname);
+					if (slot != null) {
+						vfunc_names.add(fname);
+						emitted += this.emit_callable(
+							stream, ns, class_name, slot, "class", true);
+						continue;
+					}
+					if (iface != null && iface.get_type() == GI.InfoType.STRUCT) {
+						stream.puts(@"
+		public virtual void _gsr_$(fname)_pad() {
+		}
+
+		public virtual void _gsr_$(fname)_pad2() {
+		}
+");
+						emitted += 2;
+					}
 					continue;
 				}
 				vfunc_names.add(fname);

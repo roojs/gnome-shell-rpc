@@ -22,7 +22,7 @@ namespace Shell
 			this.rpc_lid = stub.rpc_lid;
 		}
 
-		public override void get_preferred_width(
+		public override void get_preferred_width_vfunc(
 			float for_height,
 			out float min_width_p,
 			out float natural_width_p
@@ -35,7 +35,7 @@ namespace Shell
 			this.window_container.get_preferred_width(for_height, out min_width_p, out natural_width_p);
 		}
 
-		public override void get_preferred_height(
+		public override void get_preferred_height_vfunc(
 			float for_width,
 			out float min_height_p,
 			out float natural_height_p

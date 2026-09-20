@@ -22,7 +22,7 @@ namespace Shell
 			this.rpc_lid = stub.rpc_lid;
 		}
 
-		public override void get_preferred_width(
+		public override void get_preferred_width_vfunc(
 			float for_height,
 			out float min_width_p,
 			out float natural_width_p

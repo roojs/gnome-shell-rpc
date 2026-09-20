@@ -428,6 +428,7 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/BindConstraint.override.vala',
   'gi-stub/overrides-clutter/BrightnessContrastEffect.override.vala',
   'gi-stub/overrides-clutter/DesaturateEffect.override.vala',
+  'gi-stub/overrides-clutter/Clone.override.vala',
   'gi-stub/overrides-clutter/Constraint.override.vala',
   'gi-stub/overrides-clutter/ActorBox.override.vala',
   'gi-stub/overrides-clutter/ClickAction.override.vala',
