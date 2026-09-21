@@ -211,6 +211,28 @@ function runSearchProve(main) {
 			smokeLog('_getMaxDisplayedResults width=' + width + ' n=' + n);
 			return n;
 		};
+		const origAllocate = display.allocate.bind(display);
+		display.allocate = function (box, flags) {
+			let w = 'n/a';
+			try {
+				w = String(box.get_width());
+			} catch (e) {
+				w = 'err:' + formatError(e);
+			}
+			smokeLog('display.allocate w=' + w);
+			if (flags === undefined)
+				return origAllocate(box);
+			return origAllocate(box, flags);
+		};
+		display.connect('notify::allocation', () => {
+			let w = 'n/a';
+			try {
+				w = String(display.allocation.get_width());
+			} catch (e) {
+				w = 'err:' + formatError(e);
+			}
+			smokeLog('notify::allocation w=' + w);
+		});
 	}
 	let textChangedN = 0;
 	ct.connect('text-changed', () => {
@@ -238,7 +260,15 @@ function runSearchProve(main) {
 		let displayVis = false;
 		let displayMapped = false;
 		let allocW = 'n/a';
+		let actorW = 'n/a';
 		let nCols = 'n/a';
+		let minW = 'n/a';
+		let statusBinVis = false;
+		let scrollVis = false;
+		if (resultsView._statusBin)
+			statusBinVis = resultsView._statusBin.visible;
+		if (resultsView._scrollView)
+			scrollVis = resultsView._scrollView.visible;
 		if (display != null) {
 			displayVis = display.visible;
 			displayMapped = display.mapped;
@@ -255,10 +285,24 @@ function runSearchProve(main) {
 				allocW = 'err:' + formatError(e);
 			}
 			try {
+				actorW = String(display.get_width());
+			} catch (e) {
+				actorW = 'err:' + formatError(e);
+			}
+			try {
 				if (display._grid != null && display._grid.layout_manager != null) {
+					const lm = display._grid.layout_manager;
 					const width = Number(allocW);
 					if (Number.isFinite(width))
-						nCols = String(display._grid.layout_manager.columnsForWidth(width));
+						nCols = String(lm.columnsForWidth(width));
+					try {
+						const pref = lm.get_preferred_width(display._grid, -1);
+						minW = String(pref[0]) + '/' + String(pref[1])
+							+ ' c1=' + lm.columnsForWidth(1)
+							+ ' c1280=' + lm.columnsForWidth(1280);
+					} catch (e2) {
+						minW = 'err:' + formatError(e2);
+					}
 				}
 			} catch (e) {
 				nCols = 'err:' + formatError(e);
@@ -275,6 +319,8 @@ function runSearchProve(main) {
 				+ ' startingSearch=' + starting
 				+ ' searchInProgress=' + inProgress
 				+ ' status=' + JSON.stringify(status)
+				+ ' statusBin=' + statusBinVis
+				+ ' scroll=' + scrollVis
 				+ ' appResults=' + appN
 				+ ' defaultResult=' + (defaultResult != null)
 				+ ' displayVis=' + displayVis
@@ -282,7 +328,9 @@ function runSearchProve(main) {
 				+ ' nGrid=' + nGrid
 				+ ' first=' + (first != null)
 				+ ' allocW=' + allocW
+				+ ' actorW=' + actorW
 				+ ' nCols=' + nCols
+				+ ' minW=' + minW
 				+ ' initialDone=' + initialDone
 				+ ' initialN=' + initialN
 				+ ' metasN=' + metasN
@@ -311,13 +359,15 @@ function runSearchProve(main) {
 		else if (!terms || terms.length === 0)
 			miss = 'setTerms';
 		else if (first == null && nGrid <= 0) {
-			if (inProgress || status.indexOf('Searching') >= 0)
+			if (inProgress || status.indexOf('Searching') >= 0 || statusBinVis)
 				miss = 'Searching';
 			else if (appN > 0)
 				miss = createOk ? 'empty-grid' : 'getResultMetas';
 			else
 				miss = 'IconGrid';
-		} else if (first == null)
+		} else if (statusBinVis)
+			miss = 'Searching';
+		else if (first == null)
 			miss = 'IconGrid';
 		return miss;
 	}
@@ -331,21 +381,28 @@ function runSearchProve(main) {
 		global.context.terminate();
 	}
 
-	smokeLog('set clutter_text.text=f');
-	ct.text = 'f';
-	GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
-		snapshot('after-f', 'f');
-		updateSearchErr = '';
-		smokeLog('set clutter_text.text=fi');
-		ct.text = 'fi';
-		const missAt = snapshot('at-fi', 'fi');
-		if (missAt.length > 0) {
-			finish(missAt);
-			return GLib.SOURCE_REMOVE;
-		}
+	const readyDeadline = GLib.get_monotonic_time() + 25 * GLib.TIME_SPAN_SECOND;
+	GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+		if (!main.overview.visible
+				&& GLib.get_monotonic_time() < readyDeadline)
+			return GLib.SOURCE_CONTINUE;
+		smokeLog(
+			'ready startingUp=' + layout._startingUp
+				+ ' overview.visible=' + main.overview.visible
+		);
+		entry.grab_key_focus();
+		smokeLog('set clutter_text.text=f');
+		ct.text = 'f';
 		GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
-			const miss2 = snapshot('after-fi', 'fi');
-			finish(miss2.length > 0 ? miss2 : '');
+			snapshot('after-f', 'f');
+			updateSearchErr = '';
+			smokeLog('set clutter_text.text=fi');
+			ct.text = 'fi';
+			GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
+				const miss2 = snapshot('after-fi', 'fi');
+				finish(miss2.length > 0 ? miss2 : '');
+				return GLib.SOURCE_REMOVE;
+			});
 			return GLib.SOURCE_REMOVE;
 		});
 		return GLib.SOURCE_REMOVE;

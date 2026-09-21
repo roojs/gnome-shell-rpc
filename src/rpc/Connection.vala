@@ -75,6 +75,26 @@ namespace GnomeShellRpc.Rpc
 			}
 		}
 
+		protected override bool on_input_ready(
+			GLib.IOChannel source,
+			GLib.IOCondition condition
+		)
+		{
+			if ((condition & GLib.IOCondition.HUP) != 0
+					|| (condition & GLib.IOCondition.ERR) != 0) {
+				this.stop();
+				return false;
+			}
+			if (!this.channel_open || this.bin == null) {
+				return this.running;
+			}
+			if ((condition & GLib.IOCondition.IN) == 0 && !this.input_pending()) {
+				return this.running;
+			}
+			this.drain_readable();
+			return this.running;
+		}
+
 		private bool input_pending()
 		{
 			if (this.channel != null

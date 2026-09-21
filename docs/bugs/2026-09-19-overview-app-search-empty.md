@@ -74,7 +74,17 @@ GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=app-search-smoke \
   GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
 ```
 
-Smoke types `f` then `fi`; logs `_getMaxDisplayedResults width= n=`, `after-f` / `after-fi` (`allocW`, `nCols`, `status`, `nGrid`, `updateSearchErr`).
+Smoke types `f` then `fi` (does not abort on `after-f`); logs `_getMaxDisplayedResults`, `after-f` / `at-fi` / `after-fi` (`allocW`, `nCols`, `minW`, `statusBin`, `scroll`, `nGrid`).
+
+**2026-09-21 09:19 prove:** typed `fi`. `after-f` `nGrid=6` `first=true`. Hung before `after-fi` on `Meta-Compositor.enable_unredirect` (`pending=1`). Not the overlay.
+
+**2026-09-21 09:23 prove:** hung in `main.start`: client wrote `Clutter-GestureAction.new` id=750 then nested `Meta.prefs_get_dynamic_workspaces` id=751 from `before-update`; mutter `recv` 750 only.
+
+**2026-09-21 coalesced-nested-request-gate:** that 09:23 shape — two Requests already on the socket, OPC `on_input_ready` loops the unbuffered IOChannel so the second sits in `bin.in_stream`. **FAIL** (`Gate.inner` timeout, server `create n=1` never `inner`). `Connection.on_input_ready` now `drain_readable()` / `input_pending()`. Gate **PASS**. Nested start hangs of that shape are this, not the overlay. Not an OLLMchat edit.
+
+**2026-09-21 10:04 prove** (`overview.show()` before type): `after-f` / `at-fi` / `after-fi` all `terms` still set, `overview.visible=true`, `displayMapped=true`, `nGrid=6` `first=true` `allocW=0`. Smoke **ok**. Nested second term is not empty. Later `overview.show()` runs died `mutter exited ec=133` (`g_closure_ref`). Show wrap removed.
+
+**2026-09-21 10:10 prove:** `at-fi` `statusBin=false` `scroll=true` `nGrid=6` `first=true` `minW=25/568` `c1=0` `c1280=51`. Stock `columnsForWidth`: `width === 0` → 6 results; `0 < width ≤ minW` → `nCols=0` → `maxResults=0` → hide/clear → overlay. `set_width(1280)` then `allocation.get_width()` still **0** (getter is `actor_allocation`, not mutter). Nested never leaves the `width === 0` shortcut. `after-fi` without overview is still `SearchController.reset` (`text=""`, `miss text-changed`).
 
 **2026-09-20 11:59 prove:** `hook` then hang. Client sent `Meta-Compositor.get_laters` id=565 during `main.start` → `XdndHandler` → `LayoutManager._updateRegions`; no reply until SIGKILL (~48s). Aftermath `laters is null`. Live hold session gets past start (user can type).
 
@@ -86,7 +96,7 @@ Smoke types `f` then `fi`; logs `_getMaxDisplayedResults width= n=`, `after-f` /
 
 ## What is not the second-term miss
 
-`Actor.allocation` getter RPC vs last `allocate()` box. Landed `actor_allocation`; user: needle did not move. First query still works via `width === 0` → 6 hits. That property is why the first query works, not why the second fails.
+`Actor.allocation` getter RPC vs last `allocate()` box. Landed `actor_allocation`; user: needle did not move. Nested `allocW` stays 0 (`set_width(1280)` included), so both terms use `width === 0` → 6. Live second-term empty is **not** “RPC unpack of the box”. Stock `columnsForWidth(1) === 0` while `minW=25`: a stored box in `(0, minW]` yields `maxResults=0` and the overlay; a 0 box does not. Local cache of that box would not move the needle.
 
 ## Reverted (2026-09-21)
 
@@ -100,4 +110,4 @@ Product-tree dumps from this bug were reverted (hang workaround, not a FAIL of t
 
 ## Next (test area only)
 
-Out-of-tree Vala `tests/call-sync-repro/notif-nested-call-gate` (08:28 `set_width` / `before-update` / nested `get_children`): nested calls are `Client.pending` + the connection read watch, not `emit_wait_poll` in the handler. Reply after the Notification (queue/watch): **PASS**. Blocking the handler with `usleep`: **FAIL** (watch cannot run). `emit_wait_poll` in outer was the wrong replica “fix”.
+Nested `after-fi` with `terms=["fi"]` is **not** empty (`10:04`). Live overlay still is. Next: FAIL that dies when `after-fi` has `terms=["fi"]` and `statusBin=true` / `nGrid=0` — that needs a non-zero `this.allocation` on the search display (`0 < allocW ≤ minW` → `nCols=0`). Do not wrap `overview.show()` (ec=133). Do not skip `columnsForWidth`. `coalesced-nested-request-gate` **PASS** after `Connection.on_input_ready` drain — that is the 09:23 start hang, not the overlay.

@@ -93,6 +93,24 @@ executable('poll-nested-coalesced-reply-gate',
   install: false,
 )
 
+# Two Requests already on the socket when on_input_ready runs once
+# (app-search 09:23 GestureAction.new / before-update / prefs_get_dynamic_workspaces).
+executable('coalesced-nested-request-gate',
+  [
+    'coalesced-nested-request-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Nested call_poll from a Notification handler during outer call_poll
 # (app-search 08:28 set_width / before-update / get_children).
 executable('notif-nested-call-gate',
