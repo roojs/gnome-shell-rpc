@@ -99,6 +99,7 @@
 	bool relayout_queued;
 	/* Stock ClutterActor:visible default TRUE — the flag, not is_visible(). */
 	bool actor_visible = true;
+	ActorBox actor_allocation;
 	double cached_scale_x = 1.0;
 	double cached_scale_y = 1.0;
 	string actor_name = "";
@@ -351,6 +352,7 @@
 			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			return;
 		}
+		this.actor_allocation = box;
 		if (this.helper_attached) {
 			uint8[] helper_data = new uint8[sizeof(ActorBox)];
 			*((ActorBox*) helper_data) = box;
@@ -468,12 +470,12 @@
 	 * g_object_class_find_property, not get_allocation_box. Stock
 	 * GridSearchResults._getMaxDisplayedResults does
 	 * this.allocation.get_width() before updateSearch's try.
+	 * Return the box last passed to {@link allocate} (stock keeps it
+	 * on the actor). Do not RPC get_allocation_box on every read.
 	 */
 	public ActorBox allocation {
 		get {
-			var box = ActorBox();
-			this.get_allocation_box(out box);
-			return box;
+			return this.actor_allocation;
 		}
 	}
 

@@ -93,6 +93,24 @@ executable('poll-nested-coalesced-reply-gate',
   install: false,
 )
 
+# Nested call_poll from a Notification handler during outer call_poll
+# (app-search 08:28 set_width / before-update / get_children).
+executable('notif-nested-call-gate',
+  [
+    'notif-nested-call-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Live shape at volume: deep nesting + re-entrant emits + sync calls in invoke
 # handlers + notifications mid-dispatch. Looks for a wedge the one-shot gates miss.
 executable('nested-relay-storm-gate',

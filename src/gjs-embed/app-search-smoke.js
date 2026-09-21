@@ -193,15 +193,36 @@ function runSearchProve(main) {
 				throw e;
 			}
 		};
+		const origMax = display._getMaxDisplayedResults.bind(display);
+		display._getMaxDisplayedResults = function () {
+			let width = 'n/a';
+			try {
+				width = String(this.allocation.get_width());
+			} catch (e) {
+				width = 'err:' + formatError(e);
+			}
+			let n = -1;
+			try {
+				n = origMax();
+			} catch (e) {
+				smokeLog('_getMaxDisplayedResults width=' + width + ' threw ' + formatError(e));
+				throw e;
+			}
+			smokeLog('_getMaxDisplayedResults width=' + width + ' n=' + n);
+			return n;
+		};
 	}
 	let textChangedN = 0;
 	ct.connect('text-changed', () => {
 		textChangedN++;
 	});
-	smokeLog('set clutter_text.text=f');
-	ct.text = 'f';
 
-	GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
+	/**
+	 * @param {string} tag
+	 * @param {string} wantText
+	 * @returns {string}
+	 */
+	function snapshot(tag, wantText) {
 		const searchActive = search.searchActive;
 		const entryText = entry.text;
 		const terms = resultsView.terms;
@@ -216,6 +237,8 @@ function runSearchProve(main) {
 		let nGrid = -1;
 		let displayVis = false;
 		let displayMapped = false;
+		let allocW = 'n/a';
+		let nCols = 'n/a';
 		if (display != null) {
 			displayVis = display.visible;
 			displayMapped = display.mapped;
@@ -226,10 +249,25 @@ function runSearchProve(main) {
 			}
 			if (display._grid != null)
 				nGrid = display._grid.get_n_children();
+			try {
+				allocW = String(display.allocation.get_width());
+			} catch (e) {
+				allocW = 'err:' + formatError(e);
+			}
+			try {
+				if (display._grid != null && display._grid.layout_manager != null) {
+					const width = Number(allocW);
+					if (Number.isFinite(width))
+						nCols = String(display._grid.layout_manager.columnsForWidth(width));
+				}
+			} catch (e) {
+				nCols = 'err:' + formatError(e);
+			}
 		}
 
 		smokeLog(
-			'after-text searchActive=' + searchActive
+			tag + ' searchActive=' + searchActive
+				+ ' overview.visible=' + main.overview.visible
 				+ ' textChangedN=' + textChangedN
 				+ ' get_text=' + JSON.stringify(entry.get_text())
 				+ ' entryText=' + JSON.stringify(entryText)
@@ -243,6 +281,8 @@ function runSearchProve(main) {
 				+ ' displayMapped=' + displayMapped
 				+ ' nGrid=' + nGrid
 				+ ' first=' + (first != null)
+				+ ' allocW=' + allocW
+				+ ' nCols=' + nCols
 				+ ' initialDone=' + initialDone
 				+ ' initialN=' + initialN
 				+ ' metasN=' + metasN
@@ -266,9 +306,7 @@ function runSearchProve(main) {
 			miss = 'createResultObject';
 		else if (updateSearchErr.length > 0)
 			miss = 'updateSearch';
-		else if (entryText !== 'f')
-			miss = 'text-changed';
-		else if (!searchActive)
+		else if (entryText !== wantText)
 			miss = 'text-changed';
 		else if (!terms || terms.length === 0)
 			miss = 'setTerms';
@@ -281,13 +319,35 @@ function runSearchProve(main) {
 				miss = 'IconGrid';
 		} else if (first == null)
 			miss = 'IconGrid';
+		return miss;
+	}
 
+	function finish(miss) {
 		if (miss.length > 0)
 			smokeLog('miss ' + miss);
 		else
 			smokeLog('ok');
 		smokeLog('done');
 		global.context.terminate();
+	}
+
+	smokeLog('set clutter_text.text=f');
+	ct.text = 'f';
+	GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
+		snapshot('after-f', 'f');
+		updateSearchErr = '';
+		smokeLog('set clutter_text.text=fi');
+		ct.text = 'fi';
+		const missAt = snapshot('at-fi', 'fi');
+		if (missAt.length > 0) {
+			finish(missAt);
+			return GLib.SOURCE_REMOVE;
+		}
+		GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
+			const miss2 = snapshot('after-fi', 'fi');
+			finish(miss2.length > 0 ? miss2 : '');
+			return GLib.SOURCE_REMOVE;
+		});
 		return GLib.SOURCE_REMOVE;
 	});
 }

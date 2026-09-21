@@ -133,6 +133,16 @@ if (!('width' in Clutter.Actor.prototype)) {
 	ok('H-allocation', 'GObject property allocation on prototype');
 }
 
+const queueRelayout = GObject.signal_lookup('queue-relayout', Clutter.Actor.$gtype);
+if (queueRelayout === 0) {
+	fail(
+		'H-queue-relayout',
+		'GObject signal missing; iconGrid.js connect() on AppIcon throws'
+	);
+} else {
+	ok('H-queue-relayout', 'id=' + queueRelayout);
+}
+
 const widget = repo.find_by_name('St', 'Widget');
 if (widget === null) {
 	fail('H-label-nullable', 'St.Widget missing');
