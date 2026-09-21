@@ -46,6 +46,7 @@ kill_job() {
 		pkill -9 -f 'mutter-rpc --wayland' 2>/dev/null || true
 		pkill -9 -f 'gnome-shell-rpc' 2>/dev/null || true
 		pkill -9 -f 'machinectl shell testuser' 2>/dev/null || true
+		"$(cd "$(dirname "$0")" && pwd)/clear-nested-dbus.sh" 2>/dev/null || true
 		wait "$JOB_PID" 2>/dev/null || true
 	fi
 	JOB_PID=""

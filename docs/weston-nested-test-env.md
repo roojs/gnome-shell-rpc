@@ -100,6 +100,18 @@ Prove log: `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`.
 Stop: close the Weston window, or:
 
 ```bash
+./scripts/clear-nested-dbus.sh
+```
+
+Prove/hold used to SIGKILL mutter and leave `dbus-daemon --print-address --session`
+(plus extra at-spi buses) reparented to init. That is **not** a gnome-shell-rpc
+bug — both machines hit D-Bus max connections and the session bus dies. The
+script reaps those leftovers and does **not** touch the systemd user/system bus.
+`weston-gsr-session.sh` / prove stop / hold exit call it automatically.
+
+Manual pkill if you only want the compositor:
+
+```bash
 pkill -9 -f 'mutter-rpc --wayland'
 pkill -9 -f gnome-shell-rpc
 # then close Weston, or:

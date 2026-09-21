@@ -41,6 +41,7 @@ stop_tree() {
 	pkill -9 -x mutter-rpc 2>/dev/null || true
 	pkill -9 -x gnome-shell-rpc 2>/dev/null || true
 	wait "$pid" 2>/dev/null || true
+	"$ROOT/scripts/clear-nested-dbus.sh"
 }
 
 set +e

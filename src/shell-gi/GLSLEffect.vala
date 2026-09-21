@@ -35,6 +35,11 @@ namespace Shell
 			}
 		}
 
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.register("Shell-GLSLEffect", typeof(GLSLEffect));
+		}
+
 		construct {
 			if (this.rpc_lid != 0) {
 				return;

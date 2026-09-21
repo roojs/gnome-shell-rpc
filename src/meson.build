@@ -533,7 +533,8 @@ mutter_clutter_rpc_lib = shared_library(
   c_args: [
     '-I' + meson.current_source_dir() / 'gi-stub',
   ] + mutter_clutter_cflags + mutter_clutter_stock_inc,
-  # meta_register() is defined in libmutter-rpc-16 (lazy-bound on first Runtime.register).
+  # meta_register / st_register / shell_register: libmutter-rpc-16,
+  # libst-rpc-16, libshell-gi-16 (lazy-bound on first Runtime.register).
   link_args: ['-Wl,--unresolved-symbols=ignore-all'],
   vala_header: 'mutter-clutter-rpc-16.h',
   vala_vapi: 'mutter-clutter-rpc-16.vapi',

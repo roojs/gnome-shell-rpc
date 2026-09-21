@@ -99,7 +99,7 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
 | 2 | Boot / desktop | **Better (user 2026-09-17 ~16:37).** App-picker / WINDOW_PICKER now shows **wallpaper / app thumbnails**. Search **too high**. Desktop panes **too high** (same). Workspace-thumbnail row (tiny per-desktop squares) **still missing**. Grey square + red dot ~2/3 along. See **Panel inset**. | Search below panel → thumbs row → wallpaper pane |
-| 3 | Clock (dateMenu) | Click **opens**; re-click / click-out **hides** (user 2026-09-17) | Same |
+| 3 | Clock (dateMenu) | Click-crash regression **2026-09-21** — see **Clock click crash** below. Nested `date-menu-open-smoke: ok`. Live click not re-scored. | Same |
 | 4 | Clock menu | **Open/close ✔️.** Buttons inside dead (month nav, events, …) — backlog | Month nav + items work |
 | 5 | System menu (quickSettings) | **Open/close ✔️.** Tiles / sliders / settings row dead — same backlog. Volume size later | Tiles click; sane size |
 | 6 | Geom (probe) | `messageTray` still odd; BoxPointer dateMenu ~stage-wide preferred | Finite tray; menu ~content |
@@ -124,6 +124,31 @@ user live, not early/later.
 no control inside any popdown works (user). Likely Compact Event coords
 (`0,0` / `222,1`) so inside clicks look like click-out / miss the child.
 QS `-12` later. Boot landing is stock WINDOW_PICKER but **content incomplete** (below). **🚫** ImageContent / vendor `js/`.
+
+### Clock click crash (2026-09-21) — handoff
+
+Came off the search ticket ([`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay is still open; do **not** put never-shrink back.
+
+| Attempt | Result | Now |
+| --- | --- | --- |
+| Never-shrink cache on all `allocate` / `allocation` getters | Calendar / date menu died. User called out coding standards (`bool` flags, no braces) | **Reverted.** `allocate` always stores the box. Getter copies finite mutter width, else cache (skip `-Infinity` / empty) |
+| `date-menu-open-smoke` + `menu.open(0)` | Named the next death: mutter **ec=133**, client `Unrecognized type alias: Shell-GLSLEffect` on `get_effect` during menu show | Keep the smoke |
+| Host `ShellApplication` `try { Bin.register("Shell-GLSLEffect", typeof(Shell.GLSLEffect)) }` after `Runtime.register()` | Open no longer 133’d. User: “this looks unlikely” — wrong layer, swallowed errors, one-off | **Removed** |
+| `GLSLEffect` `static construct { Bin.register(...) }` | User: not a valid way | **Removed** |
+| `GLSLEffect.rpc_register()` from `Global.bind_display` | User: one place calls all of these, not random sites | **Removed** |
+| `Shell.register()` (`shell_register`) from `GiStub.Runtime.register()`, next to `Clutter.register` / `meta_register` / `st_register`. `GLSLEffect.rpc_register()` is the per-type fill, same as Helper. Construct `register_handle`s the lease | Same aggregator as every other client `Bin` alias. Cross-lib like `st_register.h` | **Landed** |
+| Smoke `fire_button_press` after `open()` | Toggles **closed** (`isOpen=false`); prove hung to timeout until click was dropped | Smoke is **open-only**. `SMOKE_OK_PAT` includes `date-menu-open-smoke: ok` |
+| Nested prove **2026-09-21 ~15:35** | `date-menu-open-smoke: open dateMenu` then `ok`. No unpack 133. Early-stop once the pattern was listed | Gate PASSed. **Live click** (user) not re-scored this session |
+
+```bash
+GSR_NESTED_TIMEOUT=40 GI_META_SMOKE=date-menu-open-smoke \
+  GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
+# expect: date-menu-open-smoke: ok  and  nested-weston-prove: stop (smoke-ok)
+```
+
+Do **not:** never-shrink globally · `Bin.register` in `ShellApplication` · `static construct` Bin.register · `rpc_register` from `bind_display` · treat nested `open(0)` as a live click score · Idle as a menu fix.
+
+If the nest/session bus is dead (“too many connections”), that is leftover `dbus-run-session` daemons, not this chrome miss: `./scripts/clear-nested-dbus.sh` ([`weston-nested-test-env.md`](../weston-nested-test-env.md)).
 
 ### §2 diagnosis (2026-09-17 — debug only, no fix yet)
 
@@ -265,9 +290,10 @@ until §2 moves.
 1. ~~**§2 overview**~~ — ✔️ `set_to` wire; nest `state=1`.
 2. ~~**Menu close**~~ — ✔️ `captured-event-smoke` **ok** + **user** hide-after-show.
 3. **WINDOW_PICKER content** — wallpaper pane visible (user). **Panel inset** next (search + panes too high). Thumbs row still missing visually. Grey/red-dot leftover.
-4. **Backlog — popdown buttons** — calendar, QS tiles, settings row, … (Event coords).
-5. **Later:** QS volume / `-12`.
-6. Soft: interval gate `final=0` — not chrome.
+4. **Clock click** — nested `date-menu-open-smoke: ok`. Needs **user live** click-the-time re-score after the GLSLEffect handle fix. Never-shrink stays reverted.
+5. **Backlog — popdown buttons** — calendar, QS tiles, settings row, … (Event coords).
+6. **Later:** QS volume / `-12`.
+7. Soft: interval gate `final=0` — not chrome.
 
 
 ### Prove stay-up (expect timeout, not 133)

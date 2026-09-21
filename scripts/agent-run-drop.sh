@@ -39,6 +39,8 @@ if [[ "${1:-}" == "--cancel" ]]; then
 	pkill -9 -f 'mutter-rpc --wayland' 2>/dev/null || true
 	pkill -9 -f 'gnome-shell-rpc' 2>/dev/null || true
 	pkill -9 -f 'machinectl shell testuser' 2>/dev/null || true
+	ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+	"$ROOT/scripts/clear-nested-dbus.sh" 2>/dev/null || true
 	echo "agent-run-drop: cancel requested"
 	exit 0
 fi

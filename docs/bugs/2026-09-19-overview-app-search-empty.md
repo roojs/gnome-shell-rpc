@@ -52,11 +52,9 @@
 
 ## Next
 
-Live (user): type `ter` → icons. Type `m` **or wait** → **Searching…** and it **never comes back**.
+Live (user): type `ter` → icons. Type `m` **or wait** → **Searching…** and it **never comes back**. Overlay is **still open**. Do **not** reintroduce “never shrink allocation” on every actor — that crashed the clock (see chrome bug).
 
-**2026-09-21 15:05** nested FAIL `maxResults-zero` then PASS: after icons, a 1px `allocate` used to empty the grid (`n=0`). `Actor.allocate` / `allocation` getter no longer shrink a usable cache; same 1px keeps `n=5`. Extra key `term` still has icons.
-
-Next: **hold session** — type `ter`, then `m` or wait. That is the live needle. Nested extra-key is ok.
+**Handoff 2026-09-21 ~15:53** — pick up here. Session was search → clock regression → GLSLEffect → leftover D-Bus. Search product miss is unchanged.
 
 ## Symptom
 
@@ -104,9 +102,30 @@ Smoke types `f` then `fi` (does not abort on `after-f`); logs `_getMaxDisplayedR
 
 ## What is not the second-term miss
 
-RPC unpack of the allocation box (user 2026-09-21: that getter did not move the live needle). `-Infinity` / width `0` (those use `_maxResults` 6). Remote D-Bus taking ~25s (icons stay in nested, overlay hidden).
+RPC unpack of the allocation box (user 2026-09-21: that getter did not move the live needle). `-Infinity` / width `0` (those use `_maxResults` 6). Remote D-Bus taking ~25s (icons stay in nested, overlay hidden). Nested extra-key / `term` keeps icons; nested wait often `notifyN=0`. Live wait **or** second key empties the grid.
 
-The named miss is a **later-frame box in `(0, minW]`** after a wide grid: `columnsForWidth` → 0 → hide/clear. FAIL `maxResults-zero`. Fix: do not shrink a usable `actor_allocation` cache.
+A later-frame box in `(0, minW]` after a wide grid **would** make stock `columnsForWidth` return 0 → `maxResults=0` → hide/clear → overlay. That is still a plausible stock path. It is **not** a license to never-shrink every actor’s cache (user: crashed the clock; not a real fix).
+
+## 2026-09-21 — what we tried, what we rolled back
+
+Worked this ticket, then the clock regression it caused. Chrome details: [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md) (clock row + GLSLEffect). D-Bus leftovers: [`weston-nested-test-env.md`](../weston-nested-test-env.md).
+
+| Attempt | What happened | Now |
+| --- | --- | --- |
+| `Clutter.Actor.allocation` GObject getter (skip `-Infinity` / empty, copy finite mutter width) | Needed so `this.allocation.get_width()` is not always the cache of 0. First query can use the `width === 0` → 6 shortcut. **Did not** stop live Searching… | **Keep** — `Actor.override.vala` getter. Coding standards: `var w`, early return, no `bool` flag temps |
+| `allocate()` always stores `actor_allocation = box` | Matches mutter’s last box | **Keep** |
+| Synthetic `display.allocate(1px)` in `app-search-smoke.js` after `ter` | Forced FAIL `maxResults-zero` in nested. User: not the live miss (“something tells a search grid it is only one pixel wide” is a smoke toy, not a fix) | Smoke still **has** that `allocate w=1` probe (~line 493). Do **not** treat a PASS of that as the live bar. Do **not** ship 1px as product |
+| “Do not shrink a usable cache” on **every** `allocate` / getter (keep 792px if later box is 1px) | Nested smoke `maxResults-zero` went away. User: not a real fix. **Crashed clock / date menu.** Also violated coding standards (`bool new_ok` / `cached_ok`, no braces) | **Reverted 2026-09-21.** Do not put it back |
+| Host `ShellApplication` `Bin.register("Shell-GLSLEffect", typeof(Shell.GLSLEffect))` after `Runtime.register()` | Unblocked `get_effect` unpack so `dateMenu.menu.open(0)` no longer 133’d. User: “this looks unlikely” — wrong layer, try/catch, one-off | **Removed.** **Not** this search ticket |
+| `GLSLEffect` `static construct { Bin.register(...) }` | User: not a valid way | **Removed** |
+| `GLSLEffect.rpc_register()` from `Global.bind_display` | User: one place calls all of these | **Removed** |
+| `Shell.register()` from `GiStub.Runtime.register()` (with `Clutter` / `meta` / `st`); construct `register_handle` | Client aggregator, same as `st_register`. Gate `date-menu-open-smoke: ok` (~15:35) was under the earlier host/bind sites — **re-score** after this move | Chrome, not this search ticket |
+| Click then `isOpen` in date-menu smoke | `fire_button_press` after `open()` toggles **closed** (`ok isOpen=false`). Click-no-open is an old probe miss | Smoke is **open-only**. Live click still the user’s score |
+| Idle / timeout / vendor `search.js` as product fix | Forbidden on this ticket | Stay forbidden |
+
+**Still in tree that is not the search fix:** `app-search-smoke.js` 1px allocate after icons; `date-menu-open-smoke.js` (chrome). Allocation getter still skips non-finite mutter width so the first query is not poisoned.
+
+**Do not:** never-shrink globally · 1px product allocate · host `Bin.register` · `static construct` Bin.register · `rpc_register` from `bind_display` · wrap `overview.show()` · skip `columnsForWidth` · `GLib.idle_add` / Idle / Timeout as the overlay fix · invent GI.
 
 ## Reverted (2026-09-21)
 
@@ -115,7 +134,21 @@ Product-tree dumps from this bug were reverted (hang workaround, not a FAIL of t
 - `Runtime.call_depth` / skip `before-update` during `call_poll`
 - `Compositor.get_laters` client-local + `Compositor.override.vala` + `Meta.deny`
 - `queue_relayout_rpc` / undeny `queue-relayout` signal
+- **Never-shrink `actor_allocation`** on all actors (clock crash)
+- **`ShellApplication` `Bin.register("Shell-GLSLEffect")`** (wrong layer)
+- **`GLSLEffect` `static construct` `Bin.register`** (not a valid register path)
+- **`GLSLEffect.rpc_register()` from `Global.bind_display`** (not the aggregator)
+
+## Machine (not this miss)
+
+Nested prove/hold used to leave `dbus-daemon --print-address --session` (and extra at-spi buses) reparented to init. Both machines then hit D-Bus max connections and the session bus dies. **Not** a gnome-shell-rpc bug.
+
+```bash
+./scripts/clear-nested-dbus.sh
+```
+
+Does not touch the systemd user/system bus. `weston-gsr-session.sh` / prove stop / hold exit call it. If a nest “stops working full stop” before you chase overlay, run that.
 
 ## Next (test area only)
 
-See **Next** at the top. Do not wrap `overview.show()`. Do not skip `columnsForWidth`. `coalesced-nested-request-gate` is the 09:23 start hang, not the overlay.
+See **Next** at the top. Live second-term Searching… is the bar. Nested `after-fi` without overview is still `SearchController.reset`. `coalesced-nested-request-gate` is the 09:23 start hang, not the overlay. Clock click is the chrome bug, not a search FAIL.

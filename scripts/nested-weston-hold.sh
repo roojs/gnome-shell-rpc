@@ -58,4 +58,5 @@ MPID=$!
 wait "$MPID"
 ec=$?
 echo "nested-weston-hold: mutter exited ec=$ec"
+"$ROOT/scripts/clear-nested-dbus.sh"
 exit "$ec"

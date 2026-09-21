@@ -25,15 +25,9 @@ chmod 700 "$RT" 2>/dev/null || true
 export XDG_RUNTIME_DIR="$RT"
 export GSR_WESTON_MODE="$MODE"
 
-# Leftover nest from a previous run — clear and continue.
-if [[ -e "$RT/$SOCK" || -e "$RT/${SOCK}.lock" ]]; then
-	echo "weston-gsr-session: clearing previous $SOCK nest" >&2
-	pkill -f "weston.*${SOCK}" 2>/dev/null || true
-	pkill -x mutter-rpc 2>/dev/null || true
-	pkill -x gnome-shell-rpc 2>/dev/null || true
-	sleep 0.2
-	rm -f "$RT/$SOCK" "$RT/${SOCK}.lock"
-fi
+# Leftover nest / dbus-run-session daemons from previous runs.
+"$ROOT/scripts/clear-nested-dbus.sh"
+sleep 0.2
 
 if ! command -v weston >/dev/null; then
 	echo "weston-gsr-session: install weston: sudo apt install weston" >&2
