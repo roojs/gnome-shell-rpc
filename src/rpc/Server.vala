@@ -89,23 +89,10 @@ namespace GnomeShellRpc.Rpc
 			var ctx = stage != null ? stage.get_context() : null;
 			var clutter_backend = ctx != null ? ctx.get_backend() : null;
 			var seat = clutter_backend != null ? clutter_backend.get_default_seat() : null;
-			unowned GLib.List<Clutter.StageView>? views = null;
-			if (stage != null) {
-				views = stage.peek_stage_views();
-			}
 			if (stage != null && !OLLMrpc.Bin.gtype_to_alias.has_key(stage.get_type())) {
 				OLLMrpc.Bin.register_alias("Clutter-Stage", stage.get_type());
 			}
-			/*
-			 * {@code ClutterStage::before-update} args are the concrete
-			 * view ({@code MetaRendererView}), not the GIR
-			 * {@code StageView} class name. Same as Seat / Stage: alias
-			 * the live object's type.
-			 */
-			if (views != null && views.data != null
-					&& !OLLMrpc.Bin.gtype_to_alias.has_key(views.data.get_type())) {
-				OLLMrpc.Bin.register_alias("Clutter-StageView", views.data.get_type());
-			}
+			this.alias_stage_view();
 			if (ctx != null	&& !OLLMrpc.Bin.gtype_to_alias.has_key(ctx.get_type())) {
 				OLLMrpc.Bin.register_alias("Clutter-Context", ctx.get_type());
 			}
@@ -193,6 +180,43 @@ namespace GnomeShellRpc.Rpc
 		}
 
 		/**
+		 * {@code ClutterStage::before-update} / transformed geometry pack the
+		 * concrete view ({@code MetaRendererView}), not the GIR
+		 * {@code StageView} class name. {@code peek_stage_views} can be empty
+		 * at {@link start}; spawn retries. {@code Type.from_name} covers the
+		 * GType existing with no instance yet.
+		 */
+		private void alias_stage_view()
+		{
+			var stage = this.display.get_context().get_backend().get_stage();
+			unowned GLib.List<Clutter.StageView>? views = null;
+			if (stage != null) {
+				views = stage.peek_stage_views();
+			}
+			var view_type = GLib.Type.INVALID;
+			if (views != null && views.data != null) {
+				view_type = views.data.get_type();
+			}
+			if (view_type == GLib.Type.INVALID) {
+				view_type = GLib.Type.from_name("MetaRendererView");
+			}
+			if (view_type == GLib.Type.INVALID) {
+				GLib.debug("alias_stage_view: no MetaRendererView yet");
+				return;
+			}
+			if (OLLMrpc.Bin.gtype_to_alias.has_key(view_type)) {
+				return;
+			}
+			try {
+				OLLMrpc.Bin.register_alias("Clutter-StageView", view_type);
+				GLib.debug("alias_stage_view: %s → Clutter-StageView",
+					view_type.name());
+			} catch (GLib.Error e) {
+				GLib.warning("alias_stage_view: %s", e.message);
+			}
+		}
+
+		/**
 		 * Spawn {@code gnome-shell-rpc} via {@link Meta.WaylandClient}.
 		 *
 		 * Default (no {@code GI_META_SMOKE}, or {@code init}): product
@@ -201,6 +225,7 @@ namespace GnomeShellRpc.Rpc
 		 */
 		private void spawn_client()
 		{
+			this.alias_stage_view();
 			string self_exe;
 			try {
 				self_exe = GLib.FileUtils.read_link("/proc/self/exe");

@@ -1,7 +1,11 @@
 # Dash favorites launch on nested boot — no click
 
-**Status:** ⏳ open — C class_struct must match GIR so GJS `vfunc_*` hits the real slots.  
-**Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Status:** ✔️ **closed** (2026-09-21) — user: no-click / dash-favorites-without-click
+is fixed. Extra Class virtuals dropped; `class-struct-offset-gate` **PASS**.
+**Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
+
+Menu-inside popdown clicks (Event coords) stay on the chrome leftovers row —
+that is not this smash.
 
 ## Symptom
 
@@ -61,8 +65,9 @@ construct dispatch (Constraint mint) is a `GType` map, not a Class slot.
   (we were not calling `clicked_vfunc` from event relay; AppIcon minted
   `St-Button.new`)
 - No-op `Gio.launch`
+- Popdown **inside** clicks (Compact Event coords) — chrome leftovers
 
-## Do
+## Landed
 
 Drop extra virtuals (method + `[CCode cname]`, like `allocate`). Subclasses
 that overrode the extra methods (`SquareBin`, `WindowPreview`, `Stack`,

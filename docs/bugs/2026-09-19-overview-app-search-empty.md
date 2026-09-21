@@ -50,9 +50,17 @@
 
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
+## Next
+
+Live (user): type `ter` → icons. Type `m` **or wait** → **Searching…** and it **never comes back**.
+
+**2026-09-21 15:05** nested FAIL `maxResults-zero` then PASS: after icons, a 1px `allocate` used to empty the grid (`n=0`). `Actor.allocate` / `allocation` getter no longer shrink a usable cache; same 1px keeps `n=5`. Extra key `term` still has icons.
+
+Next: **hold session** — type `ter`, then `m` or wait. That is the live needle. Nested extra-key is ok.
+
 ## Symptom
 
-Type one character → application icons appear. Type another character or delete one → overlay **Searching…**, grid empty.
+Type `ter` → application icons. Type `m` or wait a bit → overlay **Searching…**, grid empty, **stays that way**.
 
 ## Stock
 
@@ -96,7 +104,9 @@ Smoke types `f` then `fi` (does not abort on `after-f`); logs `_getMaxDisplayedR
 
 ## What is not the second-term miss
 
-`Actor.allocation` getter RPC vs last `allocate()` box. Landed `actor_allocation`; user: needle did not move. Nested `allocW` stays 0 (`set_width(1280)` included), so both terms use `width === 0` → 6. Live second-term empty is **not** “RPC unpack of the box”. Stock `columnsForWidth(1) === 0` while `minW=25`: a stored box in `(0, minW]` yields `maxResults=0` and the overlay; a 0 box does not. Local cache of that box would not move the needle.
+RPC unpack of the allocation box (user 2026-09-21: that getter did not move the live needle). `-Infinity` / width `0` (those use `_maxResults` 6). Remote D-Bus taking ~25s (icons stay in nested, overlay hidden).
+
+The named miss is a **later-frame box in `(0, minW]`** after a wide grid: `columnsForWidth` → 0 → hide/clear. FAIL `maxResults-zero`. Fix: do not shrink a usable `actor_allocation` cache.
 
 ## Reverted (2026-09-21)
 
@@ -106,8 +116,6 @@ Product-tree dumps from this bug were reverted (hang workaround, not a FAIL of t
 - `Compositor.get_laters` client-local + `Compositor.override.vala` + `Meta.deny`
 - `queue_relayout_rpc` / undeny `queue-relayout` signal
 
-`actor_allocation` stays (named field; first query). It is **not** the second-term miss.
-
 ## Next (test area only)
 
-Nested `after-fi` with `terms=["fi"]` is **not** empty (`10:04`). Live overlay still is. Next: FAIL that dies when `after-fi` has `terms=["fi"]` and `statusBin=true` / `nGrid=0` — that needs a non-zero `this.allocation` on the search display (`0 < allocW ≤ minW` → `nCols=0`). Do not wrap `overview.show()` (ec=133). Do not skip `columnsForWidth`. `coalesced-nested-request-gate` **PASS** after `Connection.on_input_ready` drain — that is the 09:23 start hang, not the overlay.
+See **Next** at the top. Do not wrap `overview.show()`. Do not skip `columnsForWidth`. `coalesced-nested-request-gate` is the 09:23 start hang, not the overlay.

@@ -1469,7 +1469,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * layout matches generated C headers / stock offsets.
 		 * Override files must not add extra virtual methods on these
 		 * types — GJS vfunc_* uses typelib field offsets
-		 * (docs/bugs/2026-09-20-spurious-appicon-clicked.md).
+		 * (docs/bugs/done/2026-09-20-spurious-appicon-clicked.md).
 		 */
 		private int emit_object_class_slots(
 			GLib.FileStream stream,

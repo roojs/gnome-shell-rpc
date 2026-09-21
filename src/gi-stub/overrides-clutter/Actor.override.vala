@@ -352,7 +352,16 @@
 			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			return;
 		}
-		this.actor_allocation = box;
+		/* Do not shrink a usable cache. Stock GridSearchResults treats
+		 * 0 < width ≤ minW as 0 columns and hide/clears icons; a 1px
+		 * later-frame box after a 792px search grid is that miss. Still
+		 * RPC mutter the real box. */
+		float new_w = box.get_width();
+		float cached_w = this.actor_allocation.get_width();
+		bool new_ok = new_w > 0.0f && new_w < float.INFINITY;
+		bool cached_ok = cached_w > 0.0f && cached_w < float.INFINITY;
+		if (new_ok && (!cached_ok || new_w >= cached_w))
+			this.actor_allocation = box;
 		if (this.helper_attached) {
 			uint8[] helper_data = new uint8[sizeof(ActorBox)];
 			*((ActorBox*) helper_data) = box;
@@ -470,11 +479,28 @@
 	 * g_object_class_find_property, not get_allocation_box. Stock
 	 * GridSearchResults._getMaxDisplayedResults does
 	 * this.allocation.get_width() before updateSearch's try.
-	 * Return the box last passed to {@link allocate} (stock keeps it
-	 * on the actor). Do not RPC get_allocation_box on every read.
+	 * Return mutter's box when that width is finite and not smaller
+	 * than a usable cache. Copying a 1px later-frame box over 792px
+	 * makes GridSearchResults {@code columnsForWidth} return 0 and
+	 * hide/clear the app grid (Searching… stuck). Do not copy
+	 * {@code -Infinity} / empty (first query would skip the
+	 * {@code width === 0} shortcut).
 	 */
 	public ActorBox allocation {
 		get {
+			if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+				return this.actor_allocation;
+			}
+			ActorBox box;
+			this.get_allocation_box(out box);
+			float w = box.get_width();
+			float cached_w = this.actor_allocation.get_width();
+			bool mutter_ok = w > 0.0f && w < float.INFINITY;
+			bool cached_ok = cached_w > 0.0f && cached_w < float.INFINITY;
+			if (mutter_ok && (!cached_ok || w >= cached_w)) {
+				this.actor_allocation = box;
+				return box;
+			}
 			return this.actor_allocation;
 		}
 	}

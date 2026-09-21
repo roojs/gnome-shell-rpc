@@ -18,12 +18,15 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
 
 import 'resource:///org/gnome/shell/ui/environment.js';
 import {formatError} from 'resource:///org/gnome/shell/misc/errorUtils.js';
 
 const SMOKE = 'app-search-smoke';
 const SEARCH_WAIT_MS = 2000;
+const FAST_AFTER_F_MS = 200;
+const FAST_AFTER_FI_MS = 50;
 
 /**
  * @param {string} message
@@ -126,6 +129,9 @@ function runSearchProve(main) {
 	let createErr = '';
 	let createOk = false;
 	let updateSearchErr = '';
+	let allocateN = 0;
+	let notifyN = 0;
+	let maxZeroN = 0;
 	if (appProv == null) {
 		smokeLog('FAIL no applications provider');
 		initialDone = true;
@@ -196,35 +202,47 @@ function runSearchProve(main) {
 		const origMax = display._getMaxDisplayedResults.bind(display);
 		display._getMaxDisplayedResults = function () {
 			let width = 'n/a';
+			let mutter = 'n/a';
 			try {
 				width = String(this.allocation.get_width());
 			} catch (e) {
 				width = 'err:' + formatError(e);
 			}
+			try {
+				mutter = String(this.get_allocation_box().get_width());
+			} catch (e) {
+				mutter = 'err:' + formatError(e);
+			}
 			let n = -1;
 			try {
 				n = origMax();
 			} catch (e) {
-				smokeLog('_getMaxDisplayedResults width=' + width + ' threw ' + formatError(e));
+				smokeLog('_getMaxDisplayedResults width=' + width
+					+ ' mutter=' + mutter + ' threw ' + formatError(e));
 				throw e;
 			}
-			smokeLog('_getMaxDisplayedResults width=' + width + ' n=' + n);
+			smokeLog('_getMaxDisplayedResults width=' + width
+				+ ' mutter=' + mutter + ' n=' + n);
+			if (n === 0 && Number(width) !== 0)
+				maxZeroN++;
 			return n;
 		};
 		const origAllocate = display.allocate.bind(display);
 		display.allocate = function (box, flags) {
+			allocateN++;
 			let w = 'n/a';
 			try {
 				w = String(box.get_width());
 			} catch (e) {
 				w = 'err:' + formatError(e);
 			}
-			smokeLog('display.allocate w=' + w);
+			smokeLog('display.allocate n=' + allocateN + ' w=' + w);
 			if (flags === undefined)
 				return origAllocate(box);
 			return origAllocate(box, flags);
 		};
 		display.connect('notify::allocation', () => {
+			notifyN++;
 			let w = 'n/a';
 			try {
 				w = String(display.allocation.get_width());
@@ -238,6 +256,36 @@ function runSearchProve(main) {
 	ct.connect('text-changed', () => {
 		textChangedN++;
 	});
+
+	/**
+	 * Last GJS allocate() box vs mutter get_allocation_box.
+	 *
+	 * @param {object | null} actor
+	 * @returns {string}
+	 */
+	function boxLine(actor) {
+		if (actor == null)
+			return 'null';
+		let cache = 'n/a';
+		let mutter = 'n/a';
+		let w = 'n/a';
+		try {
+			cache = String(actor.allocation.get_width());
+		} catch (e) {
+			cache = 'err:' + formatError(e);
+		}
+		try {
+			mutter = String(actor.get_allocation_box().get_width());
+		} catch (e) {
+			mutter = 'err:' + formatError(e);
+		}
+		try {
+			w = String(actor.get_width());
+		} catch (e) {
+			w = 'err:' + formatError(e);
+		}
+		return 'cache=' + cache + ' mutter=' + mutter + ' get_width=' + w;
+	}
 
 	/**
 	 * @param {string} tag
@@ -260,18 +308,42 @@ function runSearchProve(main) {
 		let displayVis = false;
 		let displayMapped = false;
 		let allocW = 'n/a';
+		let mutterW = 'n/a';
 		let actorW = 'n/a';
 		let nCols = 'n/a';
 		let minW = 'n/a';
 		let statusBinVis = false;
 		let scrollVis = false;
+		let displayBox = 'n/a';
+		let parentBox = 'n/a';
+		let scrollBox = 'n/a';
 		if (resultsView._statusBin)
 			statusBinVis = resultsView._statusBin.visible;
-		if (resultsView._scrollView)
+		const providersInFlight = (resultsView._providers || []).map(p => {
+			let extra = '';
+			if (p.proxy) {
+				try {
+					extra = ' owner=' + JSON.stringify(p.proxy.g_name_owner)
+						+ ' timeout=' + p.proxy.g_default_timeout;
+				} catch (e) {
+					extra = ' proxy=' + formatError(e);
+				}
+			}
+			return String(p.id) + ':' + !!p.searchInProgress + extra;
+		}).join(',');
+		if (resultsView._scrollView) {
 			scrollVis = resultsView._scrollView.visible;
+			scrollBox = boxLine(resultsView._scrollView);
+		}
 		if (display != null) {
 			displayVis = display.visible;
 			displayMapped = display.mapped;
+			displayBox = boxLine(display);
+			try {
+				parentBox = boxLine(display.get_parent());
+			} catch (e) {
+				parentBox = 'err:' + formatError(e);
+			}
 			try {
 				first = display.getFirstResult();
 			} catch (e) {
@@ -283,6 +355,11 @@ function runSearchProve(main) {
 				allocW = String(display.allocation.get_width());
 			} catch (e) {
 				allocW = 'err:' + formatError(e);
+			}
+			try {
+				mutterW = String(display.get_allocation_box().get_width());
+			} catch (e) {
+				mutterW = 'err:' + formatError(e);
 			}
 			try {
 				actorW = String(display.get_width());
@@ -328,7 +405,14 @@ function runSearchProve(main) {
 				+ ' nGrid=' + nGrid
 				+ ' first=' + (first != null)
 				+ ' allocW=' + allocW
+				+ ' mutterW=' + mutterW
 				+ ' actorW=' + actorW
+				+ ' allocateN=' + allocateN
+				+ ' notifyN=' + notifyN
+				+ ' providers=' + providersInFlight
+				+ ' displayBox=' + displayBox
+				+ ' parentBox=' + parentBox
+				+ ' scrollBox=' + scrollBox
 				+ ' nCols=' + nCols
 				+ ' minW=' + minW
 				+ ' initialDone=' + initialDone
@@ -358,6 +442,14 @@ function runSearchProve(main) {
 			miss = 'text-changed';
 		else if (!terms || terms.length === 0)
 			miss = 'setTerms';
+		else if (statusBinVis && (starting || inProgress))
+			miss = 'Searching';
+		else if (maxZeroN > 0)
+			miss = 'maxResults-zero';
+		else if (Number(allocW) === 0
+				&& Number.isFinite(Number(mutterW))
+				&& Number(mutterW) > 0)
+			miss = 'allocation-cache-zero';
 		else if (first == null && nGrid <= 0) {
 			if (inProgress || status.indexOf('Searching') >= 0 || statusBinVis)
 				miss = 'Searching';
@@ -391,16 +483,32 @@ function runSearchProve(main) {
 				+ ' overview.visible=' + main.overview.visible
 		);
 		entry.grab_key_focus();
-		smokeLog('set clutter_text.text=f');
-		ct.text = 'f';
+		smokeLog('set clutter_text.text=ter');
+		ct.text = 'ter';
 		GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
-			snapshot('after-f', 'f');
-			updateSearchErr = '';
-			smokeLog('set clutter_text.text=fi');
-			ct.text = 'fi';
-			GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
-				const miss2 = snapshot('after-fi', 'fi');
-				finish(miss2.length > 0 ? miss2 : '');
+			snapshot('after-ter', 'ter');
+			try {
+				const box = new Clutter.ActorBox();
+				box.init_rect(0, 0, 1, 32);
+				smokeLog('allocate search display w=1');
+				appProv.display.allocate(box);
+				appProv.display.notify('allocation');
+			} catch (e) {
+				smokeLog('allocate w=1 ' + formatError(e));
+			}
+			GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+				const missSmall = snapshot('after-w1', 'ter');
+				if (missSmall.length > 0) {
+					finish(missSmall);
+					return GLib.SOURCE_REMOVE;
+				}
+				updateSearchErr = '';
+				smokeLog('set clutter_text.text=term');
+				ct.text = 'term';
+				GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
+					finish(snapshot('after-term', 'term'));
+					return GLib.SOURCE_REMOVE;
+				});
 				return GLib.SOURCE_REMOVE;
 			});
 			return GLib.SOURCE_REMOVE;
