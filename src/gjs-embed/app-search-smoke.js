@@ -5,10 +5,17 @@
  * Event / {@code fire_key}), then names the miss:
  * {@code AppSystem.search} / parental / {@code getInitialResultSet} /
  * {@code lookup_app} / {@code text-changed} / {@code setTerms} /
- * {@code getResultMetas} / {@code createResultObject} / {@code Searching} /
+ * {@code getResultMetas} / {@code createResultObject} /
+ * {@code second-updateSearch-clear} / {@code Searching} /
  * {@code empty-grid} / IconGrid.
  *
- *   GSR_NESTED_TIMEOUT=40 GI_META_SMOKE=app-search-smoke \
+ * Live path: type ter (icons), wait, extra key term. No 1px allocate.
+ * Named miss (observe 2026-09-22 09:47): first {@code updateSearch-out}
+ * has {@code nGrid>0} {@code first=true} {@code width=792}; a second
+ * out on the same terms leaves {@code nGrid=0} {@code first=false}
+ * at the same width (stock catch: {@code remove_all_children}, no hide).
+ *
+ *   GSR_NESTED_TIMEOUT=60 GI_META_SMOKE=app-search-smoke \
  *     GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
  *
  * Weston only. 🚫 vendor search.js.
@@ -25,6 +32,7 @@ import {formatError} from 'resource:///org/gnome/shell/misc/errorUtils.js';
 
 const SMOKE = 'app-search-smoke';
 const SEARCH_WAIT_MS = 2000;
+const WAIT_AFTER_ICONS_MS = 3000;
 const FAST_AFTER_F_MS = 200;
 const FAST_AFTER_FI_MS = 50;
 
@@ -132,6 +140,10 @@ function runSearchProve(main) {
 	let allocateN = 0;
 	let notifyN = 0;
 	let maxZeroN = 0;
+	let sawFill = false;
+	let clearAfterFill = false;
+	let ensureErr = '';
+	let fadeMarginsErr = '';
 	if (appProv == null) {
 		smokeLog('FAIL no applications provider');
 		initialDone = true;
@@ -198,6 +210,78 @@ function runSearchProve(main) {
 				smokeLog('updateSearch sync-threw ' + updateSearchErr);
 				throw e;
 			}
+		};
+		const origEnsure = display._ensureResultActors.bind(display);
+		display._ensureResultActors = async function (results) {
+			try {
+				return await origEnsure(results);
+			} catch (e) {
+				ensureErr = formatError(e);
+				smokeLog('_ensureResultActors threw ' + ensureErr);
+				throw e;
+			}
+		};
+		const origClear = display._clearResultDisplay.bind(display);
+		display._clearResultDisplay = function () {
+			let n = display._grid ? display._grid.get_n_children() : -1;
+			smokeLog('clear nGrid=' + n + ' vis=' + display.visible);
+			return origClear();
+		};
+		const origAdd = display._addItem.bind(display);
+		display._addItem = function (item) {
+			try {
+				return origAdd(item);
+			} catch (e) {
+				ensureErr = formatError(e);
+				smokeLog('_addItem threw ' + ensureErr);
+				throw e;
+			}
+		};
+		const origGridUpdate = display.updateSearch.bind(display);
+		display.updateSearch = function (results, terms, callback) {
+			let nGrid = display._grid ? display._grid.get_n_children() : -1;
+			smokeLog(
+				'updateSearch-in terms=' + JSON.stringify(terms)
+					+ ' results=' + (results == null ? -1 : results.length)
+					+ ' nGrid=' + nGrid
+			);
+			return origGridUpdate(results, terms, function () {
+				let first = null;
+				try {
+					first = display.getFirstResult();
+				} catch (e) {
+					smokeLog('getFirstResult ' + formatError(e));
+				}
+				nGrid = display._grid ? display._grid.get_n_children() : -1;
+				let width = 'n/a';
+				try {
+					width = String(display.allocation.get_width());
+				} catch (e) {
+					width = 'err:' + formatError(e);
+				}
+				smokeLog(
+					'updateSearch-out terms=' + JSON.stringify(terms)
+						+ ' nGrid=' + nGrid
+						+ ' first=' + (first != null)
+						+ ' vis=' + display.visible
+						+ ' width=' + width
+				);
+				if (nGrid > 0 && first != null)
+					sawFill = true;
+				else if (sawFill && nGrid <= 0)
+					clearAfterFill = true;
+				if (!callback)
+					return;
+				try {
+					callback();
+				} catch (e) {
+					const text = formatError(e);
+					smokeLog('updateSearch-callback threw ' + text);
+					if (text.indexOf('fade_margins') >= 0)
+						fadeMarginsErr = text;
+					throw e;
+				}
+			});
 		};
 		const origMax = display._getMaxDisplayedResults.bind(display);
 		display._getMaxDisplayedResults = function () {
@@ -331,9 +415,32 @@ function runSearchProve(main) {
 			}
 			return String(p.id) + ':' + !!p.searchInProgress + extra;
 		}).join(',');
+		let fadeKind = 'n/a';
+		let fadeMargins = 'n/a';
 		if (resultsView._scrollView) {
 			scrollVis = resultsView._scrollView.visible;
 			scrollBox = boxLine(resultsView._scrollView);
+			try {
+				const vfade = resultsView._scrollView.get_effect('fade');
+				if (vfade == null) {
+					fadeKind = 'null';
+				} else {
+					fadeKind = vfade.constructor ? vfade.constructor.name : typeof vfade;
+					try {
+						fadeMargins = vfade.fade_margins == null
+							? 'undefined'
+							: String(vfade.fade_margins.top);
+					} catch (e2) {
+						fadeMargins = 'err:' + formatError(e2);
+						if (fadeMarginsErr.length === 0)
+							fadeMarginsErr = formatError(e2);
+					}
+					if (vfade.fade_margins == null && fadeMarginsErr.length === 0)
+						fadeMarginsErr = 'vfade.fade_margins is undefined';
+				}
+			} catch (e) {
+				fadeKind = 'err:' + formatError(e);
+			}
 		}
 		if (display != null) {
 			displayVis = display.visible;
@@ -420,6 +527,12 @@ function runSearchProve(main) {
 				+ ' metasN=' + metasN
 				+ ' createOk=' + createOk
 				+ ' updateSearchErr=' + JSON.stringify(updateSearchErr)
+				+ ' ensureErr=' + JSON.stringify(ensureErr)
+				+ ' sawFill=' + sawFill
+				+ ' clearAfterFill=' + clearAfterFill
+				+ ' fade=' + fadeKind
+				+ ' fadeMargins=' + fadeMargins
+				+ ' fadeMarginsErr=' + JSON.stringify(fadeMarginsErr)
 				+ ' parental.initialized=' + (parental ? parental.initialized : 'n/a')
 		);
 
@@ -438,6 +551,10 @@ function runSearchProve(main) {
 			miss = 'createResultObject';
 		else if (updateSearchErr.length > 0)
 			miss = 'updateSearch';
+		else if (fadeMarginsErr.length > 0)
+			miss = 'fade-margins';
+		else if (clearAfterFill)
+			miss = 'second-updateSearch-clear';
 		else if (entryText !== wantText)
 			miss = 'text-changed';
 		else if (!terms || terms.length === 0)
@@ -486,20 +603,15 @@ function runSearchProve(main) {
 		smokeLog('set clutter_text.text=ter');
 		ct.text = 'ter';
 		GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEARCH_WAIT_MS, () => {
-			snapshot('after-ter', 'ter');
-			try {
-				const box = new Clutter.ActorBox();
-				box.init_rect(0, 0, 1, 32);
-				smokeLog('allocate search display w=1');
-				appProv.display.allocate(box);
-				appProv.display.notify('allocation');
-			} catch (e) {
-				smokeLog('allocate w=1 ' + formatError(e));
+			const missTer = snapshot('after-ter', 'ter');
+			if (missTer.length > 0) {
+				finish(missTer);
+				return GLib.SOURCE_REMOVE;
 			}
-			GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-				const missSmall = snapshot('after-w1', 'ter');
-				if (missSmall.length > 0) {
-					finish(missSmall);
+			GLib.timeout_add(GLib.PRIORITY_DEFAULT, WAIT_AFTER_ICONS_MS, () => {
+				const missWait = snapshot('after-wait', 'ter');
+				if (missWait.length > 0) {
+					finish(missWait);
 					return GLib.SOURCE_REMOVE;
 				}
 				updateSearchErr = '';

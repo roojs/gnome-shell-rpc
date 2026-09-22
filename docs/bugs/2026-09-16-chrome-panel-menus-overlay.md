@@ -99,7 +99,7 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
 | 2 | Boot / desktop | **Better (user 2026-09-17 ~16:37).** App-picker / WINDOW_PICKER now shows **wallpaper / app thumbnails**. Search **too high**. Desktop panes **too high** (same). Workspace-thumbnail row (tiny per-desktop squares) **still missing**. Grey square + red dot ~2/3 along. See **Panel inset**. | Search below panel → thumbs row → wallpaper pane |
-| 3 | Clock (dateMenu) | Click-crash regression **2026-09-21** — see **Clock click crash** below. Nested `date-menu-open-smoke: ok`. Live click not re-scored. | Same |
+| 3 | Clock (dateMenu) | GLSL unpack archived ([`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md)). Nested `date-menu-open-smoke: ok`. Live click leftover if still true. | Same |
 | 4 | Clock menu | **Open/close ✔️.** Buttons inside dead (month nav, events, …) — backlog | Month nav + items work |
 | 5 | System menu (quickSettings) | **Open/close ✔️.** Tiles / sliders / settings row dead — same backlog. Volume size later | Tiles click; sane size |
 | 6 | Geom (probe) | `messageTray` still odd; BoxPointer dateMenu ~stage-wide preferred | Finite tray; menu ~content |
@@ -125,9 +125,11 @@ no control inside any popdown works (user). Likely Compact Event coords
 (`0,0` / `222,1`) so inside clicks look like click-out / miss the child.
 QS `-12` later. Boot landing is stock WINDOW_PICKER but **content incomplete** (below). **🚫** ImageContent / vendor `js/`.
 
-### Clock click crash (2026-09-21) — handoff
+### Clock click crash (2026-09-21) — archived 2026-09-22
 
-Came off the search ticket ([`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay is still open; do **not** put never-shrink back.
+GLSL unpack: [`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md). User: resume search. Nested `date-menu-open-smoke: ok`. Do **not** put never-shrink back.
+
+Came off the search ticket ([`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay is still open.
 
 | Attempt | Result | Now |
 | --- | --- | --- |
@@ -137,7 +139,7 @@ Came off the search ticket ([`2026-09-19-overview-app-search-empty.md`](2026-09-
 | `GLSLEffect` `static construct { Bin.register(...) }` | User: not a valid way | **Removed** |
 | `GLSLEffect.rpc_register()` from `Global.bind_display` | User: one place calls all of these, not random sites | **Removed** |
 | Helper `Bin.register("Shell-GLSLEffect")` | Invented a Shell wire name on mutter. `get_effect` encoded the compositor OffscreenEffect as that alias | **Removed.** `register_alias("Clutter-OffscreenEffect", …)` |
-| `Shell.register()` (`shell_register`) from `GiStub.Runtime.register()` to unpack `Shell-GLSLEffect` | User: Shell GLSLEffect is never on the server. It extends Clutter; alias the helper as `Clutter-OffscreenEffect`, `register_handle` the lease | **Removed.** See [`2026-09-21-shell-glsleffect-bin-alias.md`](2026-09-21-shell-glsleffect-bin-alias.md) |
+| `Shell.register()` (`shell_register`) from `GiStub.Runtime.register()` to unpack `Shell-GLSLEffect` | User: Shell GLSLEffect is never on the server. It extends Clutter; alias the helper as `Clutter-OffscreenEffect`, `register_handle` the lease | **Removed.** See [`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md) |
 | Smoke `fire_button_press` after `open()` | Toggles **closed** (`isOpen=false`); prove hung to timeout until click was dropped | Smoke is **open-only**. `SMOKE_OK_PAT` includes `date-menu-open-smoke: ok` |
 | Nested prove **2026-09-21 ~15:35** | `date-menu-open-smoke: open dateMenu` then `ok`. No unpack 133. Early-stop once the pattern was listed | Gate PASSed. **Live click** (user) not re-scored this session |
 
@@ -291,7 +293,7 @@ until §2 moves.
 1. ~~**§2 overview**~~ — ✔️ `set_to` wire; nest `state=1`.
 2. ~~**Menu close**~~ — ✔️ `captured-event-smoke` **ok** + **user** hide-after-show.
 3. **WINDOW_PICKER content** — wallpaper pane visible (user). **Panel inset** next (search + panes too high). Thumbs row still missing visually. Grey/red-dot leftover.
-4. **Clock click** — nested `date-menu-open-smoke: ok`. Needs **user live** click-the-time re-score after the GLSLEffect handle fix. Never-shrink stays reverted.
+4. ~~**Clock click**~~ — GLSL unpack archived. Nested `date-menu-open-smoke: ok`. Never-shrink stays reverted. Live click leftover if still true.
 5. **Backlog — popdown buttons** — calendar, QS tiles, settings row, … (Event coords).
 6. **Later:** QS volume / `-12`.
 7. Soft: interval gate `final=0` — not chrome.

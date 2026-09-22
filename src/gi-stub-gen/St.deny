@@ -72,6 +72,14 @@ Settings.get
 # Client-owned a11y proxy — GenericAccessible.override.vala (BarLevel/Slider).
 GenericAccessible.new_for_actor
 
+# ScrollViewFade.override — GIR fade-margins is a property; generator
+# skips it (boxed Clutter.Margin wire is ay) and emits get_/set_ methods
+# only. GJS uses vfade.fade_margins.top (ensureActorVisibleInScrollView).
+# Live 10:05: updateSearch-callback threw vfade.fade_margins is undefined.
+ScrollViewFade.fade_margins
+ScrollViewFade.get_fade_margins
+ScrollViewFade.set_fade_margins
+
 # ScrollView.override — child + policies (construct timing / local store).
 ScrollView.child
 ScrollView.get_child

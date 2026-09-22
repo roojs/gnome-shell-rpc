@@ -172,6 +172,7 @@ namespace $(ns)
 			}
 			this.write_helper_vfunc_ids();
 			this.write_missing_summary(ns);
+			this.fail_skipped_properties();
 			GLib.print("emitted %d stub(s) → %s\n", emitted, out_path);
 		}
 
@@ -1037,17 +1038,37 @@ namespace GnomeShellRpc.Rpc.Helper
 					|| vala_name in this.deny
 					|| (class_name + "." + pname) in this.deny
 					|| (class_name + "." + vala_name) in this.deny) {
+					this.gaps.add(new Gap() {
+						symbol = @"$(class_name).$(vala_name)",
+						reason = "denied",
+						detail = "property",
+					});
 					continue;
 				}
 				/* Vala forbids a property named type (even as @type). */
 				if (vala_name == "type" || vala_name == "@type") {
+					this.gaps.add(new Gap() {
+						symbol = @"$(class_name).$(vala_name)",
+						reason = "skipped_property",
+						detail = "Vala reserved name",
+					});
 					continue;
 				}
 				if (signal_names.contains(vala_name)) {
+					this.gaps.add(new Gap() {
+						symbol = @"$(class_name).$(vala_name)",
+						reason = "skipped_property",
+						detail = "name clashes with a signal",
+					});
 					continue;
 				}
 				var vt = this.type_vala(ns, pi.get_type());
 				if (vt == "") {
+					this.gaps.add(new Gap() {
+						symbol = @"$(class_name).$(vala_name)",
+						reason = "skipped_property",
+						detail = "unmapped GIR type",
+					});
 					continue;
 				}
 				/*
@@ -1111,9 +1132,15 @@ namespace GnomeShellRpc.Rpc.Helper
 						/*
 						 * Readable in GIR but no wireable getter and not a
 						 * scalar gobject prop (e.g. Graphene.Point /
-						 * Cogl.Color with multi-OUT accessors) — skip; do
-						 * not emit a half-broken setter-only property.
+						 * Cogl.Color / Clutter.Margin — getter letter ay).
+						 * GJS still uses the property name (fade_margins).
+						 * Do not omit silently — deny or override.
 						 */
+						this.gaps.add(new Gap() {
+							symbol = @"$(class_name).$(vala_name)",
+							reason = "skipped_property",
+							detail = "readable GIR property; getter not a scalar wire",
+						});
 						continue;
 					}
 				}
@@ -1169,6 +1196,11 @@ namespace GnomeShellRpc.Rpc.Helper
 				}
 
 				if (!read_method && !read_gprop && !write_method && !write_gprop) {
+					this.gaps.add(new Gap() {
+						symbol = @"$(class_name).$(vala_name)",
+						reason = "skipped_property",
+						detail = "no wireable getter or setter",
+					});
 					continue;
 				}
 
@@ -3203,6 +3235,36 @@ if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
 			return @"$(ns)-$(type_name).$(name)";
 		}
 
+		/**
+		 * Readable GIR properties must be a Vala property, a deny, or an
+		 * override. Silent skip left GJS {@code obj.fade_margins} undefined
+		 * while {@code get_fade_margins()} still existed (search overlay).
+		 */
+		private void fail_skipped_properties() throws GLib.Error
+		{
+			var lines = new GLib.StringBuilder();
+			var n = 0;
+			foreach (var entry in this.gaps) {
+				if (entry.reason != "skipped_property") {
+					continue;
+				}
+				n++;
+				lines.append("  ");
+				lines.append(entry.symbol);
+				if (entry.detail != "") {
+					lines.append(" — ");
+					lines.append(entry.detail);
+				}
+				lines.append("\n");
+			}
+			if (n == 0) {
+				return;
+			}
+			throw new GLib.IOError.FAILED(
+				@"gi-stub-gen: $(n.to_string()) GIR properties skipped with no stub. Deny or override:\n$(lines.str)"
+			);
+		}
+
 		private void write_missing_summary(string ns) throws GLib.Error
 		{
 			if (this.missing_out_path == "") {
@@ -3290,6 +3352,7 @@ alloc stub for that symbol.
 			stream.puts("|---|---:|\n");
 			string[] reason_order = {
 				"not_wired",
+				"skipped_property",
 				"unmapped_return",
 				"unmapped_arg",
 				"constructor",

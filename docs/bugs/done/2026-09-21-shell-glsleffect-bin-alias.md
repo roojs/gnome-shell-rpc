@@ -1,9 +1,12 @@
 # `get_effect` encoded Helper.GLSLEffect as `Shell-GLSLEffect`
 
-**Status:** ⏳ open  
-**Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)  
-**Chrome leftover:** [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md) (clock click)  
-**Search leftover:** [`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md) (not this miss)
+**Status:** ✔️ archived 2026-09-22 — user: stop GLSL, resume search.
+Nested `date-menu-open-smoke: ok`. Wire is `Clutter-OffscreenEffect` +
+`register_handle`. Do **not** put `Shell-GLSLEffect` on mutter. Live
+click-the-time leftover, if any, stays on chrome.
+**Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
+**Chrome leftover:** [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)
+**Search:** [`../2026-09-19-overview-app-search-empty.md`](../2026-09-19-overview-app-search-empty.md)
 
 ## Symptom
 
@@ -51,4 +54,4 @@ GSR_NESTED_TIMEOUT=40 GI_META_SMOKE=date-menu-open-smoke \
 # expect: date-menu-open-smoke: ok
 ```
 
-Live click-the-time is the user score after that. Search overlay is a different ticket. Do not reintroduce never-shrink allocation.
+Do not reintroduce never-shrink allocation.

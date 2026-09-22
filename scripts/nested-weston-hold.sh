@@ -41,6 +41,15 @@ env_args=(
 if [[ -n "${GI_RPC_JS_OVERRIDE_DIR:-}" ]]; then
 	env_args+=(GI_RPC_JS_OVERRIDE_DIR="$GI_RPC_JS_OVERRIDE_DIR")
 fi
+if [[ -n "${GI_RPC_GJS_EMBED_DIR:-}" ]]; then
+	env_args+=(GI_RPC_GJS_EMBED_DIR="$GI_RPC_GJS_EMBED_DIR")
+fi
+if [[ -n "${GI_RPC_REGISTER_CLASS_TRACE:-}" ]]; then
+	env_args+=(GI_RPC_REGISTER_CLASS_TRACE="$GI_RPC_REGISTER_CLASS_TRACE")
+fi
+if [[ -n "${GI_RPC_APP_SEARCH_OBSERVE:-}" ]]; then
+	env_args+=(GI_RPC_APP_SEARCH_OBSERVE="$GI_RPC_APP_SEARCH_OBSERVE")
+fi
 if [[ -n "${GI_META_SMOKE:-}" ]]; then
 	env_args+=(GI_META_SMOKE="$GI_META_SMOKE")
 fi
