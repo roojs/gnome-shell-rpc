@@ -34,6 +34,12 @@ namespace GnomeShellRpc.Rpc.Helper
 			);
 		}
 
+		/**
+		 * Same shape as stock {@code shell_global_create_app_launch_context}:
+		 * mutter {@code create_launcher()} only — no Helper {@code setenv} /
+		 * {@code unset DISPLAY} (see
+		 * {@code docs/bugs/2026-09-22-search-result-click-no-launch.md} D′).
+		 */
 		private GLib.AppLaunchContext make_launch_context(uint timestamp, int workspace)
 		{
 			var sn = this.meta_display.get_startup_notification();
@@ -45,28 +51,15 @@ namespace GnomeShellRpc.Rpc.Helper
 				timestamp = (uint) (GLib.get_monotonic_time() / 1000);
 			}
 			var meta_ctx = context as Meta.LaunchContext;
-			if (meta_ctx == null) {
-				return context;
-			}
-			meta_ctx.set_timestamp(timestamp);
-			/* Nested / OOP shell: compositor env often has Weston DISPLAY=:N plus
-			 * mutter WAYLAND_DISPLAY. App children must land on mutter WL, not XWayland. */
-			unowned string? wl = GLib.Environment.get_variable("WAYLAND_DISPLAY");
-			unowned string? display_env = GLib.Environment.get_variable("DISPLAY");
-			if (wl != null && wl.length > 0
-					&& display_env != null && display_env.length > 0) {
-				context.unsetenv("WAYLAND_SOCKET");
-				context.setenv("WAYLAND_DISPLAY", wl);
-				context.unsetenv("DISPLAY");
-				context.setenv("GDK_BACKEND", "wayland");
-			}
-			if (workspace <= -1) {
-				return context;
-			}
-			var mgr = this.meta_display.get_workspace_manager();
-			var ws = mgr.get_workspace_by_index(workspace);
-			if (ws != null) {
-				meta_ctx.workspace = ws;
+			if (meta_ctx != null) {
+				meta_ctx.set_timestamp(timestamp);
+				if (workspace > -1) {
+					var mgr = this.meta_display.get_workspace_manager();
+					var ws = mgr.get_workspace_by_index(workspace);
+					if (ws != null) {
+						meta_ctx.workspace = ws;
+					}
+				}
 			}
 			return context;
 		}

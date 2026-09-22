@@ -1,69 +1,26 @@
 # Search result click does not spawn the application
 
-> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+> # ⚠️ AGENTS — DO NOT STOP FOR STATUS THEATRE
 >
-> ## DO NOT STOP for “status theatre”
+> Keep working until the user-visible bar moves or a real stop condition is
+> reached. A smoke failure, disproved hypothesis, rebuild, or partial explanation
+> is not a stopping point. Update this bug, take the next test-only prove step,
+> and continue.
 >
-> **Keep working.** Do not pause to narrate progress, summarize what you tried,
-> or ask whether to continue after every prove / dead end / rebuild. Carry on
-> until the bar moves or you hit one of the stop conditions below.
+> Stop only when user input is genuinely required, or when a FAIL-backed
+> `tests/call-sync-repro/` gate proves OPC/libocrpc is the problem. In the latter
+> case, follow the workspace OPC rule exactly.
 >
-> ## When you MAY stop
->
-> 1. **You actually need the user’s help** — a decision only they can make,
->    credentials, a machine/session you cannot reach, or explicit approval the
->    plan forbids you from assuming. Say what you need in one short ask, then
->    wait.
-> 2. **OPC / libocrpc is the problem** — and only then: write a **FAIL-backed**
->    gate under `tests/call-sync-repro/` that **FAIL**s, file the **bug in
->    OLLMchat** (`docs/bugs/`), **do not edit OLLMchat code from this tree**,
->    and **stop**. Do **not** file OPC bugs under this repo’s `docs/bugs/`.
->    PASS gates → chase the **consumer**; do not stop to “report” a theory.
->
-> ## Everything else
->
-> File/update **this** bug, pick the next allowed prove step, rebuild, prove,
-> repeat. **Prove-first** in the **test area** (`src/gjs-embed/`,
-> `app-search-launch-smoke.js`) — **no** speculative stub / Helper / deny /
-> `Shell.App` / Event / vendor JS thrash on the main tree. **No**
-> `GLib.idle_add` / Idle / defer. No layout.js ship hacks.
->
-> ## 🚫 Do not invent shit in this tree
->
-> **User call 2026-09-16:** a stack frame / Class-offset theory / “same as
-> Transition” pattern is **not** a license to dump Helper methods, local
-> GValue caches, deny lists, or ABI “fixes” into `src/`. That is wasting
-> everyone’s time and polluting the codebase.
->
-> Required order — **no exceptions**:
->
-> 1. Reproduce on stay-up (user live + nested). File the miss here (`miss L1`
->    / `L2` / `L3` or log frame).
-> 2. **`app-search-launch-smoke`** must FAIL on **that** miss — not PASS
->    while live click-to-launch still dead.
-> 3. Only then a **minimal** change that makes **that** smoke step PASS.
-> 4. Re-run prove / stay-up. New miss → update this bug and go to (2). Do
->    **not** invent the next subsystem in the same turn.
->
-> **Forbidden:** Helper `set_relay_*` / kind switches / local caches /
-> “while we’re here” deny expansions / renaming half the tree to match a
-> theory — before a FAIL smoke names the fix. Revert speculative dumps;
-> do not leave them “for later.”
->
-> **User call 2026-09-16:** banner on **this bug only** (plus the active
-> plan) — do not re-splat onto other bugs/docs. Prove without modifying
-> the main codebase until the smoke names the fix.
+> This instruction does **not** authorize speculative product edits. Follow
+> “Takeover guardrail” below: prove the missing boundary in test/probe code first.
 
 **Status:** ⏳ **open** — bar is **your** session: overview search → click **Terminal** →
 Terminal actually opens. Smokes are agent gates only; **`app-search-launch-smoke: ok`** does
 **not** close this bug.
 
-**In tree (2026-09-22):** compositor `Helper-AppLaunch` launch ctx — when mutter has both
-`DISPLAY` and `WAYLAND_DISPLAY`, child env drops `DISPLAY` and sets `GDK_BACKEND=wayland`
-(nested Weston `:1` + mutter WL). Desktop launch from `Shell.App.launch` already uses that
-Helper (search click → activate → launch). Client `list_all_windows` → compositor
-`list_windows` snapshots (remote-shell model; see 0.2). **Not verified as fixing your click**
-until the user bar passes.
+**In tree (2026-09-22):** search click → `Shell.App.launch` → compositor
+`Helper-AppLaunch.launch_desktop_file` (mutter `create_launcher()` on the compositor).
+**Not verified** until click Terminal opens.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -71,9 +28,58 @@ until the user bar passes.
 
 ---
 
+## Takeover guardrail — read before touching `src/`
+
+**Do not edit product code to chase this yet.** In particular, do not add another
+launch Helper, force `GDK_BACKEND`, unset `DISPLAY` in `AppLaunch.vala`, alter
+`Shell.App`, invent Meta APIs, or patch vendor GNOME Shell JS.
+
+The source tree currently contains the already-committed compositor
+`Helper-AppLaunch`; the working-tree change intentionally removes its unproven
+environment manipulation. An 18:06 rebuild/retest with that manipulation restored
+still produced `miss L1` and `miss L3`, so repeating it is not a next step.
+
+Allowed next work is **test/probe code only** (`src/gjs-embed/` and harness scripts)
+until one test:
+
+1. reproduces one precise missing boundary;
+2. records the child command, environment, PID/exit, and target compositor;
+3. fails before a proposed product change; and
+4. passes because of that minimal change.
+
+Keep these as separate questions:
+
+- **Physical click:** did the real press/release invoke `AppIcon.vfunc_clicked`?
+- **Shell activation:** did `AppIcon.activate()` call `Shell.App.launch()`?
+- **Process dispatch:** did Gio actually create/activate the requested process?
+- **Window attachment:** did that process connect to this `mutter-rpc` and map a
+  `Meta.Window`?
+
+Do not report a launch failure as a click failure, or a D-Bus teardown message as
+the launch cause.
+
+---
+
 ## For you (plain English)
 
 **What’s wrong:** Overview search lists apps fine. When you click a result, the app does not open (your report 2026-09-22).
+
+**What is now proven:** calling the icon activation path directly reaches
+`Shell.App.launch`, crosses RPC to compositor `Helper-AppLaunch`, and Gio reports
+success. For Terminal, the `gnome-terminal` frontend also asks the nested session
+bus to activate `org.gnome.Terminal`. No application window is then mapped on
+`mutter-rpc`.
+
+That means the automated failure is currently **after launch dispatch and before a
+window appears**. It does **not** yet prove that a real physical click reaches the
+icon; that remains a separate unclosed boundary.
+
+**What D-Bus means here:** GNOME Terminal is a client/server application. The
+launched `gnome-terminal` command asks the session bus to start or contact the
+Terminal service. The log proves that request was made. The later “bus killed” /
+“connection closed” messages occur after the smoke terminates the nested session,
+so they are teardown fallout, not evidence that D-Bus originally blocked the
+click.
 
 **Do you need to do something?** Only if you are checking whether **this bug is fixed for
 you** — that is clicking Terminal in search and seeing it open. Agents do not treat smoke
@@ -90,7 +96,9 @@ tree — then one line whether Terminal still fails on click (that is the produc
 | Works | Does not work |
 | ----- | ------------- |
 | Typing in overview search and getting application icons | Clicking an icon to start that app |
-| `app-search-smoke` (grid fills) | User-visible spawn after click |
+| Direct `AppIcon.activate()` reaches `Helper-AppLaunch` | User-visible window after dispatch |
+| Gio reports launch success | Real physical-click boundary is still unproven |
+| Explicitly corrected GTK launch maps on mutter | Default launch environment maps no window |
 
 Not a regression of “search is empty” — that ticket is closed.
 
@@ -98,9 +106,16 @@ Not a regression of “search is empty” — that ticket is closed.
 
 ## How stock is supposed to work
 
-Search results are normal **app icons**. Click → icon’s activate → `Shell.App` launch → `Gio` starts the `.desktop` app. On stock that runs inside **gnome-shell (= mutter)**. In this tree the JS runs in **`gnome-shell-rpc`**, so **`Gio` spawn is a child of the shell client**, unlike **`Meta.WaylandClient.spawnv`** for the shell itself (compositor child). Breakage may be **click → activate** *or* **launch must be compositor-side** — smoke decides; not the search provider API.
+Search results are normal **app icons**. Click → icon activate →
+`Shell.App.launch()` → Gio launches the `.desktop` application. Stock
+gnome-shell and mutter share one process. This project splits them, so
+`Shell.App.launch()` currently crosses RPC to compositor `Helper-AppLaunch`,
+which calls real `Gio.DesktopAppInfo.launch()` with mutter's startup-notification
+context.
 
-Launch code already lives in `src/shell-gi/App.vala`. Do **not** re-implement S.27 or disable `Gio.launch`.
+That dispatch path exists and is reached. The unresolved problem is where the
+launched process connects and why no window maps on this Mutter. Do not add a
+second launch path or disable Gio.
 
 ---
 
@@ -114,6 +129,68 @@ Launch code already lives in `src/shell-gi/App.vala`. Do **not** re-implement S.
 | **D** | Launch runs but nothing appears | `Gio.spawn` / env / Meta never sees the new window in nested. |
 | **D′** | Spawn on the **wrong display** | Nested prove: mutter uses Weston **X11** (`DISPLAY=:1`) plus its own **`wayland-mutter-gsr`** for shell clients. `Meta.LaunchContext` copies **`DISPLAY` + `WAYLAND_DISPLAY` from the shell process** (`src/meta-mini/LaunchContext.vala`). If the shell still has `DISPLAY=:1`, X11 (or XWayland-preferring) apps can open on **Weston’s X stack**, not as clients on mutter-rpc — smoke sees `create_launcher` / no throw but `n_windows=0`. |
 | **D″** | Spawn from the **wrong process** | Stock: shell and mutter are **one** process — `Gio.AppInfo.launch` from `Shell.App` is still compositor-side. Here **`gnome-shell-rpc` is a `Meta.WaylandClient` child**; plain Gio spawn is a **subprocess of the shell**, not of **mutter-rpc**. Only **`Meta.WaylandClient.spawnv` on the compositor** (see `Server.vala`, `Helper-WaylandClient`) is wired like stock’s “launch as compositor”. App launch may need the same class of fix: **compositor-side spawn** (real Meta launch context + Gio on mutter), not env tweaks alone on the client stub. |
+
+---
+
+## Latest evidence (2026-09-22 18:03–18:06)
+
+### Bare GTK launch: exact nested environment split
+
+After a full rebuild:
+
+- Default `gtk4-demo` launch: Gio returned true; `windows-normal=0`.
+- `env -u DISPLAY GDK_BACKEND=wayland gtk4-demo`: failed to open a display.
+- `env -u WAYLAND_SOCKET gtk4-demo`: launched away from mutter;
+  `windows-normal=0`.
+- `env -u DISPLAY -u WAYLAND_SOCKET GDK_BACKEND=wayland gtk4-demo`:
+  **`windows-normal=1` in about 200 ms**.
+
+This proves two independent hazards in the nested harness:
+
+1. the shell process has private `WAYLAND_SOCKET=3`; a normally spawned child
+   must not reuse that inherited fd; and
+2. `DISPLAY=:1` belongs to parent Weston, while
+   `WAYLAND_DISPLAY=wayland-mutter-gsr` belongs to the Mutter under test.
+
+It does **not** prove that globally rewriting those variables in product code is
+correct. That experiment has already been tried and did not make the
+search-launch smoke pass.
+
+### Search activation and Terminal D-Bus
+
+The 18:06 run recorded:
+
+- search grid populated (`nGrid=6`);
+- direct `Shell.App.launch()` called
+  `Helper-AppLaunch.launch_desktop_file`;
+- Helper replied and `launch()` returned true;
+- direct `AppIcon.activate()` also reached the Helper without throwing;
+- `gnome-terminal` requested D-Bus activation of `org.gnome.Terminal`;
+- after four seconds: `windows-normal=0`, app state STOPPED, zero windows;
+- synthetic pointer L3 also ended with zero windows.
+
+The environment-rewrite version of `AppLaunch.vala` was rebuilt for this run and
+still missed. It was reverted immediately. **Do not repeat that edit.**
+
+The smoke does not yet prove a real mouse click reaches `vfunc_clicked`, and its
+L3 result is confounded because L2 has already attempted to launch another result.
+Fix the test/probe before drawing a product-code conclusion from L3.
+
+### Next test-only step
+
+Make the launch smoke deterministic without changing `src/` product behavior:
+
+1. launch a known non-D-Bus GTK desktop app (for example
+   `org.gtk.Demo4.desktop`) through the existing `Shell.App` →
+   `Helper-AppLaunch` route;
+2. capture PID, actual child environment, exit status/stderr, and whether the
+   process maps on Weston or mutter;
+3. test Terminal separately and follow the owner/activation environment of
+   `org.gnome.Terminal`; and
+4. use a fresh third icon for synthetic L3, then separately trace a real physical
+   press/release to `AppIcon.vfunc_clicked`.
+
+No product edit is justified until one of those probes fails at a named boundary.
 
 ---
 
