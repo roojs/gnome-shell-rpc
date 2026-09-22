@@ -8,7 +8,7 @@
 `H-appinfo-call` **ok** (2026-09-21). `app-search-empty-gate` still FAILs
 `H-queue-relayout` — that is not this type miss.
 
-**Search overlay:** [`2026-09-19-overview-app-search-empty.md`](../2026-09-19-overview-app-search-empty.md)
+**Search overlay:** [`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md)
 **Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
 **Upstream (do not file again):** Vala [!454](https://gitlab.gnome.org/GNOME/vala/-/merge_requests/454) — same GJS `Unable to resolve arg type 'DesktopAppInfo'`, same valac GIR `GLib.DesktopAppInfo`. Closed unmerged 2026-03-19 (ricotz). No Vala **issue** titled DesktopAppInfo. Later Vala main (`16791f5a0`, 2026-05-27) generates `gio-unix-2.0.vapi` from `GioUnix-2.0.gir` → `gir_namespace = "GioUnix"` (not `Gio`). Distro valac here is still 0.56 / `GLib.DesktopAppInfo`. GNOME Shell [!3855](https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/3855) switches JS to `GioUnix.DesktopAppInfo` (49+); our vendor/stock `Shell-16.gir` is still `Gio.DesktopAppInfo`.

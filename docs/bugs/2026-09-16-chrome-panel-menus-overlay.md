@@ -129,7 +129,7 @@ QS `-12` later. Boot landing is stock WINDOW_PICKER but **content incomplete** (
 
 GLSL unpack: [`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md). User: resume search. Nested `date-menu-open-smoke: ok`. Do **not** put never-shrink back.
 
-Came off the search ticket ([`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay is still open.
+Came off the search ticket ([`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay empty is **closed**; inset/thumbs leftovers stay here.
 
 | Attempt | Result | Now |
 | --- | --- | --- |
@@ -212,8 +212,8 @@ high (same); thumbs row still not there; grey square + red dot ~2/3
 along. User: not taking the menu bar into account.
 
 **User live (2026-09-18):** hang after settle **closed** (session stays
-up). App search (text fills, icons empty) is **not this bug** —
-[`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md).
+up). App search (text fills, icons empty) **closed** 2026-09-22 —
+[`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md).
 
 ### Panel inset (2026-09-17)
 

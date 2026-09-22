@@ -230,7 +230,7 @@ namespace Shell
 			if (workspace > -1) {
 				var ws = this.workspace_manager.get_workspace_by_index(workspace);
 				if (ws != null) {
-					context.set_workspace(ws);
+					context.workspace = ws;
 				}
 			}
 			return context;

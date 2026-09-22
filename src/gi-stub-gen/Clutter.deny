@@ -30,6 +30,10 @@ Actor.set_accessible
 
 # --- Hand override owns GIR prop/method (generator must not emit) ---
 
+# Vala forbids a property identifier {@code type} (even {@code @type}).
+# GIR construct-only InputDeviceToolType; get_tool_type stays generated.
+InputDeviceTool.type
+
 # BindConstraint.override — hand construct props; sync set_* after mint.
 # Lease via Clutter-BindConstraint.new (Helper.Constraint Ffi mint).
 BindConstraint.new
@@ -144,10 +148,6 @@ Actor.get_transition
 # (captured-event-smoke / PopupMenuManager close).
 Stage.get_event_actor
 
-# Transition.override — Animatable iface args not wireable by generator.
-Transition.set_animatable
-Transition.get_animatable
-
 # Transition.override — capital-V on stock set_*_value (Gi pin).
 # varargs set_to/set_from stay denied (GIR skip → set_*_value).
 Transition.set_to
@@ -158,6 +158,9 @@ Transition.set_from_value
 # Interval.override — Helper-Interval.create; set_* via capital-V on stock
 # Gi. peek/get local mirror for GValue* ABI.
 Interval.with_values
+Interval.value_type
+Interval.initial
+Interval.final
 Interval.get_value_type
 Interval.set_initial
 Interval.set_final

@@ -8,7 +8,7 @@
 		 * GIR); generator emits it via {@code Adjustment.implements=…}.
 		 * Animatable defaults match clutter’s GObject property path; only
 		 * {@code get_actor} is St-specific. {@code add_transition} must
-		 * {@code set_animatable} + {@code start} like
+		 * {@code animatable} + {@code start} like
 		 * {@code st_adjustment_add_transition}.
 		 */
 		private Gee.HashMap<string, Clutter.Transition> transitions {
@@ -75,7 +75,7 @@
 			/* Same arm as Actor.get_transition — ease onComplete needs stopped. */
 			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
 				transition, "stopped");
-			transition.set_animatable(this);
+			transition.animatable = this;
 			this.transitions.set(name, transition);
 			ulong stopped_id = 0;
 			stopped_id = transition.stopped.connect((t, finished) => {

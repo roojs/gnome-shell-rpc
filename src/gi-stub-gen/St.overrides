@@ -23,3 +23,7 @@ Namespace signal_prefer=primary_icon_clicked
 Namespace signal_prefer=secondary_icon_clicked
 
 Widget.get_focus_chain list_elem=Widget
+
+# Client-local — St.ScrollViewFade is a shell-side effect (no mutter
+# St-ScrollViewFade helper). GJS reads vfade.fade_margins.top.
+ScrollViewFade.fade_margins local=1

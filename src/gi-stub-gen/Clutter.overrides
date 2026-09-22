@@ -71,3 +71,7 @@ LayoutManager helper=1
 LayoutManager.get_preferred_width  relay=1
 LayoutManager.get_preferred_height relay=1
 LayoutManager.allocate             relay=1
+
+# Pango boxed types are not memcpy ay; GJS still needs the GObject names.
+Text.attributes local=1
+Text.font_description local=1

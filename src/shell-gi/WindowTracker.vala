@@ -40,7 +40,7 @@ namespace Shell
 				this.track_window(window);
 			}
 			display.window_created.connect(this.on_window_created);
-			display.focus_window.connect((win, timestamp) => {
+			display.notify["focus-window"].connect(() => {
 				this.update_focus_app();
 			});
 			this.update_focus_app();
@@ -135,7 +135,7 @@ namespace Shell
 
 		private void update_focus_app()
 		{
-			var focus_win = Global.get().display.get_focus_window();
+			var focus_win = Global.get().display.focus_window;
 			while (focus_win != null && focus_win.skip_taskbar) {
 				focus_win = focus_win.get_transient_for();
 			}

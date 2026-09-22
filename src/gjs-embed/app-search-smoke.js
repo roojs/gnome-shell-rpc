@@ -19,7 +19,7 @@
  *     GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
  *
  * Weston only. 🚫 vendor search.js.
- * See docs/bugs/2026-09-19-overview-app-search-empty.md
+ * See docs/bugs/done/2026-09-19-overview-app-search-empty.md
  */
 
 import GLib from 'gi://GLib';

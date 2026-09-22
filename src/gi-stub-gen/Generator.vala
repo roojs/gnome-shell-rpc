@@ -315,7 +315,8 @@ namespace GnomeShellRpc.Rpc.Helper
 				method_names.add(vn);
 			}
 			var props = this.emit_object_properties(
-				stream, ns, oi, prop_accessors, vfunc_names, signal_names);
+				stream, ns, oi, prop_accessors, vfunc_names,
+				signal_names, method_names);
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				var fi = oi.get_method(m);
 				if (vfunc_names.contains(fi.get_name())) {
@@ -808,8 +809,19 @@ namespace GnomeShellRpc.Rpc.Helper
 				&& this.overrides.get(sname).get("emit") == "opaque-as-class") {
 				return this.emit_opaque_struct_as_object(stream, ns, si);
 			}
-			stream.puts(@"
-	public struct $(si.get_name())
+			/*
+			 * GIR boxed records (Clutter.Margin, ActorBox, …) need a GType
+			 * so Vala properties of that struct install a GParamSpec GJS
+			 * can read (obj.fade_margins). Field-only structs otherwise
+			 * stay unregistered.
+			 */
+			var ri = (GI.RegisteredTypeInfo) si;
+			var type_init = ri.get_type_init();
+			stream.puts("\n");
+			if (type_init != null && type_init != "") {
+				stream.puts("	[CCode (has_type_id = true)]\n");
+			}
+			stream.puts(@"	public struct $(si.get_name())
 	{
 ");
 			var n_written = 0;
@@ -968,15 +980,18 @@ namespace GnomeShellRpc.Rpc.Helper
 				var denied = pname in this.deny
 					|| (iface_name + "." + pname) in this.deny;
 				if (denied) {
+					this.gaps.add(new Gap() {
+						symbol = @"$(iface_name).$(this.vala_ident(pname.replace("-", "_")))",
+						reason = "denied",
+						detail = "iface property",
+					});
 					continue;
 				}
 				var vt = this.type_vala(ns, pi.get_type());
 				if (vt == "") {
-					this.gaps.add(new Gap() {
-						symbol = @"$(iface_name).$(pname)",
-						reason = "unmapped_field",
-						detail = "iface property",
-					});
+					this.add_skipped_property(iface_name,
+						this.vala_ident(pname.replace("-", "_")),
+						"unmapped GIR iface property type");
 					continue;
 				}
 				var flags = pi.get_flags();
@@ -987,6 +1002,9 @@ namespace GnomeShellRpc.Rpc.Helper
 				var construct = (flags & GLib.ParamFlags.CONSTRUCT) != 0
 					|| construct_only;
 				if (!readable && !writable) {
+					this.add_skipped_property(iface_name,
+						this.vala_ident(pname.replace("-", "_")),
+						"GIR property is neither readable nor writable");
 					continue;
 				}
 				var vala_name = this.vala_ident(pname.replace("-", "_"));
@@ -1012,21 +1030,76 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * GIR object properties → Vala properties with RPC get/set.
-		 * Skip when: denied, unmapped, OUT-arg accessors, class-slot vfunc
-		 * already owns the getter name, or a signal uses the same Vala name
-		 * (e.g. Display.focus_window). Non-emitted accessors stay as methods.
+		 * Skip when: denied, unmapped, OUT-arg accessors, or no method/gprop
+		 * wire. Property wins over a same-named GIR signal (Display.focus_window).
+		 * Leftover skips fail generate. Non-emitted accessors stay as methods.
 		 *
-		 * When GIR has no usable getter/setter, scalar props use stock
-		 * {@code Type.get_property} / {@code set_property} (GObject.Value
-		 * on the wire — libocrpc Gi).
+		 * When GIR has no usable getter/setter, scalar / object / boxed
+		 * {@code ay} props use stock {@code Type.get_property} /
+		 * {@code set_property} (GObject.Value on the wire — libocrpc Gi).
 		 */
+		private void add_skipped_property(string class_name, string vala_name, string detail)
+		{
+			var symbol = @"$(class_name).$(vala_name)";
+			GLib.printerr("gi-stub-gen: skipped GIR property %s — %s\n",
+				symbol, detail);
+			this.gaps.add(new Gap() {
+				symbol = symbol,
+				reason = "skipped_property",
+				detail = detail,
+			});
+		}
+
+		/**
+		 * Method-backed property get/set: scalars, objects, and memcpy
+		 * boxed {@code ay} (unpack already exists). Not {@code v}.
+		 */
+		private bool property_method_letter_ok(string ns, GI.TypeInfo ti)
+		{
+			var L = this.dbus_letter(ns, ti);
+			if (L == "" || L == "v") {
+				return false;
+			}
+			if (L == "ay") {
+				return this.type_is_boxed_blob(ns, ti);
+			}
+			return true;
+		}
+
+		/**
+		 * {@code get_property} / {@code set_property} wire: scalars,
+		 * objects ({@code o}), boxed blobs ({@code ay}).
+		 */
+		private bool property_gprop_ok(string ns, GI.TypeInfo ti)
+		{
+			var L = this.dbus_letter(ns, ti);
+			if (L.length == 1 && "biyuxftdso".index_of(L) >= 0) {
+				return true;
+			}
+			return L == "ay" && this.type_is_boxed_blob(ns, ti);
+		}
+
+		private bool property_setter_matches(string setter_L, string prop_L)
+		{
+			if (setter_L == prop_L) {
+				return true;
+			}
+			if (setter_L.length == 1 && prop_L.length == 1
+				&& "biyuxftds".index_of(setter_L) >= 0
+				&& "biyuxftds".index_of(prop_L) >= 0) {
+				return true;
+			}
+			return false;
+		}
+
 		private int emit_object_properties(
 			GLib.FileStream stream,
 			string ns,
 			GI.ObjectInfo oi,
 			Gee.HashSet<string> prop_accessors,
 			Gee.HashSet<string> vfunc_names,
-			Gee.HashSet<string> signal_names
+			Gee.HashSet<string> signal_names,
+			Gee.HashSet<string> method_names
 		) {
 			var class_name = oi.get_name();
 			var emitted = 0;
@@ -1045,45 +1118,46 @@ namespace GnomeShellRpc.Rpc.Helper
 					});
 					continue;
 				}
-				/* Vala forbids a property named type (even as @type). */
-				if (vala_name == "type" || vala_name == "@type") {
-					this.gaps.add(new Gap() {
-						symbol = @"$(class_name).$(vala_name)",
-						reason = "skipped_property",
-						detail = "Vala reserved name",
-					});
-					continue;
-				}
-				if (signal_names.contains(vala_name)) {
-					this.gaps.add(new Gap() {
-						symbol = @"$(class_name).$(vala_name)",
-						reason = "skipped_property",
-						detail = "name clashes with a signal",
-					});
-					continue;
-				}
 				var vt = this.type_vala(ns, pi.get_type());
 				if (vt == "") {
-					this.gaps.add(new Gap() {
-						symbol = @"$(class_name).$(vala_name)",
-						reason = "skipped_property",
-						detail = "unmapped GIR type",
-					});
+					this.add_skipped_property(class_name, vala_name, "unmapped GIR type");
 					continue;
 				}
 				/*
 				 * Client-local auto-prop ({@code Type props=local} or
 				 * {@code Type.prop local=1}) — GJS construct literals without RPC.
+				 * Before reserved-name / signal-clash skips so an override can
+				 * own {@code type} / a signal-named prop.
 				 */
 				if (this.property_is_local(class_name, pname, vala_name)) {
-					emitted += this.emit_object_property_local(
+					var n_local = this.emit_object_property_local(
 						stream, class_name, pi, vt, vala_name, prop_accessors);
+					if (n_local == 0) {
+						this.add_skipped_property(class_name, vala_name,
+							"GIR property is neither readable nor writable");
+					} else {
+						method_names.add(vala_name);
+					}
+					emitted += n_local;
 					continue;
 				}
+				/* Vala forbids a property named type (even as @type). */
+				if (vala_name == "type" || vala_name == "@type") {
+					this.add_skipped_property(class_name, vala_name, "Vala reserved name");
+					continue;
+				}
+				/*
+				 * Property wins over a same-named GIR signal when we can
+				 * emit it. GJS uses notify::focus-window + the property,
+				 * not the dedicated signal. Skip the signal later via
+				 * method_names.
+				 */
 				var flags = pi.get_flags();
 				var readable = (flags & GLib.ParamFlags.READABLE) != 0;
 				var writable = (flags & GLib.ParamFlags.WRITABLE) != 0;
 				if (!readable && !writable) {
+					this.add_skipped_property(class_name, vala_name,
+						"GIR property is neither readable nor writable");
 					continue;
 				}
 				GI.FunctionInfo? getter = null;
@@ -1093,8 +1167,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				var read_gprop = false;
 				var write_gprop = false;
 				var gprop_L = this.dbus_letter(ns, pi.get_type());
-				var gprop_ok = gprop_L.length == 1
-					&& "biyuxftds".index_of(gprop_L) >= 0;
+				var gprop_ok = this.property_gprop_ok(ns, pi.get_type());
 				/*
 				 * Vala emits C get_/set_${vala_name} for properties. If a
 				 * class slot already owns that name, gprop would redefine it.
@@ -1108,8 +1181,7 @@ namespace GnomeShellRpc.Rpc.Helper
 						&& !vfunc_names.contains(getter.get_name())
 						&& !this.has_out_values(getter)
 						&& this.callable_wireable(getter, ns)) {
-						var L = this.dbus_letter(ns, getter.get_return_type());
-						if (L != "" && L != "ay" && L != "v") {
+						if (this.property_method_letter_ok(ns, getter.get_return_type())) {
 							read_method = true;
 							/* Unset Response.retval = null object (libocrpc). */
 							if (getter.may_return_null() && !vt.has_suffix("?")) {
@@ -1124,23 +1196,18 @@ namespace GnomeShellRpc.Rpc.Helper
 							}
 						}
 					}
-					if (!read_method && gprop_ok
-						&& !vfunc_names.contains(conv_get)) {
+					if (!read_method && gprop_ok) {
 						read_gprop = true;
 					}
 					if (!read_method && !read_gprop) {
 						/*
 						 * Readable in GIR but no wireable getter and not a
-						 * scalar gobject prop (e.g. Graphene.Point /
-						 * Cogl.Color / Clutter.Margin — getter letter ay).
-						 * GJS still uses the property name (fade_margins).
-						 * Do not omit silently — deny or override.
+						 * gprop (scalar / object / boxed ay). GJS still uses
+						 * the property name (fade_margins). Do not omit
+						 * silently — emit, deny+override, or fail generate.
 						 */
-						this.gaps.add(new Gap() {
-							symbol = @"$(class_name).$(vala_name)",
-							reason = "skipped_property",
-							detail = "readable GIR property; getter not a scalar wire",
-						});
+						this.add_skipped_property(class_name, vala_name,
+							"readable GIR property; no method or gprop wire");
 						continue;
 					}
 				}
@@ -1158,6 +1225,7 @@ namespace GnomeShellRpc.Rpc.Helper
 						 */
 						var n_in = 0;
 						var bad_in = false;
+						string setter_in_L = "";
 						for (var a = 0; a < setter.get_n_args(); a++) {
 							var arg = setter.get_arg(a);
 							if (arg.is_skip()
@@ -1165,13 +1233,20 @@ namespace GnomeShellRpc.Rpc.Helper
 								continue;
 							}
 							n_in++;
-							var L = this.dbus_letter(ns, arg.get_type());
-							if (L == "" || L == "ay" || L == "v") {
+							if (!this.property_method_letter_ok(ns, arg.get_type())) {
 								bad_in = true;
 								break;
 							}
+							setter_in_L = this.dbus_letter(ns, arg.get_type());
 						}
-						if (!bad_in && n_in == 1) {
+						/*
+						 * Scalar width may differ (opacity UINT vs
+						 * set_opacity guint8). Boxed ay vs float
+						 * (brightness Cogl.Color vs set_brightness
+						 * gfloat) must not use the method.
+						 */
+						if (!bad_in && n_in == 1
+							&& this.property_setter_matches(setter_in_L, gprop_L)) {
 							write_method = true;
 						}
 					}
@@ -1182,28 +1257,28 @@ namespace GnomeShellRpc.Rpc.Helper
 						 */
 						if (read_method || read_gprop) {
 							if (gprop_ok
-								&& (flags & GLib.ParamFlags.CONSTRUCT_ONLY) == 0
-								&& !vfunc_names.contains(conv_set)) {
+								&& (flags & GLib.ParamFlags.CONSTRUCT_ONLY) == 0) {
 								write_gprop = true;
 							} else {
 								writable = false;
 							}
-						} else if (gprop_ok
-							&& !vfunc_names.contains(conv_set)) {
+						} else if (gprop_ok) {
 							write_gprop = true;
 						}
 					}
 				}
 
 				if (!read_method && !read_gprop && !write_method && !write_gprop) {
-					this.gaps.add(new Gap() {
-						symbol = @"$(class_name).$(vala_name)",
-						reason = "skipped_property",
-						detail = "no wireable getter or setter",
-					});
+					this.add_skipped_property(class_name, vala_name,
+						"no wireable getter or setter");
 					continue;
 				}
 
+				if ((read_gprop || write_gprop) && gprop_L == "o" && !vt.has_suffix("?")) {
+					vt = vt + "?";
+				}
+
+				method_names.add(vala_name);
 				stream.puts(@"		public $(vt) $(vala_name) {
 ");
 				if (read_method && getter != null) {
@@ -1230,6 +1305,13 @@ namespace GnomeShellRpc.Rpc.Helper
 					this.deny.add(class_name + "." + getter.get_name());
 				} else if (read_gprop) {
 					var tag = pi.get_type().get_tag();
+					/*
+					 * Unique C name so GIR methods of the same
+					 * conventional get_* (e.g. Actor.get_size OUT
+					 * floats vs property Graphene.Size) still emit.
+					 */
+					stream.puts(@"			[CCode (cname = \"$(class_name.down())_$(conv_get)_gprop\")]
+");
 					if (tag == GI.TypeTag.UTF8 || tag == GI.TypeTag.FILENAME) {
 						stream.puts("			owned get {\n");
 					} else {
@@ -1243,8 +1325,6 @@ namespace GnomeShellRpc.Rpc.Helper
 						stream, "\t\t\t\t", ns, vt, pi.get_type(), 0, true, ""
 					);
 					stream.puts("			}\n");
-					prop_accessors.add(conv_get);
-					this.deny.add(class_name + "." + conv_get);
 				}
 				if (write_method && setter != null) {
 					var csym = setter.get_symbol();
@@ -1273,14 +1353,22 @@ namespace GnomeShellRpc.Rpc.Helper
 					prop_accessors.add(setter.get_name());
 					this.deny.add(class_name + "." + setter.get_name());
 				} else if (write_gprop) {
+					stream.puts(@"			[CCode (cname = \"$(class_name.down())_$(conv_set)_gprop\")]
+");
 					stream.puts("			set {\n");
-					stream.puts(@"				GnomeShellRpc.call_value(
+					if (gprop_L == "ay") {
+						this.emit_boxed_bytes(stream, "\t\t\t\t", "value", vt);
+						stream.puts(@"				GnomeShellRpc.call_value(
+					\"$(ns)-$(class_name).set_property\", this,
+					OLLMrpc.args(\"say\", \"$(pname)\", value_bytes));
+");
+					} else {
+						stream.puts(@"				GnomeShellRpc.call_value(
 					\"$(ns)-$(class_name).set_property\", this,
 					OLLMrpc.args(\"s$(gprop_L)\", \"$(pname)\", value));
 ");
+					}
 					stream.puts("			}\n");
-					prop_accessors.add(conv_set);
-					this.deny.add(class_name + "." + conv_set);
 				}
 				stream.puts("		}\n");
 				emitted++;
@@ -1373,7 +1461,10 @@ namespace GnomeShellRpc.Rpc.Helper
 					}
 					break;
 			}
-			var prop_name = vala_name == "value" ? "@value" : vala_name;
+			var prop_name = vala_name;
+			if (vala_name == "value" || vala_name == "type") {
+				prop_name = "@" + vala_name;
+			}
 			if (def != "") {
 				stream.puts(@"
 		public $(vt) $(prop_name) { $(accessors) default = $(def); }
@@ -2638,6 +2729,20 @@ if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
 					} else if (info != null
 						&& info.get_type() == GI.InfoType.FLAGS) {
 						get = "uint";
+					} else if (info != null && (info.get_type() == GI.InfoType.OBJECT
+						|| info.get_type() == GI.InfoType.INTERFACE
+						|| this.union_as_gobject(ns, info))) {
+						if (is_return) {
+							var cast = vala_type.has_suffix("?")
+								? vala_type.substring(0, vala_type.length - 1) : vala_type;
+							stream.puts(indent + @"if (response.retval.type() == GLib.Type.INVALID) {
+	return null;
+}
+return ($(cast)) response.retval.get_object();
+");
+							return;
+						}
+						get = "object";
 					}
 					break;
 				default:
@@ -3052,6 +3157,9 @@ if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
 					if (this.union_as_gobject(ns, info)) {
 						return "o";
 					}
+					if (info.get_type() == GI.InfoType.INTERFACE) {
+						return "o";
+					}
 					if (this.type_is_boxed_blob(ns, ti)) {
 						return "ay";
 					}
@@ -3070,7 +3178,8 @@ if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
 				return false;
 			}
 			// Opaque / callback bags (e.g. GLib.Closure) are not memcpy blobs.
-			if (info.get_namespace() == "GLib") {
+			// GObject.Value is not a C layout we memcpy (Interval.initial).
+			if (info.get_namespace() == "GLib" || info.get_namespace() == "GObject") {
 				return false;
 			}
 			if (info.get_type() == GI.InfoType.UNION) {
@@ -3260,9 +3369,9 @@ if ($(src).type() == typeof(int) && $(src).get_int() == 0) {
 			if (n == 0) {
 				return;
 			}
-			throw new GLib.IOError.FAILED(
-				@"gi-stub-gen: $(n.to_string()) GIR properties skipped with no stub. Deny or override:\n$(lines.str)"
-			);
+			GLib.printerr("gi-stub-gen: %s GIR properties skipped with no stub. Deny+override or emit:\n%s",
+				n.to_string(), lines.str);
+			throw new GLib.IOError.FAILED(@"gi-stub-gen: $(n.to_string()) GIR properties skipped with no stub. Deny or override:\n$(lines.str)");
 		}
 
 		private void write_missing_summary(string ns) throws GLib.Error
