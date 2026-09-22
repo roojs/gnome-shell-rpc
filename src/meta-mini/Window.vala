@@ -25,6 +25,12 @@ namespace Meta
 
 		public string title { get; set; default = ""; }
 		public string wm_class { get; set; default = ""; }
+		/**
+		 * {@link Meta.WindowType} as int (e.g. 0 = NORMAL, 3 = DIALOG), copied from
+		 * the compositor list/focus row. Used by {@code Shell.App.activate_window}
+		 * when it checks {@code w.window_type} on transients.
+		 */
+		public int window_type { get; set; default = 0; }
 
 		public static void register()
 		{

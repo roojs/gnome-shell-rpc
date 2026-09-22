@@ -53,7 +53,7 @@ fi
 # Phase B1/B2: GI_META_SMOKE=key-smoke → key-smoke: ok
 # Phase B3: GI_META_SMOKE=panel-click-smoke → panel-click-smoke: ok
 # Phase B4: GI_META_SMOKE=focus-smoke → focus-smoke: ok
-SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok|focus-smoke: ok|layout-allocate-smoke: done|constraint-allocate-smoke: done|actor-allocate-box-smoke: done|adjustment-animatable-smoke: done|startup-allocate-smoke: done|workspace-dot-align-smoke: done|transformed-geom-smoke: done|allocate-segv-smoke: done|interval-peek-smoke: done|st-temp-smoke: ok|captured-event-smoke: ok|workspace-background-allocate-smoke: done|workarea-panel-inset-smoke: done|workarea-panel-chrome-smoke: done|workarea-reentrant-emit-smoke: done|app-search-smoke: done|date-menu-open-smoke: ok)'
+SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok|focus-smoke: ok|meta-smoke: put:|layout-allocate-smoke: done|constraint-allocate-smoke: done|actor-allocate-box-smoke: done|adjustment-animatable-smoke: done|startup-allocate-smoke: done|workspace-dot-align-smoke: done|transformed-geom-smoke: done|allocate-segv-smoke: done|interval-peek-smoke: done|st-temp-smoke: ok|captured-event-smoke: ok|workspace-background-allocate-smoke: done|workarea-panel-inset-smoke: done|workarea-panel-chrome-smoke: done|workarea-reentrant-emit-smoke: done|app-search-smoke: done|app-search-launch-smoke: ok|wayland-launch-smoke: ok|date-menu-open-smoke: ok)'
 # When proving a smoke script, do not early-stop on A4 (init is not running).
 SMOKE_MODE=0
 if [[ -n "${GI_META_SMOKE:-}" && "${GI_META_SMOKE}" != "init" && "${GI_META_SMOKE}" != "init.js" ]]; then
@@ -86,7 +86,11 @@ stop_tree() {
 	wait "$pid" 2>/dev/null || true
 	# dbus-daemon --print-address --session is reparented to init
 	# if we only SIGKILL mutter — see scripts/clear-nested-dbus.sh
-	"$ROOT/scripts/clear-nested-dbus.sh"
+	if [[ "${GSR_WESTON_AUTO_CLOSE:-0}" == "1" ]]; then
+		GSR_CLEAR_WESTON=1 "$ROOT/scripts/clear-nested-dbus.sh"
+	else
+		GSR_CLEAR_WESTON=0 "$ROOT/scripts/clear-nested-dbus.sh"
+	fi
 }
 
 : >"$TEE_LOG"
@@ -102,6 +106,9 @@ fi
 if [[ -n "${GI_RPC_GJS_EMBED_DIR:-}" ]]; then
 	env_args+=(GI_RPC_GJS_EMBED_DIR="$GI_RPC_GJS_EMBED_DIR")
 fi
+if [[ -n "${GI_RPC_LAUNCH_PROBE:-}" ]]; then
+	env_args+=(GI_RPC_LAUNCH_PROBE="$GI_RPC_LAUNCH_PROBE")
+fi
 if [[ -n "${GI_RPC_REGISTER_CLASS_TRACE:-}" ]]; then
 	env_args+=(GI_RPC_REGISTER_CLASS_TRACE="$GI_RPC_REGISTER_CLASS_TRACE")
 fi
@@ -110,6 +117,23 @@ if [[ -n "${GI_RPC_APP_SEARCH_OBSERVE:-}" ]]; then
 fi
 if [[ -n "${GI_META_SMOKE:-}" ]]; then
 	env_args+=(GI_META_SMOKE="$GI_META_SMOKE")
+fi
+if [[ -n "${GI_META_SMOKE_CMD:-}" ]]; then
+	env_args+=(GI_META_SMOKE_CMD="$GI_META_SMOKE_CMD")
+fi
+if [[ -n "${GI_META_SMOKE_WAIT_MS:-}" ]]; then
+	env_args+=(GI_META_SMOKE_WAIT_MS="$GI_META_SMOKE_WAIT_MS")
+fi
+if [[ -n "${GI_WAYLAND_LAUNCH_UNSET_DISPLAY:-}" ]]; then
+	env_args+=(GI_WAYLAND_LAUNCH_UNSET_DISPLAY="$GI_WAYLAND_LAUNCH_UNSET_DISPLAY")
+fi
+# Mutter-rpc process (compositor launch context), not only gnome-shell-rpc child.
+if [[ -n "${GI_WAYLAND_LAUNCH_UNSET_DISPLAY:-}" ]]; then
+	export GI_WAYLAND_LAUNCH_UNSET_DISPLAY
+fi
+if [[ -n "${GI_WAYLAND_LAUNCH_GDK_WAYLAND:-}" ]]; then
+	env_args+=(GI_WAYLAND_LAUNCH_GDK_WAYLAND="$GI_WAYLAND_LAUNCH_GDK_WAYLAND")
+	export GI_WAYLAND_LAUNCH_GDK_WAYLAND
 fi
 if [[ -n "${GI_META_GDB:-}" ]]; then
 	env_args+=(GI_META_GDB="$GI_META_GDB")
@@ -143,6 +167,21 @@ seen_smoke_ok() {
 		|| rg -q "$SMOKE_OK_PAT" "$TEE_LOG" 2>/dev/null
 }
 
+seen_smoke_fail() {
+	[[ "$SMOKE_MODE" -eq 1 ]] || return 1
+	local stem="${GI_META_SMOKE%.js}"
+	[[ -n "$stem" ]] || return 1
+	rg -q "${stem}: miss" "$CLIENT_LOG" 2>/dev/null \
+		&& return 0
+	rg -q "${stem}: miss" "$TEE_LOG" 2>/dev/null \
+		&& return 0
+	rg -q "Module file://.*${stem}\\.js threw an exception" "$CLIENT_LOG" 2>/dev/null \
+		&& return 0
+	rg -q "Module file://.*${stem}\\.js threw an exception" "$TEE_LOG" 2>/dev/null \
+		&& return 0
+	return 1
+}
+
 while kill -0 "$MPID" 2>/dev/null; do
 	if [[ $SECONDS -ge $deadline ]]; then
 		reason="timeout"
@@ -150,6 +189,11 @@ while kill -0 "$MPID" 2>/dev/null; do
 	fi
 	if seen_smoke_ok; then
 		reason="smoke-ok"
+		sleep 0.2
+		break
+	fi
+	if seen_smoke_fail; then
+		reason="smoke-fail"
 		sleep 0.2
 		break
 	fi

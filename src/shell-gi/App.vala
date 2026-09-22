@@ -281,6 +281,18 @@ namespace Shell
 			if (discrete) {
 				GLib.warning("Could not apply discrete GPU environment, switcheroo-control not available");
 			}
+			var path = this.app_info.get_filename();
+			if (path != null && path.length > 0) {
+				var response = GnomeShellRpc.call_value("Helper-AppLaunch.launch_desktop_file",
+					null, OLLMrpc.args("sui", path, timestamp, workspace));
+				var ok = response.retval.get_boolean();
+				if (!ok) {
+					GLib.warning(
+						"Helper-AppLaunch.launch_desktop_file returned false for %s",
+						path);
+				}
+				return ok;
+			}
 			return this.app_info.launch(null,
 				Global.get().create_app_launch_context(timestamp, workspace));
 		}
@@ -297,6 +309,15 @@ namespace Shell
 		 */
 		public void launch_action(string action_name, uint timestamp, int workspace)
 		{
+			if (this.app_info == null) {
+				return;
+			}
+			var path = this.app_info.get_filename();
+			if (path != null && path.length > 0) {
+				GnomeShellRpc.call_value("Helper-AppLaunch.launch_action",
+					null, OLLMrpc.args("ssui", path, action_name, timestamp, workspace));
+				return;
+			}
 			this.app_info.launch_action(action_name,
 				Global.get().create_app_launch_context(timestamp, workspace));
 		}

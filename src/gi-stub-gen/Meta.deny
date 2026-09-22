@@ -67,6 +67,11 @@ WorkspaceManager.n_workspaces
 WorkspaceManager.get_n_workspaces
 WorkspaceManager.get_workspace_by_index
 Display.add_keybinding
+# Out-of-process shell: compositor lists windows as snapshot rows
+# (Meta-Display.list_windows / Ui.Window), not in-process GList<Meta.Window>.
+# Vendor code still calls list_all_windows; hand override maps that to snapshots
+# (Display.override.vala). Not a nested-test hack — same model as 0.2 fake-shell.
+Display.list_all_windows
 Display.get_startup_notification
 keybindings_set_custom_handler
 Window.foreach_transient

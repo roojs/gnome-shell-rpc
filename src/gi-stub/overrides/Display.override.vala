@@ -84,6 +84,33 @@
 		 * Stock {@code meta_display_get_startup_notification} is
 		 * {@code introspectable="0"} — not in the typelib walk.
 		 */
+		/**
+		 * Stock gnome-shell runs in mutter and gets a real {@code GList<Meta.Window>}.
+		 * Here the shell is remote: the compositor exposes a window table over RPC
+		 * ({@code Meta-Display.list_windows}). This method is the vendor
+		 * {@code list_all_windows} entry point on top of that table (see plan 0.2 /
+		 * 0.3 remote graph).
+		 *
+		 * Each {@link Window} gets a lease id; {@code window_type} is read via stock
+		 * {@code Meta-Window.get_window_type} (Gi property is read-only).
+		 */
+		public GLib.List<Window> list_all_windows()
+		{
+			var rows = GnomeShellRpc.GiStub.Runtime.call_list(
+				"Meta-Display.list_windows",
+				typeof(GnomeShellRpc.Ui.Window)
+			);
+			var list = new GLib.List<Window>();
+			foreach (unowned GLib.Object row in rows) {
+				var snap = (GnomeShellRpc.Ui.Window) row;
+				var win = new Window();
+				win.rpc_lid = (uint64) snap.id;
+				GnomeShellRpc.GiStub.Runtime.register_handle(win);
+				list.append(win);
+			}
+			return list;
+		}
+
 		public StartupNotification get_startup_notification()
 		{
 			var response = GnomeShellRpc.call_value(

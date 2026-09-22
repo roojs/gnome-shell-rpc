@@ -15,8 +15,9 @@
  */
 
 imports.gi.versions.Meta = '16';
+imports.gi.versions.Shell = '16';
 
-const { Gio, GLib, Meta, GIRepository } = imports.gi;
+const { Gio, GLib, Meta, Shell, GIRepository } = imports.gi;
 
 const SMOKE_DOMAIN = 'meta-smoke';
 const APP_CMD = GLib.getenv('GI_META_SMOKE_CMD') || 'gtk4-demo';
@@ -63,12 +64,7 @@ function smokeLog(message) {
  * @returns {Meta.Display}
  */
 function getDisplay() {
-	if (typeof Meta.get_display === 'function') {
-		return Meta.get_display();
-	}
-	throw new Error(
-		'Meta.get_display() missing — stub bootstrap not wired yet'
-	);
+	return Shell.Global.get().get_display();
 }
 
 /**
@@ -77,8 +73,7 @@ function getDisplay() {
  * @param {Meta.Display} display
  */
 function launchApp(display) {
-	const startup = display.get_startup_notification();
-	const launcher = startup.create_launcher();
+	const launcher = Shell.Global.get().create_app_launch_context(0, -1);
 	const app = Gio.AppInfo.create_from_commandline(
 		APP_CMD,
 		null,

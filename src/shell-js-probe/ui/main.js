@@ -47,6 +47,7 @@ import * as PointerA11yTimeout from './pointerA11yTimeout.js';
 import {formatError} from '../misc/errorUtils.js';
 import * as ParentalControlsManager from '../misc/parentalControlsManager.js';
 import * as Util from '../misc/util.js';
+import {installAppLaunchClickProbe} from '../misc/appLaunchClickProbe.js';
 
 const WELCOME_DIALOG_LAST_SHOWN_VERSION = 'welcome-dialog-last-shown-version';
 // Make sure to mention the point release, otherwise it will show every time
@@ -178,6 +179,8 @@ export async function start() {
     ParentalControlsManager.getDefault();
 
     await _initializeUI();
+
+    installAppLaunchClickProbe();
 
     shellAccessDialogDBusService = new AccessDialog.AccessDialogDBus();
     shellAudioSelectionDBusService = new AudioDeviceSelection.AudioDeviceSelectionDBus();

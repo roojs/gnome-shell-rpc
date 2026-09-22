@@ -28,6 +28,10 @@ namespace Meta
 		/**
 		 * All windows currently known to the plugin.
 		 *
+		 * Compositor window table ({@code Meta-Display.list_windows}), same remote-shell
+		 * model as the GI override — not mutter's in-process
+		 * {@code meta_display_list_all_windows} pointer list.
+		 *
 		 * @return list of {@link Window} stubs (may be empty)
 		 */
 		public GLib.List<Window> list_all_windows()
@@ -42,6 +46,7 @@ namespace Meta
 				var win = new Window() {
 					title = snap.title,
 					wm_class = snap.wm_class,
+					window_type = snap.window_type,
 				};
 				win.rpc_lid = snap.id;
 				list.append(win);
@@ -66,6 +71,7 @@ namespace Meta
 			var win = new Window() {
 				title = snap.title,
 				wm_class = snap.wm_class,
+				window_type = snap.window_type,
 			};
 			win.rpc_lid = snap.id;
 			return win;

@@ -15,6 +15,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export GSR_WESTON_MODE=prove
+export GSR_WESTON_AUTO_CLOSE=1
 export GSR_NESTED_TIMEOUT="${GSR_NESTED_TIMEOUT:-25}"
 export GSR_NESTED_SETTLE="${GSR_NESTED_SETTLE:-10}"
 exec timeout --foreground -k 2 40 "$ROOT/scripts/weston-gsr-session.sh"

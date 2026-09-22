@@ -1,10 +1,87 @@
 # Search result click does not spawn the application
 
-**Status:** ⏳ open — user 2026-09-22: search shows app icons; clicking one does not start the app.
+> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+>
+> ## DO NOT STOP for “status theatre”
+>
+> **Keep working.** Do not pause to narrate progress, summarize what you tried,
+> or ask whether to continue after every prove / dead end / rebuild. Carry on
+> until the bar moves or you hit one of the stop conditions below.
+>
+> ## When you MAY stop
+>
+> 1. **You actually need the user’s help** — a decision only they can make,
+>    credentials, a machine/session you cannot reach, or explicit approval the
+>    plan forbids you from assuming. Say what you need in one short ask, then
+>    wait.
+> 2. **OPC / libocrpc is the problem** — and only then: write a **FAIL-backed**
+>    gate under `tests/call-sync-repro/` that **FAIL**s, file the **bug in
+>    OLLMchat** (`docs/bugs/`), **do not edit OLLMchat code from this tree**,
+>    and **stop**. Do **not** file OPC bugs under this repo’s `docs/bugs/`.
+>    PASS gates → chase the **consumer**; do not stop to “report” a theory.
+>
+> ## Everything else
+>
+> File/update **this** bug, pick the next allowed prove step, rebuild, prove,
+> repeat. **Prove-first** in the **test area** (`src/gjs-embed/`,
+> `app-search-launch-smoke.js`) — **no** speculative stub / Helper / deny /
+> `Shell.App` / Event / vendor JS thrash on the main tree. **No**
+> `GLib.idle_add` / Idle / defer. No layout.js ship hacks.
+>
+> ## 🚫 Do not invent shit in this tree
+>
+> **User call 2026-09-16:** a stack frame / Class-offset theory / “same as
+> Transition” pattern is **not** a license to dump Helper methods, local
+> GValue caches, deny lists, or ABI “fixes” into `src/`. That is wasting
+> everyone’s time and polluting the codebase.
+>
+> Required order — **no exceptions**:
+>
+> 1. Reproduce on stay-up (user live + nested). File the miss here (`miss L1`
+>    / `L2` / `L3` or log frame).
+> 2. **`app-search-launch-smoke`** must FAIL on **that** miss — not PASS
+>    while live click-to-launch still dead.
+> 3. Only then a **minimal** change that makes **that** smoke step PASS.
+> 4. Re-run prove / stay-up. New miss → update this bug and go to (2). Do
+>    **not** invent the next subsystem in the same turn.
+>
+> **Forbidden:** Helper `set_relay_*` / kind switches / local caches /
+> “while we’re here” deny expansions / renaming half the tree to match a
+> theory — before a FAIL smoke names the fix. Revert speculative dumps;
+> do not leave them “for later.”
+>
+> **User call 2026-09-16:** banner on **this bug only** (plus the active
+> plan) — do not re-splat onto other bugs/docs. Prove without modifying
+> the main codebase until the smoke names the fix.
+
+**Status:** ⏳ **open** — bar is **your** session: overview search → click **Terminal** →
+Terminal actually opens. Smokes are agent gates only; **`app-search-launch-smoke: ok`** does
+**not** close this bug.
+
+**In tree (2026-09-22):** compositor `Helper-AppLaunch` launch ctx — when mutter has both
+`DISPLAY` and `WAYLAND_DISPLAY`, child env drops `DISPLAY` and sets `GDK_BACKEND=wayland`
+(nested Weston `:1` + mutter WL). Desktop launch from `Shell.App.launch` already uses that
+Helper (search click → activate → launch). Client `list_all_windows` → compositor
+`list_windows` snapshots (remote-shell model; see 0.2). **Not verified as fixing your click**
+until the user bar passes.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
-**Related:** search fill ✔️ [`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md) · chrome inset / bad Event coords [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)
+**Related:** search fill ✔️ [`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md) · chrome inset / Event coords [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)
+
+---
+
+## For you (plain English)
+
+**What’s wrong:** Overview search lists apps fine. When you click a result, the app does not open (your report 2026-09-22).
+
+**Do you need to do something?** Only if you are checking whether **this bug is fixed for
+you** — that is clicking Terminal in search and seeing it open. Agents do not treat smoke
+PASS as “fixed for user.”
+
+**When we’ll ask you:** A real decision we cannot make, nested prove cannot run here, or
+agents cannot observe your click and have done what they can on the launch/click path in
+tree — then one line whether Terminal still fails on click (that is the product bar).
 
 ---
 
@@ -13,87 +90,171 @@
 | Works | Does not work |
 | ----- | ------------- |
 | Typing in overview search and getting application icons | Clicking an icon to start that app |
-| `app-search-smoke` (grid fills, `fade_margins`, etc.) | Any sign of spawn after a user click (no extra app process) |
+| `app-search-smoke` (grid fills) | User-visible spawn after click |
 
-This is **not** “search is broken again.” It is the step **after** results appear: pointer → activate → launch.
-
----
-
-## How it is supposed to work (stock)
-
-1. Search hits are **`AppIcon`** widgets (same as the app grid), not a separate “open this result” API.
-2. **Primary click** → `AppIcon` `vfunc_clicked` → `activate()` → `Shell.App.activate()` → `launch()` → **`Gio.DesktopAppInfo.launch`** with a startup-notification context from `Global.create_app_launch_context()`.
-3. Launch runs **inside the shell process** (normal `Gio` spawn). It is **not** an RPC to mutter, except for building the launch context (`get_startup_notification` / `create_launcher`), which we already use at boot.
-
-So if click-to-launch fails, the break is somewhere in **(click delivery)** → **`AppIcon.activate`** → **`Shell.App.launch`**, not in “search providers.”
+Not a regression of “search is empty” — that ticket is closed.
 
 ---
 
-## Why it might not be working
+## How stock is supposed to work
 
-We have **not** run a FAIL smoke yet; below is the ordered guess list. Fix the **first** step that a smoke proves is broken — do not re-implement `Shell.App` (S.27 is already in `src/shell-gi/App.vala`) and do **not** no-op `Gio.AppInfo.launch` (dash used to launch without a click when that path worked).
+Search results are normal **app icons**. Click → icon’s activate → `Shell.App` launch → `Gio` starts the `.desktop` app. On stock that runs inside **gnome-shell (= mutter)**. In this tree the JS runs in **`gnome-shell-rpc`**, so **`Gio` spawn is a child of the shell client**, unlike **`Meta.WaylandClient.spawnv`** for the shell itself (compositor child). Breakage may be **click → activate** *or* **launch must be compositor-side** — smoke decides; not the search provider API.
 
-### A — The click never reaches the icon (most plausible with current chrome)
-
-Overview search UI is still **drawn too high** (panel inset bug). You click where the icon **looks** like it is; mutter’s pick may hit empty space, the stage, or something that only **closes** the overview.
-
-Same class of bug as **popdown buttons that do not respond**: Compact `Clutter.Event` coords from the compositor are often wrong, so `get_actor_at_pos` / focus / hit-testing lie. Menu **open/close** can work while **clicks on children** do not.
-
-**Symptom in logs:** overview hides or moves, but **no** second `create_launcher` after boot (launch never started).
-
-### B — The click reaches the icon but `St.Button` never emits “clicked”
-
-Stock only runs `vfunc_clicked` after a real press **and** release on the button. If the event stream is incomplete or mapped to the wrong actor, the icon may highlight but **`AppIcon.activate` never runs**.
-
-(Dash had a different bug — spurious launch from a **class-struct offset smash** — that is **closed**. This ticket is “click and nothing launches,” not “apps launch on their own.”)
-
-### C — `AppIcon.activate` runs but dies before `this.app.activate()`
-
-`activate()` reads **`Clutter.get_current_event()`** (modifiers, etc.) and may run **`animateLaunch()`** first. Our Compact Event stub is **incomplete**: RPC unpack has thrown `g_value_get_uint` warnings, and symbols like **`clutter_event_get_flags`** are missing from the client `.so` (noise on other code paths). If JS throws here, you get **no launch** and possibly a half-finished overview animation.
-
-**Symptom in logs:** still **no** `create_launcher`; you might see `get_current_event` and overview hide without spawn.
-
-### D — `Shell.App.launch` is broken (less likely first)
-
-If **`lookup_app(id).activate()`** were called from JS **without** any click, and spawn still failed, the bug would be launch context / `DesktopAppInfo.launch` / env. Nested log on 2026-09-22 showed **`create_launcher` only at boot**, not after the user’s click — so we have **not** seen JS reach `launch()` on that session. Prove D with smoke **L1** before chasing new Vala.
+Launch code already lives in `src/shell-gi/App.vala`. Do **not** re-implement S.27 or disable `Gio.launch`.
 
 ---
 
-## Evidence (nested 2026-09-22 ~12:54)
+## Why it might fail (hypotheses — smoke decides)
 
-Log: `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`
-
-- **`create_launcher` once at boot** — normal startup; **never again** after clicking search results → **`Shell.App.launch` was not reached** on that run.
-- **`Helper-Clutter.get_current_event`** once around overview **hide** (cover pane), not a full “click → animate → launch” sequence.
-- **`clutter_event_get_flags` missing** — JS errors in menu grab code (related Event surface; same family as B/C).
-- **`queue-relayout` missing on AppIcon** — error while redisplaying app grid on hide; separate deny/signal issue, not the root cause of “never spawn” until proven.
+| Id | Idea | Plain terms |
+| -- | ---- | ------------- |
+| **A** | Click misses the icon | UI drawn too high; pointer pick hits the wrong place (same family as dead menu buttons). |
+| **B** | Click never becomes a button “clicked” | Press/release / St.Button path. |
+| **C** | `AppIcon.activate()` throws | Bad synthetic `Clutter.Event` from RPC (`get_current_event`, missing `get_flags`, …). |
+| **D** | Launch runs but nothing appears | `Gio.spawn` / env / Meta never sees the new window in nested. |
+| **D′** | Spawn on the **wrong display** | Nested prove: mutter uses Weston **X11** (`DISPLAY=:1`) plus its own **`wayland-mutter-gsr`** for shell clients. `Meta.LaunchContext` copies **`DISPLAY` + `WAYLAND_DISPLAY` from the shell process** (`src/meta-mini/LaunchContext.vala`). If the shell still has `DISPLAY=:1`, X11 (or XWayland-preferring) apps can open on **Weston’s X stack**, not as clients on mutter-rpc — smoke sees `create_launcher` / no throw but `n_windows=0`. |
+| **D″** | Spawn from the **wrong process** | Stock: shell and mutter are **one** process — `Gio.AppInfo.launch` from `Shell.App` is still compositor-side. Here **`gnome-shell-rpc` is a `Meta.WaylandClient` child**; plain Gio spawn is a **subprocess of the shell**, not of **mutter-rpc**. Only **`Meta.WaylandClient.spawnv` on the compositor** (see `Server.vala`, `Helper-WaylandClient`) is wired like stock’s “launch as compositor”. App launch may need the same class of fix: **compositor-side spawn** (real Meta launch context + Gio on mutter), not env tweaks alone on the client stub. |
 
 ---
 
-## What to prove next
+## Prove first
 
-Three probes; **one** must FAIL before a targeted fix:
+### Bare Wayland launch (nested prove)
 
-| Smoke step | What it tests | If it fails, look at |
-| ---------- | ------------- | --------------------- |
-| **L1** | After search fill, call `lookup_app(firstHit).activate()` (no mouse) | D — `Shell.App` / launch context / `Gio.launch` |
-| **L2** | Call `firstGridIcon.activate()` same way | C — JS `activate()` body, `get_current_event`, animation |
-| **L3** | `Shell.Global.pointer_click` on the first result’s bounds | A / B — pick, coords, `vfunc_clicked`, St button |
+**Script:** `src/gjs-embed/wayland-launch-smoke.js` — pass = new Meta NORMAL window, not
+Gio `launch returned true`. Agent: `./scripts/agent-nested-smoke-prove.sh` with
+`GI_META_SMOKE=wayland-launch-smoke` (`GSR_WESTON_AUTO_CLOSE=1`).
 
-**Pass bar for “launch works”:** log shows **`get_startup_notification` + `create_launcher` again** after the probe, and a child process appears (e.g. gtk4-demo / Terminal in nested).
+Harness **`GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1`** (2026-09-22 ~16:00): still **miss**
+· `windows-normal after=0` — client ctx unset **not** sufficient alone.
+
+**Compositor probe (2026-09-22 ~16:07, removed)** — was `Helper-AppLaunch.count_normal_windows`;
+smokes now use client `list_all_windows` + `window_type` only. Historical log:
+**`compositor-normal=0`** and **`client-normal=0`** after compositor launch (not RPC
+export only). Compositor **`MetaLaunchContext` ctx** had **`DISPLAY=:1`** +
+**`WAYLAND_DISPLAY=wayland-mutter-gsr`** (proc env). With
+**`GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1`** on **mutter-rpc**, ctx log drops **`DISPLAY`**
+(only **`WAYLAND_DISPLAY=wayland-mutter-gsr`**) — still **`compositor-normal=0`**,
+**`proc gtk4-demo=(none)`** after 4s. **Read:** wrong DISPLAY was real; fixing ctx alone
+does not pass **`wayland-launch-smoke`** on nested `--no-x11` yet (spawn/connect/wl
+surface — still open).
+
+### Search / activate path
+
+**Script:** `src/gjs-embed/app-search-launch-smoke.js`
+
+| Step | What it does | If it fails, suspect |
+| ---- | ------------ | -------------------- |
+| **L0** | `Gio` commandline (`gtk4-demo`) via `create_app_launch_context` | **D / D′** |
+| **L1** | `lookup_app(id).activate()` — no mouse | **D / D′** |
+| **L2** | `AppIcon.activate()` on already-touched icon — must not throw | **C** |
+| **L3** | Synthetic click on a **second** search icon | **A / B** |
 
 ```bash
-# not written yet
-GSR_NESTED_TIMEOUT=60 GI_META_SMOKE=app-search-launch-smoke \
+GSR_NESTED_TIMEOUT=90 GI_META_SMOKE=app-search-launch-smoke \
   GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
 ```
 
-Until that smoke exists: `./scripts/weston-gsr-session.sh`, search, click — score **spawn**, not icon count (`app-search-smoke` only covers fill).
+Look in the log for `app-search-launch-smoke: ok` or `miss L1` / `miss L2` / `miss L3`.
+
+### JS click/launch probe (debug only)
+
+Sparse overlay — **not** production. Traces `AppIcon` click/activate and
+`Shell.App` activate/launch (`gsr-launch:` in client log).
+
+```bash
+GI_RPC_JS_OVERRIDE_DIR=$PWD/src/shell-js-probe \
+  GSR_NESTED_TIMEOUT=120 GI_META_SMOKE=app-search-launch-smoke \
+  GSR_WESTON_MODE=prove ./scripts/weston-gsr-session.sh
+```
+
+**Hold session (init.js)** — preload tap + activate trace (no full main.js overlay):
+
+```bash
+GI_RPC_GJS_EMBED_DIR=$PWD/src/gjs-embed GI_RPC_LAUNCH_PROBE=1 \
+  ./scripts/weston-gsr-session.sh
+```
+
+Click Terminal in overview; grep **`gsr-launch:`** in
+`~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log` (GNOME Shell-Message
+lines). **`stage press`** without **`AppIcon.vfunc_clicked`** → click miss
+(inset/coords). **`activate`** without **`Helper-AppLaunch`** in mutter log →
+launch path not reached or old binaries.
+
+Optional overlay (chrome probe main): `GI_RPC_JS_OVERRIDE_DIR=src/shell-js-probe`.
+
+### Helper-AppLaunch vs “missing helpers”
+
+Stock gnome-shell runs `Gio.AppInfo.launch` **inside mutter** — no RPC Helper.
+This tree only had compositor-side spawn for **`Meta.WaylandClient.spawnv`**
+(shell child). **Desktop app launch was never on the Helper list** (0.5.7 C
+is Gio files / context terminate, not `.desktop` spawn). `Helper-AppLaunch` is
+the compositor-side half of that gap — not a duplicate of an existing Helper.
+The probe above tells us whether clicks and `Shell.App.launch` run before we
+trust spawn/env fixes.
+
+### Last automated run (2026-09-22 ~15:30) — compositor post-launch window count
+
+Smoke still **miss L0/L1/L3** after 4s. New compositor probe:
+
+- **`Helper-AppLaunch.launch_commandline post-launch normal=0`** (gtk4-demo) — immediate
+  **`list_all_windows` NORMAL count on mutter-rpc**, not the RPC client.
+- Same **`post-launch normal=0`** for Terminal / guake `.desktop` launches.
+
+**Read:** Gio **`launch()` true** but **mutter compositor never sees a NORMAL window** at spawn
+return — not client window export alone. Compositor still runs with **`DISPLAY=:1`**
+(Weston X) + **`WAYLAND_DISPLAY=wayland-mutter-gsr`** (prove env). **D′** at compositor:
+children likely on Weston X stack.
+
+**🚫 No product tweak from this alone** — need a prove step that fails on wrong env and
+passes with a **stock-shaped** fix (not ad-hoc `unset DISPLAY` in Helper).
+
+### Re-prove (2026-09-22 ~15:45) — DISPLAY unset experiment (reverted)
+
+Temporary compositor env hack: **`unset DISPLAY`** when `WAYLAND_DISPLAY` set (plus probe
+warnings). First run never applied unset (`workspace <= -1` early return); after reorder,
+**`ctx DISPLAY=(none)`** but smoke still **miss L0/L1** · compositor **`normal=0`**. Hack
+**reverted from `AppLaunch.vala`** — did not move the bar; **D′** may contribute but is not
+proven sufficient. **Next prove:** child process + wl socket attachment (harness-only), not
+speculative Helper edits.
+
+### Prior run (2026-09-22 ~15:05) — activate replicated, no manual clicks
+
+Smoke **`Shell.App.launch()`** (same as STOPPED activate): **`launch() returned true`**.
+Compositor log: **`Helper-AppLaunch.* ok=true`** for `gtk4-demo`, Terminal, guake with
+**`DISPLAY=:1` `WAYLAND_DISPLAY=wayland-mutter-gsr`**. Still **`windows-normal=0`**
+· **`state=0` `n_windows=0`** after 4s — **Gio spawn “succeeds”; Meta never sees a client window**.
+
+**Manual hold (~15:02) with probe:** no `stage press` / no `AppIcon.vfunc_clicked` — **no
+evidence physical clicks reached the shell** (probe may be blind to Weston pointer; separate from smoke).
+
+### Prior run (2026-09-22 ~14:41)
+
+- **`Helper-AppLaunch`** wired in rebuilt `mutter-rpc` — RPC reaches compositor (no “no handler”).
+- **`miss L0`** — `launch_commandline_on_compositor(gtk4-demo)` · still `windows-normal=0`.
+- **`miss L1` / `miss L3`** · **L2 ok** — same Meta window bar.
+- Session **exit 137** (120s timeout after smoke `done`).
+
+### Prior run (2026-09-22 ~14:32)
+
+- **`proc-env`:** `DISPLAY=":1"`, `WAYLAND_DISPLAY="wayland-mutter-gsr"`, `WAYLAND_SOCKET="3"`.
+- **`miss L0`** — `gtk4-demo` via `create_app_launch_context` · still `windows-normal=0` (continued).
+- Search fill OK · **`miss L1`** / **`miss L3`** · **L2 ok** (same as ~14:24).
+- Prove session **exit 137** (120s timeout SIGKILL after smoke `done` — expected for `stayup` prove).
+
+### Prior run (2026-09-22 ~14:24)
+
+- `main.overview.show()` + search fill OK (`nGrid=6`).
+- **`miss L1`** — `lookup_app(Terminal).activate()` · `state=0` `n_windows=0` after 4s (RPC: `create_launcher` at L1).
+- **L2 ok** — `AppIcon.activate(guake)` did not throw.
+- **`miss L3`** — `pointer_click` on guake · still `state=0` `n_windows=0`.
+- **Read:** direct launch **and** synthetic click both fail to spawn in nested; not click-only (A/B alone).
+- **L0 (~14:27):** `gtk4-demo` via `create_app_launch_context` — launch returned, still `windows-normal=0` (**D′** strong: process env / wrong compositor, not `.desktop`-only).
+- **~14:32 (env):** shell `proc-env` **`DISPLAY=":1"`** + **`WAYLAND_DISPLAY="wayland-mutter-gsr"`** + **`WAYLAND_SOCKET="3"`** — launch context inherits Weston X11 + mutter WL from the **WaylandClient child**, not from mutter’s compositor process (**D′** confirmed in log).
+- **Next:** design **compositor-side** app spawn (same family as `Meta.WaylandClient.spawnv` for `gnome-shell-rpc` — **D″**); prove with smoke before `src/` change. **🚫** no fake `Meta.Display.launch`.
 
 ---
 
-## Out of scope here
+## Out of scope
 
-- Vendor `search.js` · fake `Meta.Display.launch` · disabling `Gio.launch`
-- Undeny `queue-relayout` without a FAIL that names it
-- Re-closing the empty-grid / `fade_margins` search ticket
+Vendor `search.js` · fake `Meta.Display.launch` · no-op `Gio.launch` · undeny `queue-relayout` without a FAIL.

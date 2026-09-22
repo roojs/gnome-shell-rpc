@@ -44,6 +44,9 @@ fi
 if [[ -n "${GI_RPC_GJS_EMBED_DIR:-}" ]]; then
 	env_args+=(GI_RPC_GJS_EMBED_DIR="$GI_RPC_GJS_EMBED_DIR")
 fi
+if [[ -n "${GI_RPC_LAUNCH_PROBE:-}" ]]; then
+	env_args+=(GI_RPC_LAUNCH_PROBE="$GI_RPC_LAUNCH_PROBE")
+fi
 if [[ -n "${GI_RPC_REGISTER_CLASS_TRACE:-}" ]]; then
 	env_args+=(GI_RPC_REGISTER_CLASS_TRACE="$GI_RPC_REGISTER_CLASS_TRACE")
 fi
@@ -52,6 +55,15 @@ if [[ -n "${GI_RPC_APP_SEARCH_OBSERVE:-}" ]]; then
 fi
 if [[ -n "${GI_META_SMOKE:-}" ]]; then
 	env_args+=(GI_META_SMOKE="$GI_META_SMOKE")
+fi
+if [[ -n "${GI_META_SMOKE_CMD:-}" ]]; then
+	env_args+=(GI_META_SMOKE_CMD="$GI_META_SMOKE_CMD")
+fi
+if [[ -n "${GI_META_SMOKE_WAIT_MS:-}" ]]; then
+	env_args+=(GI_META_SMOKE_WAIT_MS="$GI_META_SMOKE_WAIT_MS")
+fi
+if [[ -n "${GI_WAYLAND_LAUNCH_UNSET_DISPLAY:-}" ]]; then
+	env_args+=(GI_WAYLAND_LAUNCH_UNSET_DISPLAY="$GI_WAYLAND_LAUNCH_UNSET_DISPLAY")
 fi
 if [[ -n "${GI_META_GDB:-}" ]]; then
 	env_args+=(GI_META_GDB="$GI_META_GDB")
@@ -66,6 +78,6 @@ MPID=$!
 
 wait "$MPID"
 ec=$?
-echo "nested-weston-hold: mutter exited ec=$ec"
-"$ROOT/scripts/clear-nested-dbus.sh"
+echo "nested-weston-hold: mutter exited ec=$ec (Weston stays up — reap dbus only)"
+GSR_CLEAR_WESTON=0 "$ROOT/scripts/clear-nested-dbus.sh"
 exit "$ec"

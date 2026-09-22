@@ -140,6 +140,24 @@ namespace GnomeShellRpc.ShellClient
 						return 1;
 					}
 				}
+				var launch_probe = GLib.Environment.get_variable("GI_RPC_LAUNCH_PROBE") ?? "";
+				if (launch_probe.length > 0 && launch_probe != "0" && launch_probe != "false"
+						&& (script == INIT_MODULE || script.has_suffix("/ui/init.js"))) {
+					if (embed_dir.length == 0) {
+						command_line.printerr(
+							"GI_RPC_LAUNCH_PROBE requires GI_RPC_GJS_EMBED_DIR\n"
+						);
+						return 1;
+					}
+					var launch_preload = GLib.Path.build_filename(
+						embed_dir, "app-launch-click-probe-preload.js");
+					uint8 lp_status = 0;
+					ok = ctx.eval_module_file(launch_preload, out lp_status);
+					status = lp_status;
+					if (!ok) {
+						return 1;
+					}
+				}
 				if (script.has_prefix("resource://")
 					|| script.contains("/ui/init.js")
 					|| script.contains("/gjs-embed/")) {

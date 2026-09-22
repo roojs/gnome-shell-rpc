@@ -50,5 +50,6 @@ namespace GnomeShellRpc.Rpc.Helper
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();
 		WaylandClient.rpc_register();
+		AppLaunch.rpc_register();
 	}
 }

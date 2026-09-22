@@ -8,18 +8,24 @@
 #
 # Does not touch the systemd user bus or the system bus.
 #
-#   ./scripts/clear-nested-dbus.sh
+#   ./scripts/clear-nested-dbus.sh              # dbus + nest processes only
+#   GSR_CLEAR_WESTON=1 ./scripts/clear-nested-dbus.sh  # also stop Weston + socket
+#
+# Hold/session: never set GSR_CLEAR_WESTON — killing mutter must not kill Weston.
 set -euo pipefail
 
 UID_NOW="$(id -u)"
 SOCK="${GSR_WESTON_SOCKET:-wayland-gsr}"
 RT="${XDG_RUNTIME_DIR:-/run/user/$UID_NOW}"
+CLEAR_WESTON="${GSR_CLEAR_WESTON:-0}"
 
 pkill -9 -u "$UID_NOW" -x mutter-rpc 2>/dev/null || true
 pkill -9 -u "$UID_NOW" -x gnome-shell-rpc 2>/dev/null || true
 pkill -9 -u "$UID_NOW" -f '/dbus-run-session( |$)' 2>/dev/null || true
-pkill -9 -u "$UID_NOW" -f "weston.*${SOCK}" 2>/dev/null || true
-rm -f "$RT/$SOCK" "$RT/${SOCK}.lock"
+if [[ "$CLEAR_WESTON" == "1" ]]; then
+	pkill -9 -u "$UID_NOW" -f "weston.*${SOCK}" 2>/dev/null || true
+	rm -f "$RT/$SOCK" "$RT/${SOCK}.lock"
+fi
 
 killed=0
 while read -r pid rest; do

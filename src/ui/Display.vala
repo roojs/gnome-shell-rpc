@@ -219,6 +219,7 @@ namespace GnomeShellRpc.Ui
 			});
 		}
 
+		/** Fill one list row with what the remote shell reads when it loops windows. */
 		private Window snapshot_window(Meta.Window meta, int handle)
 		{
 			var frame = meta.get_frame_rect();
@@ -227,6 +228,7 @@ namespace GnomeShellRpc.Ui
 				id = handle,
 				title = meta.get_title(),
 				wm_class = wm != null ? wm : "",
+				window_type = (int) meta.get_window_type(),
 				minimized = meta.minimized,
 				maximized = meta.get_maximized() != 0,
 				frame_rect = new Shared.Rectangle() {

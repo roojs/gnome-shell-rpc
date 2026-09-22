@@ -33,7 +33,11 @@ client is still talking to the host Shell.
 2. **Host stays usable** — Weston is the parent Wayland compositor. Your GNOME
    session is only the X11 host that shows Weston’s window.
 3. **One window to throw away** — Close Weston (or kill that process tree) and
-   the prove is gone. No VT dance required for the common case.
+   the prove is gone. No VT dance required for the common case. In **session**
+   mode, killing **mutter-rpc** does **not** stop Weston. Weston auto-close is
+   **opt-in:** `GSR_WESTON_AUTO_CLOSE=1` (set only by `./scripts/weston-gsr-prove.sh`
+   for agents). Default session and `GSR_WESTON_MODE=prove` without that flag
+   keep the nest up until you close the Weston window.
 4. **Agent-friendly** — `[autolaunch]` starts the prove inside the nest. No
    drop-file watcher loop for the normal path.
 5. **Clear display boundaries** — Easy to assert we nested in the right place
@@ -100,14 +104,17 @@ Prove log: `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`.
 Stop: close the Weston window, or:
 
 ```bash
-./scripts/clear-nested-dbus.sh
+GSR_CLEAR_WESTON=1 ./scripts/clear-nested-dbus.sh
 ```
 
-Prove/hold used to SIGKILL mutter and leave `dbus-daemon --print-address --session`
+Prove/hold SIGKILL mutter and leave `dbus-daemon --print-address --session`
 (plus extra at-spi buses) reparented to init. That is **not** a gnome-shell-rpc
 bug — both machines hit D-Bus max connections and the session bus dies. The
 script reaps those leftovers and does **not** touch the systemd user/system bus.
-`weston-gsr-session.sh` / prove stop / hold exit call it automatically.
+
+**Default** `clear-nested-dbus.sh` does **not** kill Weston (so manual mutter
+kill during session hold keeps XWayland up). `GSR_CLEAR_WESTON=1` adds Weston
+teardown — used when **starting** a new session or after **prove** stop.
 
 Manual pkill if you only want the compositor:
 

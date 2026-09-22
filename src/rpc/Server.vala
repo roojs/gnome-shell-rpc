@@ -47,6 +47,7 @@ namespace GnomeShellRpc.Rpc
 			Rpc.CancellableBridge.register();
 			Rpc.Helper.rpc_register();
 			Rpc.Helper.Settings.bind(display);
+			Rpc.Helper.AppLaunch.bind(display);
 			Rpc.Helper.GLSLEffect.bind(display);
 			Rpc.Helper.BlurEffect.bind(display);
 			Rpc.Helper.InvertLightnessEffect.bind(display);
