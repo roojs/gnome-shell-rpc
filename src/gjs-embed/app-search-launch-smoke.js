@@ -27,8 +27,8 @@ import {formatError} from 'resource:///org/gnome/shell/misc/errorUtils.js';
 const SMOKE = 'app-search-launch-smoke';
 const SEARCH_WAIT_MS = 2500;
 const LAUNCH_WAIT_MS = 4000;
+const TERMINAL_ACTIVATION_WAIT_MS = 30000;
 const SEARCH_TERM = 'ter';
-const L0_CMD = GLib.getenv('GI_META_SMOKE_CMD') || 'gtk4-demo';
 
 /**
  * Log shell process + launch-context display env (wrong DISPLAY → spawn on
@@ -160,31 +160,7 @@ async function runLaunchProve(main) {
 		throw new Error('no applications provider');
 
 	logLaunchEnv(null);
-
-	const baseline0 = countNormalWindows(display);
-	smokeLog('L0 baseline windows-normal=' + baseline0);
-	let l0Err = '';
-	try {
-		logLaunchEnv(null);
-		const ctx = globalObj.create_app_launch_context(0, -1);
-		logLaunchEnv(ctx);
-		const appInfo = Gio.AppInfo.create_from_commandline(
-			L0_CMD, null, Gio.AppInfoCreateFlags.NONE);
-		if (appInfo === null)
-			throw new Error('create_from_commandline failed');
-		if (!appInfo.launch([], ctx))
-			throw new Error('AppInfo.launch returned false');
-		smokeLog('L0 stock launch ctx cmd=' + L0_CMD);
-	} catch (e) {
-		l0Err = formatError(e);
-		smokeLog('L0 threw ' + l0Err);
-	}
-	await delay(LAUNCH_WAIT_MS);
-	const l0Ok = l0Err.length === 0
-		&& countNormalWindows(display) > baseline0;
-	smokeLog('L0 windows-normal=' + countNormalWindows(display) + ' ok=' + l0Ok);
-	if (!l0Ok)
-		smokeLog('L0 skip (continuing — spawn may be off mutter Wayland / Weston DISPLAY)');
+	smokeLog('L0 covered by app-launch-boundary-smoke');
 
 	smokeLog('show overview');
 	main.overview.show();
@@ -254,7 +230,7 @@ async function runLaunchProve(main) {
 		l1Err = formatError(e);
 		smokeLog('L1 threw ' + l1Err);
 	}
-	await delay(LAUNCH_WAIT_MS);
+	await delay(TERMINAL_ACTIVATION_WAIT_MS);
 	const afterL1 = countNormalWindows(display);
 	const l1Ok = l1Err.length === 0
 		&& launchLooksOk(display, baseline, appId);

@@ -36,8 +36,12 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * Same shape as stock {@code shell_global_create_app_launch_context}:
-		 * mutter {@code create_launcher()} only — no Helper {@code setenv} /
-		 * {@code unset DISPLAY} (see
+		 * mutter {@code create_launcher()}, with the private compositor-client
+		 * fd removed. {@code WAYLAND_SOCKET} belongs to gnome-shell-rpc's
+		 * {@link Meta.WaylandClient} connection and must not be inherited by
+		 * separately launched applications. Keep Mutter's stock DISPLAY /
+		 * WAYLAND_DISPLAY launch-context behavior; do not unset DISPLAY or
+		 * force a toolkit backend here (see
 		 * {@code docs/bugs/2026-09-22-search-result-click-no-launch.md} D′).
 		 */
 		private GLib.AppLaunchContext make_launch_context(uint timestamp, int workspace)
@@ -47,6 +51,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			if (context == null) {
 				context = new GLib.AppLaunchContext();
 			}
+			context.unsetenv("WAYLAND_SOCKET");
 			if (timestamp == 0) {
 				timestamp = (uint) (GLib.get_monotonic_time() / 1000);
 			}

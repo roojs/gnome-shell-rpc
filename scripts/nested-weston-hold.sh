@@ -69,7 +69,10 @@ if [[ -n "${GI_META_GDB:-}" ]]; then
 	env_args+=(GI_META_GDB="$GI_META_GDB")
 fi
 
-dbus-run-session -- \
+DBUS_CONFIG="$("$ROOT/scripts/prepare-nested-dbus.sh" "$RT/gsr-nested-dbus-$$")"
+env -u WAYLAND_SOCKET \
+	GDK_BACKEND=wayland WAYLAND_DISPLAY="$MUTTER_WL" \
+dbus-run-session --config-file="$DBUS_CONFIG" -- \
 	env "${env_args[@]}" \
 		"$MUTTER_RPC" --debug --wayland --nested --no-x11 \
 		--wayland-display="$MUTTER_WL" \

@@ -53,7 +53,7 @@ fi
 # Phase B1/B2: GI_META_SMOKE=key-smoke → key-smoke: ok
 # Phase B3: GI_META_SMOKE=panel-click-smoke → panel-click-smoke: ok
 # Phase B4: GI_META_SMOKE=focus-smoke → focus-smoke: ok
-SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok|focus-smoke: ok|meta-smoke: put:|layout-allocate-smoke: done|constraint-allocate-smoke: done|actor-allocate-box-smoke: done|adjustment-animatable-smoke: done|startup-allocate-smoke: done|workspace-dot-align-smoke: done|transformed-geom-smoke: done|allocate-segv-smoke: done|interval-peek-smoke: done|st-temp-smoke: ok|captured-event-smoke: ok|workspace-background-allocate-smoke: done|workarea-panel-inset-smoke: done|workarea-panel-chrome-smoke: done|workarea-reentrant-emit-smoke: done|app-search-smoke: done|app-search-launch-smoke: ok|wayland-launch-smoke: ok|date-menu-open-smoke: ok)'
+SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok|focus-smoke: ok|meta-smoke: put:|layout-allocate-smoke: done|constraint-allocate-smoke: done|actor-allocate-box-smoke: done|adjustment-animatable-smoke: done|startup-allocate-smoke: done|workspace-dot-align-smoke: done|transformed-geom-smoke: done|allocate-segv-smoke: done|interval-peek-smoke: done|st-temp-smoke: ok|captured-event-smoke: ok|workspace-background-allocate-smoke: done|workarea-panel-inset-smoke: done|workarea-panel-chrome-smoke: done|workarea-reentrant-emit-smoke: done|app-search-smoke: done|app-launch-boundary-smoke: ok|wayland-launch-smoke: ok|date-menu-open-smoke: ok)'
 # When proving a smoke script, do not early-stop on A4 (init is not running).
 SMOKE_MODE=0
 if [[ -n "${GI_META_SMOKE:-}" && "${GI_META_SMOKE}" != "init" && "${GI_META_SMOKE}" != "init.js" ]]; then
@@ -100,6 +100,22 @@ env_args=(
 	XDG_RUNTIME_DIR="$RT"
 	WAYLAND_DISPLAY="$MUTTER_WL"
 )
+if [[ "${GI_META_SMOKE%.js}" == "app-launch-boundary-smoke" ]]; then
+	PROBE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc"
+	PROBE_LOG="$PROBE_DIR/app-launch-boundary.probe.log"
+	PROBE_STDERR="$PROBE_DIR/app-launch-boundary.stderr.log"
+	PROBE_WINDOW="$PROBE_DIR/app-launch-boundary.window.log"
+	mkdir -p "$PROBE_DIR"
+	: >"$PROBE_LOG"
+	: >"$PROBE_STDERR"
+	: >"$PROBE_WINDOW"
+	env_args+=(
+		PATH="$ROOT/scripts/app-launch-probe-bin:$PATH"
+		GI_APP_LAUNCH_PROBE_LOG="$PROBE_LOG"
+		GI_APP_LAUNCH_PROBE_STDERR="$PROBE_STDERR"
+		GI_APP_LAUNCH_PROBE_WINDOW_LOG="$PROBE_WINDOW"
+	)
+fi
 if [[ -n "${GI_RPC_JS_OVERRIDE_DIR:-}" ]]; then
 	env_args+=(GI_RPC_JS_OVERRIDE_DIR="$GI_RPC_JS_OVERRIDE_DIR")
 fi
@@ -144,8 +160,16 @@ fi
 if [[ -n "${GI_META_GDB_EX:-}" ]]; then
 	env_args+=(GI_META_GDB_EX="$GI_META_GDB_EX")
 fi
-# Keep stdout for weston-autolaunch tee; also capture for markers
-dbus-run-session -- \
+DBUS_CONFIG="$("$ROOT/scripts/prepare-nested-dbus.sh" "$RT/gsr-nested-dbus-$$")"
+# Weston starts this script as one of its own Wayland clients, so its private
+# WAYLAND_SOCKET points back to Weston. It must not leak into mutter-rpc, the
+# nested session bus, or applications launched for the compositor under test.
+# GTK otherwise also inherits the outer Cursor backend preference and maps on
+# Weston's Xwayland instead of wayland-mutter-gsr.
+# Keep stdout for weston-autolaunch tee; also capture for markers.
+env -u WAYLAND_SOCKET \
+	GDK_BACKEND=wayland WAYLAND_DISPLAY="$MUTTER_WL" \
+dbus-run-session --config-file="$DBUS_CONFIG" -- \
 	env "${env_args[@]}" \
 		"$MUTTER_RPC" --debug --wayland --nested --no-x11 \
 		--wayland-display="$MUTTER_WL" \
@@ -163,6 +187,10 @@ seen_a4() {
 
 seen_smoke_ok() {
 	[[ -n "${GI_META_SMOKE:-}" ]] || return 1
+	# This smoke terminates its own context. Its verbose shell logs can contain
+	# unrelated historical marker strings, so do not short-circuit on the
+	# aggregate marker regex.
+	[[ "${GI_META_SMOKE%.js}" != "app-search-launch-smoke" ]] || return 1
 	rg -q "$SMOKE_OK_PAT" "$CLIENT_LOG" 2>/dev/null \
 		|| rg -q "$SMOKE_OK_PAT" "$TEE_LOG" 2>/dev/null
 }
@@ -183,6 +211,12 @@ seen_smoke_fail() {
 }
 
 while kill -0 "$MPID" 2>/dev/null; do
+	if [[ "${GI_META_SMOKE%.js}" == "app-launch-boundary-smoke" ]] \
+			&& [[ -n "${PROBE_WINDOW:-}" ]] \
+			&& rg -q 'app-launch-boundary-smoke: Shell.App.launch returned true' "$TEE_LOG" 2>/dev/null \
+			&& rg -q 'notification method=Window.created object_type=Window' "$TEE_LOG" 2>/dev/null; then
+		printf 'mutter_window_created=1\n' >"$PROBE_WINDOW"
+	fi
 	if [[ $SECONDS -ge $deadline ]]; then
 		reason="timeout"
 		break

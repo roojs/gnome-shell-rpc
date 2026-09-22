@@ -16,7 +16,7 @@ fi
 export GSR_WESTON_MODE=prove
 export GSR_WESTON_AUTO_CLOSE=1
 case "${GI_META_SMOKE%.js}" in
-	app-search-launch-smoke|app-search-smoke|date-menu-open-smoke)
+	app-search-launch-smoke|app-launch-boundary-smoke|app-search-smoke|date-menu-open-smoke)
 		export GSR_NESTED_TIMEOUT="${GSR_NESTED_TIMEOUT:-90}"
 		;;
 	*)

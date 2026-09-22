@@ -83,6 +83,8 @@
 			 * in vfunc_style_changed; that vfunc is not the signal default
 			 * handler. Subscribe the 0-arg signal after mint — not from
 			 * Widget construct (nested RPC mid-reply parse).
+			 * Suspicious workaround; do not copy. Tracked in
+			 * docs/bugs/2026-09-22-style-changed-manual-subscription.md.
 			 */
 			if (this.get_type() != t
 					&& GLib.Signal.lookup("style-changed", this.get_type()) != 0) {

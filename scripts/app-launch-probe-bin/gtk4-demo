@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Test-only PATH shadow used by app-launch-boundary-smoke.js.
+set -u
+
+LOG="${GI_APP_LAUNCH_PROBE_LOG:?GI_APP_LAUNCH_PROBE_LOG is required}"
+STDERR_LOG="${GI_APP_LAUNCH_PROBE_STDERR:?GI_APP_LAUNCH_PROBE_STDERR is required}"
+
+{
+	printf 'wrapper_pid=%s\n' "$$"
+	printf 'wrapper_ppid=%s\n' "$PPID"
+	printf 'command=/usr/bin/gtk4-demo'
+	printf ' %q' "$@"
+	printf '\n'
+	for key in DISPLAY WAYLAND_DISPLAY WAYLAND_SOCKET XDG_RUNTIME_DIR GDK_BACKEND DBUS_SESSION_BUS_ADDRESS; do
+		printf 'env_%s=%q\n' "$key" "${!key-}"
+	done
+} >>"$LOG"
+
+if [[ "${GI_WAYLAND_LAUNCH_GDK_WAYLAND:-0}" == "1" ]]; then
+	printf 'launch_mode=corrected-wayland\n' >>"$LOG"
+	env -u DISPLAY -u WAYLAND_SOCKET GDK_BACKEND=wayland \
+		/usr/bin/gtk4-demo "$@" 2>>"$STDERR_LOG" &
+else
+	printf 'launch_mode=inherited\n' >>"$LOG"
+	/usr/bin/gtk4-demo "$@" 2>>"$STDERR_LOG" &
+fi
+child=$!
+printf 'child_pid=%s\n' "$child" >>"$LOG"
+sleep 0.1
+if [[ -r "/proc/$child/environ" ]]; then
+	while IFS= read -r entry; do
+		case "$entry" in
+			DISPLAY=*|WAYLAND_DISPLAY=*|WAYLAND_SOCKET=*|GDK_BACKEND=*)
+				printf 'child_%s\n' "$entry" >>"$LOG"
+				;;
+		esac
+	done < <(tr '\0' '\n' <"/proc/$child/environ")
+fi
+
+set +e
+wait "$child"
+status=$?
+set -e
+printf 'exit_status=%s\n' "$status" >>"$LOG"
+exit "$status"
