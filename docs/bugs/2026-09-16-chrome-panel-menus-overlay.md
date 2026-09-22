@@ -129,7 +129,7 @@ QS `-12` later. Boot landing is stock WINDOW_PICKER but **content incomplete** (
 
 GLSL unpack: [`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md). User: resume search. Nested `date-menu-open-smoke: ok`. Do **not** put never-shrink back.
 
-Came off the search ticket ([`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay empty is **closed**; inset/thumbs leftovers stay here.
+Came off the search ticket ([`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay empty is **closed**; inset/thumbs leftovers stay here. Click-a-result-does-not-spawn is a **separate** ticket: [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md) (inset can still make L3 pick miss).
 
 | Attempt | Result | Now |
 | --- | --- | --- |
@@ -142,6 +142,7 @@ Came off the search ticket ([`done/2026-09-19-overview-app-search-empty.md`](don
 | `Shell.register()` (`shell_register`) from `GiStub.Runtime.register()` to unpack `Shell-GLSLEffect` | User: Shell GLSLEffect is never on the server. It extends Clutter; alias the helper as `Clutter-OffscreenEffect`, `register_handle` the lease | **Removed.** See [`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md) |
 | Smoke `fire_button_press` after `open()` | Toggles **closed** (`isOpen=false`); prove hung to timeout until click was dropped | Smoke is **open-only**. `SMOKE_OK_PAT` includes `date-menu-open-smoke: ok` |
 | Nested prove **2026-09-21 ~15:35** | `date-menu-open-smoke: open dateMenu` then `ok`. No unpack 133. Early-stop once the pattern was listed | Gate PASSed. **Live click** (user) not re-scored this session |
+| **2026-09-22** search/generator rebuild left `mutter-rpc` stale (`GLSLEffect.c` still `Bin.register("Shell-GLSLEffect")`) | Same unpack on `get_effect`. Source was already `register_alias("Clutter-OffscreenEffect")` — ninja had not relinked compositor | Rebuilt `mutter-rpc`. Nested `date-menu-open-smoke: ok`. Still **do not** put `Shell-GLSLEffect` on mutter |
 
 ```bash
 GSR_NESTED_TIMEOUT=40 GI_META_SMOKE=date-menu-open-smoke \

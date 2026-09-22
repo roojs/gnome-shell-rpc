@@ -10,8 +10,7 @@ Nested `app-search-smoke: ok` (`fadeMargins=0`, `after-ter` nGrid=6,
 allocation (clock crash).
 **Plan:** [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
-Chrome leftovers (search/panes too high, thumbs row) stay on
-[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md).
+Chrome leftovers (search/panes too high, thumbs row) stay on [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md). Click-to-launch: [`../2026-09-22-search-result-click-no-launch.md`](../2026-09-22-search-result-click-no-launch.md).
 
 ## Symptom
 
