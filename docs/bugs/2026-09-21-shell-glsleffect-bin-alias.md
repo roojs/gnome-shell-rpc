@@ -1,4 +1,4 @@
-# Client `Shell-GLSLEffect` alias is not registered from `Runtime.register()`
+# `get_effect` encoded Helper.GLSLEffect as `Shell-GLSLEffect`
 
 **Status:** ⏳ open  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)  
@@ -15,32 +15,30 @@ Unrecognized type alias: Shell-GLSLEffect
 
 Mutter **ec=133**. Nested `date-menu-open-smoke` (`menu.open(0)`) names the same unpack on `get_effect`.
 
-Server already registers the wire type from `Helper.rpc_register()` → `GLSLEffect.rpc_register()`. The **client** `Bin` map does not.
+## Cause
 
-## One place
+`Shell.GLSLEffect` is a **client** class that extends `Clutter.OffscreenEffect`. The compositor peer is `Helper.GLSLEffect` (also a `Clutter.OffscreenEffect`) so snippets can run on the stage Cogl pipeline.
 
-Client aliases go in `GiStub.Runtime.register()` (`src/gi-stub/Runtime.vala`), next to:
+Helper `rpc_register()` did `Bin.register("Shell-GLSLEffect", typeof(Helper.GLSLEffect))`. That invents a Shell wire name on mutter. `get_effect` then encodes the helper GType as `Shell-GLSLEffect`; the client Bin map has no such alias.
 
-- `Clutter.register()`
-- `meta_register_bins()` → `meta_register` in libmutter-rpc-16
-- `st_register_bins()` → `st_register` in libst-rpc-16
-- `Bin.register("Clutter-OffscreenEffect", …)`
+Stock Clutter types are already registered (`Gi.register("Clutter")` on the server, `Runtime.register()` on the client). Same pattern as `Clutter-Stage` / `Clutter-Constraint`: `Bin.register_alias` maps the concrete helper GType onto the existing Clutter alias. Do **not** put `Shell-*` on the server.
 
-Host already calls that once: `ShellApplication` → `Runtime.register()` then `Global.bind_display`. Server analog is `Helper.rpc_register()`.
+`add_effect` already works — `call_value` sends the lease as `uint64`, not the GJS GType. Only the **return** of `get_effect` hits `write_gtype`.
 
-`Runtime.vala` compiles into `libmutter-clutter-rpc-16.so` and cannot `typeof(Shell.GLSLEffect)` (circular). Same cross-lib pattern as St:
+Client construct must `Runtime.register_handle` after the Helper lease (Clone / Interval). Otherwise `parse_object` mints a new `Clutter.OffscreenEffect` stub and GJS `===` / `get_uniform_location` break.
 
-1. `src/gi-stub/shell-register.h` — `void shell_register(void);` (copy `st-register.h`)
-2. Runtime: extern `shell_register` and call it from `register()` after `st_register_bins()`
-3. `src/shell-gi/namespace.vala` — `Shell.register()` (`[CCode (cname = "shell_register")]`) calls `GLSLEffect.rpc_register()`
-4. Per-type fill stays `GLSLEffect.rpc_register()` → `Bin.register("Shell-GLSLEffect", typeof(GLSLEffect))`
+## Fix
 
-Construct `register_handle` after the Helper lease is the Clone/Interval proxy identity, **not** the alias. Do not mix the two.
+1. Helper `rpc_register()` — `Bin.register_alias("Clutter-OffscreenEffect", typeof(GLSLEffect))` (after `Gi.register("Clutter")`). Drop `Bin.register("Shell-GLSLEffect")`.
+2. Client `Shell.GLSLEffect` construct — `Runtime.register_handle(this)` after `rpc_lid`.
+3. Mock `Helper-GLSLEffect.create` mints `Clutter-OffscreenEffect` (already the `get_effect` reply). Drop mock `Shell-GLSLEffect` Bin + `MockShellGLSLEffect`.
 
 ## Rejected call sites (do not put it back)
 
 | Place | Why not |
 | --- | --- |
+| Server `Bin.register("Shell-GLSLEffect", …)` | Shell type on mutter. Wire name the client does not own |
+| `Shell.register()` / `shell_register` from `Runtime.register()` to unpack `Shell-GLSLEffect` | Treats the bad server alias as the contract. Client aggregator is for owned Shell types, not this miss |
 | `ShellApplication` `Bin.register("Shell-GLSLEffect", …)` after `Runtime.register()` | Wrong layer, one-off, swallowed errors |
 | `GLSLEffect` `static construct { Bin.register(...) }` | Not a valid register path (`GLib.Error` on `Bin.register`) |
 | `GLSLEffect.rpc_register()` from `Global.bind_display` | Not the aggregator. `bind_display` fills the Global singleton |

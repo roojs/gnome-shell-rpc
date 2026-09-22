@@ -20,7 +20,7 @@ namespace Shell
 			if (t != typeof(WorkspaceBackground) && !t.name().has_prefix("Gjs_")) {
 				return;
 			}
-			var response = GnomeShellRpc.call_value("St-Widget.new", null);
+			var response = GnomeShellRpc.call_value("St-Widget.new");
 			var stub = response.retval.get_object() as OLLMrpc.Live.Handle;
 			this.rpc_lid = stub.rpc_lid;
 		}

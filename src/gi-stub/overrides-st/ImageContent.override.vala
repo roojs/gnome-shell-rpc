@@ -4,7 +4,8 @@
 		public static Clutter.Content new_with_preferred_size(int32 width, int32 height)
 		{
 			var response = GnomeShellRpc.call_value(
-				"Helper-ImageContent.create", null,
+				"Helper-ImageContent.create",
+				null,
 				OLLMrpc.args("ii", width, height));
 			var obj = (ImageContent) response.retval.get_object();
 			GnomeShellRpc.GiStub.Runtime.register_handle(obj);

@@ -32,7 +32,8 @@
 				return;
 			}
 			var response = GnomeShellRpc.call_value(
-				"Clutter-Clone.new", null,
+				"Clutter-Clone.new",
+				null,
 				OLLMrpc.args("o", this.priv_source));
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;

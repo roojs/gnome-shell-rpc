@@ -448,7 +448,7 @@ namespace GnomeShellRpc.GiRpcMock
 				case "Helper-GLSLEffect":
 					switch (name) {
 						case "create":
-							this.reply_args_lease(request, "Shell-GLSLEffect");
+							this.reply_args_lease(request, "Clutter-OffscreenEffect");
 							return true;
 						case "add_glsl_snippet":
 						case "set_uniform_float":

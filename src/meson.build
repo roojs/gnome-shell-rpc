@@ -329,7 +329,6 @@ if get_option('gi_rpc_mock')
       'rpc/Connection.vala',
       'rpc/Listen.vala',
       'gi-rpc-mock/namespace.vala',
-      'gi-rpc-mock/MockShellGLSLEffect.vala',
       'gi-rpc-mock/MockBootGraph.vala',
       'gi-rpc-mock/Bootstrap.vala',
       'gi-rpc-mock/HelperMock.vala',

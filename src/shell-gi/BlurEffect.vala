@@ -83,7 +83,7 @@ namespace Shell
 				this.mint_done = true;
 				return;
 			}
-			var response = GnomeShellRpc.call_value("Helper-BlurEffect.create", null);
+			var response = GnomeShellRpc.call_value("Helper-BlurEffect.create");
 			this.rpc_lid = response.args.get(0).get_uint64();
 			if (this.priv_name != null && this.priv_name.length > 0) {
 				GnomeShellRpc.call_value("Clutter-ActorMeta.set_name", this,

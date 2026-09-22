@@ -7,7 +7,8 @@
 		{
 			Object();
 			var response = GnomeShellRpc.call_value(
-				"Helper-SelectionSourceMemory.create", null,
+				"Helper-SelectionSourceMemory.create",
+				null,
 				OLLMrpc.args("say", mimetype, content));
 			var stub = (SelectionSourceMemory) response.retval.get_object();
 			this.rpc_lid = stub.rpc_lid;

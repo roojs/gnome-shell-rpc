@@ -68,7 +68,7 @@
 			return this.helper_peer;
 		}
 		var minted = GnomeShellRpc.call_value(
-			"Helper-LayoutManager.create", null);
+			"Helper-LayoutManager.create");
 		var peer = (LayoutManager) GLib.Object.new(typeof(LayoutManager));
 		peer.rpc_lid = minted.args.get(0).get_uint64();
 		GnomeShellRpc.GiStub.Runtime.register_handle(peer);

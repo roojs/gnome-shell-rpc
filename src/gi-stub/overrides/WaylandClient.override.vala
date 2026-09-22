@@ -14,7 +14,8 @@
 				| GLib.SubprocessFlags.STDERR_MERGE
 			);
 			var response = GnomeShellRpc.call_value(
-				"Helper-WaylandClient.create", null,
+				"Helper-WaylandClient.create",
+				null,
 				OLLMrpc.args("ou", context, flags)
 			);
 			this.rpc_lid = response.args.get(0).get_uint64();

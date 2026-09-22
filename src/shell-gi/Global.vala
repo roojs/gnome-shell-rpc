@@ -80,7 +80,8 @@ namespace Shell
 		public void pointer_click(float x, float y)
 		{
 			GnomeShellRpc.call_value(
-				"Helper-Actor.pointer_click", null,
+				"Helper-Actor.pointer_click",
+				null,
 				OLLMrpc.args("dd", (double) x, (double) y));
 		}
 
@@ -101,7 +102,8 @@ namespace Shell
 		public void fire_key(uint keyval, Clutter.ModifierType modifiers)
 		{
 			GnomeShellRpc.call_value(
-				"Helper-Actor.fire_key", null,
+				"Helper-Actor.fire_key",
+				null,
 				OLLMrpc.args("uu", keyval, (uint) modifiers));
 		}
 
@@ -394,7 +396,7 @@ namespace Shell
 			int factor;
 			try {
 				var response = GnomeShellRpc.call_value(
-					"Helper-Settings.get_ui_scaling_factor", null);
+					"Helper-Settings.get_ui_scaling_factor");
 				factor = response.retval.get_int();
 			} catch (GLib.Error e) {
 				GLib.warning("update_scaling_factor: %s", e.message);

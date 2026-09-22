@@ -24,7 +24,8 @@
 				return;
 			}
 			var response = GnomeShellRpc.call_value(
-				"Helper-Interval.create", null,
+				"Helper-Interval.create",
+				null,
 				OLLMrpc.args("s", this.priv_value_type.name()));
 			this.rpc_lid = response.args.get(0).get_uint64();
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);

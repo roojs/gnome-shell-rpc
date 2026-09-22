@@ -14,7 +14,7 @@
 	public static unowned Event? get_current_event()
 	{
 		var response = GnomeShellRpc.call_value(
-			"Helper-Clutter.get_current_event", null);
+			"Helper-Clutter.get_current_event");
 		if (response.args.size < 5) {
 			current_event_cache = null;
 			return null;
@@ -208,7 +208,8 @@
 			return OLLMrpc.args("b", func(data));
 		});
 		var response = GnomeShellRpc.call_value(
-			"Helper-ClutterThreads.threads_add_repaint_func", null,
+			"Helper-ClutterThreads.threads_add_repaint_func",
+			null,
 			OLLMrpc.args("ut", (uint) flags, callback_id));
 		return (uint32) response.retval.get_uint();
 	}

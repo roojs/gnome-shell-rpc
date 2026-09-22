@@ -1,7 +1,12 @@
 /**
- * Helper-GLSLEffect — compositor OffscreenEffect for Shell.GLSLEffect.
+ * Helper-GLSLEffect — compositor {@link Clutter.OffscreenEffect} for client
+ * {@link Shell.GLSLEffect}.
  *
- * Client leases one of these and drives snippets via build_pipeline RPC.
+ * Not a Shell type on the wire. {@link rpc_register} maps this GType onto the
+ * stock Clutter alias (same pattern as Stage / Constraint). Client
+ * {@code Shell.GLSLEffect} extends the stub OffscreenEffect and
+ * {@code register_handle}s the lease so {@code get_effect} reuses the GJS
+ * object.
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
@@ -12,7 +17,8 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.register("Shell-GLSLEffect", typeof(GLSLEffect));
+			OLLMrpc.Bin.register_alias(
+				"Clutter-OffscreenEffect", typeof(GLSLEffect));
 			OLLMrpc.Request.add_class(
 				"Helper-GLSLEffect", typeof(GLSLEffect),
 				"create", "",

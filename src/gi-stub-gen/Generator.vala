@@ -481,7 +481,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					t = t.parent();
 					continue;
 				}
-				var response = GnomeShellRpc.call_value(OLLMrpc.Bin.gtype_to_alias.get(t) + ".new", null);
+				var response = GnomeShellRpc.call_value(OLLMrpc.Bin.gtype_to_alias.get(t) + ".new");
 				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
 				return;
 			}
@@ -1469,7 +1469,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * layout matches generated C headers / stock offsets.
 		 * Override files must not add extra virtual methods on these
 		 * types — GJS vfunc_* uses typelib field offsets
-		 * (docs/bugs/done/2026-09-20-spurious-appicon-clicked.md).
+		 * (docs/bugs/2026-09-20-spurious-appicon-clicked.md).
 		 */
 		private int emit_object_class_slots(
 			GLib.FileStream stream,
@@ -1493,8 +1493,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				if (fname == "parent_class" || fname == "parent") {
 					continue;
 				}
-				if (ti.get_tag() == GI.TypeTag.GTYPE
-						|| ti.get_tag() == GI.TypeTag.VOID) {
+				if (ti.get_tag() == GI.TypeTag.GTYPE || ti.get_tag() == GI.TypeTag.VOID) {
 					/*
 					 * GType layout_manager_type, or a class function
 					 * pointer GI left untyped (create_child_meta).
@@ -1521,8 +1520,8 @@ namespace GnomeShellRpc.Rpc.Helper
 					var slot = oi.find_method(fname);
 					if (slot != null) {
 						vfunc_names.add(fname);
-						emitted += this.emit_callable(
-							stream, ns, class_name, slot, "class", true);
+						emitted += this.emit_callable(stream, ns, class_name, 
+							slot, "class", true);
 						continue;
 					}
 					if (iface != null && iface.get_type() == GI.InfoType.STRUCT) {
@@ -2371,11 +2370,21 @@ $(tab)}
 				}
 				packed += expr;
 			}
-			var args_arg = "";
-			if (packed != "") {
-				args_arg = @", OLLMrpc.args(\"$(sig)\", $(packed))";
+			/* instance defaults to null — omit it unless this or args follow.
+			 * Vala 0.56 has no named arguments, so args without an instance
+			 * still need the positional null placeholder. */
+			string call;
+			if (instance == "this") {
+				if (packed != "") {
+					call = @"GnomeShellRpc.call_value(\"$(rpc)\", this, OLLMrpc.args(\"$(sig)\", $(packed)))";
+				} else {
+					call = @"GnomeShellRpc.call_value(\"$(rpc)\", this)";
+				}
+			} else if (packed != "") {
+				call = @"GnomeShellRpc.call_value(\"$(rpc)\", null, OLLMrpc.args(\"$(sig)\", $(packed)))";
+			} else {
+				call = @"GnomeShellRpc.call_value(\"$(rpc)\")";
 			}
-			var call = @"GnomeShellRpc.call_value(\"$(rpc)\", $(instance)$(args_arg))";
 
 			var need_response = ret_vala != "void"
 				|| this.has_out_values(fi);

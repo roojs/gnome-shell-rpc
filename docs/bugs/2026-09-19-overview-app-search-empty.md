@@ -119,7 +119,7 @@ Worked this ticket, then the clock regression it caused. Chrome details: [`2026-
 | Host `ShellApplication` `Bin.register("Shell-GLSLEffect", typeof(Shell.GLSLEffect))` after `Runtime.register()` | Unblocked `get_effect` unpack so `dateMenu.menu.open(0)` no longer 133’d. User: “this looks unlikely” — wrong layer, try/catch, one-off | **Removed.** **Not** this search ticket |
 | `GLSLEffect` `static construct { Bin.register(...) }` | User: not a valid way | **Removed** |
 | `GLSLEffect.rpc_register()` from `Global.bind_display` | User: one place calls all of these | **Removed** |
-| `Shell.register()` from `GiStub.Runtime.register()` (with `Clutter` / `meta` / `st`); construct `register_handle` | Client aggregator, same as `st_register`. Gate `date-menu-open-smoke: ok` (~15:35) was under the earlier host/bind sites — **re-score** after this move | Chrome, not this search ticket |
+| Helper `Bin.register("Shell-GLSLEffect")` / client `shell_register` to unpack it | User: Shell GLSLEffect is never on the server. Compositor peer is `Clutter-OffscreenEffect` + `register_handle` | See chrome [`2026-09-21-shell-glsleffect-bin-alias.md`](2026-09-21-shell-glsleffect-bin-alias.md). **Not** this search ticket |
 | Click then `isOpen` in date-menu smoke | `fire_button_press` after `open()` toggles **closed** (`ok isOpen=false`). Click-no-open is an old probe miss | Smoke is **open-only**. Live click still the user’s score |
 | Idle / timeout / vendor `search.js` as product fix | Forbidden on this ticket | Stay forbidden |
 

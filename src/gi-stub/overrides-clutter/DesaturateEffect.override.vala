@@ -48,7 +48,8 @@
 				return;
 			}
 			var response = GnomeShellRpc.call_value(
-				"Clutter-DesaturateEffect.new", null,
+				"Clutter-DesaturateEffect.new",
+				null,
 				OLLMrpc.args("d", this.priv_factor));
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;

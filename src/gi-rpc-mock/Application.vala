@@ -76,11 +76,6 @@ namespace GnomeShellRpc.GiRpcMock
 				GLib.error("Gi.register: %s", e.message);
 			}
 
-			OLLMrpc.Bin.register(
-				"Shell-GLSLEffect",
-				typeof(MockShellGLSLEffect)
-			);
-
 			OLLMrpc.Request.register(
 				"RPC-Bootstrap",
 				GnomeShellRpc.GiRpcMock.Bootstrap.bind()

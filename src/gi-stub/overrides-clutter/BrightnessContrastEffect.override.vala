@@ -15,7 +15,7 @@
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = GnomeShellRpc.call_value("Clutter-BrightnessContrastEffect.new", null);
+			var response = GnomeShellRpc.call_value("Clutter-BrightnessContrastEffect.new");
 			var stub = response.retval.get_object() as OLLMrpc.Live.Handle;
 			this.rpc_lid = stub.rpc_lid;
 			if (this.name != null && this.name.length > 0) {

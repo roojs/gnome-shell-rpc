@@ -136,7 +136,8 @@ Came off the search ticket ([`2026-09-19-overview-app-search-empty.md`](2026-09-
 | Host `ShellApplication` `try { Bin.register("Shell-GLSLEffect", typeof(Shell.GLSLEffect)) }` after `Runtime.register()` | Open no longer 133’d. User: “this looks unlikely” — wrong layer, swallowed errors, one-off | **Removed** |
 | `GLSLEffect` `static construct { Bin.register(...) }` | User: not a valid way | **Removed** |
 | `GLSLEffect.rpc_register()` from `Global.bind_display` | User: one place calls all of these, not random sites | **Removed** |
-| `Shell.register()` (`shell_register`) from `GiStub.Runtime.register()`, next to `Clutter.register` / `meta_register` / `st_register`. `GLSLEffect.rpc_register()` is the per-type fill, same as Helper. Construct `register_handle`s the lease | Same aggregator as every other client `Bin` alias. Cross-lib like `st_register.h` | **Landed** |
+| Helper `Bin.register("Shell-GLSLEffect")` | Invented a Shell wire name on mutter. `get_effect` encoded the compositor OffscreenEffect as that alias | **Removed.** `register_alias("Clutter-OffscreenEffect", …)` |
+| `Shell.register()` (`shell_register`) from `GiStub.Runtime.register()` to unpack `Shell-GLSLEffect` | User: Shell GLSLEffect is never on the server. It extends Clutter; alias the helper as `Clutter-OffscreenEffect`, `register_handle` the lease | **Removed.** See [`2026-09-21-shell-glsleffect-bin-alias.md`](2026-09-21-shell-glsleffect-bin-alias.md) |
 | Smoke `fire_button_press` after `open()` | Toggles **closed** (`isOpen=false`); prove hung to timeout until click was dropped | Smoke is **open-only**. `SMOKE_OK_PAT` includes `date-menu-open-smoke: ok` |
 | Nested prove **2026-09-21 ~15:35** | `date-menu-open-smoke: open dateMenu` then `ok`. No unpack 133. Early-stop once the pattern was listed | Gate PASSed. **Live click** (user) not re-scored this session |
 

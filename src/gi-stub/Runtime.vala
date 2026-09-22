@@ -213,7 +213,8 @@ namespace GnomeShellRpc.GiStub
 					extra == null ? "null" : extra.size.to_string());
 				try {
 					if (extra == null) {
-						GnomeShellRpc.call_value("RPC-Live-Callback.reply", null,
+						GnomeShellRpc.call_value("RPC-Live-Callback.reply",
+							null,
 							OLLMrpc.args("t", reply_id));
 					} else {
 						var reply = OLLMrpc.args("t", reply_id);
@@ -297,7 +298,7 @@ namespace GnomeShellRpc.GiStub
 			if (Runtime.handlers == null) {
 				Runtime.handlers = new Gee.HashMap<int, InvokeRow>();
 			}
-			var response = GnomeShellRpc.call_value("RPC-Live-Callback.register", null);
+			var response = GnomeShellRpc.call_value("RPC-Live-Callback.register");
 			var id = (int) response.args.get(0).get_uint64();
 			var row = new InvokeRow();
 			row.handler = (owned) handler;

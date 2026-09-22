@@ -10,7 +10,8 @@
 		public static ThemeContext get_for_stage(Clutter.Stage stage)
 		{
 			var response = GnomeShellRpc.call_value(
-				"St-ThemeContext.get_for_stage", null,
+				"St-ThemeContext.get_for_stage",
+				null,
 				OLLMrpc.args("o", stage));
 			return (ThemeContext) response.retval.get_object();
 		}

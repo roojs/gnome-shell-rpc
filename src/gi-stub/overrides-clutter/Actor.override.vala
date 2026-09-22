@@ -74,7 +74,7 @@
 				default:
 					break;
 			}
-			var response = GnomeShellRpc.call_value(alias + ".new", null);
+			var response = GnomeShellRpc.call_value(alias + ".new");
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
@@ -114,7 +114,8 @@
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
 
-		var response = GnomeShellRpc.call_value("Helper-Actor.create", null,
+		var response = GnomeShellRpc.call_value("Helper-Actor.create",
+			null,
 			OLLMrpc.args("s", this.get_type().name()));
 
 		this.rpc_lid = response.args.get(0).get_uint64();

@@ -17,7 +17,7 @@ namespace Shell
 				return;
 			}
 			var response = GnomeShellRpc.call_value(
-				"St-Bin.new", null);
+				"St-Bin.new");
 			var stub = response.retval.get_object() as OLLMrpc.Live.Handle;
 			this.rpc_lid = stub.rpc_lid;
 		}

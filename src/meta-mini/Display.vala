@@ -239,7 +239,8 @@ namespace Meta
 			return null;
 		});
 		var response = GnomeShellRpc.call_value(
-			"Helper-Display.keybindings_set_custom_handler", null,
+			"Helper-Display.keybindings_set_custom_handler",
+			null,
 			OLLMrpc.args("st", name, callback_id));
 		return response.retval.get_boolean();
 	}

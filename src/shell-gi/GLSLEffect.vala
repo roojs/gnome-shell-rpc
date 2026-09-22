@@ -2,7 +2,9 @@
  * Owned {@code Shell.GLSLEffect} — leased compositor Helper-GLSLEffect (0.7.7 T-032).
  *
  * GJS subclasses implement {@link build_pipeline}; construct leases then calls it
- * so {@link add_glsl_snippet} RPCs land on the server pipeline.
+ * so {@link add_glsl_snippet} RPCs land on the server pipeline. Wire identity is
+ * {@code Clutter-OffscreenEffect} (the compositor peer); {@code register_handle}
+ * keeps GJS {@code ===} on {@code get_effect}.
  */
 namespace Shell
 {
@@ -37,7 +39,8 @@ namespace Shell
 
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.register("Shell-GLSLEffect", typeof(GLSLEffect));
+			OLLMrpc.Bin.register_alias(
+				"Clutter-OffscreenEffect", typeof(GLSLEffect));
 		}
 
 		construct {
@@ -45,8 +48,9 @@ namespace Shell
 				return;
 			}
 			var response = GnomeShellRpc.call_value(
-				"Helper-GLSLEffect.create", null);
+				"Helper-GLSLEffect.create");
 			this.rpc_lid = response.args.get(0).get_uint64();
+			GnomeShellRpc.GiStub.Runtime.register_handle(this);
 			this.sync_actor_meta_name();
 			this.sync_actor_meta_enabled();
 			this.build_pipeline();
