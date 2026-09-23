@@ -17,7 +17,7 @@
 	[CCode (cname = "clutter_layout_manager_layout_changed")]
 	public void layout_changed_invoke()
 	{
-		this.layout_changed();
+		this.signal_layout_changed();
 		if (this.helper_peer == null) {
 			return;
 		}

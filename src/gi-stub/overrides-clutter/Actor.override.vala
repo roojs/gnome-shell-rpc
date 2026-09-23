@@ -245,7 +245,7 @@
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			bool stop = false;
 			try {
-				stop = this.event_vfunc(ev);
+				stop = this.signal_event(ev);
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();
 			}
@@ -283,12 +283,10 @@
 				keyval = call.args.get(5).get_uint();
 			}
 			var ev = Event.from_local(type, x, y, button, 0, keyval);
-			bool stop = this.captured_event(ev);
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			bool stop = false;
 			try {
-				if (this.captured_event_vfunc(ev)) {
-					stop = true;
-				}
+				stop = this.signal_captured_event(ev);
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();
 			}

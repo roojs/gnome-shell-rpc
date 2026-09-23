@@ -298,18 +298,22 @@ namespace GnomeShellRpc.Rpc.Helper
 				signal_names.add(this.vala_ident(
 						oi.get_signal(s).get_name().replace("-", "_")));
 			}
+			var virtual_signal_fields = new Gee.HashSet<string>();
 			var methods = 0;
 			if (this.overrides.has_key("Namespace")
 				&& this.overrides.get("Namespace").has_key("emit_class_slots")
 				&& this.overrides.get("Namespace").get("emit_class_slots") == "1") {
 				methods += this.emit_object_class_slots(
-					stream, ns, oi, vfunc_names, signal_names);
+					stream, ns, oi, vfunc_names, virtual_signal_fields);
 			}
 			foreach (var vn in vfunc_names) {
 				if (vn in this.deny
 					|| (class_name + "." + vn) in this.deny
-					|| (vn in signal_names && vn in this.signal_prefer)) {
-					/* Renamed to *_vfunc — leave Vala name free for the signal. */
+					|| vn in virtual_signal_fields) {
+					/*
+					 * Denied slots stay *_vfunc. Signal class closures are
+					 * signal_* — not a method name.
+					 */
 					continue;
 				}
 				method_names.add(vn);
@@ -319,7 +323,8 @@ namespace GnomeShellRpc.Rpc.Helper
 				signal_names, method_names);
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				var fi = oi.get_method(m);
-				if (vfunc_names.contains(fi.get_name())) {
+				if (vfunc_names.contains(fi.get_name())
+					&& !(fi.get_name() in virtual_signal_fields)) {
 					continue;
 				}
 				if (prop_accessors.contains(fi.get_name())
@@ -328,10 +333,9 @@ namespace GnomeShellRpc.Rpc.Helper
 					continue;
 				}
 				/*
-				 * Ordinary methods that share a GIR signal name still need the
-				 * callable (GJS actor.hide()). Prefer signal only for class
-				 * slots (*_vfunc rename above). Method/signal pairs like
-				 * destroy stay on the deny list + hand rename (destroy_rpc).
+				 * Method/signal pairs like destroy stay on the deny list +
+				 * hand rename (destroy_rpc) until that cut. Prefix lets a
+				 * remaining callable keep the GIR name next to signal_*.
 				 */
 				var n = this.emit_callable(
 					stream, ns, class_name, fi, "class", false);
@@ -341,7 +345,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				methods += n;
 			}
 			var signals = this.emit_object_signals(
-				stream, ns, oi, method_names);
+				stream, ns, oi, virtual_signal_fields);
 			this.emit_object_bin_register(stream, ns, class_name);
 			this.object_classes.add(class_name);
 			this.splice_class_override(stream, class_name);
@@ -1489,102 +1493,91 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * GIR object signals so client {@code g_signal_connect} / GJS
-		 * {@code .connect()} find the name. Emission / Live.Subscribe
-		 * forwarding is separate — declare only.
-		 *
-		 * Skips when a method of the same name was emitted (rare — class
-		 * slots / methods that clash with signals are renamed or omitted
-		 * first so GJS keeps the signal).
+		 * {@code .connect()} find the stock name. Vala identifier is
+		 * {@code signal_*} with {@code CCode cname} = GIR signal name.
+		 * Class-closure signals were already emitted at the class-struct
+		 * field; skip those here.
 		 */
 		private int emit_object_signals(
 			GLib.FileStream stream,
 			string ns,
 			GI.ObjectInfo oi,
-			Gee.HashSet<string> method_names
+			Gee.HashSet<string> virtual_signal_fields
 		) {
 			var class_name = oi.get_name();
 			var emitted = 0;
 			for (var s = 0; s < oi.get_n_signals(); s++) {
-				var si = oi.get_signal(s);
-				var sname = si.get_name();
-				var vala_name = this.vala_ident(sname.replace("-", "_"));
-				var symbol = class_name + "." + sname;
-				if (("signal:" + class_name + "." + sname) in this.deny
-					|| ("signal:" + class_name + "." + vala_name) in this.deny) {
+				if (this.vala_ident(oi.get_signal(s).get_name().replace("-", "_"))
+						in virtual_signal_fields) {
 					continue;
 				}
-				/*
-				 * Vala forbids method + signal with the same name. If GIR has
-				 * both and we kept the method (hide/show/…), skip the signal.
-				 * Connect-style slots (*_event, clicked, …) were renamed to
-				 * *_vfunc so the signal may be emitted.
-				 */
-				var fi = oi.find_method(vala_name);
-				if (fi != null
-					&& !(vala_name in this.signal_prefer)
-					&& !(vala_name in this.deny)
-					&& !((class_name + "." + vala_name) in this.deny)) {
-					continue;
-				}
-				if (method_names.contains(sname)
-					|| method_names.contains(vala_name)) {
-					this.gaps.add(new Gap() {
-						symbol = symbol,
-						reason = "signal_method_clash",
-						detail = "method won",
-					});
-					continue;
-				}
-				var ret = this.type_vala(ns, si.get_return_type());
-				if (ret == "") {
-					this.gaps.add(new Gap() {
-						symbol = symbol,
-						reason = "signal",
-						detail = "unmapped return",
-					});
-					continue;
-				}
-				var arg_list = new Gee.ArrayList<string>();
-				var skip = false;
-				for (var a = 0; a < si.get_n_args(); a++) {
-					var arg = si.get_arg(a);
-					if (arg.is_skip()) {
-						continue;
-					}
-					var at = this.type_vala(ns, arg.get_type());
-					if (at == "") {
-						this.gaps.add(new Gap() {
-							symbol = symbol,
-							reason = "signal",
-							detail = "unmapped arg " + arg.get_name(),
-						});
-						skip = true;
-						break;
-					}
-					arg_list.add(this.arg_decl(arg, at));
-				}
-				if (skip) {
-					continue;
-				}
-				var args = string.joinv(", ", arg_list.to_array());
-				/*
-				 * GIR detailed="1" → G_SIGNAL_DETAILED. Without Vala's
-				 * [Signal (detailed = true)], GJS cannot connect
-				 * "name::detail" (e.g. captured-event::touchpad).
-				 */
-				if ((si.get_flags() & GLib.SignalFlags.DETAILED) != 0) {
-					stream.puts("		[Signal (detailed = true)]\n");
-				}
-				if (ret == "void") {
-					stream.puts(@"		public signal void $(vala_name)($(args));
-");
-				} else {
-					stream.puts(@"		public signal $(ret) $(vala_name)($(args));
-");
-				}
-				emitted++;
+				emitted += this.emit_gir_signal(
+					stream, ns, class_name, oi.get_signal(s), false);
 			}
 			return emitted;
+		}
+
+		/**
+		 * One GIR signal as {@code signal_*} + {@code [CCode (cname)]}.
+		 * {@code virtual_slot} emits {@code virtual signal} with a default
+		 * body so the class-struct field is the class closure.
+		 */
+		private int emit_gir_signal(
+			GLib.FileStream stream,
+			string ns,
+			string class_name,
+			GI.SignalInfo si,
+			bool virtual_slot
+		) {
+			if (("signal:" + class_name + "." + si.get_name()) in this.deny
+				|| ("signal:" + class_name + "."
+					+ this.vala_ident(si.get_name().replace("-", "_"))) in this.deny) {
+				return 0;
+			}
+			var ret = this.type_vala(ns, si.get_return_type());
+			if (ret == "") {
+				this.gaps.add(new Gap() {
+					symbol = class_name + "." + si.get_name(),
+					reason = "signal",
+					detail = "unmapped return",
+				});
+				return 0;
+			}
+			var arg_list = new Gee.ArrayList<string>();
+			for (var a = 0; a < si.get_n_args(); a++) {
+				var arg = si.get_arg(a);
+				if (arg.is_skip()) {
+					continue;
+				}
+				var at = this.type_vala(ns, arg.get_type());
+				if (at == "") {
+					this.gaps.add(new Gap() {
+						symbol = class_name + "." + si.get_name(),
+						reason = "signal",
+						detail = "unmapped arg " + arg.get_name(),
+					});
+					return 0;
+				}
+				arg_list.add(this.arg_decl(arg, at));
+			}
+			stream.puts(@"		[CCode (cname = \"$(si.get_name())\")]
+");
+			if ((si.get_flags() & GLib.SignalFlags.DETAILED) != 0) {
+				stream.puts("		[Signal (detailed = true)]\n");
+			}
+			if (ret == "void") {
+				stream.puts(@"		public $(virtual_slot ? "virtual signal" : "signal") void signal_$(this.vala_ident(si.get_name().replace("-", "_")))($(string.joinv(", ", arg_list.to_array())))");
+			} else {
+				stream.puts(@"		public $(virtual_slot ? "virtual signal" : "signal") $(ret) signal_$(this.vala_ident(si.get_name().replace("-", "_")))($(string.joinv(", ", arg_list.to_array())))");
+			}
+			if (virtual_slot) {
+				stream.puts(" {\n");
+				stream.puts(this.default_return_body(ret, "\t\t\t"));
+				stream.puts("		}\n");
+			} else {
+				stream.puts(";\n");
+			}
+			return 1;
 		}
 
 		/**
@@ -1599,7 +1592,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			string ns,
 			GI.ObjectInfo oi,
 			Gee.HashSet<string> vfunc_names,
-			Gee.HashSet<string> signal_names
+			Gee.HashSet<string> virtual_signal_fields
 		) {
 			var cs = oi.get_class_struct();
 			if (cs == null) {
@@ -1663,26 +1656,43 @@ namespace GnomeShellRpc.Rpc.Helper
 				var cb = (GI.CallbackInfo) iface;
 				var denied = fname in this.deny
 					|| (class_name + "." + fname) in this.deny;
+				GI.SignalInfo? sig = null;
+				for (var s = 0; s < oi.get_n_signals(); s++) {
+					if (this.vala_ident(oi.get_signal(s).get_name().replace("-", "_"))
+							== fname) {
+						sig = oi.get_signal(s);
+						break;
+					}
+				}
+				if (sig != null) {
+					var n = this.emit_gir_signal(
+						stream, ns, class_name, sig, true);
+					if (n > 0) {
+						virtual_signal_fields.add(fname);
+						emitted += n;
+						if (this.overrides.has_key(@"$(class_name).$(fname)")
+								&& this.overrides.get(@"$(class_name).$(fname)").has_key("relay")
+								&& this.overrides.get(@"$(class_name).$(fname)").get("relay") == "1") {
+							relayed.add(fname);
+						}
+						continue;
+					}
+				}
 				/*
-				 * Prefer GIR signal for connect-style slots (*_event, clicked,
-				 * …): rename to *_vfunc. Leave hide/show/realize/… as methods
-				 * so GJS can call them (Vala cannot use the same name for
-				 * both a method and a signal).
+				 * Denied layout slots (allocate / show / hide) stay
+				 * *_vfunc + vfunc_fallback. Not a signal class closure.
 				 */
-				var rename = denied
-					|| (fname in signal_names && fname in this.signal_prefer);
 				var fi = oi.find_method(fname);
-				if (fi != null && !rename) {
+				if (fi != null && !denied) {
 					emitted += this.emit_callable(
 						stream, ns, class_name, fi, "class", true);
 				} else {
 					emitted += this.emit_virtual_from_callback(
-						stream, ns, class_name, fname, cb, rename);
+						stream, ns, class_name, fname, cb, denied);
 				}
-				var uname = @"$(class_name).$(fname)";
-				if (this.overrides.has_key(uname)
-						&& this.overrides.get(uname).has_key("relay")
-						&& this.overrides.get(uname).get("relay") == "1") {
+				if (this.overrides.has_key(@"$(class_name).$(fname)")
+						&& this.overrides.get(@"$(class_name).$(fname)").has_key("relay")
+						&& this.overrides.get(@"$(class_name).$(fname)").get("relay") == "1") {
 					relayed.add(fname);
 				}
 			}

@@ -78,7 +78,7 @@
 			transition.animatable = this;
 			this.transitions.set(name, transition);
 			ulong stopped_id = 0;
-			stopped_id = transition.stopped.connect((t, finished) => {
+			stopped_id = transition.signal_stopped.connect((t, finished) => {
 				if (transition.remove_on_complete) {
 					this.transitions.unset(name);
 				}

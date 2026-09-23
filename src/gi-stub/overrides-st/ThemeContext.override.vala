@@ -10,8 +10,7 @@
 		public static ThemeContext get_for_stage(Clutter.Stage stage)
 		{
 			var response = GnomeShellRpc.call_value(
-				"St-ThemeContext.get_for_stage",
-				null,
+				"St-ThemeContext.get_for_stage", null,
 				OLLMrpc.args("o", stage));
 			return (ThemeContext) response.retval.get_object();
 		}
@@ -40,17 +39,10 @@
 			string application_uri;
 			string theme_uri;
 			string default_uri;
-			theme.construct_uris(
-				out application_uri, out theme_uri, out default_uri);
-			/* Pack letter as; Helper add_class uses sssS (Vala length). */
-			GnomeShellRpc.call_value(
-				"Helper-ThemeContext.set_theme",
-				this,
-				OLLMrpc.args(
-					"sssas",
-					application_uri,
-					theme_uri,
-					default_uri,
-					theme.stylesheet_uris()));
-			this.changed();
+			theme.construct_uris(out application_uri, out theme_uri, out default_uri);
+			GnomeShellRpc.call_value("Helper-ThemeContext.set_theme", this,
+				OLLMrpc.args("sssas",
+					application_uri, theme_uri,
+					default_uri, theme.stylesheet_uris()));
+			this.signal_changed();
 		}

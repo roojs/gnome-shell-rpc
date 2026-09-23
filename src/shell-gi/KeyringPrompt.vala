@@ -139,7 +139,7 @@ namespace Shell
 				this.priv_password_actor = value;
 				if (value != null) {
 					value.buffer = new SecureTextBuffer();
-					this.password_changed_id = value.text_changed.connect(() => {
+					this.password_changed_id = value.signal_text_changed.connect(() => {
 						this.score_password(value.text);
 					});
 				}

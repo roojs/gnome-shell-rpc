@@ -114,3 +114,72 @@ print(`ok checked=${totalChecked} clicked@${clicked} style_changed@${styleChange
 if (totalFailed) {
 	throw new Error(`class-struct-offset-gate: ${totalFailed} mismatch(es)`);
 }
+
+function girSignalNames(info) {
+	const n = GIRepository.object_info_get_n_signals(info);
+	const names = [];
+	for (let i = 0; i < n; i++) {
+		names.push(GIRepository.object_info_get_signal(info, i).get_name());
+	}
+	return names;
+}
+
+const buttonNames = girSignalNames(button);
+if (!buttonNames.includes('clicked')) {
+	throw new Error(`FAIL: St.Button GIR missing clicked (have ${buttonNames.join(',')})`);
+}
+if (buttonNames.includes('signal-clicked')) {
+	throw new Error('FAIL: St.Button GIR exposes signal-clicked');
+}
+if (GObject.signal_lookup('clicked', St.Button.$gtype) === 0) {
+	throw new Error('FAIL: GObject lookup clicked on St.Button is 0');
+}
+if (GObject.signal_lookup('signal-clicked', St.Button.$gtype) !== 0) {
+	throw new Error('FAIL: GObject lookup signal-clicked on St.Button is live');
+}
+
+const widgetNames = girSignalNames(widget);
+if (!widgetNames.includes('style-changed')) {
+	throw new Error(`FAIL: St.Widget GIR missing style-changed (have ${widgetNames.join(',')})`);
+}
+if (widgetNames.includes('signal-style-changed')) {
+	throw new Error('FAIL: St.Widget GIR exposes signal-style-changed');
+}
+
+const actor = repo.find_by_name('Clutter', 'Actor');
+let captured = null;
+for (let i = 0; i < GIRepository.object_info_get_n_signals(actor); i++) {
+	const si = GIRepository.object_info_get_signal(actor, i);
+	if (si.get_name() === 'captured-event') {
+		captured = si;
+		break;
+	}
+}
+if (captured === null) {
+	throw new Error('FAIL: Clutter.Actor GIR missing captured-event');
+}
+if ((GIRepository.signal_info_get_flags(captured) & GObject.SignalFlags.DETAILED) === 0) {
+	throw new Error('FAIL: captured-event is not G_SIGNAL_DETAILED');
+}
+const [parsed] = GObject.signal_parse_name(
+	'captured-event::touchpad', Clutter.Actor.$gtype, false);
+if (!parsed) {
+	throw new Error('FAIL: signal_parse_name captured-event::touchpad');
+}
+
+const text = repo.find_by_name('Clutter', 'Text');
+const textNames = girSignalNames(text);
+if (GIRepository.object_info_find_method(text, 'activate') === null) {
+	throw new Error('FAIL: Clutter.Text missing activate method');
+}
+if (!textNames.includes('activate')) {
+	throw new Error(`FAIL: Clutter.Text GIR missing activate signal (have ${textNames.join(',')})`);
+}
+if (textNames.includes('signal-activate')) {
+	throw new Error('FAIL: Clutter.Text GIR exposes signal-activate');
+}
+if (GObject.signal_lookup('activate', Clutter.Text.$gtype) === 0) {
+	throw new Error('FAIL: GObject lookup activate on Clutter.Text is 0');
+}
+print('ok gir-names clicked/style-changed detailed-captured-event text-activate');
+

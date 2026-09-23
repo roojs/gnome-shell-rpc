@@ -1,0 +1,14 @@
+---
+description: Require visible edit-tool operations for every file change
+alwaysApply: true
+---
+
+# No shell-based file edits
+
+Use `ApplyPatch` for every file creation or modification so the user can see and approve the edit.
+
+Do not use shell commands, scripts, formatters, redirection, pipes, `sed`, `perl`, Python, or any other terminal operation that writes, rewrites, renames, moves, or deletes files.
+
+Shell commands may only perform read-only inspection, builds, tests, and validation.
+
+Use the dedicated delete tool for deletions. If the available edit tools cannot perform a required change, stop and ask the user before using any alternative that mutates files.

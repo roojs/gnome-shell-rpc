@@ -100,7 +100,7 @@ env_args=(
 	XDG_RUNTIME_DIR="$RT"
 	WAYLAND_DISPLAY="$MUTTER_WL"
 )
-if [[ "${GI_META_SMOKE%.js}" == "app-launch-boundary-smoke" ]]; then
+if [[ "${GI_META_SMOKE-}" == "app-launch-boundary-smoke" || "${GI_META_SMOKE-}" == "app-launch-boundary-smoke.js" ]]; then
 	PROBE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc"
 	PROBE_LOG="$PROBE_DIR/app-launch-boundary.probe.log"
 	PROBE_STDERR="$PROBE_DIR/app-launch-boundary.stderr.log"
@@ -190,14 +190,15 @@ seen_smoke_ok() {
 	# This smoke terminates its own context. Its verbose shell logs can contain
 	# unrelated historical marker strings, so do not short-circuit on the
 	# aggregate marker regex.
-	[[ "${GI_META_SMOKE%.js}" != "app-search-launch-smoke" ]] || return 1
+	[[ "${GI_META_SMOKE-}" != "app-search-launch-smoke" && "${GI_META_SMOKE-}" != "app-search-launch-smoke.js" ]] || return 1
 	rg -q "$SMOKE_OK_PAT" "$CLIENT_LOG" 2>/dev/null \
 		|| rg -q "$SMOKE_OK_PAT" "$TEE_LOG" 2>/dev/null
 }
 
 seen_smoke_fail() {
 	[[ "$SMOKE_MODE" -eq 1 ]] || return 1
-	local stem="${GI_META_SMOKE%.js}"
+	local stem="${GI_META_SMOKE-}"
+	stem="${stem%.js}"
 	[[ -n "$stem" ]] || return 1
 	rg -q "${stem}: miss" "$CLIENT_LOG" 2>/dev/null \
 		&& return 0
@@ -211,7 +212,7 @@ seen_smoke_fail() {
 }
 
 while kill -0 "$MPID" 2>/dev/null; do
-	if [[ "${GI_META_SMOKE%.js}" == "app-launch-boundary-smoke" ]] \
+	if [[ "${GI_META_SMOKE-}" == "app-launch-boundary-smoke" || "${GI_META_SMOKE-}" == "app-launch-boundary-smoke.js" ]] \
 			&& [[ -n "${PROBE_WINDOW:-}" ]] \
 			&& rg -q 'app-launch-boundary-smoke: Shell.App.launch returned true' "$TEE_LOG" 2>/dev/null \
 			&& rg -q 'notification method=Window.created object_type=Window' "$TEE_LOG" 2>/dev/null; then

@@ -310,13 +310,13 @@ namespace Shell
 			if (actor.get_data<void*>(key) != null) {
 				return;
 			}
-			actor.pick.connect(stop_pick);
+			actor.signal_pick.connect(stop_pick);
 			actor.set_data(key, (void*) 0x1);
 		} else {
 			if (actor.get_data<void*>(key) == null) {
 				return;
 			}
-			actor.pick.disconnect(stop_pick);
+			actor.signal_pick.disconnect(stop_pick);
 			actor.set_data(key, null);
 		}
 	}

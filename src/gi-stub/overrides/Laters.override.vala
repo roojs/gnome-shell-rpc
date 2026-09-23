@@ -65,7 +65,7 @@
 			}
 			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
 				stage, "before-update");
-			stage.before_update.connect((view, frame) => {
+			stage.signal_before_update.connect((view, frame) => {
 				this.run_before_redraw();
 			});
 			this.stage_hooked = true;
