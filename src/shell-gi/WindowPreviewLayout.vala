@@ -32,10 +32,10 @@ namespace Shell
 				this.window = window;
 				this.window_actor = (Clutter.Actor) window.get_compositor_private();
 				this.actor_copy = new Clutter.Clone(this.window_actor);
-				this.size_changed_id = window.signal_size_changed.connect(() => {
+				this.size_changed_id = window.size_changed.connect(() => {
 					layout.windows_changed();
 				});
-				this.position_changed_id = window.signal_position_changed.connect(() => {
+				this.position_changed_id = window.position_changed.connect(() => {
 					layout.windows_changed();
 				});
 				this.window_actor_destroy_id = this.window_actor.signal_destroy.connect(() => {

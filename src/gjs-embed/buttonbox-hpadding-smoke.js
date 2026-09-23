@@ -39,7 +39,20 @@ class ButtonBoxish extends St.Widget {
 			...params,
 		});
 		this._minHPadding = this._natHPadding = 0.0;
+		this._vfuncStyleEntered = 0;
+		this._vfuncStyleCompleted = 0;
+		this._vfuncStyleError = '';
 		this.connect('style-changed', this._onStyleChanged.bind(this));
+	}
+
+	vfunc_style_changed() {
+		this._vfuncStyleEntered++;
+		try {
+			super.vfunc_style_changed();
+			this._vfuncStyleCompleted++;
+		} catch (e) {
+			this._vfuncStyleError = String(e);
+		}
 	}
 
 	_onStyleChanged(actor) {
@@ -90,6 +103,11 @@ function main() {
 	if (btn._minHPadding < WANT_MIN) {
 		smokeLog(`FAIL min-hpadding-cache want>=${WANT_MIN} ` +
 			`got=${btn._minHPadding}`);
+		failed = true;
+	}
+	if (btn._vfuncStyleEntered < 1 || btn._vfuncStyleCompleted < 1) {
+		smokeLog(`FAIL vfunc_style_changed entered=${btn._vfuncStyleEntered} ` +
+			`completed=${btn._vfuncStyleCompleted} error=${btn._vfuncStyleError}`);
 		failed = true;
 	}
 

@@ -234,12 +234,16 @@ fail before a client `"clicked"` emission occurs. A focused gate must separate:
 3. policy/timing that creates the server subscription
 ```
 
-`style-changed` has a different temporary path. `Clutter.Actor` subscribes
-after lease mint when the runtime type exposes that signal. The Actor vfunc
-relay no longer emits `style-changed` directly: doing so inside a synchronous
-`show()` RPC re-entered GJS and crashed. The post-mint subscription remains
-until notification delivery to `vfunc_style_changed()` and shell icon creation
-are proved.
+`style-changed` has a different temporary path. The old post-mint
+`Clutter.Actor` subscription is gone: notification delivery inside a
+synchronous `show()` RPC re-entered GJS and crashed. The generated `style` and
+`style_class` setters currently emit `signal_style_changed()` after their RPC
+reply returns. This is marked `local_emit_after` in `St.overrides`.
+
+`clicked` is temporarily subscribed after `Helper-Actor.create` when the client
+type exposes the signal. The generated virtual signal now owns the stock class
+closure; the remaining work is to prove a real click notification reaches
+`AppIcon.vfunc_clicked()`.
 
 See [Prefix generated Vala signals](bugs/2026-09-23-prefix-generated-vala-signals.md),
 [Search result click does not launch](bugs/2026-09-22-search-result-click-no-launch.md),
@@ -308,7 +312,7 @@ Current manual call sites are:
 | `Clutter.Actor.get_transition()` | `stopped` |
 | `St.Adjustment.add_transition()` | `stopped` |
 | `Meta.Laters` stage setup | `before-update` |
-| Post-mint `Clutter.Actor` construction | `style-changed` when present; tracked as a suspicious workaround |
+| Post-mint Helper-Actor construction | `clicked` when present; temporary until generated virtual-signal subscription policy |
 
 There is no generated or automatic subscription when the first GJS handler is connected.
 

@@ -1477,9 +1477,17 @@ namespace GnomeShellRpc.Rpc.Helper
 			var class_name = oi.get_name();
 			var emitted = 0;
 			for (var s = 0; s < oi.get_n_signals(); s++) {
-				if (this.vala_ident(oi.get_signal(s).get_name().replace("-", "_"))
-						in virtual_signal_fields) {
-					continue;
+				var field_name = this.vala_ident(
+					oi.get_signal(s).get_name().replace("-", "_"));
+				if (field_name in virtual_signal_fields) {
+					var symbol = @"$(class_name).$(field_name)";
+					if (!this.overrides.has_key(symbol)
+							|| !this.overrides.get(symbol).has_key(
+								"split_signal_vfunc")
+							|| this.overrides.get(symbol).get(
+								"split_signal_vfunc") != "1") {
+						continue;
+					}
 				}
 				emitted += this.emit_gir_signal(
 					stream, ns, class_name, oi.get_signal(s), false);
@@ -1635,6 +1643,20 @@ namespace GnomeShellRpc.Rpc.Helper
 					}
 				}
 				if (sig != null) {
+					var symbol = @"$(class_name).$(fname)";
+					if (this.overrides.has_key(symbol)
+							&& this.overrides.get(symbol).has_key(
+								"split_signal_vfunc")
+							&& this.overrides.get(symbol).get(
+								"split_signal_vfunc") == "1") {
+						var n = this.emit_virtual_from_callback(
+							stream, ns, class_name, fname, cb, true);
+						if (n > 0) {
+							virtual_signal_fields.add(fname);
+							emitted += n;
+							continue;
+						}
+					}
 					var n = this.emit_gir_signal(
 						stream, ns, class_name, sig, true);
 					if (n > 0) {
@@ -1782,7 +1804,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				 */
 				var c_sym = @"gsr_$(class_name.down())_$(fname)_vfunc";
 				stream.puts(@"
-		[CCode (cname = \"$(c_sym)\")]
+		[CCode (cname = \"$(c_sym)\", vfunc_name = \"$(fname)\")]
 		public virtual $(ret) $(vala_name)_vfunc($(string.joinv(", ", args))) {
 ");
 			} else {

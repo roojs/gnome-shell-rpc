@@ -46,6 +46,15 @@
 	 * {@code Clutter-Actor} (wrong peer / double mint).
 	 */
 	construct {
+		/*
+		 * TEMPORARY split-signal bridge. Keep the stock GObject signal
+		 * connectable beside queue_relayout(), while preserving the stock
+		 * class slot for GJS vfunc_queue_relayout.
+		 */
+		this.signal_queue_relayout.connect(() => {
+			this.queue_relayout_vfunc();
+		});
+
 		if (this.rpc_lid != 0) {
 			return;
 		}
@@ -78,6 +87,17 @@
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
+			/*
+			 * TEMPORARY split-signal bridge: non-helper St.Bin subclasses
+			 * such as BaseIcon need the server's initial style-changed after
+			 * lease mint. The signal has no class closure; Widget.override
+			 * forwards it to the stock-offset style_changed_vfunc.
+			 */
+			if (this.get_type() != t
+					&& GLib.Signal.lookup("style-changed", this.get_type()) != 0) {
+				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+					this, "style-changed");
+			}
 			return;
 		}
 		GLib.error("lease construct: no Bin-registered ancestor for %s",
@@ -110,6 +130,17 @@
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
+		/*
+		 * TEMPORARY subscription policy: generated signal_clicked now owns
+		 * the stock StButtonClass.clicked closure, but GJS connect/vfunc
+		 * installation does not request the remote signal. Subscribe after
+		 * Helper-Actor.create has returned and the lease is registered.
+		 * Remove when generated virtual signals acquire subscription policy.
+		 */
+		if (GLib.Signal.lookup("clicked", this.get_type()) != 0) {
+			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+				this, "clicked");
+		}
 		foreach (var name in overridden) {
 			var vfunc_id = -1;
 			var hook_id = this.bind_vfunc(name, out vfunc_id);

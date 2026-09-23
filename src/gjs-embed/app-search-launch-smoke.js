@@ -192,15 +192,21 @@ async function runLaunchProve(main) {
 
 	/** @type {object[]} */
 	const stoppedIcons = [];
+	let textures = 0;
 	const grid = appDisplay._grid;
 	if (grid != null) {
 		const n = grid.get_n_children();
 		for (let i = 0; i < n; i++) {
 			const child = grid.get_child_at_index(i);
+			if (child?.icon?.icon != null)
+				textures++;
 			if (child?.app?.state === Shell.AppState.STOPPED)
 				stoppedIcons.push(child);
 		}
 	}
+	smokeLog('icon-textures=' + textures + '/' + nGrid);
+	if (textures !== nGrid)
+		throw new Error(`miss icon-textures got=${textures} want=${nGrid}`);
 	smokeLog('stopped-icons=' + stoppedIcons.length);
 	if (stoppedIcons.length < 1)
 		throw new Error('miss search-fill-stopped (need at least one STOPPED hit)');

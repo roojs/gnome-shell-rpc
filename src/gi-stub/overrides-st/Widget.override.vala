@@ -1,6 +1,15 @@
 		/*
-		 * TEMPORARY: St.overrides emits signal_style_changed() after each
-		 * style-mutating RPC returns. Do not subscribe here or emit from a
-		 * Live.Invoke: either path re-enters libgjs from call_poll() and
-		 * SIGSEGVs. Remove this note with those local_emit_after overrides.
+		 * TEMPORARY: Vala's virtual signal does not install GJS
+		 * vfunc_style_changed. The generator therefore keeps the signal and
+		 * stock-offset virtual method separate for this proven exception.
 		 */
+		construct {
+			this.signal_style_changed.connect(() => {
+				this.style_changed_vfunc();
+			});
+		}
+
+		void emit_style_changed_after_rpc()
+		{
+			this.signal_style_changed();
+		}

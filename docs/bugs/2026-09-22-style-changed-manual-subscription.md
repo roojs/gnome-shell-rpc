@@ -1,6 +1,6 @@
 # `style-changed` is manually repaired in `Clutter.Actor`
 
-**Status:** ⚠️ **open / suspicious workaround**
+**Status:** ⚠️ **old workaround removed / temporary setter bridge**
 
 **Scope:** `src/gi-stub/overrides-clutter/Actor.override.vala`, currently the
 post-mint `style-changed` subscription.
@@ -42,6 +42,22 @@ suspicion: `signal_prefer`” in
 [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md).
 This bug tracks removal of the existing `style-changed` workaround after that
 general mechanism is corrected.
+
+## Temporary replacement (2026-09-23)
+
+The post-mint `Clutter.Actor` lookup/subscription block has been removed.
+Forwarding the server signal, or firing it from a synchronous vfunc hook,
+enters the generated `StWidgetClass.style_changed` closure while
+`call_poll()` is still inside GJS and crashes in libgjs.
+
+For current startup, generated `St.Widget.style` and `style_class` setters
+temporarily call `signal_style_changed()` only after their RPC reply returns.
+This passes `buttonbox-hpadding-smoke` (`nat=12 min=6`) and the integrated
+nested startup reaches `READY=1` without the style-signal SIGSEGV.
+
+The bridge is marked `local_emit_after` in `St.overrides`. It is not the final
+replacement: remove it when notifications can dispatch outside the active
+GJS→RPC frame.
 
 ## Guardrail
 

@@ -265,8 +265,6 @@ PickContext.unref
 
 # Hand body in Actor.override — coalesce until allocate (dash scale flood).
 Actor.queue_relayout
-signal:Actor.queue-relayout
-signal:Actor.queue_relayout
 
 # Vala auto-emits free/dup when struct has methods.
 # copy denied from generator; hand-aliased in ActorBox.override (GIR _copy vs Vala _dup).

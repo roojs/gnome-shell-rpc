@@ -39,7 +39,7 @@ namespace Shell
 			foreach (var window in windows) {
 				this.track_window(window);
 			}
-			display.signal_window_created.connect(this.on_window_created);
+			display.window_created.connect(this.on_window_created);
 			display.notify["focus-window"].connect(() => {
 				this.update_focus_app();
 			});
@@ -69,7 +69,7 @@ namespace Shell
 			this.window_to_app.insert(window, app);
 			app.add_window(window);
 			AppSystem.get_default().notify_app_state(app);
-			window.signal_unmanaged.connect(() => {
+			window.unmanaged.connect(() => {
 				this.disassociate_window(window);
 			});
 			this.tracked_windows_changed();

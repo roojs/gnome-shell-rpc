@@ -25,11 +25,49 @@
 > File/update the tracking bug, pick the next allowed step, rebuild, prove,
 > repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
 
-**Status:** ⚠️ **open / Phase 1 ✔️ · Phase 2 in progress**
+**Status:** ⚠️ **open / style and layout regression fixed · clicked proof remains**
 
 **Scope:** generated client GI stubs in `src/gi-stub-gen/Generator.vala`
 
 Unblocks [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md) and [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md).
+
+## Working result — 2026-09-23 17:30
+
+Vala's renamed `public virtual signal` installs the correct C class-field
+offset, but GJS does not install `vfunc_style_changed` for it. The temporary
+working representation therefore splits the concepts:
+
+- `Widget.style_changed_vfunc()` retains the stock `style_changed` class slot;
+- non-virtual `signal_style_changed` retains the stock GObject signal name;
+- `Widget.override.vala` connects that signal to the virtual method;
+- post-mint `style-changed` subscription restores server delivery;
+- `Widget.set_style` emits locally after its RPC has returned.
+
+The prefix migration also exposed a stale deny for
+`Clutter.Actor::queue-relayout`. Removing that deny and applying the same
+temporary split-signal bridge restored the real GObject signal alongside the
+hand-written `queue_relayout()` method and preserved the stock class slot.
+Without it, app grid creation stopped at:
+
+```text
+No signal 'queue-relayout' on object 'Gjs_ui_appDisplay_AppIcon'
+```
+
+With both repairs, the integrated app-grid gate now reaches:
+
+```text
+app-search-launch-smoke: nGrid=6 first=true
+app-search-launch-smoke: icon-textures=6/6
+app-search-launch-smoke: stopped-icons=6
+app-search-launch-smoke: L1 launch() returned true
+```
+
+`buttonbox-hpadding-smoke` still passes with `min=6`, `nat=12`, including its
+GJS `vfunc_style_changed` assertion. `class-struct-offset-gate` passes.
+
+Generated-library VAPIs export the stock signal identifier when there is no
+method collision, so cross-library `shell-gi` consumers use those exported
+spellings. In-library generated Vala still uses `signal_*`.
 
 ## Phases
 
@@ -237,10 +275,40 @@ GType at frame 9: `Gjs_ui_workspacesView_WorkspacesDisplay`. That class extends 
 
 Hook emit and notification emit are the same `g_signal_emit` of the virtual signal. At `6ac7b3a` the generated member was `public signal void style_changed()` — class closure offset 0 — and the class field was a separate `style_changed_vfunc`. `emit_by_name` ran connect handlers and did not enter that field. Phase 1 points `g_signal_new` at `StWidgetClass.style_changed`, so both emits enter the GJS class closure during `show()`. Helper subscribe removed again after this stack. Do not add it back as a fix.
 
+**✔️ TEMPORARY 2026-09-23 16:50** — style setters emit after RPC return.
+
+`St.overrides` marks only `Widget.set_style` and
+`Widget.set_style_class_name` with `local_emit_after=signal_style_changed`.
+The generator emits that call after `call_value()` has returned, outside the
+active `call_poll()` frame. The post-mint Actor `style-changed` subscription is
+gone.
+
+```text
+buttonbox-hpadding-smoke: theme min=6 nat=12 _minHPadding=6 _natHPadding=12
+buttonbox-hpadding-smoke: ok nat=12 min=6
+```
+
+The full nested startup reached `READY=1` and completed its timed prove without
+SIGSEGV. Applying the same temporary emit to pseudo-class and add/remove-class
+mutators caused an overview callback storm, so those broader entries were
+removed. This is explicitly a temporary bridge, not the final notification
+dispatch architecture.
+
+**✔️ TEMPORARY 2026-09-23 16:56** — `clicked` transport is subscribed after
+`Helper-Actor.create` for client types that expose the generated stock
+`clicked` signal. This no longer needs the rejected hand-written Button class
+handler: `signal_clicked` owns `StButtonClass.clicked`.
+
+`app-search-launch-smoke` completed `L2`, `L3`, and `ok`, with two mapped normal
+windows. That smoke still recorded no `notification method=clicked`, so it does
+not by itself close the real physical-click bar; the temporary subscription
+remains until that delivery is observed.
+
 **Gates:** RPC `"clicked"` → `AppIcon.vfunc_clicked()` · `style-changed` → GJS `vfunc_style_changed()` · post-mint subscribe gone · `class-struct-offset-gate` · nested stay-up + BaseIcon textures.
 
 - **✔️** `class-struct-offset-gate` — `ok checked=39 clicked@488 style_changed@448` (after the clash-machinery delete).
-- **⏳** clicked / style-changed vfunc delivery, post-mint subscribe, nested stay-up.
+- **✔️ temporary** style-changed connect/vfunc delivery after style setters; old post-mint style subscription gone; nested startup stays up.
+- **⏳** real clicked notification → `AppIcon.vfunc_clicked()` observation.
 
 ### Phase 3 — Override content review
 
