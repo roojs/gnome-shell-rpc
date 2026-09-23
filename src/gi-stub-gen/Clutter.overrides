@@ -27,10 +27,6 @@ Actor.get_preferred_height vfunc_fallback=hand
 Actor.show vfunc_fallback=hand
 Actor.hide vfunc_fallback=hand
 
-# TEMPORARY: Vala virtual signals do not expose the corresponding GJS vfunc
-# or a signal that can coexist reliably with the stock callable method.
-Actor.queue_relayout split_signal_vfunc=1
-
 # Live.Hook registration — generator emits bind_vfunc calls; override defines relay_*.
 # helper=1: emit Helper ID statics + register_vfunc_ids() into --helper-out.
 Actor helper=1
@@ -38,7 +34,10 @@ Actor.get_preferred_width  relay=1
 Actor.get_preferred_height relay=1
 Actor.allocate             relay=1
 Actor.event                relay=1
+Actor.event                split_signal_vfunc=1
 Actor.captured_event       relay=1
+Actor.captured_event       split_signal_vfunc=1
+Actor.queue_relayout       split_signal_vfunc=1
 LayoutManager helper=1
 LayoutManager.get_preferred_width  relay=1
 LayoutManager.get_preferred_height relay=1

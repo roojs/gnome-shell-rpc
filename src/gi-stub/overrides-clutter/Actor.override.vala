@@ -46,13 +46,18 @@
 	 * {@code Clutter-Actor} (wrong peer / double mint).
 	 */
 	construct {
-		/*
-		 * TEMPORARY split-signal bridge. Keep the stock GObject signal
-		 * connectable beside queue_relayout(), while preserving the stock
-		 * class slot for GJS vfunc_queue_relayout.
-		 */
 		this.signal_queue_relayout.connect(() => {
-			this.queue_relayout_vfunc();
+			var baseline = GLib.Type.from_name("StWidget");
+			if (baseline != GLib.Type.INVALID
+					&& OLLMrpc.Gi.vfunc_slot(
+						this.get_type(), "Clutter", "Actor", "queue_relayout")
+					!= OLLMrpc.Gi.vfunc_slot(
+						baseline, "Clutter", "Actor", "queue_relayout")) {
+				GnomeShellRpc.GiStub.vfunc_call_void(
+					this,
+					OLLMrpc.Gi.vfunc_offset(
+						"Clutter", "Actor", "queue_relayout"));
+			}
 		});
 
 		if (this.rpc_lid != 0) {
@@ -158,7 +163,10 @@
 			float min = 0.0f, nat = 0.0f;
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			try {
-				this.get_preferred_width_vfunc(
+				GnomeShellRpc.GiStub.vfunc_call_preferred_size(
+					this,
+					OLLMrpc.Gi.vfunc_offset(
+						"Clutter", "Actor", "get_preferred_width"),
 					(float) call.args.get(1).get_double(),
 					out min, out nat);
 			} finally {
@@ -183,7 +191,10 @@
 			float min = 0.0f, nat = 0.0f;
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			try {
-				this.get_preferred_height_vfunc(
+				GnomeShellRpc.GiStub.vfunc_call_preferred_size(
+					this,
+					OLLMrpc.Gi.vfunc_offset(
+						"Clutter", "Actor", "get_preferred_height"),
 					(float) call.args.get(1).get_double(),
 					out min, out nat);
 			} finally {
@@ -213,7 +224,10 @@
 			box.y2 = (float) call.args.get(4).get_double();
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			try {
-				this.allocate_vfunc(box);
+				GnomeShellRpc.GiStub.vfunc_call_void_pointer(
+					this,
+					OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "allocate"),
+					(void*) &box);
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();
 			}
@@ -241,9 +255,19 @@
 			}
 			var ev = Event.from_local(type, x, y, button, 0, keyval);
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			var baseline = GLib.Type.from_name("StWidget");
+			var has_override = baseline != GLib.Type.INVALID
+				&& OLLMrpc.Gi.vfunc_slot(this.get_type(), "Clutter", "Actor", "event")
+				!= OLLMrpc.Gi.vfunc_slot(baseline, "Clutter", "Actor", "event");
 			bool stop = false;
 			try {
-				stop = this.signal_event(ev);
+				if (has_override) {
+					stop = GnomeShellRpc.GiStub.vfunc_call_bool_pointer(
+						this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "event"),
+						(void*) ev);
+				} else {
+					GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+				}
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();
 			}
@@ -281,10 +305,21 @@
 				keyval = call.args.get(5).get_uint();
 			}
 			var ev = Event.from_local(type, x, y, button, 0, keyval);
+			bool stop = this.signal_captured_event(ev);
+			var baseline = GLib.Type.from_name("StWidget");
+			var has_override = baseline != GLib.Type.INVALID
+				&& OLLMrpc.Gi.vfunc_slot(this.get_type(), "Clutter", "Actor", "captured_event")
+				!= OLLMrpc.Gi.vfunc_slot(baseline, "Clutter", "Actor", "captured_event");
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
-			bool stop = false;
 			try {
-				stop = this.signal_captured_event(ev);
+				if (has_override
+						&& GnomeShellRpc.GiStub.vfunc_call_bool_pointer(
+							this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "captured_event"),
+							(void*) ev)) {
+					stop = true;
+				} else if (!has_override) {
+					GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+				}
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();
 			}

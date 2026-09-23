@@ -144,6 +144,12 @@
 			return (ModifierType) this.state;
 		}
 
+		[CCode (cname = "clutter_event_get_flags")]
+		public uint get_flags() {
+			/* Locally reconstructed relay events currently carry no flags. */
+			return 0;
+		}
+
 		[CCode (cname = "clutter_event_get_key_symbol")]
 		public uint get_key_symbol() {
 			return this.keyval;

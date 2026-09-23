@@ -5,6 +5,35 @@
  */
 namespace GnomeShellRpc.GiStub
 {
+	[CCode (cname = "gsr_vfunc_call_bool_pointer")]
+	public extern bool vfunc_call_bool_pointer(
+		GLib.Object instance,
+		int offset,
+		void* argument
+	);
+
+	[CCode (cname = "gsr_vfunc_call_void_pointer")]
+	public extern void vfunc_call_void_pointer(
+		GLib.Object instance,
+		int offset,
+		void* argument
+	);
+
+	[CCode (cname = "gsr_vfunc_call_preferred_size")]
+	public extern void vfunc_call_preferred_size(
+		GLib.Object instance,
+		int offset,
+		float for_size,
+		out float minimum,
+		out float natural
+	);
+
+	[CCode (cname = "gsr_vfunc_call_void")]
+	public extern void vfunc_call_void(
+		GLib.Object instance,
+		int offset
+	);
+
 	public class VfuncRelay
 	{
 		/** Object whose live hook is running; null when idle. */

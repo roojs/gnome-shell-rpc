@@ -25,11 +25,49 @@
 > File/update the tracking bug, pick the next allowed step, rebuild, prove,
 > repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
 
-**Status:** ⚠️ **open / style and layout regression fixed · clicked proof remains**
+**Status:** ⚠️ **open / event, clicked, style and relayed layout proofs pass**
 
 **Scope:** generated client GI stubs in `src/gi-stub-gen/Generator.vala`
 
 Unblocks [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md) and [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md).
+
+## Agent handoff — 2026-09-23 18:10
+
+Current tree builds successfully with `ninja -C build -j1`.
+
+The important new repair is the temporary stock-offset vfunc bridge:
+
+- `src/gi-stub/c-vfunc-relay.c` reads a function pointer from
+  `G_OBJECT_GET_CLASS(instance) + typelib_offset`;
+- `src/gi-stub/VfuncRelay.vala` exposes typed Vala calls into that bridge;
+- `Actor.override.vala` uses it for relayed preferred width/height, allocate,
+  event, captured-event and queue-relayout;
+- the bridge is explicitly marked temporary;
+- duplicate key-event emission in `relay_event` was removed;
+- `Clutter.Event.get_flags()` now exports the real stock
+  `clutter_event_get_flags` symbol and returns `NONE` for reconstructed events.
+
+Do not revert this to direct `this.event_vfunc()` / `allocate_vfunc()` calls.
+Those compile, but valac's generated `ClutterActorClass` field order differs
+from the stock typelib offsets used by GJS. `panel-click-smoke` previously
+failed without entering `vfunc_event`; it now logs `vfunc_event`, `clicked`,
+and `ok`.
+
+The nested wrapper currently ends with `ec=137` after successful smoke output,
+apparently during teardown; use
+`~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log` as the smoke result.
+This is separate from the earlier runtime failures.
+
+Next:
+
+1. Run the full nested shell and visually reassess right-side panel icon
+   placement, stacking, notification dismissal and cursor trails.
+2. Trace any remaining bad Actor relay through the same stock-offset rule;
+   do not add Idle/Timeout queues or `layout.js` clamps.
+3. Strengthen the class-slot gate. Its total-size assertion cannot detect
+   valac's per-field reordering.
+4. Replace the temporary bridge only when generated class ABI can preserve
+   every stock field offset.
 
 ## Working result — 2026-09-23 17:30
 
@@ -68,6 +106,46 @@ GJS `vfunc_style_changed` assertion. `class-struct-offset-gate` passes.
 Generated-library VAPIs export the stock signal identifier when there is no
 method collision, so cross-library `shell-gi` consumers use those exported
 spellings. In-library generated Vala still uses `signal_*`.
+
+## Stock class-slot dispatch regression — 2026-09-23 18:04
+
+The remaining event/layout regression was not an RPC or signal-delivery
+failure. `ClutterActorClass` physically interleaves virtual methods and signal
+class closures, while valac regroups them in its generated C class struct.
+Consequently GJS installed `vfunc_event` at the stock typelib offset, but
+Vala's `this.event_vfunc()` read a different generated field. The old
+`class-struct-offset-gate` only compared total class size, so it could pass
+while individual fields were wrong.
+
+A clearly marked temporary C bridge now calls the function pointer at the
+typelib byte offset. Actor event, captured-event, preferred-size, allocate and
+queue-relayout relay paths use it. The generator also sorts repository class
+and interface fields by `FieldInfo.offset`, although that alone cannot prevent
+valac's later regrouping.
+
+Proofs after the bridge:
+
+```text
+panel-click-smoke: vfunc_event type=6
+panel-click-smoke: clicked
+panel-click-smoke: ok
+
+buttonbox-hpadding-smoke: theme min=6 nat=12 _minHPadding=6 _natHPadding=12
+buttonbox-hpadding-smoke: ok nat=12 min=6
+
+date-menu-open-smoke: open dateMenu
+date-menu-open-smoke: ok
+```
+
+The date-menu run also exposed a real stock API omission:
+`clutter_event_get_flags`. The local reconstructed event now exports that
+method and returns `0` (`CLUTTER_EVENT_NONE`) until relay event flags are
+carried on the wire.
+
+`quicksettings-layout-neg-smoke` still reproduces `min=-12 nat=-12` for an
+empty QuickSettings grid. That is the pinned stock
+`(rows.length - 1) * row_spacing` case; no forbidden `layout.js` clamp was
+added.
 
 ## Phases
 

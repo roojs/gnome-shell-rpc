@@ -17,9 +17,7 @@ Namespace emit_class_slots=1
 
 Widget.get_focus_chain list_elem=Widget
 
-# TEMPORARY — Vala virtual signals register the stock class offset but GJS
-# does not install vfunc_style_changed on them. Keep one prefixed signal plus
-# one stock-offset virtual method and bridge them in Widget.override.
+# TEMPORARY split: preserve GJS vfunc_style_changed and the stock signal.
 Widget.style_changed split_signal_vfunc=1
 
 # TEMPORARY — explicit inline CSS is commonly changed after construction.

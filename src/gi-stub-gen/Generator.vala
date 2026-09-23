@@ -1315,10 +1315,8 @@ namespace GnomeShellRpc.Rpc.Helper
 					);
 					var setter_symbol = @"$(class_name).$(setter.get_name())";
 					if (this.overrides.has_key(setter_symbol)
-							&& this.overrides.get(setter_symbol).has_key(
-								"local_emit_after")) {
-						var signal_member = this.overrides.get(setter_symbol).get(
-							"local_emit_after");
+							&& this.overrides.get(setter_symbol).has_key("local_emit_after")) {
+						var signal_member = this.overrides.get(setter_symbol).get("local_emit_after");
 						stream.puts(
 							@"				this.$(signal_member)();
 ");
@@ -1477,15 +1475,12 @@ namespace GnomeShellRpc.Rpc.Helper
 			var class_name = oi.get_name();
 			var emitted = 0;
 			for (var s = 0; s < oi.get_n_signals(); s++) {
-				var field_name = this.vala_ident(
-					oi.get_signal(s).get_name().replace("-", "_"));
+				var field_name = this.vala_ident(oi.get_signal(s).get_name().replace("-", "_"));
 				if (field_name in virtual_signal_fields) {
 					var symbol = @"$(class_name).$(field_name)";
 					if (!this.overrides.has_key(symbol)
-							|| !this.overrides.get(symbol).has_key(
-								"split_signal_vfunc")
-							|| this.overrides.get(symbol).get(
-								"split_signal_vfunc") != "1") {
+							|| !this.overrides.get(symbol).has_key("split_signal_vfunc")
+							|| this.overrides.get(symbol).get("split_signal_vfunc") != "1") {
 						continue;
 					}
 				}
@@ -1579,8 +1574,14 @@ namespace GnomeShellRpc.Rpc.Helper
 			var class_name = oi.get_name();
 			var emitted = 0;
 			var relayed = new Gee.ArrayList<string>();
+			var fields = new Gee.ArrayList<GI.FieldInfo>();
 			for (var f = 0; f < cs.get_n_fields(); f++) {
-				var field = cs.get_field(f);
+				fields.add(cs.get_field(f));
+			}
+			fields.sort((a, b) => {
+				return a.get_offset() - b.get_offset();
+			});
+			foreach (var field in fields) {
 				var fname = field.get_name();
 				var ti = field.get_type();
 				/* Only the embedded parent class struct — not parent_set etc. */
@@ -1645,15 +1646,17 @@ namespace GnomeShellRpc.Rpc.Helper
 				if (sig != null) {
 					var symbol = @"$(class_name).$(fname)";
 					if (this.overrides.has_key(symbol)
-							&& this.overrides.get(symbol).has_key(
-								"split_signal_vfunc")
-							&& this.overrides.get(symbol).get(
-								"split_signal_vfunc") == "1") {
+							&& this.overrides.get(symbol).has_key("split_signal_vfunc")
+							&& this.overrides.get(symbol).get("split_signal_vfunc") == "1") {
 						var n = this.emit_virtual_from_callback(
 							stream, ns, class_name, fname, cb, true);
 						if (n > 0) {
 							virtual_signal_fields.add(fname);
 							emitted += n;
+							if (this.overrides.get(symbol).has_key("relay")
+									&& this.overrides.get(symbol).get("relay") == "1") {
+								relayed.add(fname);
+							}
 							continue;
 						}
 					}
@@ -1662,9 +1665,9 @@ namespace GnomeShellRpc.Rpc.Helper
 					if (n > 0) {
 						virtual_signal_fields.add(fname);
 						emitted += n;
-						if (this.overrides.has_key(@"$(class_name).$(fname)")
-								&& this.overrides.get(@"$(class_name).$(fname)").has_key("relay")
-								&& this.overrides.get(@"$(class_name).$(fname)").get("relay") == "1") {
+						if (this.overrides.has_key(symbol)
+								&& this.overrides.get(symbol).has_key("relay")
+								&& this.overrides.get(symbol).get("relay") == "1") {
 							relayed.add(fname);
 						}
 						continue;
@@ -1739,8 +1742,14 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			var iface_name = ii.get_name();
 			var emitted = 0;
+			var fields = new Gee.ArrayList<GI.FieldInfo>();
 			for (var f = 0; f < istruct.get_n_fields(); f++) {
-				var field = istruct.get_field(f);
+				fields.add(istruct.get_field(f));
+			}
+			fields.sort((a, b) => {
+				return a.get_offset() - b.get_offset();
+			});
+			foreach (var field in fields) {
 				var fname = field.get_name();
 				if (fname == "g_iface" || fname == "parent_iface"
 					|| fname == "parent") {
@@ -2298,10 +2307,8 @@ $(tab){
 				);
 				if (ret == "void" && instance == "this"
 						&& this.overrides.has_key(this.emit_symbol)
-						&& this.overrides.get(this.emit_symbol).has_key(
-							"local_emit_after")) {
-					var signal_member = this.overrides.get(this.emit_symbol).get(
-						"local_emit_after");
+						&& this.overrides.get(this.emit_symbol).has_key("local_emit_after")) {
+					var signal_member = this.overrides.get(this.emit_symbol).get("local_emit_after");
 					stream.puts(@"$(indent)this.$(signal_member)();
 ");
 				}
