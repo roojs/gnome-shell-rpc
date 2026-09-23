@@ -263,9 +263,6 @@ PaintContext.unref
 PickContext.ref
 PickContext.unref
 
-# Signal vs method name clash — destroy_rpc in Actor.override.
-Actor.destroy
-
 # Hand body in Actor.override — coalesce until allocate (dash scale flood).
 Actor.queue_relayout
 signal:Actor.queue-relayout

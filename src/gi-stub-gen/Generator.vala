@@ -43,12 +43,6 @@ namespace GnomeShellRpc.GiStubGen
 		public Gee.HashMap<string, Gee.HashMap<string, string>> overrides =
 			new Gee.HashMap<string, Gee.HashMap<string, string>>();
 
-		/**
-		 * Slot names that keep the GIR signal ({@code Namespace signal_prefer=…}
-		 * lines in overrides). Exact match only.
-		 */
-		public Gee.HashSet<string> signal_prefer = new Gee.HashSet<string>();
-
 		/** Current {@code Type.method} while emitting (for {@link overrides}). */
 		private string emit_symbol = "";
 
@@ -291,13 +285,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			this.emit_lease_construct(stream, ns, class_name, oi);
 			var vfunc_names = new Gee.HashSet<string>();
-			var method_names = new Gee.HashSet<string>();
 			var prop_accessors = new Gee.HashSet<string>();
-			var signal_names = new Gee.HashSet<string>();
-			for (var s = 0; s < oi.get_n_signals(); s++) {
-				signal_names.add(this.vala_ident(
-						oi.get_signal(s).get_name().replace("-", "_")));
-			}
 			var virtual_signal_fields = new Gee.HashSet<string>();
 			var methods = 0;
 			if (this.overrides.has_key("Namespace")
@@ -306,21 +294,8 @@ namespace GnomeShellRpc.Rpc.Helper
 				methods += this.emit_object_class_slots(
 					stream, ns, oi, vfunc_names, virtual_signal_fields);
 			}
-			foreach (var vn in vfunc_names) {
-				if (vn in this.deny
-					|| (class_name + "." + vn) in this.deny
-					|| vn in virtual_signal_fields) {
-					/*
-					 * Denied slots stay *_vfunc. Signal class closures are
-					 * signal_* — not a method name.
-					 */
-					continue;
-				}
-				method_names.add(vn);
-			}
 			var props = this.emit_object_properties(
-				stream, ns, oi, prop_accessors, vfunc_names,
-				signal_names, method_names);
+				stream, ns, oi, prop_accessors, vfunc_names);
 			for (var m = 0; m < oi.get_n_methods(); m++) {
 				var fi = oi.get_method(m);
 				if (vfunc_names.contains(fi.get_name())
@@ -333,16 +308,12 @@ namespace GnomeShellRpc.Rpc.Helper
 					continue;
 				}
 				/*
-				 * Method/signal pairs like destroy stay on the deny list +
-				 * hand rename (destroy_rpc) until that cut. Prefix lets a
-				 * remaining callable keep the GIR name next to signal_*.
+				 * signal_* keeps the Vala identifier free, so a callable
+				 * with the GIR name (Actor.destroy next to signal_destroy)
+				 * emits here.
 				 */
-				var n = this.emit_callable(
+				methods += this.emit_callable(
 					stream, ns, class_name, fi, "class", false);
-				if (n > 0) {
-					method_names.add(fi.get_name());
-				}
-				methods += n;
 			}
 			var signals = this.emit_object_signals(
 				stream, ns, oi, virtual_signal_fields);
@@ -1101,9 +1072,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			string ns,
 			GI.ObjectInfo oi,
 			Gee.HashSet<string> prop_accessors,
-			Gee.HashSet<string> vfunc_names,
-			Gee.HashSet<string> signal_names,
-			Gee.HashSet<string> method_names
+			Gee.HashSet<string> vfunc_names
 		) {
 			var class_name = oi.get_name();
 			var emitted = 0;
@@ -1139,8 +1108,6 @@ namespace GnomeShellRpc.Rpc.Helper
 					if (n_local == 0) {
 						this.add_skipped_property(class_name, vala_name,
 							"GIR property is neither readable nor writable");
-					} else {
-						method_names.add(vala_name);
 					}
 					emitted += n_local;
 					continue;
@@ -1150,12 +1117,6 @@ namespace GnomeShellRpc.Rpc.Helper
 					this.add_skipped_property(class_name, vala_name, "Vala reserved name");
 					continue;
 				}
-				/*
-				 * Property wins over a same-named GIR signal when we can
-				 * emit it. GJS uses notify::focus-window + the property,
-				 * not the dedicated signal. Skip the signal later via
-				 * method_names.
-				 */
 				var flags = pi.get_flags();
 				var readable = (flags & GLib.ParamFlags.READABLE) != 0;
 				var writable = (flags & GLib.ParamFlags.WRITABLE) != 0;
@@ -1282,7 +1243,6 @@ namespace GnomeShellRpc.Rpc.Helper
 					vt = vt + "?";
 				}
 
-				method_names.add(vala_name);
 				stream.puts(@"		public $(vt) $(vala_name) {
 ");
 				if (read_method && getter != null) {
@@ -1353,6 +1313,16 @@ namespace GnomeShellRpc.Rpc.Helper
 					this.emit_call_values_body(
 						stream, ns, "\t\t\t\t", rpc, "this", setter, "void", false
 					);
+					var setter_symbol = @"$(class_name).$(setter.get_name())";
+					if (this.overrides.has_key(setter_symbol)
+							&& this.overrides.get(setter_symbol).has_key(
+								"local_emit_after")) {
+						var signal_member = this.overrides.get(setter_symbol).get(
+							"local_emit_after");
+						stream.puts(
+							@"				this.$(signal_member)();
+");
+					}
 					stream.puts("			}\n");
 					prop_accessors.add(setter.get_name());
 					this.deny.add(class_name + "." + setter.get_name());
@@ -2304,6 +2274,15 @@ $(tab){
 				this.emit_call_values_body(
 					stream, ns, indent, rpc, instance, fi, ret, is_constructor
 				);
+				if (ret == "void" && instance == "this"
+						&& this.overrides.has_key(this.emit_symbol)
+						&& this.overrides.get(this.emit_symbol).has_key(
+							"local_emit_after")) {
+					var signal_member = this.overrides.get(this.emit_symbol).get(
+						"local_emit_after");
+					stream.puts(@"$(indent)this.$(signal_member)();
+");
+				}
 				stream.puts(tab + "}\n");
 				this.wired_callables++;
 				return 1;

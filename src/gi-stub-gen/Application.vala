@@ -167,8 +167,7 @@ Examples:
 			this.load_deny(out deny, out noop, out temporary);
 
 			Gee.HashMap<string, Gee.HashMap<string, string>> overrides;
-			Gee.HashSet<string> signal_prefer;
-			this.load_overrides(out overrides, out signal_prefer);
+			this.load_overrides(out overrides);
 
 			if (Application.opt_typelib_dir != "") {
 				foreach (var dir in Application.opt_typelib_dir.split(":")) {
@@ -188,7 +187,6 @@ Examples:
 						noop = noop,
 						temporary = temporary,
 						overrides = overrides,
-						signal_prefer = signal_prefer,
 						missing_out_path = Application.opt_missing_out,
 						helper_out_path = Application.opt_helper_out,
 					};
@@ -270,11 +268,9 @@ Examples:
 		}
 
 		private void load_overrides(
-			out Gee.HashMap<string, Gee.HashMap<string, string>> overrides,
-			out Gee.HashSet<string> signal_prefer
+			out Gee.HashMap<string, Gee.HashMap<string, string>> overrides
 		) {
 			overrides = new Gee.HashMap<string, Gee.HashMap<string, string>>();
-			signal_prefer = new Gee.HashSet<string>();
 			if (Application.opt_overrides_file == "") {
 				return;
 			}
@@ -307,10 +303,6 @@ Examples:
 				}
 				var key = rest.substring(0, eq).strip();
 				var val = rest.substring(eq + 1).strip();
-				if (key == "signal_prefer") {
-					signal_prefer.add(val);
-					continue;
-				}
 				if (!overrides.has_key(symbol)) {
 					overrides.set(symbol, new Gee.HashMap<string, string>());
 				}

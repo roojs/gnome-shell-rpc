@@ -49,16 +49,37 @@ No automatic relationship exists between these rows.
 
 ## Signal definitions imported from GIR
 
-The generator converts GIR signal metadata into a client-side Vala signal:
+The generator converts GIR signal metadata into a client-side Vala signal.
+Every generated Vala source identifier has a `signal_` prefix:
 
 ```vala
 // Input: GIR signal metadata
 // Output: generated client proxy declarations
-public signal void style_changed();
-public signal void stopped(bool is_finished);
+[CCode (cname = "style-changed")]
+public signal void signal_style_changed();
+
+[CCode (cname = "stopped")]
+public signal void signal_stopped(bool is_finished);
 ```
 
-The generated typelib then exposes the signal to GJS:
+The prefix exists only in Vala source. `CCode (cname)` keeps the stock GObject,
+GIR, GJS, and RPC name:
+
+```text
+Vala source identifier: signal_style_changed
+GObject / GIR / GJS:    style-changed
+RPC notification method: style-changed
+```
+
+Vala code uses the prefixed member:
+
+```vala
+transition.signal_stopped.connect((transition, finished) => {
+    // ...
+});
+```
+
+The generated typelib exposes the stock name to GJS:
 
 ```js
 const id = object.connect('stopped', (_object, finished) => {
@@ -69,8 +90,11 @@ object.disconnect(id);
 
 ```vala
 // GIR: detailed="1"
+[CCode (cname = "captured-event")]
 [Signal (detailed = true)]
-public signal bool captured_event(Clutter.Event event);
+public virtual signal bool signal_captured_event(Clutter.Event event) {
+    return false;
+}
 ```
 
 ```text
@@ -126,65 +150,100 @@ vfunc_clicked(button) {
 
 Emitting the stock signal is expected to invoke that overridden class closure according to the signal's run flags.
 
-### Vala collision
+### Current generator representation
 
-Vala cannot declare a signal and a method with the same source-language identifier.
+Vala cannot declare a signal and a method with the same source-language
+identifier. The `signal_` prefix leaves the stock identifier available for a
+callable method or property.
 
 ```text
-generator collision policy
+GIR signal without a matching class field
+  -> [CCode (cname = "stock-name")]
+  -> public signal ... signal_name(...)
 
-class-struct slots
-  -> emit first in physical GIR order
-  -> preserve GJS vfunc offsets
+GIR class field matching a signal on that class
+  -> emit at the field's physical GIR position
+  -> [CCode (cname = "stock-name")]
+  -> public virtual signal ... signal_name(...) { default body }
 
-name in signal_prefer
-  -> signal keeps stock name
-  -> class slot becomes *_vfunc
-
-generated method/property already owns name
-  -> omit signal
-  -> record signal_method_clash
-
-hand exception: Clutter.Actor.destroy
-  -> RPC method becomes destroy_rpc
-  -> signal keeps destroy
+callable method with the same stock name
+  -> emit independently under the stock Vala method name
 ```
 
-The current bare-name `signal_prefer` lists are in:
+For example:
 
-- `src/gi-stub-gen/St.overrides`
-- `src/gi-stub-gen/Clutter.overrides`
-
-The generated C symbol for a renamed slot is prefixed, for example `gsr_button_clicked_vfunc`, to prevent link-time collisions between unrelated libraries that use the same slot name.
-
-### GJS collision
-
-```js
-// Local signal handler
-object.connect('clicked', handler);
-
-// Local signal emission
-object.emit('clicked');
-
-// Class-struct slot override
-vfunc_clicked(button) {
-    // ...
+```vala
+[CCode (cname = "clicked")]
+public virtual signal void signal_clicked(int clicked_button) {
 }
-
-// Introspected callable
-object.some_method();
 ```
 
-Renaming the Vala slot to `clicked_vfunc` preserves the slot at the required class-struct offset, so GJS can still install `vfunc_clicked`. It does **not** by itself preserve the stock relationship in which emitting `clicked` invokes that slot.
+The generated C registers this as:
 
-That missing class-closure relationship is the current `signal_prefer` design bug. It explains why an RPC notification can successfully emit a client-side `clicked` signal while `AppIcon.vfunc_clicked()` is never called.
+```c
+g_signal_new(
+    "clicked",
+    ST_TYPE_BUTTON,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(StButtonClass, clicked),
+    // ...
+);
+```
 
-The same issue currently affects `style-changed`; the hand bridge in `src/gi-stub/overrides-st/Widget.override.vala` is a local workaround, not a general implementation.
+This is one GObject signal with `StButtonClass.clicked` as its class closure,
+not the old pair of an ordinary signal plus an independent `clicked_vfunc`
+method. `signal_prefer`, `clicked_vfunc`, `style_changed_vfunc`, and the
+`Actor.destroy_rpc` naming workaround have been removed.
 
-See:
+The generated external views are:
 
-- [Search result click does not launch](bugs/2026-09-22-search-result-click-no-launch.md)
-- [`style-changed` manual subscription](bugs/2026-09-22-style-changed-manual-subscription.md)
+```text
+Vala signal:       signal_clicked
+GObject signal:    clicked
+GIR/GJS signal:    clicked
+C class field:     StButtonClass.clicked
+GJS class override: vfunc_clicked(...)
+```
+
+### What is proved, and what is still broken
+
+The current `class-struct-offset-gate` proves that the generated class layout
+has the stock `clicked` and `style_changed` offsets. It also proves that GIR
+and GObject expose `clicked`, `style-changed`, detailed
+`captured-event::touchpad`, and both the `Clutter.Text.activate()` method and
+`activate` signal under their stock names.
+
+That structural proof is not an end-to-end delivery proof. In particular,
+prefixing and virtualizing a signal does not request its server-side
+subscription:
+
+```text
+AppIcon defines vfunc_clicked()
+  -/> generated connect() call
+  -/> Runtime.ensure_signal_subscribe(button, "clicked")
+  -/> server RPC-Live-Subscribe.rpc_signal
+```
+
+There is currently no `clicked` subscription call site. Therefore the new
+class-closure representation can be correct while search-result clicks still
+fail before a client `"clicked"` emission occurs. A focused gate must separate:
+
+```text
+1. local emit("clicked") -> GJS vfunc_clicked()
+2. RPC notification "clicked" -> local emit -> GJS vfunc_clicked()
+3. policy/timing that creates the server subscription
+```
+
+`style-changed` has a different temporary path. `Clutter.Actor` subscribes
+after lease mint when the runtime type exposes that signal. The Actor vfunc
+relay no longer emits `style-changed` directly: doing so inside a synchronous
+`show()` RPC re-entered GJS and crashed. The post-mint subscription remains
+until notification delivery to `vfunc_style_changed()` and shell icon creation
+are proved.
+
+See [Prefix generated Vala signals](bugs/2026-09-23-prefix-generated-vala-signals.md),
+[Search result click does not launch](bugs/2026-09-22-search-result-click-no-launch.md),
+and [`style-changed` manual subscription](bugs/2026-09-22-style-changed-manual-subscription.md).
 
 ## GJS connection is local
 
@@ -369,7 +428,9 @@ This path carries boolean event results, preferred-size out values, allocation c
 
 ```text
 connect-driven subscription         -> absent
-signal/class-closure relationship   -> broken by signal_prefer
+Vala signal source prefix           -> implemented
+generated signal/class closure      -> structurally implemented; live delivery unproved
+virtual-signal subscription policy  -> absent
 generic signal return transport     -> absent
 client-to-server signal emit        -> absent
 disconnect/subscription accounting  -> absent
@@ -389,8 +450,10 @@ per-type manual exceptions          -> present
 6. Did Notification { id, method, args } arrive?
 7. Does Runtime.signal_subs[id] contain method?
 8. Does the client GType contain a compatible signal?
-9. Is the consumer connect(), or actually a vfunc_* override?
-10. Does the operation require a return value?
+9. Is the generated Vala member named signal_* but its C/GObject name stock?
+10. Is this a virtual signal whose class closure occupies the stock field?
+11. Is the consumer connect(), or actually a vfunc_* override?
+12. Does the operation require a return value?
 ```
 
 ## Client source map
@@ -398,7 +461,7 @@ per-type manual exceptions          -> present
 | Concern | Source |
 | --- | --- |
 | GIR signal and class-slot generation | `src/gi-stub-gen/Generator.vala` |
-| Collision policy | `src/gi-stub-gen/St.overrides`, `src/gi-stub-gen/Clutter.overrides` |
+| Enable class-slot generation | `src/gi-stub-gen/St.overrides`, `src/gi-stub-gen/Clutter.overrides` |
 | Proxy registration, subscribe, receive, emit | `src/gi-stub/Runtime.vala` |
 | Lease ids in normal RPC calls | `src/namespace.vala` |
 | Vfunc capability detection | `src/gi-stub/VfuncRelay.vala` |

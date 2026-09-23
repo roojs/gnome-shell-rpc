@@ -12,17 +12,22 @@ Adjustment implements=Clutter.Animatable
 ImageContent implements=Clutter.Content
 
 # Class vfunc slots (Button.clicked/transition, Widget.get_focus_chain, …).
+# Signal class closures are signal_* virtual signals (this class's GIR signal).
 Namespace emit_class_slots=1
-# Slot/signal clash → keep GIR signal (rename slot *_vfunc). Exact names.
-Namespace signal_prefer=clicked
-Namespace signal_prefer=long_press
-Namespace signal_prefer=repaint
-Namespace signal_prefer=popup_menu
-Namespace signal_prefer=style_changed
-Namespace signal_prefer=primary_icon_clicked
-Namespace signal_prefer=secondary_icon_clicked
 
 Widget.get_focus_chain list_elem=Widget
+
+# TEMPORARY — emit locally only after the style-mutating RPC has returned.
+# Forwarding the server's synchronous style-changed emission re-enters libgjs
+# from call_poll() and crashes. Remove these when RPC notifications are
+# dispatched outside the active GJS→RPC frame.
+Widget.set_style local_emit_after=signal_style_changed
+Widget.set_style_class_name local_emit_after=signal_style_changed
+Widget.set_style_pseudo_class local_emit_after=signal_style_changed
+Widget.add_style_class_name local_emit_after=signal_style_changed
+Widget.remove_style_class_name local_emit_after=signal_style_changed
+Widget.add_style_pseudo_class local_emit_after=signal_style_changed
+Widget.remove_style_pseudo_class local_emit_after=signal_style_changed
 
 # Client-local — St.ScrollViewFade is a shell-side effect (no mutter
 # St-ScrollViewFade helper). GJS reads vfade.fade_margins.top.

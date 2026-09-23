@@ -1,6 +1,31 @@
 # Prefix generated Vala signals with `signal_`
 
-**Status:** ⚠️ **open / Phase 1 ✔️ · Phase 2 next**
+> # ⚠️⚠️⚠️ AGENTS — READ THIS FIRST ⚠️⚠️⚠️
+>
+> ## DO NOT STOP for “status theatre”
+>
+> **Keep working.** Do not pause to narrate progress, summarize what you tried,
+> or ask whether to continue after every prove / dead end / rebuild. Carry on
+> until the bar moves or you hit one of the stop conditions below.
+>
+> ## When you MAY stop
+>
+> 1. **You actually need the user’s help** — a decision only they can make,
+>    credentials, a machine/session you cannot reach, or explicit approval the
+>    plan forbids you from assuming. Say what you need in one short ask, then
+>    wait.
+> 2. **OPC / libocrpc is the problem** — and only then: write a **FAIL-backed**
+>    gate under `tests/call-sync-repro/` that **FAIL**s, file the **bug in
+>    OLLMchat** (`docs/bugs/`), **do not edit OLLMchat code from this tree**,
+>    and **stop**. Do **not** file OPC bugs under this repo’s `docs/bugs/`.
+>    PASS gates → chase the **consumer**; do not stop to “report” a theory.
+>
+> ## Everything else
+>
+> File/update the tracking bug, pick the next allowed step, rebuild, prove,
+> repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
+
+**Status:** ⚠️ **open / Phase 1 ✔️ · Phase 2 in progress**
 
 **Scope:** generated client GI stubs in `src/gi-stub-gen/Generator.vala`
 
@@ -18,7 +43,7 @@ Unblocks [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-resul
 | # | Cut | Status |
 | - | --- | ------ |
 | 1 | Generator `signal_*` + virtual signal | ✔️ |
-| 2 | Trash `signal_prefer` + clash workarounds | ⏳ 🔷 |
+| 2 | Trash `signal_prefer` + clash workarounds | ⏳ in progress |
 | 3 | Override content review | ⏳ 🔷 |
 
 ### Phase 1 — Generator
@@ -68,8 +93,8 @@ public virtual signal void signal_clicked(uint button) {
 - **✔️** Delete Widget construct `style_changed.connect` → `style_changed_vfunc()`.
 - **✔️** Tree compiles.
 - **ℹ️** `vfunc_fallback=hand` layout `*_vfunc` (`allocate`, `show`, `hide`) stays.
-- **ℹ️** `signal_prefer` lines remain as dead config. Generator does not read them.
-- **ℹ️** `Actor.destroy_rpc` stays until Phase 2.
+- **✔️** `signal_prefer` lines and the parser are gone (Phase 2).
+- **✔️** `Actor.destroy` is the generated method again (`clutter_actor_destroy` beside `signal_destroy`). `destroy_rpc` is gone.
 - **🚫** Rename signals on real mutter objects (`src/rpc/Server.vala`, `src/rpc/helper/*`).
 - **🚫** Search click-to-launch as a Phase 1 gate.
 - **🚫** Delete Actor post-mint `style-changed` subscribe in this phase.
@@ -99,6 +124,11 @@ Namespace signal_prefer=style_changed
 
 Plus `signal_prefer` field / parser in `Generator.vala` / `Application.vala`.
 
+- **✔️** `Namespace signal_prefer=…` removed from `Clutter.overrides` and `St.overrides`.
+- **✔️** `signal_prefer` field and parser removed. Generator matches this class's GIR signal.
+- **✔️** Dead `method_names` / `signal_names` bookkeeping removed. A generator run records no `signal_method_clash` gaps (`Clutter_generated.missing.md`, `St_generated.missing.md`).
+- **✔️** `Clutter.deny` `Actor.destroy` removed. Generated `Actor.destroy()` is `clutter_actor_destroy`. `signal_destroy` still registers GObject `"destroy"` at `ClutterActorClass.destroy`. No second `clutter_actor_destroy` symbol. `destroy_rpc` removed from `Actor.override.vala`.
+
 After proof:
 
 ```text
@@ -107,33 +137,110 @@ Actor.override.vala post-mint style-changed subscribe
 
 - **ℹ️** Widget construct bridge already gone in Phase 1.
 - **ℹ️** Keep `vfunc_fallback=hand` and `relay=1`.
-- **⏳ 🔷** Restore stock `destroy` vs `destroy_rpc` if prefix makes `Clutter.deny` `Actor.destroy` unnecessary.
-- **⏳ 🔷** Drop `signal_method_clash` if a generator run emits zero such gaps.
+- **⏳** Post-mint `style-changed` subscribe stays. Removed once: stay-up held and `St-Icon.new` still ran, but `style-changed` notifications went to zero, so `vfunc_style_changed` was not proved. Subscribe restored.
 - **🚫** Move the `style-changed` subscribe into `St.Widget` construct.
 - **🚫** `Idle.add` / queues / extra Actor methods to hide GJS reentry.
 
-**Stay-up after Phase 1 emit (2026-09-23)** — expected until this cut:
+**Stay-up (2026-09-23)** — `emit_by_name("style-changed")` in `relay_style_changed` removed.
+
+Boot reached `READY=1` and was still replying to `before-update` 21s later. The earlier death was `ec=133` about 3s after READY:
 
 ```text
-GSR_NESTED_STAYUP=1 ./scripts/weston-gsr-prove.sh
-READY=1 + Meta.is_restart
-mutter exited ec=133
-```
-
-```text
-GI_META_GDB=batch → SIGSEGV libgjs.so.0
 #7  g_signal_emit_by_name
-#8  Actor.relay_style_changed
+#8  relay_style_changed  Clutter_generated.vala:1869
     GLib.Signal.emit_by_name(this, "style-changed")
 JS show() → call_poll(Clutter-Actor.show) → Live.Invoke
-→ class closure = GJS vfunc_style_changed
-→ re-enter SpiderMonkey
+→ class closure re-enters libgjs → SIGSEGV
 ```
 
-- **ℹ️** `ec=133` is mutter EOS after the **client** SIGSEGV. [`../nested-debug.md`](../nested-debug.md).
-- **🚫** `Idle.add` defer of that emit — tried, then `stop (timeout) after 25s` / `ec=124`, **reverted**.
+That hook no longer emits. `connect('style-changed')` and `vfunc_style_changed` do not run from it.
 
-**Gates:** RPC `"clicked"` → `AppIcon.vfunc_clicked()` · `style-changed` → GJS `vfunc_style_changed()` · those two workarounds gone · `class-struct-offset-gate` · nested stay-up + BaseIcon textures.
+### Locked — do not re-derive (2026-09-23)
+
+Shell stays up. Layout is wrong, the software cursor is painted again and again, icons are gone, icon layout is wrong. Same missing client `style-changed`. Do not open a cursor bug or an icon bug beside this section. `src/Plugin.vala` already records that an uncleared framebuffer trails the software cursor.
+
+`buttonbox-hpadding-smoke` is the gate. 2026-09-23 15:52, hook still a no-op:
+
+```text
+theme min=6 nat=12 _minHPadding=0 _natHPadding=0
+FAIL nat-hpadding-cache want>=12 got=0 (style-changed did not update GJS)
+FAIL min-hpadding-cache want>=6 got=0
+```
+
+Client log for that run: `St-Widget.set_style` (id=45) nested `Live.Invoke` of the style hook (callback ids 20 and 24), empty reply, then `ensure_style`. No `notification method=style-changed`. The hook ran. It did not emit. Theme lengths RPC. GJS `connect('style-changed')` did not.
+
+Do not run this investigation again. These are closed:
+
+- **🚫** Put `GLib.Signal.emit_by_name(this, "style-changed")` back. That is the SIGSEGV above. It existed only because `Actor.override` is Clutter and cannot name `St.Widget.signal_style_changed`.
+- **🚫** `Idle.add` / `Timeout.add` / a queue / `queue_*_emit` around that emit. Already tried; stay-up timed out (`ec=124`).
+- **🚫** Another post-mint `ensure_signal_subscribe`, or moving it into `St.Widget` construct. Subscribe is the `.new` lease path (BaseIcon / `St.Bin`). This smoke is Helper-Actor via `relay_attach`. Removing the subscribe zeroed notifications and did not change this hook. Nested RPC mid-reply parse is why it is not in Widget construct.
+- **🚫** A new `Clutter.Actor` method, a parent-class `Signal.lookup`, or a second class slot. `class-struct-offset-gate` is already `style_changed@448`.
+
+One next edit, then the same smoke. Nothing else.
+
+`relay_event` already fires a virtual signal from a hook: `this.signal_event(ev)` → `g_signal_emit`. That is the stock fire. `signal_style_changed` is the same kind of member (`public virtual signal`, `g_signal_new("style-changed", ..., G_STRUCT_OFFSET(StWidgetClass, style_changed), ...)`). The hook body belongs on `St.Widget`, where that member exists:
+
+```text
+Widget.override — register the style hook after Actor.relay_attach
+                 (Actor construct runs first; helper rpc_lid is set)
+hook body      — this.signal_style_changed()
+Actor.override — delete relay_style_changed and its add_hook
+                 so the signal cannot fire twice
+```
+
+Then:
+
+```text
+GI_META_SMOKE=buttonbox-hpadding-smoke ./scripts/agent-nested-smoke-prove.sh
+```
+
+Pass is `ok nat>=12 min>=6`. If that process SIGSEGVs, record the stack under this heading and stop. Do not swap in another emit, and do not put `emit_by_name` back. `signal_event` from a hook is the comparison, not a reason to invent a third path.
+
+**✔️ 2026-09-23 16:11** — `buttonbox-hpadding-smoke` only:
+
+```text
+theme min=6 nat=12 _minHPadding=6 _natHPadding=12
+ok nat=12 min=6
+```
+
+That smoke is `set_style` on a tiny `St.Widget`. It is not boot.
+
+**❌ 2026-09-23 16:14 hold** — user start. Not a prove SIGKILL. `READY=1` at 16:13:57. Client log ends at 16:14:00 on `invoke ENTER id=1619` with no reply. Mutter then `Unexpected early end-of-stream`. `nested-weston-prove: mutter exited ec=133` on the gdb rerun (8s).
+
+`GI_META_GDB=batch` (no SIGTRAP catch): Thread 1 SIGSEGV in `libgjs.so.0`.
+
+```text
+#0  libgjs.so.0
+#4  g_closure_invoke
+#8  g_signal_emit
+#9  __lambda5_  src/St_generated.vala:3051
+    this.signal_style_changed()
+#20 oll_mrpc_client_call_poll
+#22 gnome_shell_rpc_call_value "Clutter-Actor.show"
+#23 clutter_actor_show
+#27 libgjs / libmozjs   (JS already inside show())
+```
+
+GType at frame 9: `Gjs_ui_workspacesView_WorkspacesDisplay`. That class extends `St.Widget` and has no `style-changed` handler of its own (`vendor/gnome-shell/js/ui/workspacesView.js`).
+
+`this.signal_style_changed()` is `g_signal_emit`. Same death as `emit_by_name`, same `show()` → `call_poll` nest. Do not call this a different fix. Do not put `emit_by_name` back. Do not Idle/queue it.
+
+**❌ 2026-09-23 16:34** — helper `relay_attach` subscribed `style-changed` and the hook did not emit. Same death, other call site. `mutter exited ec=133` after 7s. `READY=1`, then `Clutter-Actor.show`, then `notification method=style-changed`, then the client is gone.
+
+```text
+#4  g_closure_invoke
+#6  g_signal_emitv
+#7  Runtime.emit_signal_from_args  signal_name="style-changed"
+    Runtime.vala:124
+#17 oll_mrpc_client_call_poll
+```
+
+Hook emit and notification emit are the same `g_signal_emit` of the virtual signal. At `6ac7b3a` the generated member was `public signal void style_changed()` — class closure offset 0 — and the class field was a separate `style_changed_vfunc`. `emit_by_name` ran connect handlers and did not enter that field. Phase 1 points `g_signal_new` at `StWidgetClass.style_changed`, so both emits enter the GJS class closure during `show()`. Helper subscribe removed again after this stack. Do not add it back as a fix.
+
+**Gates:** RPC `"clicked"` → `AppIcon.vfunc_clicked()` · `style-changed` → GJS `vfunc_style_changed()` · post-mint subscribe gone · `class-struct-offset-gate` · nested stay-up + BaseIcon textures.
+
+- **✔️** `class-struct-offset-gate` — `ok checked=39 clicked@488 style_changed@448` (after the clash-machinery delete).
+- **⏳** clicked / style-changed vfunc delivery, post-mint subscribe, nested stay-up.
 
 ### Phase 3 — Override content review
 

@@ -78,26 +78,13 @@
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
-			/*
-			 * GJS BaseIcon is St.Bin (not Helper-Actor). Icons are created
-			 * in vfunc_style_changed; that vfunc is not the signal default
-			 * handler. Subscribe the 0-arg signal after mint — not from
-			 * Widget construct (nested RPC mid-reply parse).
-			 * Suspicious workaround; do not copy. Tracked in
-			 * docs/bugs/2026-09-22-style-changed-manual-subscription.md.
-			 */
-			if (this.get_type() != t
-					&& GLib.Signal.lookup("style-changed", this.get_type()) != 0) {
-				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-					this, "style-changed");
-			}
 			return;
 		}
 		GLib.error("lease construct: no Bin-registered ancestor for %s",
 			this.get_type().name());
 	}
 
-	bool helper_attached;
+	protected bool helper_attached;
 	bool relayout_queued;
 	/* Stock ClutterActor:visible default TRUE — the flag, not is_visible(). */
 	bool actor_visible = true;
@@ -132,26 +119,6 @@
 			GnomeShellRpc.call_value("Helper-Actor.add_hook", this,
 				OLLMrpc.args("it", vfunc_id, hook_id));
 		}
-		/* St.Widget::style-changed — not a Clutter.Actor Class slot. */
-		var style_hook_id = this.relay_style_changed();
-		if (style_hook_id != 0) {
-			var style_vfunc_id = OLLMrpc.Gi.vfunc_offset("St", "Widget", "style_changed");
-			GnomeShellRpc.call_value("Helper-Actor.add_hook", this,
-				OLLMrpc.args("it", style_vfunc_id, style_hook_id));
-		}
-	}
-
-	uint64 relay_style_changed()
-	{
-		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
-			/* ButtonBox connect('style-changed') — not vfunc_style_changed.
-			 * Clutter stub lib has no St dep; only emit when the type has
-			 * the signal (St.Widget / GJS subclasses). */
-			if (GLib.Signal.lookup("style-changed", this.get_type()) != 0) {
-				GLib.Signal.emit_by_name(this, "style-changed");
-			}
-			return OLLMrpc.args("");
-		});
 	}
 
 	uint64 relay_get_preferred_width()
@@ -489,16 +456,6 @@
 			this.actor_allocation = box;
 			return box;
 		}
-	}
-
-	/**
-	 * Stock {@code clutter_actor_destroy} C ABI (method body denied —
-	 * name clashes with GIR signal {@code destroy}, emitted by generator).
-	 */
-	[CCode (cname = "clutter_actor_destroy")]
-	public void destroy_rpc()
-	{
-		GnomeShellRpc.call_value( "Clutter-Actor.destroy", this);
 	}
 
 	/**

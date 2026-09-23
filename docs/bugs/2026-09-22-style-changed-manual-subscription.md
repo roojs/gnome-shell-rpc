@@ -49,6 +49,16 @@ Leave the current block in place until a replacement has a failing gate and
 keeps icon creation working. **Do not use this block as precedent for
 `clicked`, `repaint`, icon-click signals, or any other signal.**
 
+Do not treat this subscribe as the delivery path for
+`buttonbox-hpadding-smoke`. That smoke is a GJS `St.Widget` on Helper-Actor
+(`relay_attach`). The hook runs during `set_style` and, while it does not
+emit, the connect handler stays at 0. There is no `style-changed`
+notification in that log. Re-subscribing, or moving this block into
+`St.Widget` construct, does not fix that smoke. The locked next edit is on
+the virtual signal in
+[`2026-09-23-prefix-generated-vala-signals.md`](2026-09-23-prefix-generated-vala-signals.md)
+(Locked — do not re-derive).
+
 Do not move the subscription back into `St.Widget` construction: the recorded
 nested-RPC/reply-parse deadlock remains a constraint, not a justification for
 the current architecture.
