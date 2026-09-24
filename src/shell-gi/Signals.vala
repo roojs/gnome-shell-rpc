@@ -22,6 +22,10 @@ namespace Shell
 {
 	public class Signals : GLib.Object
 	{
+		static construct {
+			OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
+		}
+
 		/**
 		 * Per lease: signal name → our handler id ({@link next_handler_id}).
 		 *
@@ -65,6 +69,10 @@ namespace Shell
 		[CCode (cname = "shell_signals_connect")]
 		public static int connect(GLib.Object obj, string signal_name, int gjs_handler_id = 0)
 		{
+			// HACK - if this increases we need to look for alterntives
+			if (signal_name == "init-xserver") {
+				return 0;
+			}
 			GnomeShellRpc.GiStub.Runtime.register();
 			var handle = obj as OLLMrpc.Live.Handle;
 			if (handle == null || handle.rpc_lid == 0) {
@@ -103,12 +111,6 @@ namespace Shell
 						return;
 					}
 					var target = GnomeShellRpc.GiStub.Runtime.client.proxies.get(notif.id);
-					if (notif.method == "key-press-event"
-							&& (notif.args == null || notif.args.size == 0)) {
-						GLib.Signal.emit_by_name(
-							target, "key-press-event", Clutter.get_current_event());
-						return;
-					}
 					Signals.emit(target, notif.method, notif.args);
 				});
 			}
@@ -208,19 +210,15 @@ namespace Shell
 			vals[0] = GLib.Value(obj.get_type());
 			vals[0].set_object(obj);
 			for (var i = 0; i < (int) query.n_params; i++) {
-				var param_type = query.param_types[i];
-				vals[i + 1] = GLib.Value(param_type);
-				if (args != null && i < args.size) {
-					var src = args.get(i);
-					if (src != null && src.type() != GLib.Type.INVALID) {
-						if (!src.transform(ref vals[i + 1])
-								&& src.holds(GLib.Type.OBJECT)
-								&& param_type.is_a(GLib.Type.OBJECT)) {
-							vals[i + 1].set_object(src.get_object());
-						}
-					}
-				}
-				if (param_type != typeof(Clutter.Frame)) {
+				vals[i + 1] = GLib.Value(query.param_types[i]);
+			}
+			var fields = args;
+			if (fields == null) {
+				fields = new Gee.ArrayList<GLib.Value?>();
+			}
+			OLLMrpc.Bin.TypeOverride.fill_params(query.param_types, fields, vals);
+			for (var i = 0; i < (int) query.n_params; i++) {
+				if (query.param_types[i] != typeof(Clutter.Frame)) {
 					continue;
 				}
 				if (vals[i + 1].get_boxed() != null) {

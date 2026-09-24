@@ -167,14 +167,10 @@ param_values[2] = second signal argument
 ...
 ```
 
-`Subscription.emit()` drops the instance and forwards the arguments:
+`Subscription.emit()` drops the instance and asks `OLLMrpc.Bin.TypeOverride.pack_params` for the notification fields. A registered type becomes several ordinary fields. Any other argument stays one bin value.
 
 ```vala
-var packed = new Gee.ArrayList<GLib.Value?>();
-
-for (var i = 1; i < param_values.length; i++) {
-    packed.add(param_values[i]);
-}
+var packed = OLLMrpc.Bin.TypeOverride.pack_params(param_values);
 
 connection.write(new Notification() {
     method = subscription.method,
@@ -182,6 +178,8 @@ connection.write(new Notification() {
     args = packed,
 });
 ```
+
+`Clutter.Event` is registered from the compositor as `GnomeShellRpc.Rpc.Helper.ClutterEventOverride`. One event becomes five fields: type, x, y, button, key symbol (`idduu`). The button is read only for button and pad-button events. The key symbol is read only for key press and key release.
 
 Wire shape:
 

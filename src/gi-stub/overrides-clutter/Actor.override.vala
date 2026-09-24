@@ -49,14 +49,10 @@
 		this.signal_queue_relayout.connect(() => {
 			var baseline = GLib.Type.from_name("StWidget");
 			if (baseline != GLib.Type.INVALID
-					&& OLLMrpc.Gi.vfunc_slot(
-						this.get_type(), "Clutter", "Actor", "queue_relayout")
-					!= OLLMrpc.Gi.vfunc_slot(
-						baseline, "Clutter", "Actor", "queue_relayout")) {
+					&& OLLMrpc.Gi.vfunc_slot(this.get_type(), "Clutter", "Actor", "queue_relayout")
+					!= OLLMrpc.Gi.vfunc_slot(baseline, "Clutter", "Actor", "queue_relayout")) {
 				GnomeShellRpc.GiStub.vfunc_call_void(
-					this,
-					OLLMrpc.Gi.vfunc_offset(
-						"Clutter", "Actor", "queue_relayout"));
+					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "queue_relayout"));
 			}
 		});
 
@@ -135,6 +131,17 @@
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
+		/*
+		 * TEMPORARY subscription policy: generated signal_clicked now owns
+		 * the stock StButtonClass.clicked closure, but GJS connect/vfunc
+		 * installation does not request the remote signal. Subscribe after
+		 * Helper-Actor.create has returned and the lease is registered.
+		 * Remove when generated virtual signals acquire subscription policy.
+		 */
+		if (GLib.Signal.lookup("clicked", this.get_type()) != 0) {
+			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+				this, "clicked");
+		}
 		foreach (var name in overridden) {
 			var vfunc_id = -1;
 			var hook_id = this.bind_vfunc(name, out vfunc_id);
@@ -754,8 +761,10 @@
 	 *
 	 * Server returns the live Transition (implicit animation from easing +
 	 * set). {@code ui/environment.js} {@code Actor.ease()} connects
-	 * {@code stopped} for {@code onComplete}; the GJS wrap requests the
-	 * live subscribe.
+	 * {@code stopped} for {@code onComplete}; without
+	 * {@link GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe}, that
+	 * signal never reaches the client and MessageTray never arms
+	 * {@code NOTIFICATION_TIMEOUT}.
 	 */
 	public Transition? get_transition(string name)
 	{
@@ -766,7 +775,10 @@
 				|| response.retval.get_object() == null) {
 			return null;
 		}
-		return (Transition) response.retval.get_object();
+		var transition = (Transition) response.retval.get_object();
+		GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+			transition, "stopped");
+		return transition;
 	}
 
 	/**

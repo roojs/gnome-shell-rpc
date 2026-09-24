@@ -37,6 +37,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		InvertLightnessEffect.rpc_register();
 		ClutterThreads.rpc_register();
 		ClutterHelper.rpc_register();
+		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
 		Interval.rpc_register();
 		Constraint.rpc_register();
 		St.rpc_register();

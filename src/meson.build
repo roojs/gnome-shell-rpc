@@ -42,6 +42,7 @@ compositor_sources = files(
   'rpc/helper/InvertLightnessEffect.vala',
   'rpc/helper/ClutterThreads.vala',
   'rpc/helper/Clutter.vala',
+  'rpc/helper/ClutterEventOverride.vala',
   'rpc/helper/Interval.vala',
   'rpc/helper/Constraint.vala',
   'rpc/helper/St.vala',
@@ -854,6 +855,7 @@ shell_gi_lib = shared_library(
   files(
     'shell-gi/namespace.vala',
     'shell-gi/Signals.vala',
+    'shell-gi/ClutterEventOverride.vala',
     'shell-gi/ActionMode.vala',
     'shell-gi/AppState.vala',
     'shell-gi/AppLaunchGpu.vala',

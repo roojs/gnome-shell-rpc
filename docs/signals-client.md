@@ -6,8 +6,9 @@ This document describes signals in the `gnome-shell-rpc` GJS client process.
 GJS client process
 ├── generated Meta / Clutter / St proxy GObjects
 ├── local GJS-defined GObjects
-├── Runtime.signal_subs
-├── Runtime.handlers
+├── signals.js  (GObject.Object.prototype connect / disconnect wrap)
+├── Shell.Signals  (subs, refs, gjs_ids, Notification re-emit)
+├── Runtime.handlers  (synchronous Live.Invoke)
 └── OLLMrpc.Client
 
 Mutter server process
@@ -26,7 +27,7 @@ For the other half of the boundary, see [Server-side signals](signals-server.md)
 | **lease id** | The connection-local `rpc_lid` identifying that object on the wire. |
 | **client signal** | A named GObject signal registered on a client proxy or a client-only GJS object. |
 | **client class closure / class slot** | A default handler slot on the client GObject class, exposed to GJS as `vfunc_*` where GI describes it as a virtual function. |
-| **client subscription record** | `Runtime.signal_subs[lease id][signal name]`, recording that the server was asked to forward that signal. |
+| **client subscription record** | `Shell.Signals.subs[lease id][signal name]` → our handler id. The server was asked to forward that name. `refs` counts local connects that share the name. `gjs_ids` maps the GJS handler id to ours. |
 | **client callback handler** | A handler in `GiStub.Runtime.handlers` for a synchronous server invocation. |
 
 ## Three distinct signal locations
@@ -213,36 +214,33 @@ and GObject expose `clicked`, `style-changed`, detailed
 `captured-event::touchpad`, and both the `Clutter.Text.activate()` method and
 `activate` signal under their stock names.
 
-That structural proof is not an end-to-end delivery proof. In particular,
-prefixing and virtualizing a signal does not request its server-side
-subscription:
+That structural proof is not an end-to-end delivery proof. Prefixing a
+signal does not itself request a server subscription. Two separate client
+paths do:
 
 ```text
-AppIcon defines vfunc_clicked()
-  -/> generated connect() call
-  -/> Runtime.ensure_signal_subscribe(button, "clicked")
-  -/> server RPC-Live-Subscribe.rpc_signal
+GJS .connect('clicked', handler)
+  -> signals.js wrap
+  -> Shell.Signals.connect
+  -> RPC-Live-Subscribe.rpc_signal
+
+Helper-Actor.create returned, type has signal "clicked"
+  -> Runtime.ensure_signal_subscribe(actor, "clicked")
+  -> same Shell.Signals.connect
 ```
 
-There is currently no `clicked` subscription call site. Therefore the new
-class-closure representation can be correct while search-result clicks still
-fail before a client `"clicked"` emission occurs. A focused gate must separate:
+`vfunc_clicked` is a class slot (`Helper-Actor.add_hook`), not that named
+subscribe. A local `emit('clicked')` can run the class closure without a
+server notification, and a server notification can re-emit without a GJS
+`vfunc_*`.
 
-```text
-1. local emit("clicked") -> GJS vfunc_clicked()
-2. RPC notification "clicked" -> local emit -> GJS vfunc_clicked()
-3. policy/timing that creates the server subscription
-```
-
-`style-changed` has a different temporary path. The old post-mint
-`Clutter.Actor` subscription is gone: notification delivery inside a
-synchronous `show()` RPC re-entered GJS and crashed. The generated `style` and
-`style_class` setters currently emit `signal_style_changed()` after their RPC
-reply returns. This is marked `local_emit_after` in `St.overrides`.
-
-`clicked` is not pre-subscribed after `Helper-Actor.create`. GJS
-{@code .connect('clicked')} uses the wrap. {@code vfunc_clicked} is a class
-slot ({@code add_hook}), not a named-signal subscribe.
+`style-changed` still has a temporary split. Notification delivery inside a
+synchronous `show()` RPC re-entered GJS and crashed, so the generated `style`
+and `style_class` setters emit `signal_style_changed()` after their RPC reply
+returns (`local_emit_after` in `St.overrides`). The `.new` lease path
+(BaseIcon / `St.Bin`, not Helper-Actor) still calls
+`ensure_signal_subscribe(actor, "style-changed")` when the type has that
+signal, so the server's later emission can reach GJS `.connect` handlers.
 
 See [Prefix generated Vala signals](bugs/2026-09-23-prefix-generated-vala-signals.md),
 [Search result click does not launch](bugs/2026-09-22-search-result-click-no-launch.md),
@@ -338,11 +336,12 @@ The preceding server half is documented in [Server-side signals](signals-server.
 
 It then looks up the local signal metadata with `GLib.Signal.parse_name()`, constructs one `GValue` for the proxy plus one for each declared parameter, transforms the received values to the declared types, and calls `g_signal_emitv()`.
 
-Named signal arguments are carried in `Notification.args` in GIR order. The `subscribe-signal-args-gate` and `subscribe-boxed-signal-arg-gate` cover scalar and registered boxed arguments.
+Named signal arguments are carried in `Notification.args`. `Shell.Signals.emit` calls `OLLMrpc.Bin.TypeOverride.fill_params`, which walks the signal's parameter types. A registered type consumes the field count from its override. Any other parameter consumes one field. The `subscribe-signal-args-gate` and `subscribe-boxed-signal-arg-gate` cover scalar and registered boxed arguments.
 
-Current special cases and limitations are:
+`Clutter.Event` is registered when `Shell.Signals` loads (`Shell.ClutterEventOverride`). Those five fields are rebuilt with `Clutter.Event.from_local`. There is no signal-name check and no `Clutter.get_current_event()` fallback.
 
-- `key-press-event` with no wire arguments is emitted using `Clutter.get_current_event()`, because `Clutter.Event` is not transported.
+Current limitations are:
+
 - A missing argument remains the zero/default `GValue` for its declared type.
 - A missing `Clutter.Frame` boxed argument is replaced with an empty frame to satisfy its marshaller.
 - An unknown signal name is silently ignored.
