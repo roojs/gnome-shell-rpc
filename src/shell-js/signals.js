@@ -2,11 +2,10 @@
  * 0.8.6 — GJS connect wrap.
  *
  * Resource: resource:///org/gnome/shell-rpc/signals.js
- * Not evaluated by ShellApplication yet (host inject is a later cut).
+ * Host evals this file before init.js; {@code Signals.install()} runs at load.
  *
  *   imports.searchPath.unshift('src/shell-js');
  *   const {Signals} = imports.signals;
- *   Signals.install();
  *
  * Wraps GObject.Object.prototype connect / connect_after / connect_object /
  * disconnect. Local {@code orig.connect} still attaches the GJS handler and
@@ -41,7 +40,7 @@ var Signals = class Signals {
             return id;
         };
         GObject.Object.prototype.disconnect = function (id) {
-            imports.gi.Shell.Signals.disconnect(this, id);
+            imports.gi.Shell.Signals.disconnect_id(this, id);
             return Signals._orig_disconnect.call(this, id);
         };
         Signals._installed = true;
@@ -68,3 +67,5 @@ Signals._orig_connect = null;
 Signals._orig_connect_after = null;
 Signals._orig_connect_object = null;
 Signals._orig_disconnect = null;
+
+Signals.install();

@@ -1,5 +1,5 @@
 /**
- * 0.8.6 smoke for {@link src/shell-js/signals.js}. Not eval'd by ShellApplication.
+ * 0.8.6 smoke for {@link src/shell-js/signals.js}. Host also evals this wrap.
  *
  *   gjs src/gjs-embed/connect-subscribe-smoke.js
  *
@@ -26,14 +26,12 @@ const LeasedProbe = GObject.registerClass({
 }, class LeasedProbe extends GObject.Object {});
 
 const subs = [];
-imports.gi.Shell = {
-    Signals: {
-        connect(obj, name) {
-            subs.push({lid: Number(obj.rpc_lid), name});
-        },
-    },
+imports.gi.versions.Shell = '16';
+const ShellNs = imports.gi.Shell;
+ShellNs.Signals.connect = function (obj, name) {
+    subs.push({lid: Number(obj.rpc_lid), name});
 };
-Signals.install();
+ShellNs.Signals.disconnect_id = function () {};
 
 const leased = new LeasedProbe({rpc_lid: 7});
 const unleased = new LeasedProbe({rpc_lid: 0});

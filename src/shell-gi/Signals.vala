@@ -14,7 +14,7 @@
  *   never registered a GLib signal, so it has no native id of its own.
  *
  * GJS wrap: {@code connect(obj, name, gjs_handler_id)} then
- * {@code disconnect(obj, gjs_handler_id)}. Vala stubs still call
+ * {@code disconnect_id(obj, gjs_handler_id)}. Vala stubs still call
  * {@link GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe}
  * (C trampoline — mutter-rpc / st-rpc cannot link shell-gi).
  */
@@ -156,7 +156,7 @@ namespace Shell
 		}
 
 		[CCode (cname = "shell_signals_disconnect_id")]
-		public static void disconnect(GLib.Object obj, int gjs_handler_id)
+		public static void disconnect_id(GLib.Object obj, int gjs_handler_id)
 		{
 			var handle = obj as OLLMrpc.Live.Handle;
 			if (handle == null || handle.rpc_lid == 0

@@ -72,9 +72,6 @@
 					name);
 				return;
 			}
-			/* Same arm as Actor.get_transition — ease onComplete needs stopped. */
-			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-				transition, "stopped");
 			transition.animatable = this;
 			this.transitions.set(name, transition);
 			ulong stopped_id = 0;

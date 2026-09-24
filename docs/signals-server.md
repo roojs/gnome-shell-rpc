@@ -313,7 +313,7 @@ connection.stop()
   -> clear leases
 ```
 
-The current client runtime can call `unsubscribe` via `Runtime.ensure_signal_unsubscribe` / `Shell.signal_disconnect`. GJS `.disconnect()` does not use that path yet.
+The current client runtime can call `unsubscribe` via `Runtime.ensure_signal_unsubscribe` / `Shell.Signals.disconnect`. GJS `.disconnect(id)` uses `Shell.Signals.disconnect_id`.
 
 ## Bespoke server notifications
 

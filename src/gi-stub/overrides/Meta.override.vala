@@ -35,10 +35,5 @@
 		var response = GnomeShellRpc.call_value(
 			"RPC-Bootstrap.get_display");
 		display_singleton = (Display) response.retval.get_object();
-		/* After the lease exists — not in Display construct (nested RPC
-		 * during parse hung the chrome smoke). ControlsManagerLayout
-		 * refreshes _workAreaBox on this signal. */
-		GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-			display_singleton, "workareas-changed");
 		return display_singleton;
 	}

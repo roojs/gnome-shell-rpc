@@ -10,6 +10,8 @@ namespace GnomeShellRpc.ShellClient
 	{
 		private const string APPLICATION_ID = "org.gnome.ShellRpc";
 		private const string INIT_MODULE = "resource:///org/gnome/shell/ui/init.js";
+		private const string SIGNALS_RESOURCE = "/org/gnome/shell-rpc/signals.js";
+		private const string SIGNALS_URI = "resource:///org/gnome/shell-rpc/signals.js";
 
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
@@ -63,27 +65,14 @@ namespace GnomeShellRpc.ShellClient
 			 * interfaces via find_by_name; without a loaded typelib that
 			 * asserts and segfaults (Panel / DateMenu).
 			 */
-			try {
-				GI.Repository.get_default().require("OLLMrpc", "1.0", 0);
-			} catch (GLib.Error e) {
-				GLib.warning("OLLMrpc typelib require failed: %s", e.message);
-			}
+			GI.Repository.get_default().require("OLLMrpc", "1.0", 0);
 			/*
 			 * Meta.RpcSubprocess peer (DING stdout / wait). Stock Meta GIR
 			 * still returns Gio.Subprocess; GJS finds our methods by GType.
 			 */
-			try {
-				GI.Repository.get_default().require("GnomeShellRpc", "1.0", 0);
-			} catch (GLib.Error e) {
-				GLib.warning(
-					"GnomeShellRpc typelib require failed: %s", e.message
-				);
-			}
-			try {
-				GI.Repository.get_default().require("Clutter", "16", 0);
-			} catch (GLib.Error e) {
-				GLib.warning("Clutter typelib require failed: %s", e.message);
-			}
+			GI.Repository.get_default().require("GnomeShellRpc", "1.0", 0);
+			GI.Repository.get_default().require("Clutter", "16", 0);
+			GI.Repository.get_default().require("Shell", "16", 0);
 
 			var override_dir = GLib.Environment.get_variable("GI_RPC_JS_OVERRIDE_DIR");
 			override_dir = override_dir != null ? override_dir : "";
@@ -115,6 +104,13 @@ namespace GnomeShellRpc.ShellClient
 
 			GLib.debug("shell script %s", script);
 			var ctx = new Gjs.Context.with_search_path(search_path);
+			var bytes = GLib.resources_lookup_data(
+				Application.SIGNALS_RESOURCE, GLib.ResourceLookupFlags.NONE);
+			unowned uint8[] data = bytes.get_data();
+			var buf = new GLib.StringBuilder.sized(data.length);
+			buf.append_len((string) data, data.length);
+			int wrap_status;
+			ctx.eval(buf.str, buf.str.length, Application.SIGNALS_URI, out wrap_status);
 			var status = 0;
 			var ok = false;
 			try {

@@ -33,7 +33,7 @@ shell_js_resources = gnome.compile_resources(
 )
 
 # gnome-shell-rpc extras (not vendor js/). Linked into gnome-shell-rpc;
-# glib-compile-resources constructor registers. Wrap install is a later eval.
+# glib-compile-resources constructor registers. Host evals then install().
 gsr_js_resources = gnome.compile_resources(
   'gsr-js-resources',
   files('gsr-js-resources.gresource.xml'),

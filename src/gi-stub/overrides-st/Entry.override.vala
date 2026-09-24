@@ -1,9 +1,6 @@
 		/**
 		 * Stock searchController connects {@code text-changed} on this
-		 * Clutter.Text. GJS {@code connect()} is local; without a live
-		 * subscribe the server emit never reaches the client (empty
-		 * overview results while the field still fills). After the lease
-		 * exists — not in Text construct (nested RPC during parse hung).
+		 * Clutter.Text. The GJS wrap requests the live subscribe.
 		 *
 		 * Do not subscribe {@code key-press-event}: {@code ClutterEvent} is
 		 * Compact / not on the wire. Packing it resets the client
@@ -15,13 +12,6 @@
 			owned get {
 				var response = GnomeShellRpc.call_value(
 					"St-Entry.get_clutter_text", this);
-				var text = (Clutter.Text) response.retval.get_object();
-				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-					text, "text-changed");
-				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-					text, "key-focus-in");
-				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-					text, "key-focus-out");
-				return text;
+				return (Clutter.Text) response.retval.get_object();
 			}
 		}

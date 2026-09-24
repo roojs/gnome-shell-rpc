@@ -240,34 +240,33 @@ synchronous `show()` RPC re-entered GJS and crashed. The generated `style` and
 `style_class` setters currently emit `signal_style_changed()` after their RPC
 reply returns. This is marked `local_emit_after` in `St.overrides`.
 
-`clicked` is temporarily subscribed after `Helper-Actor.create` when the client
-type exposes the signal. The generated virtual signal now owns the stock class
-closure; the remaining work is to prove a real click notification reaches
-`AppIcon.vfunc_clicked()`.
+`clicked` is not pre-subscribed after `Helper-Actor.create`. GJS
+{@code .connect('clicked')} uses the wrap. {@code vfunc_clicked} is a class
+slot ({@code add_hook}), not a named-signal subscribe.
 
 See [Prefix generated Vala signals](bugs/2026-09-23-prefix-generated-vala-signals.md),
 [Search result click does not launch](bugs/2026-09-22-search-result-click-no-launch.md),
 and [`style-changed` manual subscription](bugs/2026-09-22-style-changed-manual-subscription.md).
 
-## GJS connection is local
+## GJS connection
 
 ```js
 proxy.connect('stopped', handler);
 ```
 
 ```text
-GJS .connect()       -> local GObject handler
-GJS .connectObject() -> local lifetime-managed handler
-GJS .disconnect()    -> local handler removal
+GJS .connect() / .connect_after() / .connect_object()
+  -> original GObject.prototype.* (GJS handler id unchanged)
+  -> Shell.Signals.connect(obj, name, gjs_handler_id)
+       leased -> RPC-Live-Subscribe.rpc_signal (first of that name)
+       else   -> 0, local handler only
 
-none of these:
-  -> call Shell.signal_connect
-  -> call GiStub.Runtime
-  -> send RPC-Live-Subscribe.rpc_signal
-  -> remove a server subscription
+GJS .disconnect(id)
+  -> Shell.Signals.disconnect_id(obj, gjs_handler_id)
+  -> original GObject.prototype.disconnect
 ```
 
-`src/shell-js/signals.js` wraps those three prototype methods and would call `Shell.signal_connect`. The extra gresource is registered at `resource:///org/gnome/shell-rpc/signals.js`; the host does not eval it yet, so GJS `.connect()` is still local-only.
+`src/shell-js/signals.js` is `resource:///org/gnome/shell-rpc/signals.js`. The host evals it and `Signals.install()` before `init.js`. Vala `.connect()` still needs `Runtime.ensure_signal_subscribe`.
 
 ## Proxy identity and lease ids
 
@@ -290,7 +289,7 @@ The explicit client entry points are:
 
 ```vala
 GiStub.Runtime.ensure_signal_subscribe(object, signal_name);
-Shell.signal_connect(object, signal_name); // → ensure_signal_subscribe
+Shell.Signals.connect(object, signal_name, gjs_handler_id);
 ```
 
 ```text
@@ -302,25 +301,21 @@ ensure_signal_subscribe(object, signal_name)
   -> record local subscription after success
 ```
 
-`Shell.signal_disconnect` → `Runtime.ensure_signal_unsubscribe` → `RPC-Live-Subscribe.unsubscribe`. The GJS wrap does not call disconnect yet.
+`Shell.Signals.disconnect_id` → `RPC-Live-Subscribe.unsubscribe` when the last local handler for that name drops. GJS `.disconnect(id)` uses that path.
 
 ```text
 safe:   reply decoded -> lease assigned -> subscribe
 unsafe: proxy constructor -> nested subscribe while reply is being decoded
 ```
 
-Current manual call sites are:
+Current Vala-only manual call sites (GJS `.connect()` uses the wrap):
 
 | Object path | Signal |
 | --- | --- |
-| `Meta.get_display()` | `workareas-changed` |
-| `St.Entry.clutter_text` | `text-changed`, `key-focus-in`, `key-focus-out` |
-| `Clutter.Actor.get_transition()` | `stopped` |
-| `St.Adjustment.add_transition()` | `stopped` |
 | `Meta.Laters` stage setup | `before-update` |
-| Post-mint Helper-Actor construction | `clicked` when present; temporary until generated virtual-signal subscription policy |
+| Actor lease construct | `style-changed` when present |
 
-There is no generated or automatic subscription when the first GJS handler is connected. `Shell.signal_connect` is the GJS-visible relay; wrapping `.connect()` to call it is [`0.8.6`](plans/0.8.6-connect-driven-subscribe.md).
+GJS `.connect()` / `.connect_after()` / `.connect_object()` go through `src/shell-js/signals.js`.
 
 ## Receiving and dispatching a server notification
 
@@ -439,13 +434,13 @@ This path carries boolean event results, preferred-size out values, allocation c
 ## Client-side gaps
 
 ```text
-connect-driven subscription         -> absent
+connect-driven subscription         -> implemented (GJS wrap)
 Vala signal source prefix           -> implemented
 generated signal/class closure      -> structurally implemented; live delivery unproved
 virtual-signal subscription policy  -> absent
 generic signal return transport     -> absent
 client-to-server signal emit        -> absent
-disconnect/subscription accounting  -> absent
+disconnect/subscription accounting  -> implemented (GJS wrap + Shell.Signals refs)
 subscribe during reply construction -> unsafe
 unified notify:: handling           -> absent
 per-type manual exceptions          -> present
@@ -475,8 +470,8 @@ per-type manual exceptions          -> present
 | GIR signal and class-slot generation | `src/gi-stub-gen/Generator.vala` |
 | Enable class-slot generation | `src/gi-stub-gen/St.overrides`, `src/gi-stub-gen/Clutter.overrides` |
 | Proxy registration, subscribe, receive, emit | `src/gi-stub/Runtime.vala` |
-| GJS-visible subscribe relay (not stock Shell) | `src/shell-gi/Signals.vala` |
-| GJS connect wrap (resource; not eval'd yet) | `src/shell-js/signals.js` |
+| GJS-visible subscribe (not stock Shell) | `src/shell-gi/Signals.vala` |
+| GJS connect wrap (host eval before init.js) | `src/shell-js/signals.js` |
 | Lease ids in normal RPC calls | `src/namespace.vala` |
 | Vfunc capability detection | `src/gi-stub/VfuncRelay.vala` |
 | Actor client relays | `src/gi-stub/overrides-clutter/Actor.override.vala` |
