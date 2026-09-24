@@ -84,5 +84,10 @@ ScrollView.vscrollbar_policy
 Entry.clutter_text
 Entry.get_clutter_text
 
+# DrawingArea.override — cairo.Context is not marshallable. Local
+# ImageSurface for GJS repaint handlers (stock is only valid during that
+# emission).
+DrawingArea.get_context
+
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new
