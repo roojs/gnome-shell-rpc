@@ -537,15 +537,23 @@ namespace GnomeShellRpc.Rpc.Helper
 				if (arg.is_skip() || arg.get_direction() != GI.Direction.IN) {
 					continue;
 				}
-				var letter = this.dbus_letter(ns, arg.get_type());
+				var ti = arg.get_type();
+				var letter = this.dbus_letter(ns, ti);
 				var aname = this.vala_ident(arg.get_name());
-				var vt = this.type_vala(ns, arg.get_type());
+				var vt = this.type_vala(ns, ti);
+				var iface = ti.get_tag() == GI.TypeTag.INTERFACE ? ti.get_interface() : null;
+				var is_flags = iface != null && iface.get_type() == GI.InfoType.FLAGS;
+				var is_enum = iface != null && iface.get_type() == GI.InfoType.ENUM;
 				sig += letter;
 				stream.puts(@"				var _$(aname) = this.rpc_ctor_get(\"$(arg.get_name())\");
 ");
 				string expr;
 				if (letter == "o") {
 					expr = @"(_$(aname) == null ? null : (_$(aname).get_object() as $(vt)))";
+				} else if (is_flags) {
+					expr = @"(_$(aname) == null ? 0 : (uint) _$(aname).get_flags())";
+				} else if (is_enum) {
+					expr = @"(_$(aname) == null ? 0 : (int) _$(aname).get_enum())";
 				} else if (letter == "i") {
 					expr = @"(_$(aname) == null ? 0 : (int) _$(aname).get_int())";
 				} else if (letter == "u") {
