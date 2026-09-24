@@ -396,6 +396,23 @@ executable('subscribe-signal-args-gate',
   install: false,
 )
 
+# notify:: must put the typed property value on Notification.args.
+executable('subscribe-notify-args-gate',
+  [
+    'subscribe-notify-args-gate.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Named-signal boxed arg that is not GLib.Bytes (ClutterFrame analog).
 executable('subscribe-boxed-signal-arg-gate',
   [

@@ -379,11 +379,15 @@ namespace GnomeShellRpc.Rpc
 					if (handle == null) {
 						continue;
 					}
+					var title = GLib.Value(typeof(string));
+					title.set_string(meta_window.title ?? "");
+					var packed = new Gee.ArrayList<GLib.Value?>();
+					packed.add(title);
 					connection.write(new OLLMrpc.Notification() {
 						method = "notify::title",
 						object_type = "Window",
 						id = (int) handle,
-						message = meta_window.title,
+						args = packed,
 					});
 				}
 			});
