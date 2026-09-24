@@ -21,6 +21,7 @@ compositor_sources = files(
   'rpc/helper/namespace.vala',
   'rpc/helper/SoundPlayer.vala',
   'rpc/helper/Background.vala',
+  'rpc/helper/Barrier.vala',
   'rpc/helper/BackgroundImageCache.vala',
   'rpc/helper/BackgroundActor.vala',
   'rpc/helper/Context.vala',

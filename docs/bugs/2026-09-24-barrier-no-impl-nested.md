@@ -2,7 +2,13 @@
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and answers pointer and keyboard. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ⏳ open
+**Status:** 🔧 `Object.new` of stock `Meta.Barrier` in `src/rpc/helper/Barrier.vala`
+
+## Fix
+
+A Vala subclass cannot go back on the wire: the 18:59 boot died with `Unregistered class type schema: GnomeShellRpcRpcHelperBarrierNoop` and the client saw `Unexpected early end-of-stream`.
+
+`Meta-Barrier.new` now uses `GLib.Object.new(typeof(Meta.Barrier), ...)`. That skips `GInitable`, so `meta_barrier_new`'s "Failed to create barrier impl" does not run, and the returned object is a real `MetaBarrier`. `priv->impl` stays null. Mutter's `g_warn_if_fail (priv->impl)` still logs.
 
 **Seen:** 2026-09-24 18:08:29, `org.gnome.ShellRpc.debug.log` and `mutter-rpc.debug.log`.
 
