@@ -9,11 +9,42 @@
  *   meson compile -C build subscribe-notify-args-gate
  *   timeout 5 ./build/tests/call-sync-repro/subscribe-notify-args-gate
  *
- * PASS → {@code notify::visible} has {@code args[0] == true} and empty message.
- * FAIL → {@code Live.Subscribe} still writes the property into {@code message}
- *        as a string. File in OLLMchat {@code docs/bugs/}. Do not patch
- *        gnome-shell-rpc to stringify booleans.
+ * PASS → {@code notify::visible} has {@code args[0] == true} and empty message,
+ *        and {@code notify::stamp} uses the registered {@link OLLMrpc.Bin.TypeOverride}
+ *        (ISO-8601 string) without closing the connection.
+ * FAIL → {@code notify::} writes the raw boxed value and ignores the override.
+ *        File in OLLMchat {@code docs/bugs/}. Do not add a DateTime encoder in
+ *        gnome-shell-rpc.
  */
+
+class StampOverride : OLLMrpc.Bin.TypeOverride
+{
+	public override GLib.Type override_type {
+		get {
+			return typeof(GLib.DateTime);
+		}
+	}
+
+	public override Gee.ArrayList<GLib.Value?> pack(GLib.Value src)
+	{
+		var dt = (GLib.DateTime) src.get_boxed();
+		return OLLMrpc.args("s", dt.to_utc().format_iso8601());
+	}
+
+	public override GLib.Value unpack(
+		Gee.ArrayList<GLib.Value?> fields,
+		int index,
+		out int consumed
+	) {
+		consumed = 1;
+		var copy = GLib.Value(typeof(string));
+		if (index < fields.size && fields.get(index) != null
+				&& fields.get(index).holds(GLib.Type.STRING)) {
+			copy.set_string(fields.get(index).get_string());
+		}
+		return copy;
+	}
+}
 
 class Peer : GLib.Object, OLLMrpc.Live.Interface
 {
@@ -99,6 +130,7 @@ class Gate : GLib.Object
 static void boot_rpc()
 {
 	OLLMrpc.rpc_register(true);
+	OLLMrpc.Bin.TypeOverride.register(new StampOverride());
 	GnomeShellRpc.Rpc.Daemon.rpc_register();
 	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
 	Gate.rpc_register();

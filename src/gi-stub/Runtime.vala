@@ -55,6 +55,9 @@ namespace GnomeShellRpc.GiStub
 		[CCode (cname = "shell_clutter_event_override_register")]
 		private static extern void clutter_event_override_register();
 
+		[CCode (cname = "shell_actor_box_override_register")]
+		private static extern void actor_box_override_register();
+
 		/**
 		 * Insert create-time proxy into {@link OLLMrpc.Client.proxies}.
 		 *
@@ -117,6 +120,7 @@ namespace GnomeShellRpc.GiStub
 			OLLMrpc.Bin.register("Clutter-Frame", typeof(Clutter.Frame));
 			// NASTY needs fixing
 			Runtime.clutter_event_override_register();
+			Runtime.actor_box_override_register();
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {

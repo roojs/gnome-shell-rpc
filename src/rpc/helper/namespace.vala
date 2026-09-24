@@ -39,6 +39,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		ClutterHelper.rpc_register();
 		Barrier.rpc_register();
 		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
+		OLLMrpc.Bin.TypeOverride.register(new ActorBoxOverride());
 		OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());
 		Interval.rpc_register();
 		Constraint.rpc_register();
