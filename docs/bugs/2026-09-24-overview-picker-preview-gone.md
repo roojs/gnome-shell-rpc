@@ -2,7 +2,7 @@
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and the boot overview matches stock WINDOW_PICKER, and clicking an app icon launches it. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ⏳ open — live look, 2026-09-24. No `src/` change until a smoke names the miss. Smokes cited below are **2026-09-16 / 2026-09-22** results. Code has moved. Re-prove before treating one as current.
+**Status:** ⏳ open — live look. 20:22 boot did not drop the socket: client idle after `Clutter-Actor.hide` id 2955 (20:22:03), server pointer motion through 20:22:08, no `JS ERROR`. Smokes cited below are **2026-09-16 / 2026-09-22**. Re-prove before treating one as current.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
