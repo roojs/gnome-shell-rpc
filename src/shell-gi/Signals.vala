@@ -62,6 +62,31 @@ namespace Shell
 			GLib.Quark detail,
 			void* return_value);
 
+		/**
+		 * {@code RPC-Live-Subscribe} is the leased C object, not the GJS
+		 * subclass. {@code registerClass} signals ({@code activate} on a
+		 * BoxLayout item, {@code menu-set}, …) stay local — connecting them
+		 * on the peer is {@code signal is invalid}, hid 0, then teardown
+		 * {@code g_signal_handler_disconnect} asserts.
+		 */
+		private static bool exists_on_peer(GLib.Object obj, string signal_name)
+		{
+			var t = obj.get_type();
+			while (t != GLib.Type.INVALID) {
+				unowned string n = t.name();
+				if (n.has_prefix("Gjs_")) {
+					t = t.parent();
+					continue;
+				}
+				uint signal_id = 0;
+				GLib.Quark detail = 0;
+				return GLib.Signal.parse_name(
+					signal_name, t, out signal_id, out detail, false)
+					&& signal_id != 0;
+			}
+			return false;
+		}
+
 		[CCode (cname = "shell_signals_connect")]
 		public static int connect(GLib.Object obj, string signal_name, int gjs_handler_id = 0)
 		{
@@ -72,6 +97,9 @@ namespace Shell
 			GnomeShellRpc.GiStub.Runtime.register();
 			var handle = obj as OLLMrpc.Live.Interface;
 			if (handle == null || handle.rpc_lid == 0) {
+				return 0;
+			}
+			if (!Signals.exists_on_peer(obj, signal_name)) {
 				return 0;
 			}
 			var lid = (int) handle.rpc_lid;
