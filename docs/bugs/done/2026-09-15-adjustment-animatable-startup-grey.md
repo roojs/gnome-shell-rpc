@@ -1,6 +1,6 @@
 # St.Adjustment missing Clutter.Animatable — startup grey + menus stick
 
-**Status:** ✔️ corridor archived (Animatable + D1.7 + D1.8 code) — residual grey/menus → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
+**Status:** ✔️ corridor archived (Animatable + D1.7 + D1.8 code) — residual grey/menus → [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)  
 **Hit:** 2026-09-15 — ibus menu hangs / grey over background; position OK  
 **Plan:** [`1.0-run-to-end.md`](../../plans/1.0-run-to-end.md) D1.7–D1.8
 
@@ -47,7 +47,7 @@ Smoke: `instanceof Animatable` + `find_property('value')` ✔️.
 ### Residual (moved)
 
 Nest ease / stuck grey / menus no longer open →
-[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md).
+[`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md).
 
 ---
 

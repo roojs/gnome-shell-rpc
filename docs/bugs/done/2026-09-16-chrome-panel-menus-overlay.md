@@ -53,9 +53,9 @@
 > plan) — do not re-splat onto other bugs/docs. Prove without modifying
 > the main codebase until the smoke names the fix.
 
-**Status:** ⏳ open — **primary** chrome bar (panel, menus, grey overlay). Allocate Flow 2/3 archived.  
-**Plan:** [`0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)  
-**Allocate (done):** [`done/2026-09-16-allocate-follow-reference.md`](done/2026-09-16-allocate-follow-reference.md)
+**Status:** ✔️ archived 2026-09-24 — superseded by [`2026-09-24-overview-picker-preview-gone.md`](../2026-09-24-overview-picker-preview-gone.md). Still-true layout notes live there. Re-prove before treating a smoke below as current.  
+**Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)  
+**Allocate (done):** [`2026-09-16-allocate-follow-reference.md`](2026-09-16-allocate-follow-reference.md)
 
 **Roles:** consumer of the stock allocate program · **not** a new layout.
 
@@ -99,7 +99,7 @@ top of a stay-up crash. Do **not** reopen boot death without a new
 | - | ------- | -------- | ----- |
 | 1 | Workspace selectors (left) | ✔️ closed — centred + hpadding (`workspace-dot-align-smoke` **C**, `buttonbox-hpadding-smoke`) | Vertically centred; ~12px left pad |
 | 2 | Boot / desktop | **Better (user 2026-09-17 ~16:37).** App-picker / WINDOW_PICKER now shows **wallpaper / app thumbnails**. Search **too high**. Desktop panes **too high** (same). Workspace-thumbnail row (tiny per-desktop squares) **still missing**. Grey square + red dot ~2/3 along. See **Panel inset**. | Search below panel → thumbs row → wallpaper pane |
-| 3 | Clock (dateMenu) | GLSL unpack archived ([`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md)). Nested `date-menu-open-smoke: ok`. Live click leftover if still true. | Same |
+| 3 | Clock (dateMenu) | GLSL unpack archived ([`2026-09-21-shell-glsleffect-bin-alias.md`](2026-09-21-shell-glsleffect-bin-alias.md)). Nested `date-menu-open-smoke: ok`. Live click leftover if still true. | Same |
 | 4 | Clock menu | **Open/close ✔️.** Buttons inside dead (month nav, events, …) — backlog | Month nav + items work |
 | 5 | System menu (quickSettings) | **Open/close ✔️.** Tiles / sliders / settings row dead — same backlog. Volume size later | Tiles click; sane size |
 | 6 | Geom (probe) | `messageTray` still odd; BoxPointer dateMenu ~stage-wide preferred | Finite tray; menu ~content |
@@ -127,9 +127,9 @@ QS `-12` later. Boot landing is stock WINDOW_PICKER but **content incomplete** (
 
 ### Clock click crash (2026-09-21) — archived 2026-09-22
 
-GLSL unpack: [`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md). User: resume search. Nested `date-menu-open-smoke: ok`. Do **not** put never-shrink back.
+GLSL unpack: [`2026-09-21-shell-glsleffect-bin-alias.md`](2026-09-21-shell-glsleffect-bin-alias.md). User: resume search. Nested `date-menu-open-smoke: ok`. Do **not** put never-shrink back.
 
-Came off the search ticket ([`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay empty is **closed**; inset/thumbs leftovers stay here. Click-a-result-does-not-spawn is a **separate** ticket: [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md) (inset can still make L3 pick miss).
+Came off the search ticket ([`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md)): a speculative “never shrink `actor_allocation`” on **every** actor crashed clicking the top-panel time. Search overlay empty is **closed**; inset/thumbs leftovers stay here. Click-a-result-does-not-spawn is a **separate** ticket: [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md) (inset can still make L3 pick miss).
 
 | Attempt | Result | Now |
 | --- | --- | --- |
@@ -139,7 +139,7 @@ Came off the search ticket ([`done/2026-09-19-overview-app-search-empty.md`](don
 | `GLSLEffect` `static construct { Bin.register(...) }` | User: not a valid way | **Removed** |
 | `GLSLEffect.rpc_register()` from `Global.bind_display` | User: one place calls all of these, not random sites | **Removed** |
 | Helper `Bin.register("Shell-GLSLEffect")` | Invented a Shell wire name on mutter. `get_effect` encoded the compositor OffscreenEffect as that alias | **Removed.** `register_alias("Clutter-OffscreenEffect", …)` |
-| `Shell.register()` (`shell_register`) from `GiStub.Runtime.register()` to unpack `Shell-GLSLEffect` | User: Shell GLSLEffect is never on the server. It extends Clutter; alias the helper as `Clutter-OffscreenEffect`, `register_handle` the lease | **Removed.** See [`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md) |
+| `Shell.register()` (`shell_register`) from `GiStub.Runtime.register()` to unpack `Shell-GLSLEffect` | User: Shell GLSLEffect is never on the server. It extends Clutter; alias the helper as `Clutter-OffscreenEffect`, `register_handle` the lease | **Removed.** See [`2026-09-21-shell-glsleffect-bin-alias.md`](2026-09-21-shell-glsleffect-bin-alias.md) |
 | Smoke `fire_button_press` after `open()` | Toggles **closed** (`isOpen=false`); prove hung to timeout until click was dropped | Smoke is **open-only**. `SMOKE_OK_PAT` includes `date-menu-open-smoke: ok` |
 | Nested prove **2026-09-21 ~15:35** | `date-menu-open-smoke: open dateMenu` then `ok`. No unpack 133. Early-stop once the pattern was listed | Gate PASSed. **Live click** (user) not re-scored this session |
 | **2026-09-22** search/generator rebuild left `mutter-rpc` stale (`GLSLEffect.c` still `Bin.register("Shell-GLSLEffect")`) | Same unpack on `get_effect`. Source was already `register_alias("Clutter-OffscreenEffect")` — ninja had not relinked compositor | Rebuilt `mutter-rpc`. Nested `date-menu-open-smoke: ok`. Still **do not** put `Shell-GLSLEffect` on mutter |
@@ -152,7 +152,7 @@ GSR_NESTED_TIMEOUT=40 GI_META_SMOKE=date-menu-open-smoke \
 
 Do **not:** never-shrink globally · `Bin.register` in `ShellApplication` · `static construct` Bin.register · `rpc_register` from `bind_display` · treat nested `open(0)` as a live click score · Idle as a menu fix.
 
-If the nest/session bus is dead (“too many connections”), that is leftover `dbus-run-session` daemons, not this chrome miss: `./scripts/clear-nested-dbus.sh` ([`weston-nested-test-env.md`](../weston-nested-test-env.md)).
+If the nest/session bus is dead (“too many connections”), that is leftover `dbus-run-session` daemons, not this chrome miss: `./scripts/clear-nested-dbus.sh` ([`weston-nested-test-env.md`](../../weston-nested-test-env.md)).
 
 ### §2 diagnosis (2026-09-17 — debug only, no fix yet)
 
@@ -214,7 +214,7 @@ along. User: not taking the menu bar into account.
 
 **User live (2026-09-18):** hang after settle **closed** (session stays
 up). App search (text fills, icons empty) **closed** 2026-09-22 —
-[`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md).
+[`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md).
 
 ### Panel inset (2026-09-17)
 
@@ -327,8 +327,8 @@ User live + settle probe (above). Historical one-liners:
 
 Do **not** start at the `ensureAllocation` lock for §1/§2.
 
-**Contract:** [`clutter-layout-allocate.md`](../clutter-layout-allocate.md).  
-**Allocate (archived):** [`done/2026-09-16-allocate-follow-reference.md`](done/2026-09-16-allocate-follow-reference.md).
+**Contract:** [`clutter-layout-allocate.md`](../../clutter-layout-allocate.md).  
+**Allocate (archived):** [`2026-09-16-allocate-follow-reference.md`](2026-09-16-allocate-follow-reference.md).
 
 ---
 
@@ -402,7 +402,7 @@ GI_META_SMOKE=workarea-panel-chrome-smoke GSR_WESTON_MODE=prove \
 ```
 
 Logs: `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`.  
-Stop reason (prove SIGKILL vs real death): [`nested-debug.md`](../nested-debug.md).
+Stop reason (prove SIGKILL vs real death): [`nested-debug.md`](../../nested-debug.md).
 
 ---
 
@@ -445,7 +445,7 @@ EOS / mutter ec=133.
 landed.
 
 **Supersedes leftover chase on:**
-[`done/2026-09-15-chrome-placement.md`](done/2026-09-15-chrome-placement.md)
-· [`done/2026-09-15-adjustment-animatable-startup-grey.md`](done/2026-09-15-adjustment-animatable-startup-grey.md)
-· [`done/2026-09-15-boot-blank-background.md`](done/2026-09-15-boot-blank-background.md)
-· [`done/2026-09-16-allocate-follow-reference.md`](done/2026-09-16-allocate-follow-reference.md)
+[`2026-09-15-chrome-placement.md`](2026-09-15-chrome-placement.md)
+· [`2026-09-15-adjustment-animatable-startup-grey.md`](2026-09-15-adjustment-animatable-startup-grey.md)
+· [`2026-09-15-boot-blank-background.md`](2026-09-15-boot-blank-background.md)
+· [`2026-09-16-allocate-follow-reference.md`](2026-09-16-allocate-follow-reference.md)

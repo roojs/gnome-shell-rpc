@@ -6,7 +6,7 @@
  */
 namespace Shell
 {
-	public class BlurEffect : Clutter.Effect, OLLMrpc.Live.Handle
+	public class BlurEffect : Clutter.Effect, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 

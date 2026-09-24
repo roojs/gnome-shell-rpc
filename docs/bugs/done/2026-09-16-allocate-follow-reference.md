@@ -7,13 +7,13 @@ gnome-shell (GJS + mutter C), split across client/server.
 
 Checklist: `docs/guide-to-writing-plans.md`.
 
-**Status:** ✔️ archived 2026-09-16 — Flow 2/3 landed (`startup-allocate-smoke` **A/E/F**, `hook-o-gate` PASS). Residual panel / menus / grey → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
+**Status:** ✔️ archived 2026-09-16 — Flow 2/3 landed (`startup-allocate-smoke` **A/E/F**, `hook-o-gate` PASS). Residual panel / menus / grey → [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)  
 **OPC:** [`OLLMchat/docs/bugs/2026-09-16-any-args-token-reg-type.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-16-any-args-token-reg-type.md) — applied  
 **Gate:** `tests/call-sync-repro/hook-o-gate` — **PASS** 2026-09-16 `get_object` identity  
 **Hit:** 2026-09-16  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)  
 **Reference:** [`clutter-layout-allocate.md`](../../clutter-layout-allocate.md)  
-**Chrome:** [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)
+**Chrome:** [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)
 
 **🚫** Idle / `GLib.idle_add`.  
 **🚫** Vendor `panel.js` / `overviewControls.js`.  

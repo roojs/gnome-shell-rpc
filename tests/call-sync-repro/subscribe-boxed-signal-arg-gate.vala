@@ -13,7 +13,7 @@
  * FAIL → write error / connection reset. File in OLLMchat; do not Idle.
  */
 
-class Peer : GLib.Object, OLLMrpc.Live.Handle
+class Peer : GLib.Object, OLLMrpc.Live.Interface
 {
 	public uint64 rpc_lid { get; set construct; default = 0; }
 

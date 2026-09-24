@@ -36,7 +36,7 @@
 				null,
 				OLLMrpc.args("o", this.priv_source));
 			this.rpc_lid =
-				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
+				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
 			this.mint_done = true;
 		}

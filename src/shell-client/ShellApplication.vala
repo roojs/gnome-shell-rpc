@@ -61,7 +61,7 @@ namespace GnomeShellRpc.ShellClient
 
 			prepend_typelib_paths();
 			/*
-			 * Leased stubs implement OLLMrpc.Live.Handle. GJS walks GObject
+			 * Leased stubs implement OLLMrpc.Live.Interface. GJS walks GObject
 			 * interfaces via find_by_name; without a loaded typelib that
 			 * asserts and segfaults (Panel / DateMenu).
 			 */

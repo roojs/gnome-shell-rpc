@@ -29,7 +29,7 @@
 
 **Scope:** generated client GI stubs in `src/gi-stub-gen/Generator.vala`
 
-Unblocks [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md) and [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md).
+Unblocks [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md) and [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md) (search-click archived: [`done/2026-09-22-search-result-click-no-launch.md`](done/2026-09-22-search-result-click-no-launch.md)).
 
 ## Agent handoff — 2026-09-23 18:10
 
@@ -461,7 +461,8 @@ The resulting split is the known cause of RPC `clicked` delivery not invoking `A
 
 See:
 
-- [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md)
+- [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md)
+- [`done/2026-09-22-search-result-click-no-launch.md`](done/2026-09-22-search-result-click-no-launch.md)
 - [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md)
 - [`../signals-client.md`](../signals-client.md)
 

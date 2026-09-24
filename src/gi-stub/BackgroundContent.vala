@@ -8,7 +8,7 @@
  */
 namespace Meta
 {
-	public class BackgroundContent : GLib.Object, Clutter.Content, OLLMrpc.Live.Handle
+	public class BackgroundContent : GLib.Object, Clutter.Content, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 

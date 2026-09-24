@@ -19,7 +19,7 @@
  * PASS → consumer Helpers can take GObject args with signature "o".
  */
 
-class Peer : GLib.Object, OLLMrpc.Live.Handle
+class Peer : GLib.Object, OLLMrpc.Live.Interface
 {
 	public uint64 rpc_lid { get; set construct; default = 0; }
 }

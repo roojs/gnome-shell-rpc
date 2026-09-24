@@ -1,7 +1,7 @@
 // FIXME: 0.5.3 POC — hand stub until generator wires get_window_actors.
 namespace Meta
 {
-	public class Compositor : GLib.Object, OLLMrpc.Live.Handle
+	public class Compositor : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 

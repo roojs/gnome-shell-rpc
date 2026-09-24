@@ -13,7 +13,7 @@
  * PASS → create-time still needs Runtime.register_handle into proxies.
  */
 
-class Peer : GLib.Object, OLLMrpc.Live.Handle
+class Peer : GLib.Object, OLLMrpc.Live.Interface
 {
 	public uint64 rpc_lid { get; set construct; default = 0; }
 }

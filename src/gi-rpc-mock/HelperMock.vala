@@ -662,7 +662,7 @@ namespace GnomeShellRpc.GiRpcMock
 		private int object_lease_id(OLLMrpc.Request request, GLib.Object obj)
 		{
 			/*
-			 * GiMock mints are plain GObject — no Live.Handle.rpc_lid.
+			 * GiMock mints are plain GObject — no Live.Interface.rpc_lid.
 			 * Prefer the connection pointer map so we do not export() a
 			 * second lease and lose ActorMeta.set_name tracking.
 			 */
@@ -673,7 +673,7 @@ namespace GnomeShellRpc.GiRpcMock
 					&& request.connection.lease_ids.get(hi).has_key(lo)) {
 				return request.connection.lease_ids.get(hi).get(lo);
 			}
-			var live = obj as OLLMrpc.Live.Handle;
+			var live = obj as OLLMrpc.Live.Interface;
 			if (live != null && live.rpc_lid != 0) {
 				return (int) live.rpc_lid;
 			}

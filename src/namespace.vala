@@ -22,7 +22,7 @@ namespace GnomeShellRpc
 	 * Sync RPC call with positional {@link GLib.Value}s and optional instance.
 	 *
 	 * @param method wire method (e.g. {@code Meta-Window.minimize})
-	 * @param instance leased stub; {@link OLLMrpc.Live.Handle.rpc_lid}
+	 * @param instance leased stub; {@link OLLMrpc.Live.Interface.rpc_lid}
 	 *     → {@link OLLMrpc.Request.lease_id}
 	 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
 	 * @param buffer optional client→server {@link OLLMrpc.Live.Buffer}

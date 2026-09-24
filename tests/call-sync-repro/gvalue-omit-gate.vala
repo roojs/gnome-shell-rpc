@@ -31,7 +31,7 @@ class Gate : GLib.Object
 
 	/**
 	 * Export a leased {@link GLib.SimpleAction}; reply with its lease id
-	 * so the client can call stock get_property without a Live.Handle proxy.
+	 * so the client can call stock get_property without a Live.Interface proxy.
 	 */
 	public void make_action(OLLMrpc.Request request)
 	{

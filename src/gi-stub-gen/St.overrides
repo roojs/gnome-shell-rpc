@@ -1,8 +1,7 @@
 # gi-stub-gen overrides for St-16 (Type.method key=value).
 
-# Emit GIR implements on stub classes (Viewport → Scrollable). Deny an iface
-# name to skip it; Clutter/Meta leave this off until Animatable/etc. are ready.
-# Foreign: Type.implements=Clutter.Animatable (see Adjustment).
+# Emit GIR implements, including foreign (Clutter.Animatable on Widget).
+# Deny an iface name (qualified if foreign) to skip it.
 Namespace emit_implements=1
 
 # Stock St.Adjustment implements Clutter.Animatable (find_property / ease).

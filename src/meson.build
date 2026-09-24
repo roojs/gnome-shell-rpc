@@ -43,6 +43,7 @@ compositor_sources = files(
   'rpc/helper/ClutterThreads.vala',
   'rpc/helper/Clutter.vala',
   'rpc/helper/ClutterEventOverride.vala',
+  'rpc/helper/InputDeviceOverride.vala',
   'rpc/helper/Interval.vala',
   'rpc/helper/Constraint.vala',
   'rpc/helper/St.vala',

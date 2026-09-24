@@ -26,7 +26,7 @@
 					OLLMrpc.args("o", null));
 				return;
 			}
-			var handle = value as OLLMrpc.Live.Handle;
+			var handle = value as OLLMrpc.Live.Interface;
 			if (handle != null && handle.rpc_lid != 0) {
 				GnomeShellRpc.call_value(
 					"Clutter-Actor.set_content", this,
@@ -86,7 +86,7 @@
 			}
 			var response = GnomeShellRpc.call_value(alias + ".new");
 			this.rpc_lid =
-				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
+				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
 			/*
 			 * TEMPORARY split-signal bridge: non-helper St.Bin subclasses
@@ -160,9 +160,7 @@
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			try {
 				GnomeShellRpc.GiStub.vfunc_call_preferred_size(
-					this,
-					OLLMrpc.Gi.vfunc_offset(
-						"Clutter", "Actor", "get_preferred_width"),
+					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "get_preferred_width"),
 					(float) call.args.get(1).get_double(),
 					out min, out nat);
 			} finally {
@@ -188,9 +186,7 @@
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			try {
 				GnomeShellRpc.GiStub.vfunc_call_preferred_size(
-					this,
-					OLLMrpc.Gi.vfunc_offset(
-						"Clutter", "Actor", "get_preferred_height"),
+					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "get_preferred_height"),
 					(float) call.args.get(1).get_double(),
 					out min, out nat);
 			} finally {
@@ -221,8 +217,7 @@
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
 			try {
 				GnomeShellRpc.GiStub.vfunc_call_void_pointer(
-					this,
-					OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "allocate"),
+					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "allocate"),
 					(void*) &box);
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();

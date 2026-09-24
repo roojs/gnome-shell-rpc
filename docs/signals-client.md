@@ -242,9 +242,10 @@ returns (`local_emit_after` in `St.overrides`). The `.new` lease path
 `ensure_signal_subscribe(actor, "style-changed")` when the type has that
 signal, so the server's later emission can reach GJS `.connect` handlers.
 
-See [Prefix generated Vala signals](bugs/2026-09-23-prefix-generated-vala-signals.md),
-[Search result click does not launch](bugs/2026-09-22-search-result-click-no-launch.md),
-and [`style-changed` manual subscription](bugs/2026-09-22-style-changed-manual-subscription.md).
+See [Prefix generated Vala signals](bugs/2026-09-23-prefix-generated-vala-signals.md)
+and [Overview picker](bugs/2026-09-24-overview-picker-preview-gone.md).
+[`style-changed` manual subscription](bugs/2026-09-22-style-changed-manual-subscription.md)
+is still open. Archived: [search click](bugs/done/2026-09-22-search-result-click-no-launch.md).
 
 ## GJS connection
 
@@ -270,7 +271,7 @@ GJS .disconnect(id)
 
 ```text
 generated proxy
-  implements OLLMrpc.Live.Handle
+  implements OLLMrpc.Live.Interface
   rpc_lid = lease id
 
 Runtime.register_handle(proxy)
@@ -338,7 +339,7 @@ It then looks up the local signal metadata with `GLib.Signal.parse_name()`, cons
 
 Named signal arguments are carried in `Notification.args`. `Shell.Signals.emit` calls `OLLMrpc.Bin.TypeOverride.fill_params`, which walks the signal's parameter types. A registered type consumes the field count from its override. Any other parameter consumes one field. The `subscribe-signal-args-gate` and `subscribe-boxed-signal-arg-gate` cover scalar and registered boxed arguments.
 
-`Clutter.Event` is registered when `Shell.Signals` loads (`Shell.ClutterEventOverride`). Those five fields are rebuilt with `Clutter.Event.from_local`. There is no signal-name check and no `Clutter.get_current_event()` fallback.
+`Clutter.Event` is registered from `GiStub.Runtime.register` (`Shell.ClutterEventOverride`). Those five fields are rebuilt with `Clutter.Event.from_local`. There is no signal-name check and no `Clutter.get_current_event()` fallback.
 
 Current limitations are:
 

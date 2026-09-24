@@ -52,7 +52,7 @@
 				null,
 				OLLMrpc.args("d", this.priv_factor));
 			this.rpc_lid =
-				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
+				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			if (this.name != null && this.name.length > 0) {
 				GnomeShellRpc.call_value("Clutter-ActorMeta.set_name", this,
 					OLLMrpc.args("s", this.name));

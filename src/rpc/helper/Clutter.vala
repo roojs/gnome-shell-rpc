@@ -36,17 +36,26 @@ namespace GnomeShellRpc.Rpc.Helper
 			ev.get_coords(out x, out y);
 			var et = ev.get_type();
 			uint32 button = 0;
-			if (et == Clutter.EventType.BUTTON_PRESS
-					|| et == Clutter.EventType.BUTTON_RELEASE
-					|| et == Clutter.EventType.PAD_BUTTON_PRESS
-					|| et == Clutter.EventType.PAD_BUTTON_RELEASE) {
-				button = ev.get_button();
+			uint key = 0;
+			switch (et) {
+				case Clutter.EventType.BUTTON_PRESS:
+				case Clutter.EventType.BUTTON_RELEASE:
+				case Clutter.EventType.PAD_BUTTON_PRESS:
+				case Clutter.EventType.PAD_BUTTON_RELEASE:
+					button = ev.get_button();
+					break;
+				case Clutter.EventType.KEY_PRESS:
+				case Clutter.EventType.KEY_RELEASE:
+					key = ev.get_key_symbol();
+					break;
+				default:
+					break;
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("iddduu",
 					(int) et, (double) x, (double) y, button,
-					(uint) ev.get_state(), ev.get_key_symbol()),
+					(uint) ev.get_state(), key),
 			});
 		}
 	}

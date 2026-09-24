@@ -1,13 +1,31 @@
 /**
  * Wire form of a {@link Clutter.Event}: type, x, y, button, key symbol.
  *
- * Registered from {@link Shell.Signals} so client unpack and any emit in
- * this process share one override.
+ * Registered from {@link GnomeShellRpc.GiStub.Runtime.register} with the
+ * other client bin types.
  */
 namespace Shell
 {
 	internal class ClutterEventOverride : OLLMrpc.Bin.TypeOverride
 	{
+		static Gee.ArrayList<void*>? held;
+
+		[CCode (cname = "clutter_event_free")]
+		private static extern void free_stacked(Clutter.Event ev);
+
+		/**
+		 * Drop the event pushed by the latest {@link unpack}.
+		 */
+		public override void release()
+		{
+			if (held == null || held.size == 0) {
+				return;
+			}
+			var raw = held.get(held.size - 1);
+			held.remove_at(held.size - 1);
+			ClutterEventOverride.free_stacked((Clutter.Event) raw);
+		}
+
 		/**
 		 * GType this override replaces on the wire.
 		 */
@@ -73,9 +91,28 @@ namespace Shell
 				fields.get(index + 3).get_uint(),
 				0,
 				fields.get(index + 4).get_uint());
+			if (ClutterEventOverride.held == null) {
+				ClutterEventOverride.held = new Gee.ArrayList<void*>();
+			}
+			var copy = ev.copy();
+			void* raw = (owned) copy;
+			ClutterEventOverride.held.add(raw);
 			var v = GLib.Value(typeof(Clutter.Event));
-			v.set_boxed(ev);
+			v.set_pointer(raw);
 			return v;
 		}
+	}
+
+	/**
+	 * FIXME - this is horrible 
+	 Register the client {@link ClutterEventOverride}.
+	 *
+	 * gi-stub cannot name this internal class. {@link GnomeShellRpc.GiStub.Runtime.register}
+	 * calls this C trampoline next to the other bin registrations.
+	 */
+	[CCode (cname = "shell_clutter_event_override_register")]
+	public void clutter_event_override_register()
+	{
+		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
 	}
 }

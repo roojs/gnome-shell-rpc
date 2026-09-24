@@ -1,6 +1,6 @@
 # Notification / chrome placement wrong after layout CRITICAL fix
 
-**Status:** ✔️ allocate path archived — open chrome → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
+**Status:** ✔️ allocate path archived — open chrome → [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)  
 **Hit:** 2026-09-15 — user: banners/menus not in the right place; panel bold  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
@@ -67,7 +67,7 @@ using natural preferred.
 
 **2026-09-16:** menus/clock no longer open; panel centre + grey overlay
 also open. Chase continues under
-[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)
+[`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)
 (do not reopen size/`x` until menus toggle again).
 
 ---

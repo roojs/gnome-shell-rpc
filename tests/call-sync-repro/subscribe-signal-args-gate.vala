@@ -16,7 +16,7 @@
  *        OLLMchat docs/bugs/; do not work around in Runtime/Laters.
  */
 
-class Peer : GLib.Object, OLLMrpc.Live.Handle
+class Peer : GLib.Object, OLLMrpc.Live.Interface
 {
 	public uint64 rpc_lid { get; set construct; default = 0; }
 

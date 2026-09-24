@@ -8,7 +8,7 @@ namespace Meta
 	 */
 	public delegate void IdleMonitorWatchFunc(IdleMonitor monitor, uint32 watch_id);
 
-	public class IdleMonitor : GLib.Object, OLLMrpc.Live.Handle
+	public class IdleMonitor : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 

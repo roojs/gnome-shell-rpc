@@ -1,14 +1,16 @@
 # `style-changed` is manually repaired in `Clutter.Actor`
 
-**Status:** ⚠️ **old workaround removed / temporary setter bridge**
+**Status:** ⏳ **open** — temporary setter bridge still in tree (pulled back from archive 2026-09-24). The `local_emit_after` bridge is the work. Do not treat it as closed by the overview picker bug.
 
-**Scope:** `src/gi-stub/overrides-clutter/Actor.override.vala`, currently the
-post-mint `style-changed` subscription.
+**Scope:** `src/gi-stub/overrides-clutter/Actor.override.vala` and the
+`local_emit_after` setters in `St.overrides`.
+
+**Related:** overview look [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md) does not own this. Generator note [`2026-09-23-prefix-generated-vala-signals.md`](2026-09-23-prefix-generated-vala-signals.md).
 
 ## Problem
 
-`Clutter.Actor` construction currently checks the runtime type for a foreign
-`style-changed` signal and manually subscribes it:
+`Clutter.Actor` construction used to check the runtime type for a foreign
+`style-changed` signal and manually subscribe it:
 
 ```vala
 if (this.get_type() != t
@@ -18,8 +20,8 @@ if (this.get_type() != t
 }
 ```
 
-This exists so GJS `BaseIcon.vfunc_style_changed` runs and creates app
-textures. It is deliberately after lease mint because subscribing from
+This existed so GJS `BaseIcon.vfunc_style_changed` runs and creates app
+textures. It was deliberately after lease mint because subscribing from
 `St.Widget` construction caused nested RPC while parsing a reply.
 
 ## Why this is suspicious
@@ -40,10 +42,10 @@ textures. It is deliberately after lease mint because subscribing from
 The shared generator design problem is documented under “Primary design
 suspicion: `signal_prefer`” in
 [`2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md).
-This bug tracks removal of the existing `style-changed` workaround after that
+This bug tracks removal of the `style-changed` workaround after that
 general mechanism is corrected.
 
-## Temporary replacement (2026-09-23)
+## Temporary replacement (2026-09-23) — still in tree
 
 The post-mint `Clutter.Actor` lookup/subscription block has been removed.
 Forwarding the server signal, or firing it from a synchronous vfunc hook,
@@ -61,11 +63,11 @@ GJS→RPC frame.
 
 ## Guardrail
 
-Leave the current block in place until a replacement has a failing gate and
-keeps icon creation working. **Do not use this block as precedent for
+Leave the current bridge in place until a replacement has a failing gate and
+keeps icon creation working. **Do not use this bridge as precedent for
 `clicked`, `repaint`, icon-click signals, or any other signal.**
 
-Do not treat this subscribe as the delivery path for
+Do not treat the old subscribe as the delivery path for
 `buttonbox-hpadding-smoke`. That smoke is a GJS `St.Widget` on Helper-Actor
 (`relay_attach`). The hook runs during `set_style` and, while it does not
 emit, the connect handler stays at 0. There is no `style-changed`
@@ -87,7 +89,8 @@ the current architecture.
    per-type runtime bridge.
 3. The gate passes with the generated behavior.
 4. Shell startup still creates BaseIcon textures.
-5. The `Actor.override.vala` lookup/subscription block can then be deleted.
+5. The `Actor.override.vala` lookup/subscription block stays deleted, and the
+   `local_emit_after` setter bridge is removed.
 
 ## Source lookup
 

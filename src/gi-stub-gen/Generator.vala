@@ -273,7 +273,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			/* Declare Handle on hierarchy roots only; descendants inherit. */
 			if (this.should_emit_live_handle(ns, parent)) {
 				stream.puts(@"
-	public class $(class_name) : $(bases), OLLMrpc.Live.Handle
+	public class $(class_name) : $(bases), OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
@@ -355,7 +355,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 
 			stream.puts(@"
-	public class $(class_name) : GLib.Object, OLLMrpc.Live.Handle
+	public class $(class_name) : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
@@ -378,7 +378,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * Whether this class should declare {@link OLLMrpc.Live.Handle}.
+		 * Whether this class should declare {@link OLLMrpc.Live.Interface}.
 		 *
 		 * Declare on {@code GLib.Object}/{@code InitiallyUnowned} roots and
 		 * on the first stub under a denied/C parent (e.g. {@code ActorMeta}).
@@ -446,20 +446,41 @@ namespace GnomeShellRpc.Rpc.Helper
 			 * Bin.gtype_to_alias and mint alias.new (leaf, not this class).
 			 * Gaps (no GIR ctor → Gi parent-walks to Actor.new) are server
 			 * Helpers / leaf overrides — not another emitter rewrite.
+			 *
+			 * Classes with construct properties prepend a stash read. The
+			 * zero-arg body below is unchanged and is the only construct
+			 * when the class has no construct properties.
 			 * ************************************************************************
 			 */
-			stream.puts("""		construct {
+			if (this.type_has_ctor_props(oi)) {
+				stream.puts("""		construct {
+			if (this.rpc_lid != 0) {
+				this.rpc_ctor_clear();
+				return;
+			}
+			if (this.rpc_ctor_has()) {
+""");
+				this.emit_ctor_new_call(stream, ns, new_fi);
+				stream.puts("""				this.rpc_ctor_clear();
+				return;
+			}
+			this.rpc_ctor_clear();
+""");
+			} else {
+				stream.puts("""		construct {
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var t = this.get_type();
+""");
+			}
+			stream.puts("""			var t = this.get_type();
 			while (t != GLib.Type.INVALID) {
 				if (OLLMrpc.Bin.gtype_to_alias == null || !OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
 					t = t.parent();
 					continue;
 				}
 				var response = GnomeShellRpc.call_value(OLLMrpc.Bin.gtype_to_alias.get(t) + ".new");
-				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
+				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 				return;
 			}
 			GLib.error("lease construct: no Bin-registered ancestor for %s", this.get_type().name());
@@ -468,13 +489,90 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * Same-namespace GIR {@code implements} when
-		 * {@code Namespace emit_implements=1} (St.overrides). Skip ifaces on
-		 * {@link deny}, foreign namespaces, or already on a parent stub.
-		 *
-		 * Foreign ifaces via override {@code Type.implements=Clutter.Animatable}
-		 * (comma-separated, qualified names) — e.g. St.Adjustment once
-		 * Animatable methods are ready in the override splice.
+		 * True when a construct-only property is also a GIR constructor argument.
+		 */
+		private bool type_has_ctor_props(GI.ObjectInfo oi)
+		{
+			var ctor_args = new Gee.HashSet<string>();
+			for (var m = 0; m < oi.get_n_methods(); m++) {
+				var fi = oi.get_method(m);
+				if ((fi.get_flags() & GI.FunctionInfoFlags.IS_CONSTRUCTOR) == 0) {
+					continue;
+				}
+				for (var a = 0; a < fi.get_n_args(); a++) {
+					ctor_args.add(fi.get_arg(a).get_name());
+				}
+			}
+			if (ctor_args.size == 0) {
+				return false;
+			}
+			for (var p = 0; p < oi.get_n_properties(); p++) {
+				var pi = oi.get_property(p);
+				var flags = pi.get_flags();
+				if ((flags & GLib.ParamFlags.CONSTRUCT_ONLY) == 0) {
+					continue;
+				}
+				if ((flags & GLib.ParamFlags.WRITABLE) == 0) {
+					continue;
+				}
+				if (pi.get_name() in ctor_args) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/**
+		 * Positional {@code .new} from the stashed construct properties.
+		 */
+		private void emit_ctor_new_call(
+			GLib.FileStream stream,
+			string ns,
+			GI.FunctionInfo fi
+		) {
+			var sig = "";
+			var packed = "";
+			for (var a = 0; a < fi.get_n_args(); a++) {
+				var arg = fi.get_arg(a);
+				if (arg.is_skip() || arg.get_direction() != GI.Direction.IN) {
+					continue;
+				}
+				var letter = this.dbus_letter(ns, arg.get_type());
+				var aname = this.vala_ident(arg.get_name());
+				var vt = this.type_vala(ns, arg.get_type());
+				sig += letter;
+				stream.puts(@"				var _$(aname) = this.rpc_ctor_get(\"$(arg.get_name())\");
+");
+				string expr;
+				if (letter == "o") {
+					expr = @"(_$(aname) == null ? null : (_$(aname).get_object() as $(vt)))";
+				} else if (letter == "i") {
+					expr = @"(_$(aname) == null ? 0 : (int) _$(aname).get_int())";
+				} else if (letter == "u") {
+					expr = @"(_$(aname) == null ? 0 : (uint) _$(aname).get_uint())";
+				} else if (letter == "d") {
+					expr = @"(_$(aname) == null ? 0.0 : _$(aname).get_double())";
+				} else if (letter == "b") {
+					expr = @"(_$(aname) == null ? false : _$(aname).get_boolean())";
+				} else if (letter == "s") {
+					expr = @"(_$(aname) == null ? \"\" : _$(aname).get_string())";
+				} else {
+					expr = @"_$aname";
+				}
+				if (packed != "") {
+					packed += ", ";
+				}
+				packed += expr;
+			}
+			stream.puts(@"				var response = GnomeShellRpc.call_value(OLLMrpc.Bin.gtype_to_alias.get(this.get_type()) + \".new\", null, OLLMrpc.args(\"$(sig)\", $(packed)));
+				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
+");
+		}
+
+		/**
+		 * GIR {@code implements} when {@code Namespace emit_implements=1}.
+		 * Foreign interfaces are qualified ({@code Clutter.Animatable}).
+		 * Skip {@link deny}, or an iface already listed on a parent stub.
 		 */
 		private string emit_object_implements(string ns, GI.ObjectInfo oi)
 		{
@@ -484,17 +582,19 @@ namespace GnomeShellRpc.Rpc.Helper
 				&& this.overrides.get("Namespace").get("emit_implements") == "1") {
 				for (var i = 0; i < oi.get_n_interfaces(); i++) {
 					var ii = oi.get_interface(i);
-					if (ii.get_namespace() != ns) {
-						continue;
-					}
 					var iname = ii.get_name();
+					if (ii.get_namespace() != ns) {
+						iname = ii.get_namespace() + "." + iname;
+					}
 					if (iname in this.deny) {
 						continue;
 					}
 					if (this.parent_stub_implements(ns, oi, iname)) {
 						continue;
 					}
-					names += iname;
+					if (!(iname in names)) {
+						names += iname;
+					}
 				}
 			}
 			var cname = oi.get_name();
@@ -502,7 +602,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				&& this.overrides.get(cname).has_key("implements")) {
 				foreach (var part in this.overrides.get(cname).get("implements").split(",")) {
 					var t = part.strip();
-					if (t != "") {
+					if (t != "" && !(t in names)) {
 						names += t;
 					}
 				}
@@ -529,7 +629,11 @@ namespace GnomeShellRpc.Rpc.Helper
 				var po = (GI.ObjectInfo) parent;
 				for (var i = 0; i < po.get_n_interfaces(); i++) {
 					var ii = po.get_interface(i);
-					if (ii.get_namespace() == ns && ii.get_name() == iname) {
+					var qname = ii.get_name();
+					if (ii.get_namespace() != ns) {
+						qname = ii.get_namespace() + "." + qname;
+					}
+					if (qname == iname) {
 						return true;
 					}
 				}
@@ -872,7 +976,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		) {
 			var class_name = si.get_name();
 			stream.puts(@"
-	public class $(class_name) : GLib.Object, OLLMrpc.Live.Handle
+	public class $(class_name) : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
@@ -1076,6 +1180,16 @@ namespace GnomeShellRpc.Rpc.Helper
 		) {
 			var class_name = oi.get_name();
 			var emitted = 0;
+			var ctor_args = new Gee.HashSet<string>();
+			for (var m = 0; m < oi.get_n_methods(); m++) {
+				var fi = oi.get_method(m);
+				if ((fi.get_flags() & GI.FunctionInfoFlags.IS_CONSTRUCTOR) == 0) {
+					continue;
+				}
+				for (var a = 0; a < fi.get_n_args(); a++) {
+					ctor_args.add(fi.get_arg(a).get_name());
+				}
+			}
 			for (var p = 0; p < oi.get_n_properties(); p++) {
 				var pi = oi.get_property(p);
 				var pname = pi.get_name();
@@ -1120,6 +1234,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				var flags = pi.get_flags();
 				var readable = (flags & GLib.ParamFlags.READABLE) != 0;
 				var writable = (flags & GLib.ParamFlags.WRITABLE) != 0;
+				var construct_only = (flags & GLib.ParamFlags.CONSTRUCT_ONLY) != 0;
 				if (!readable && !writable) {
 					this.add_skipped_property(class_name, vala_name,
 						"GIR property is neither readable nor writable");
@@ -1176,7 +1291,21 @@ namespace GnomeShellRpc.Rpc.Helper
 						continue;
 					}
 				}
-				if (writable) {
+				if (writable && construct_only) {
+					/*
+					 * Construct setter only when a GIR constructor takes
+					 * this property (Barrier.backend). Otherwise the
+					 * client only receives the object (Context.name) and
+					 * a construct block would set_property on it.
+					 */
+					if (pname in ctor_args && gprop_ok) {
+						write_gprop = true;
+					} else if (read_method || read_gprop) {
+						writable = false;
+					} else if (gprop_ok) {
+						write_gprop = true;
+					}
+				} else if (writable) {
 					setter = pi.get_setter();
 					if (setter != null
 						&& !vfunc_names.contains(setter.get_name())
@@ -1216,19 +1345,12 @@ namespace GnomeShellRpc.Rpc.Helper
 						}
 					}
 					if (!write_method) {
-						/*
-						 * Construct-only: GIR marks writable + construct-only
-						 * with a getter and no setter. Emit as readable-only.
-						 */
-						if (read_method || read_gprop) {
-							if (gprop_ok
-								&& (flags & GLib.ParamFlags.CONSTRUCT_ONLY) == 0) {
-								write_gprop = true;
-							} else {
-								writable = false;
-							}
-						} else if (gprop_ok) {
+						if ((read_method || read_gprop) && gprop_ok) {
 							write_gprop = true;
+						} else if (!(read_method || read_gprop) && gprop_ok) {
+							write_gprop = true;
+						} else if (read_method || read_gprop) {
+							writable = false;
 						}
 					}
 				}
@@ -1327,7 +1449,17 @@ namespace GnomeShellRpc.Rpc.Helper
 				} else if (write_gprop) {
 					stream.puts(@"			[CCode (cname = \"$(class_name.down())_$(conv_set)_gprop\")]
 ");
-					stream.puts("			set {\n");
+					if (construct_only && pname in ctor_args) {
+						stream.puts(@"			construct {
+				this.rpc_ctor_stash(\"$(pname)\", value);
+			}
+");
+					} else {
+						if (construct_only) {
+							stream.puts("			construct {\n");
+						} else {
+							stream.puts("			set {\n");
+						}
 					if (gprop_L == "ay") {
 						this.emit_boxed_bytes(stream, "\t\t\t\t", "value", vt);
 						stream.puts(@"				GnomeShellRpc.call_value(
@@ -1340,7 +1472,8 @@ namespace GnomeShellRpc.Rpc.Helper
 					OLLMrpc.args(\"s$(gprop_L)\", \"$(pname)\", value));
 ");
 					}
-					stream.puts("			}\n");
+						stream.puts("			}\n");
+					}
 				}
 				stream.puts("		}\n");
 				emitted++;
@@ -2279,7 +2412,7 @@ $(tab)public abstract $(ret) $(vala_name)($(arglist))$(throws_clause);
 				if (is_constructor) {
 					/*
 					 * Default {@code new}(): Object() only — lease create
-					 * lives in {@code construct} ({@link OLLMrpc.Live.Handle}).
+					 * lives in {@code construct} ({@link OLLMrpc.Live.Interface}).
 					 */
 					if (name == "new" && args.length == 0) {
 						stream.puts(
@@ -2563,9 +2696,10 @@ $(tab)}
 					);
 				if (ret_is_gobj) {
 					if (is_constructor) {
-						stream.puts(indent + @"var _stub = response.retval.get_object() as OLLMrpc.Live.Handle;
+						stream.puts(@"
+	var _stub = response.retval.get_object() as OLLMrpc.Live.Interface;
+	this.rpc_lid = _stub.rpc_lid;
 ");
-						stream.puts(indent + "this.rpc_lid = _stub.rpc_lid;\n");
 						return;
 					}
 					var cast = ret_vala.has_suffix("?")
@@ -2574,25 +2708,27 @@ $(tab)}
 					var null_ok = ret_vala.has_suffix("?");
 					if (!has_outs) {
 						if (null_ok) {
-							stream.puts(indent + @"if (response.retval.type() == GLib.Type.INVALID) {
+							stream.puts(@"
+	if (response.retval.type() == GLib.Type.INVALID) {
+		return null;
+	}
 ");
-							stream.puts(indent + "\treturn null;\n");
-							stream.puts(indent + "}\n");
 						}
-						stream.puts(indent + @"return ($(cast)) response.retval.get_object();
+						stream.puts(@"
+	return ($(cast)) response.retval.get_object();
 ");
 						return;
 					}
 					if (null_ok) {
-						stream.puts(indent + @"$(ret_vala) __ret = null;
+						stream.puts(@"
+	$(ret_vala) __ret = null;
+	if (response.retval.type() != GLib.Type.INVALID) {
+		__ret = ($(cast)) response.retval.get_object();
+	}
 ");
-						stream.puts(indent + @"if (response.retval.type() != GLib.Type.INVALID) {
-");
-						stream.puts(indent + @"	__ret = ($(cast)) response.retval.get_object();
-");
-						stream.puts(indent + "}\n");
 					} else {
-						stream.puts(indent + @"var __ret = ($(cast)) response.retval.get_object();
+						stream.puts(@"
+	var __ret = ($(cast)) response.retval.get_object();
 ");
 					}
 				} else {
@@ -2792,20 +2928,12 @@ return ($(cast)) response.retval.get_object();
 			string vala_type
 		) {
 			var bytes_name = arg_name + "_bytes";
-			stream.puts(indent + @"GLib.Bytes $(bytes_name);
+			stream.puts(@"
+	GLib.Bytes $(bytes_name);
+	uint8[] _$(arg_name)_data = new uint8[sizeof($(vala_type))];
+	*(($(vala_type)*) _$(arg_name)_data) = $(arg_name);
+	$(bytes_name) = new GLib.Bytes(_$(arg_name)_data);
 ");
-			stream.puts(
-				indent + @"uint8[] _$(arg_name)_data = new uint8[sizeof($(vala_type))];
-"
-			);
-			stream.puts(
-				indent + @"*(($(vala_type)*) _$(arg_name)_data) = $(arg_name);
-"
-			);
-			stream.puts(
-				indent + @"$(bytes_name) = new GLib.Bytes(_$(arg_name)_data);
-"
-			);
 		}
 
 		private void emit_value_get_boxed(
@@ -2840,12 +2968,10 @@ return ($(cast)) response.retval.get_object();
 				);
 				return;
 			}
-			stream.puts(indent + @"$(vala_type) __ret;
+			stream.puts(@"
+	$(vala_type) __ret;
+	__ret = *(($(vala_type)*) $(blob).get_data());
 ");
-			stream.puts(
-				indent + @"__ret = *(($(vala_type)*) $(blob).get_data());
-"
-			);
 		}
 
 		private bool has_out_values(GI.FunctionInfo fi)
@@ -3007,32 +3133,15 @@ return ($(cast)) response.retval.get_object();
 			if (at.get_tag() == GI.TypeTag.GSLIST) {
 				list_type = "GLib.SList";
 			}
-			stream.puts(
-				indent + @"var $(arg_name)_aay_builder = new GLib.VariantBuilder(new GLib.VariantType(\"aay\"));
-"
-			);
-			stream.puts(
-				indent + @"for (unowned $(list_type)<$(list_elem)>? _$(arg_name)_node = $(arg_name); _$(arg_name)_node != null; _$(arg_name)_node = _$(arg_name)_node.next) {
-"
-			);
-			stream.puts(
-				indent + @"	uint8[] _$(arg_name)_data = new uint8[sizeof($(elem))];
-"
-			);
-			stream.puts(
-				indent + @"	*(($(elem)*) _$(arg_name)_data) = _$(arg_name)_node.data;
-"
-			);
-			stream.puts(
-				indent + @"	$(arg_name)_aay_builder.add_value(new GLib.Variant.from_bytes(new GLib.VariantType(\"ay\"), new GLib.Bytes(_$(arg_name)_data), true));
-"
-			);
-			stream.puts(indent + @"}
+			stream.puts(@"
+	var $(arg_name)_aay_builder = new GLib.VariantBuilder(new GLib.VariantType(\"aay\"));
+	for (unowned $(list_type)<$(list_elem)>? _$(arg_name)_node = $(arg_name); _$(arg_name)_node != null; _$(arg_name)_node = _$(arg_name)_node.next) {
+		uint8[] _$(arg_name)_data = new uint8[sizeof($(elem))];
+		*(($(elem)*) _$(arg_name)_data) = _$(arg_name)_node.data;
+		$(arg_name)_aay_builder.add_value(new GLib.Variant.from_bytes(new GLib.VariantType(\"ay\"), new GLib.Bytes(_$(arg_name)_data), true));
+	}
+	var $(arg_name)_aay = $(arg_name)_aay_builder.end();
 ");
-			stream.puts(
-				indent + @"var $(arg_name)_aay = $(arg_name)_aay_builder.end();
-"
-			);
 		}
 
 		private string list_return_vala(string ns, GI.TypeInfo ti)
@@ -3074,23 +3183,15 @@ return ($(cast)) response.retval.get_object();
 				&& this.overrides.get(this.emit_symbol).has_key("list_elem")) {
 				elem_vala = this.overrides.get(this.emit_symbol).get("list_elem");
 			}
-			stream.puts(indent + @"var _list = new $(ret_vala)();
-");
-			stream.puts(indent + @"if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
-");
-			stream.puts(indent + @"	var _rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
-");
-			stream.puts(indent + @"	for (var _i = 0; _i < _rows.size; _i++) {
-");
-			stream.puts(
-				indent + @"		_list.append(($(elem_vala)) _rows.get(_i));
-"
-			);
-			stream.puts(indent + @"	}
-");
-			stream.puts(indent + @"}
-");
-			stream.puts(indent + @"return _list;
+			stream.puts(@"
+	var _list = new $(ret_vala)();
+	if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
+		var _rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
+		for (var _i = 0; _i < _rows.size; _i++) {
+			_list.append(($(elem_vala)) _rows.get(_i));
+		}
+	}
+	return _list;
 ");
 		}
 
@@ -3106,19 +3207,13 @@ return ($(cast)) response.retval.get_object();
 			if (ret_type.get_tag() == GI.TypeTag.GSLIST) {
 				ret_vala = "GLib.SList<string>";
 			}
-			stream.puts(
-				indent + @"var _as = (string[]) response.retval.get_boxed();
-"
-			);
-			stream.puts(indent + @"var _list = new $(ret_vala)();
-");
-			stream.puts(indent + @"foreach (var _s in _as) {
-");
-			stream.puts(indent + @"	_list.append(_s);
-");
-			stream.puts(indent + @"}
-");
-			stream.puts(indent + @"return _list;
+			stream.puts(@"
+	var _as = (string[]) response.retval.get_boxed();
+	var _list = new $(ret_vala)();
+	foreach (var _s in _as) {
+		_list.append(_s);
+	}
+	return _list;
 ");
 		}
 
@@ -3447,21 +3542,15 @@ if the real ctor does more than allocate, implement it and stop emitting the
 alloc stub for that symbol.
 
 ");
-			stream.puts("| | Count |\n");
-			stream.puts("|---|---:|\n");
-			stream.puts(@"| Wired callables | $(this.wired_callables) |
-");
-			stream.puts(@"| Not wired (placeholder stub) | $(not_wired) |
-");
-			stream.puts(@"| Skipped (no stub) | $(skipped) |
-");
-			stream.puts(@"| No-op | $(nooped) |
-");
-			stream.puts(@"| Struct ctor alloc stubs (audit) | $(alloc_ctors) |
-");
-			stream.puts(@"| Denied | $(denied) |
-");
-			stream.puts(@"| **Gaps** | **$(gap_total)** |
+			stream.puts(@"| | Count |
+|---|---:|
+| Wired callables | $(this.wired_callables) |
+| Not wired (placeholder stub) | $(not_wired) |
+| Skipped (no stub) | $(skipped) |
+| No-op | $(nooped) |
+| Struct ctor alloc stubs (audit) | $(alloc_ctors) |
+| Denied | $(denied) |
+| **Gaps** | **$(gap_total)** |
 
 ");
 
@@ -3474,9 +3563,11 @@ alloc stub for that symbol.
 				return;
 			}
 
-			stream.puts("## Gaps by reason\n\n");
-			stream.puts("| Reason | Count |\n");
-			stream.puts("|---|---:|\n");
+			stream.puts(@"## Gaps by reason
+
+| Reason | Count |
+|---|---:|
+");
 			string[] reason_order = {
 				"not_wired",
 				"skipped_property",

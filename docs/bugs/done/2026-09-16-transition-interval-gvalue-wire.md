@@ -1,6 +1,6 @@
 # Transition / Interval GValue wire — typed from/to relay
 
-**Status:** ✔️ code archived — nest ease / grey → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
+**Status:** ✔️ code archived — nest ease / grey → [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)  
 **Hit:** 2026-09-15 — nest `ease` / `transition.set_to` after Animatable land  
 **Related:** [`2026-09-15-adjustment-animatable-startup-grey.md`](2026-09-15-adjustment-animatable-startup-grey.md) §2 ·
 [`2026-09-16-interval-value-type-mint.md`](2026-09-16-interval-value-type-mint.md) (D1.8 ✔️)
@@ -356,5 +356,5 @@ GI_META_SMOKE=adjustment-animatable-smoke GSR_WESTON_MODE=prove \
 ## Next
 
 Wire + override + Helper **landed**. Nest ease / grey paint →
-[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md).
+[`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md).
 Boxed via Bin later if needed.

@@ -14,6 +14,14 @@
 # PERMANENT — not deferred RPC work
 # ************************************************************************
 
+# PERMANENT — client stub does not implement these GIR interfaces.
+Atk.ImplementorIface
+Atk.Component
+Atk.Value
+Gio.Icon
+Gio.LoadableIcon
+Clutter.Content
+
 # Opaque GIR privates — clash with Vala GObject instance private + rpc_lid.
 IconPrivate
 LabelPrivate

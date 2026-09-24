@@ -5,7 +5,7 @@ Nested `date-menu-open-smoke: ok`. Wire is `Clutter-OffscreenEffect` +
 `register_handle`. Do **not** put `Shell-GLSLEffect` on mutter. Live
 click-the-time leftover, if any, stays on chrome.
 **Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
-**Chrome leftover:** [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)
+**Chrome leftover:** [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)
 **Search:** [`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md)
 
 ## Symptom

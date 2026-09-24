@@ -114,7 +114,7 @@ now exonerated as sole cause).
 
 | # | File | Region | Role | Runtime? |
 | - | ---- | :----: | ---- | :------: |
-| 1 | `docs/bugs/2026-09-16-chrome-panel-menus-overlay.md` | R1 | notes | 🚫 |
+| 1 | `docs/bugs/done/2026-09-16-chrome-panel-menus-overlay.md` | R1 | notes | 🚫 |
 | 2 | `docs/plans/0.8-init-complete-and-interaction.md` | R1/R2 | plan | 🚫 |
 | 3 | `docs/plans/1.0-run-to-end.md` | R2 | plan | 🚫 |
 | 4 | `scripts/nested-weston-prove.sh` | R1/R2 | prove pattern | 🚫 |

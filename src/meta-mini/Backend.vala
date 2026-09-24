@@ -6,7 +6,7 @@ namespace Meta
 	 * {@link get_core_idle_monitor} is the stock shell path
 	 * ({@code global.backend.get_core_idle_monitor()}).
 	 */
-	public class Backend : GLib.Object, OLLMrpc.Live.Handle
+	public class Backend : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 

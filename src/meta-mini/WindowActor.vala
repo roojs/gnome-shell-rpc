@@ -8,7 +8,7 @@ namespace Meta
 	 * has no public init in this process, so the stub is a {@link GLib.Object}
 	 * and forwards selected Clutter methods over RPC.
 	 */
-	public class WindowActor : GLib.Object, OLLMrpc.Live.Handle
+	public class WindowActor : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 

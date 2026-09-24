@@ -6,8 +6,8 @@
  * always start with {@link register}.
  *
  * Positional args use {@link OLLMrpc.Request.args} (GIR order, no direction
- * on the wire). Instance stubs implement {@link OLLMrpc.Live.Handle};
- * {@link OLLMrpc.Live.Handle.rpc_lid} → {@link OLLMrpc.Request.lease_id}.
+ * on the wire). Instance stubs implement {@link OLLMrpc.Live.Interface};
+ * {@link OLLMrpc.Live.Interface.rpc_lid} → {@link OLLMrpc.Request.lease_id}.
  * The C return lands in {@link OLLMrpc.Response.retval}. OUT / INOUT
  * scalars land in {@link OLLMrpc.Response.args}.
  *
@@ -52,6 +52,9 @@ namespace GnomeShellRpc.GiStub
 		private static extern void shell_signals_disconnect(
 			GLib.Object obj, string signal_name);
 
+		[CCode (cname = "shell_clutter_event_override_register")]
+		private static extern void clutter_event_override_register();
+
 		/**
 		 * Insert create-time proxy into {@link OLLMrpc.Client.proxies}.
 		 *
@@ -61,7 +64,7 @@ namespace GnomeShellRpc.GiStub
 		 */
 		public static void register_handle(GLib.Object obj)
 		{
-			var handle = obj as OLLMrpc.Live.Handle;
+			var handle = obj as OLLMrpc.Live.Interface;
 			if (handle == null || handle.rpc_lid == 0 || Runtime.client == null) {
 				return;
 			}
@@ -112,6 +115,8 @@ namespace GnomeShellRpc.GiStub
 			OLLMrpc.Bin.register("Clutter-Effect", typeof(Clutter.Effect));
 			OLLMrpc.Bin.register("Clutter-OffscreenEffect", typeof(Clutter.OffscreenEffect));
 			OLLMrpc.Bin.register("Clutter-Frame", typeof(Clutter.Frame));
+			// NASTY needs fixing
+			Runtime.clutter_event_override_register();
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {
@@ -255,7 +260,7 @@ namespace GnomeShellRpc.GiStub
 
 		internal static uint64 lease_id_of(GLib.Object obj, string? context = null) throws GLib.Error
 		{
-			var handle = obj as OLLMrpc.Live.Handle;
+			var handle = obj as OLLMrpc.Live.Interface;
 			if (handle == null || handle.rpc_lid == 0) {
 				var where = context ?? "lease_ids_at";
 				throw new GLib.IOError.FAILED("RPC %s: no rpc_lid on %s",

@@ -14,9 +14,7 @@
 > This instruction does **not** authorize speculative product edits. Follow
 > “Takeover guardrail” below: prove the missing boundary in test/probe code first.
 
-**Status:** ⏳ **open** — bar is **your** session: overview search → click **Terminal** →
-Terminal actually opens. Smokes are agent gates only; **`app-search-launch-smoke: ok`** does
-**not** close this bug.
+**Status:** ✔️ archived 2026-09-24 — superseded by [`2026-09-24-overview-picker-preview-gone.md`](../2026-09-24-overview-picker-preview-gone.md). The user click is still open on that bug. Smokes below are 2026-09-22. **`app-search-launch-smoke: ok`** does not close the click.
 
 **Rejected 20:41:** subscribing `clicked` generically in `Actor.override.vala`
 and hand-bridging `St.Button::clicked` to `clicked_vfunc` in a
@@ -29,9 +27,9 @@ passing isolated smoke have been removed; do not restore or repackage it.
 Direct and synthetic activation now launch and map applications. The remaining
 focus is the real `St.Button::clicked` → GJS `AppIcon.vfunc_clicked` boundary.
 
-**Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
-**Related:** search fill ✔️ [`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md) · chrome inset / Event coords [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md) · suspicious `style-changed` repair [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md)
+**Related:** search fill ✔️ [`2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md) · chrome inset / Event coords [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md) · `style-changed` [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md) · live score [`../2026-09-24-overview-picker-preview-gone.md`](../2026-09-24-overview-picker-preview-gone.md)
 
 ---
 

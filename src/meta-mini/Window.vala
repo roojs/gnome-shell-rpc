@@ -19,7 +19,7 @@ namespace Meta
 	 * win.unminimize();
 	 * }}}
 	 */
-	public class Window : GLib.Object, OLLMrpc.Live.Handle
+	public class Window : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 

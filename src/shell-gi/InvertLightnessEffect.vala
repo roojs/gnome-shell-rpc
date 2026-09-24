@@ -6,7 +6,7 @@
  */
 namespace Shell
 {
-	public class InvertLightnessEffect : Clutter.OffscreenEffect, OLLMrpc.Live.Handle
+	public class InvertLightnessEffect : Clutter.OffscreenEffect, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 

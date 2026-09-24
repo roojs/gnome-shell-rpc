@@ -22,10 +22,6 @@ namespace Shell
 {
 	public class Signals : GLib.Object
 	{
-		static construct {
-			OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
-		}
-
 		/**
 		 * Per lease: signal name → our handler id ({@link next_handler_id}).
 		 *
@@ -74,7 +70,7 @@ namespace Shell
 				return 0;
 			}
 			GnomeShellRpc.GiStub.Runtime.register();
-			var handle = obj as OLLMrpc.Live.Handle;
+			var handle = obj as OLLMrpc.Live.Interface;
 			if (handle == null || handle.rpc_lid == 0) {
 				return 0;
 			}
@@ -96,8 +92,8 @@ namespace Shell
 				return hid;
 			}
 			GnomeShellRpc.GiStub.Runtime.client.proxies.set(lid, obj);
-			GnomeShellRpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
-				OLLMrpc.args("s", signal_name));
+			GnomeShellRpc.call_value(
+					"RPC-Live-Subscribe.rpc_signal", obj, OLLMrpc.args("s", signal_name));
 			if (Signals.subs == null) {
 				Signals.subs = new Gee.HashMap<int, Gee.HashMap<string, int>>();
 				Signals.refs = new Gee.HashMap<int, int>();
@@ -135,7 +131,7 @@ namespace Shell
 		[CCode (cname = "shell_signals_disconnect")]
 		public static void disconnect(GLib.Object obj, string signal_name)
 		{
-			var handle = obj as OLLMrpc.Live.Handle;
+			var handle = obj as OLLMrpc.Live.Interface;
 			if (handle == null || handle.rpc_lid == 0
 					|| Signals.subs == null) {
 				return;
@@ -160,7 +156,7 @@ namespace Shell
 		[CCode (cname = "shell_signals_disconnect_id")]
 		public static void disconnect_id(GLib.Object obj, int gjs_handler_id)
 		{
-			var handle = obj as OLLMrpc.Live.Handle;
+			var handle = obj as OLLMrpc.Live.Interface;
 			if (handle == null || handle.rpc_lid == 0
 					|| Signals.gjs_ids == null) {
 				return;
@@ -227,6 +223,7 @@ namespace Shell
 				vals[i + 1].set_boxed(new Clutter.Frame());
 			}
 			Signals.emitv(vals, signal_id, detail, null);
+			OLLMrpc.Bin.TypeOverride.release_params(query.param_types);
 		}
 	}
 }

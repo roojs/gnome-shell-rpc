@@ -107,18 +107,27 @@ namespace GnomeShellRpc.Rpc.Helper
 			event.get_coords(out x, out y);
 			var et = event.get_type();
 			uint32 button = 0;
-			if (et == Clutter.EventType.BUTTON_PRESS
-					|| et == Clutter.EventType.BUTTON_RELEASE
-					|| et == Clutter.EventType.PAD_BUTTON_PRESS
-					|| et == Clutter.EventType.PAD_BUTTON_RELEASE) {
-				button = event.get_button();
+			uint key = 0;
+			switch (et) {
+				case Clutter.EventType.BUTTON_PRESS:
+				case Clutter.EventType.BUTTON_RELEASE:
+				case Clutter.EventType.PAD_BUTTON_PRESS:
+				case Clutter.EventType.PAD_BUTTON_RELEASE:
+					button = event.get_button();
+					break;
+				case Clutter.EventType.KEY_PRESS:
+				case Clutter.EventType.KEY_RELEASE:
+					key = event.get_key_symbol();
+					break;
+				default:
+					break;
 			}
 			hook.emit(OLLMrpc.args("tidduu",
 				hook.connection.export(actor),
 				(int) et,
 				(double) x, (double) y,
 				button,
-				event.get_key_symbol()));
+				key));
 			if (hook.reply_args.size < 1) {
 				return false;
 			}

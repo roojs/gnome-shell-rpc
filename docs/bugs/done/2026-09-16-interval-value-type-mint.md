@@ -1,6 +1,6 @@
 # Clutter.Interval mint — value_type without shipping a GType
 
-**Status:** ✔️ code + smoke archived — nest ease / grey → [`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md)  
+**Status:** ✔️ code + smoke archived — nest ease / grey → [`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md)  
 **Hit:** 2026-09-16 — nest ease after Transition `set_relay_value` lands  
 **Related:**
 [`2026-09-16-transition-interval-gvalue-wire.md`](2026-09-16-transition-interval-gvalue-wire.md)
@@ -118,4 +118,4 @@ GI_META_SMOKE=adjustment-animatable-smoke GSR_WESTON_MODE=prove \
 ## Next
 
 Code + smoke **landed**. Nest ease / grey →
-[`../2026-09-16-chrome-panel-menus-overlay.md`](../2026-09-16-chrome-panel-menus-overlay.md).
+[`2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md).

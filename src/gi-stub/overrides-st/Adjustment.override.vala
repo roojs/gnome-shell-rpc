@@ -25,7 +25,7 @@
 				OLLMrpc.args("odddddd",
 					null, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
 			this.rpc_lid =
-				(response.retval.get_object() as OLLMrpc.Live.Handle).rpc_lid;
+				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 		}
 
 		public Adjustment()

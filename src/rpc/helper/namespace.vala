@@ -38,6 +38,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		ClutterThreads.rpc_register();
 		ClutterHelper.rpc_register();
 		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
+		OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());
 		Interval.rpc_register();
 		Constraint.rpc_register();
 		St.rpc_register();
