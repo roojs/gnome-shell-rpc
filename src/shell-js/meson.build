@@ -31,3 +31,12 @@ shell_js_resources = gnome.compile_resources(
   c_name: 'shell_js_resources',
   dependencies: [shell_js_config],
 )
+
+# gnome-shell-rpc extras (not vendor js/). Linked into gnome-shell-rpc;
+# glib-compile-resources constructor registers. Wrap install is a later eval.
+gsr_js_resources = gnome.compile_resources(
+  'gsr-js-resources',
+  files('gsr-js-resources.gresource.xml'),
+  source_dir: meson.current_source_dir(),
+  c_name: 'gsr_js_resources',
+)

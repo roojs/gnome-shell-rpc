@@ -852,6 +852,7 @@ shell_gi_lib = shared_library(
   'shell-gi-16',
   files(
     'shell-gi/namespace.vala',
+    'shell-gi/Signals.vala',
     'shell-gi/ActionMode.vala',
     'shell-gi/AppState.vala',
     'shell-gi/AppLaunchGpu.vala',
@@ -1071,7 +1072,7 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
     'ApplicationInterface.vala',
     'shell-client/namespace.vala',
     'shell-client/ShellApplication.vala',
-  ) + shell_js_resources,
+  ) + shell_js_resources + gsr_js_resources,
   dependencies: gjs_shell_deps + [
     ocrpc_dep,
     dependency('gdk-pixbuf-2.0'),

@@ -2,7 +2,7 @@
 
 This document describes signals in the Mutter server process. The server owns the real Meta, Clutter, and St GObjects.
 
-For proxy declarations and GJS dispatch, see [Client-side signals](signals-client.md).
+For proxy declarations and GJS dispatch, see [Client-side signals](signals-client.md). For a property whose accessor is JavaScript, see [GJS-overridden properties](gjs-overridden-properties.md).
 
 ## Server state
 
@@ -313,7 +313,7 @@ connection.stop()
   -> clear leases
 ```
 
-The current client runtime does not call `unsubscribe` when GJS disconnects a handler.
+The current client runtime can call `unsubscribe` via `Runtime.ensure_signal_unsubscribe` / `Shell.signal_disconnect`. GJS `.disconnect()` does not use that path yet.
 
 ## Bespoke server notifications
 

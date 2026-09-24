@@ -16,7 +16,7 @@ Mutter server process
 
 The proxy and server objects are different GObjects in different processes.
 
-For the other half of the boundary, see [Server-side signals](signals-server.md).
+For the other half of the boundary, see [Server-side signals](signals-server.md). For a property whose accessor is JavaScript, see [GJS-overridden properties](gjs-overridden-properties.md).
 
 ## Terminology
 
@@ -261,10 +261,13 @@ GJS .connectObject() -> local lifetime-managed handler
 GJS .disconnect()    -> local handler removal
 
 none of these:
+  -> call Shell.signal_connect
   -> call GiStub.Runtime
   -> send RPC-Live-Subscribe.rpc_signal
   -> remove a server subscription
 ```
+
+`src/shell-js/signals.js` wraps those three prototype methods and would call `Shell.signal_connect`. The extra gresource is registered at `resource:///org/gnome/shell-rpc/signals.js`; the host does not eval it yet, so GJS `.connect()` is still local-only.
 
 ## Proxy identity and lease ids
 
@@ -283,10 +286,11 @@ call_value(method, proxy, args)
 
 ## Requesting a server subscription
 
-The explicit client entry point is:
+The explicit client entry points are:
 
 ```vala
 GiStub.Runtime.ensure_signal_subscribe(object, signal_name);
+Shell.signal_connect(object, signal_name); // → ensure_signal_subscribe
 ```
 
 ```text
@@ -297,6 +301,8 @@ ensure_signal_subscribe(object, signal_name)
   -> synchronous RPC-Live-Subscribe.rpc_signal
   -> record local subscription after success
 ```
+
+`Shell.signal_disconnect` → `Runtime.ensure_signal_unsubscribe` → `RPC-Live-Subscribe.unsubscribe`. The GJS wrap does not call disconnect yet.
 
 ```text
 safe:   reply decoded -> lease assigned -> subscribe
@@ -314,7 +320,7 @@ Current manual call sites are:
 | `Meta.Laters` stage setup | `before-update` |
 | Post-mint Helper-Actor construction | `clicked` when present; temporary until generated virtual-signal subscription policy |
 
-There is no generated or automatic subscription when the first GJS handler is connected.
+There is no generated or automatic subscription when the first GJS handler is connected. `Shell.signal_connect` is the GJS-visible relay; wrapping `.connect()` to call it is [`0.8.6`](plans/0.8.6-connect-driven-subscribe.md).
 
 ## Receiving and dispatching a server notification
 
@@ -357,6 +363,8 @@ server notify::property
 ```
 
 The generic runtime notification handler still requires an explicit `signal_subs` entry before it will perform its own by-name re-emission. This means `notify::` currently has a property-update path and a possible explicit signal path, rather than one fully unified contract.
+
+`notify::` copies a server property value onto the proxy. It does not run a JavaScript getter or setter. That callback is [GJS-overridden properties](gjs-overridden-properties.md).
 
 `Rpc.Server` also sends bespoke `notify::title` notifications for tracked windows; that path does not originate in `RPC-Live-Subscribe`.
 
@@ -467,6 +475,8 @@ per-type manual exceptions          -> present
 | GIR signal and class-slot generation | `src/gi-stub-gen/Generator.vala` |
 | Enable class-slot generation | `src/gi-stub-gen/St.overrides`, `src/gi-stub-gen/Clutter.overrides` |
 | Proxy registration, subscribe, receive, emit | `src/gi-stub/Runtime.vala` |
+| GJS-visible subscribe relay (not stock Shell) | `src/shell-gi/Signals.vala` |
+| GJS connect wrap (resource; not eval'd yet) | `src/shell-js/signals.js` |
 | Lease ids in normal RPC calls | `src/namespace.vala` |
 | Vfunc capability detection | `src/gi-stub/VfuncRelay.vala` |
 | Actor client relays | `src/gi-stub/overrides-clutter/Actor.override.vala` |

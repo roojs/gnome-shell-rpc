@@ -43,12 +43,14 @@ namespace GnomeShellRpc.GiStub
 
 		private static Gee.HashMap<int, InvokeRow>? handlers = null;
 
-		/**
-		 * Lease ids already subscribed via {@code RPC-Live-Subscribe.rpc_signal}
-		 * (signal name → true). Avoids repeat wire subscribe for the same
-		 * {@code stopped} (etc.) on one Transition.
-		 */
-		private static Gee.HashMap<int, Gee.HashSet<string>>? signal_subs = null;
+		// FIXME - THIS SHOULD USE SIGNAL DIRECT EVENTUALLY
+		[CCode (cname = "shell_signals_connect")]
+		private static extern int shell_signals_connect(
+			GLib.Object obj, string signal_name, int gjs_handler_id);
+
+		[CCode (cname = "shell_signals_disconnect")]
+		private static extern void shell_signals_disconnect(
+			GLib.Object obj, string signal_name);
 
 		/**
 		 * Insert create-time proxy into {@link OLLMrpc.Client.proxies}.
@@ -66,92 +68,27 @@ namespace GnomeShellRpc.GiStub
 			Runtime.client.proxies.set((int) handle.rpc_lid, obj);
 		}
 
-		[CCode (cname = "g_signal_emitv", cheader_filename = "glib-object.h")]
-		private static extern void signal_emitv(
-			[CCode (array_length = false)] GLib.Value[] instance_and_params,
-			uint signal_id,
-			GLib.Quark detail,
-			void* return_value);
-
 		/**
-		 * Re-emit {@code notif.method} on {@code obj} with
-		 * {@link OLLMrpc.Notification.args} (GIR order). Missing slots
-		 * stay the zero GValue of the signal’s declared type.
-		 */
-		private static void emit_signal_from_args(
-			GLib.Object obj,
-			string signal_name,
-			Gee.ArrayList<GLib.Value?> args
-		) {
-			uint signal_id = 0;
-			GLib.Quark detail = 0;
-			if (!GLib.Signal.parse_name(signal_name, obj.get_type(),
-					out signal_id, out detail, false)
-					|| signal_id == 0) {
-				return;
-			}
-			GLib.SignalQuery query;
-			GLib.Signal.query(signal_id, out query);
-			var n = 1 + (int) query.n_params;
-			var vals = new GLib.Value[n];
-			vals[0] = GLib.Value(obj.get_type());
-			vals[0].set_object(obj);
-			for (var i = 0; i < (int) query.n_params; i++) {
-				var param_type = query.param_types[i];
-				vals[i + 1] = GLib.Value(param_type);
-				if (args != null && i < args.size) {
-					var src = args.get(i);
-					if (src != null && src.type() != GLib.Type.INVALID) {
-						if (!src.transform(ref vals[i + 1])
-								&& src.holds(GLib.Type.OBJECT)
-								&& param_type.is_a(GLib.Type.OBJECT)) {
-							vals[i + 1].set_object(src.get_object());
-						}
-					}
-				}
-				/*
-				 * Size-0 boxed (ClutterFrame) arrives as an unset GValue.
-				 * Compact marshal asserts non-NULL — mint an empty Frame.
-				 */
-				if (param_type != typeof(Clutter.Frame)) {
-					continue;
-				}
-				if (vals[i + 1].get_boxed() != null) {
-					continue;
-				}
-				vals[i + 1].set_boxed(new Clutter.Frame());
-			}
-			Runtime.signal_emitv(vals, signal_id, detail, null);
-		}
-
-		/**
-		 * Subscribe the lease to a named GObject signal on the server and
-		 * re-emit it on the client proxy when the Notification arrives.
+		 * Vala stub path into {@link Shell.Signals.connect}. mutter-rpc /
+		 * st-rpc cannot link shell-gi. Lazy-bound ({@code --unresolved-symbols}).
 		 *
-		 * Named-signal parameters land on {@link OLLMrpc.Notification.args}
-		 * ({@code tests/call-sync-repro/subscribe-signal-args-gate}).
+		 * Passes GJS handler id 0: this is not the GJS wrap. Call sites either
+		 * pre-subscribe so a later GJS {@code .connect()} can re-emit, or they
+		 * {@code signal_*.connect()} themselves in Vala. {@link Shell.Signals}
+		 * mints its own handler id when this is 0. Not deprecated — the
+		 * trampoline stays until gi-stub can call Shell.Signals directly.
 		 */
 		public static void ensure_signal_subscribe(GLib.Object obj, string signal_name)
 		{
-			Runtime.register();
-			var handle = obj as OLLMrpc.Live.Handle;
-			if (handle == null || handle.rpc_lid == 0) {
-				return;
-			}
-			var lid = (int) handle.rpc_lid;
-			if (Runtime.signal_subs == null) {
-				Runtime.signal_subs = new Gee.HashMap<int, Gee.HashSet<string>>();
-			}
-			if (!Runtime.signal_subs.has_key(lid)) {
-				Runtime.signal_subs.set(lid, new Gee.HashSet<string>());
-			}
-			if (Runtime.signal_subs.get(lid).contains(signal_name)) {
-				return;
-			}
-			Runtime.client.proxies.set(lid, obj);
-			GnomeShellRpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
-				OLLMrpc.args("s", signal_name));
-			Runtime.signal_subs.get(lid).add(signal_name);
+			Runtime.shell_signals_connect(obj, signal_name, 0);
+		}
+
+		/**
+		 * Vala stub path into {@link Shell.Signals.disconnect}.
+		 */
+		public static void ensure_signal_unsubscribe(GLib.Object obj, string signal_name)
+		{
+			Runtime.shell_signals_disconnect(obj, signal_name);
 		}
 
 		/**
@@ -236,29 +173,7 @@ namespace GnomeShellRpc.GiStub
 					if (Runtime.handlers != null) {
 						Runtime.handlers.unset(notif.id);
 					}
-					return;
 				}
-				if (!Runtime.client.proxies.has_key(notif.id)) {
-					return;
-				}
-				if (Runtime.signal_subs == null
-						|| !Runtime.signal_subs.has_key(notif.id)
-						|| !Runtime.signal_subs.get(notif.id).contains(notif.method)) {
-					return;
-				}
-				var obj = Runtime.client.proxies.get(notif.id);
-				/*
-				 * Event is Compact — not on the object wire. Empty
-				 * {@link OLLMrpc.Notification.args} still uses the
-				 * current event, same as {@link Clutter.Stage.get_event_actor}.
-				 */
-				if (notif.method == "key-press-event"
-						&& (notif.args == null || notif.args.size == 0)) {
-					GLib.Signal.emit_by_name(
-						obj, "key-press-event", Clutter.get_current_event());
-					return;
-				}
-				Runtime.emit_signal_from_args(obj, notif.method, notif.args);
 			});
 
 			var connect_ok = false;
