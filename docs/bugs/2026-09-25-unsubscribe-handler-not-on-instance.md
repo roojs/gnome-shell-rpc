@@ -1,6 +1,9 @@
 # `unsubscribe` disconnects a handler id that is not on the instance
 
-**Status:** ⏳ open — 2026-09-25 11:38 prove did not reach unsubscribe. See Result.
+**Status:** deferred — removed from the active 0.8 path on 2026-09-25.
+The warning was observed, but it was not reached in the follow-up prove and
+has not been established as the cause of the random interactive crashes.
+Resume only with a reproduction that ties an unsubscribe to a failure.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 

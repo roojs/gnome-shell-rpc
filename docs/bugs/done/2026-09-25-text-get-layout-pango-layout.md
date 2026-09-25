@@ -1,6 +1,8 @@
 # `Clutter.Text.get_layout` return type is `Pango.Layout`
 
-**Status:** ✔️ archived 2026-09-25. Helper + client rebuild landed. 13:15 prove dies earlier, on a negative preferred height — [`../2026-09-25-box-layout-negative-min-height.md`](../2026-09-25-box-layout-negative-min-height.md).
+**Status:** ✔️ archived 2026-09-25. Helper + client rebuild landed. The later
+negative preferred-height failure is also archived —
+[`2026-09-25-box-layout-negative-min-height.md`](2026-09-25-box-layout-negative-min-height.md).
 
 **Plan:** [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 

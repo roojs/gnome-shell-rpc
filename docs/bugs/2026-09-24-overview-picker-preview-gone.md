@@ -2,7 +2,14 @@
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and the boot overview matches stock WINDOW_PICKER, and clicking an app icon launches it. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ⏳ open — live look. 20:22 boot did not drop the socket: client idle after `Clutter-Actor.hide` id 2955 (20:22:03), server pointer motion through 20:22:08, no `JS ERROR`. Smokes cited below are **2026-09-16 / 2026-09-22**. Re-prove before treating one as current.
+**Status:** ⏳ current — user re-confirmed 2026-09-25 16:08: desktop
+preview gone, stray rectangle, dash missing, and icon click still dead. The
+standard interactive session also crashes nondeterministically while being
+used. A repeated `Meta.Laters` callback SIGSEGV now has its own report:
+[`2026-09-25-meta-laters-callback-segv.md`](2026-09-25-meta-laters-callback-segv.md).
+No evidence ties that crash to these four visual and interaction defects.
+Smokes cited below are **2026-09-16 / 2026-09-22**. Re-prove before
+treating one as current.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -20,6 +27,8 @@ Full logs and rejected edits stay in those files. This bug is the live score.
 ## Seen (user, 2026-09-24)
 
 Stock `user` mode lands on WINDOW_PICKER after boot: search, workspace thumbnails, current-desktop pane, dash.
+
+Re-confirmed unchanged by the user on 2026-09-25 16:08.
 
 | # | What | Stock piece | Seen |
 | - | ---- | ----------- | ---- |
@@ -145,6 +154,8 @@ Menu close gate `captured-event-smoke` was **ok**. A later freed-event bug on `c
 
 ## Next
 
-1. Name the actor for rows 3 and 4 (dash vs the red-dot rectangle) on a stay-up snap.
+1. Name the actor for rows 3 and 4 (dash vs the red-dot rectangle) on a
+   stay-up snap. The 2026-09-25 probe reached `READY=1` but the client hit
+   the separate `Meta.Laters` SIGSEGV before the delayed snapshot.
 2. Score row 1 against the 2026-09-17 wallpaper pane (allocate smoke had `inner=800x400`; the user no longer sees that pane).
 3. Row 2 stays the `clicked` → `vfunc_clicked` class closure. Re-prove before another product edit. Generator gates are listed above.
