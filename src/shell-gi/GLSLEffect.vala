@@ -39,16 +39,14 @@ namespace Shell
 
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.register_alias(
-				"Clutter-OffscreenEffect", typeof(GLSLEffect));
+			OLLMrpc.Bin.register_alias("Clutter-OffscreenEffect", typeof(GLSLEffect));
 		}
 
 		construct {
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-GLSLEffect.create");
+			var response = GnomeShellRpc.call_value("Helper-GLSLEffect.create", null);
 			this.rpc_lid = response.args.get(0).get_uint64();
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
 			this.sync_actor_meta_name();

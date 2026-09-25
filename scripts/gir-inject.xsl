@@ -5,6 +5,7 @@
     class AppSystem — append search.function.gir
     class App get_app_info / app-info — replace from app-info.gir
     class App constructor — drop (not in stock Shell GIR)
+    private OLLMrpc LiveInterface implementation edges — drop
 -->
 <xsl:stylesheet version="1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -36,5 +37,14 @@
   </xsl:template>
 
   <xsl:template match="gi:class[@name='App']/gi:constructor[@name='new']"/>
+
+  <!--
+    valac writes every Vala base interface into the consumer GIR, including
+    [GIR (visible = false)] interfaces from a VAPI. OLLMrpc has no typelib;
+    leaving this private edge makes GJS crash while resolving class methods.
+    The compiled GType still implements the interface.
+  -->
+  <xsl:template
+    match="gi:implements[@name='OLLMrpc.LiveInterface']"/>
 
 </xsl:stylesheet>

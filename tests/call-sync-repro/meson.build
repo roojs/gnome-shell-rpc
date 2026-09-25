@@ -439,3 +439,40 @@ executable('icon-sizes-ay-gate',
   install: false,
 )
 
+# Public GObject classes implementing Live.Interface must remain constructible
+# through GI. Current libocrpc VAPI leaks an unresolved OLLMrpc interface into
+# the consumer GIR; GJS follows it and crashes in g_interface_info_find_method.
+live_interface_gir_fixture = shared_library(
+  'live-interface-gir-gate-1.0',
+  'live-interface-gir-gate.vala',
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  vala_gir: 'LiveInterfaceGirGate-1.0.gir',
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+live_interface_gir_typelib = custom_target(
+  'LiveInterfaceGirGate-1.0.typelib',
+  output: 'LiveInterfaceGirGate-1.0.typelib',
+  command: [
+    find_program('g-ir-compiler'),
+    '--output', '@OUTPUT@',
+    '--shared-library', 'liblive-interface-gir-gate-1.0.so',
+    meson.current_build_dir() / 'LiveInterfaceGirGate-1.0.gir',
+  ],
+  depends: live_interface_gir_fixture,
+  build_by_default: true,
+)
+
+test(
+  'live-interface-gir-gate',
+  find_program('gjs'),
+  args: files('live-interface-gir-gate.js'),
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [live_interface_gir_fixture, live_interface_gir_typelib],
+)
+
