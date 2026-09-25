@@ -1,10 +1,13 @@
 # MessageView construction stops before `Helper-GLSLEffect.create`
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc completes boot and reaches
-`READY=1`. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
+`READY=1`. From [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ✔️ local GIR workaround passes reduced repro; upstream compiler
-gate remains FAIL
+**Status:** ✔️ archived 2026-09-25 — user: archive. Local GIR strip lets
+`message-view-construct-smoke` pass and stock boot passes the id-2955 wall.
+2026-09-25 11:10 prove reaches `READY=1` and `prepare-started`. Follow-on:
+[`../2026-09-25-unsubscribe-handler-not-on-instance.md`](../2026-09-25-unsubscribe-handler-not-on-instance.md).
+Upstream `live-interface-gir-gate` stays FAIL.
 
 ## Seen
 
@@ -70,7 +73,7 @@ That boot later reached `READY=1`. The expected next call after the final
 ## Reduced result
 
 The missing call is `Helper-GLSLEffect.create`. That route belongs to
-[`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md):
+[`2026-09-21-shell-glsleffect-bin-alias.md`](2026-09-21-shell-glsleffect-bin-alias.md):
 the client `Shell.GLSLEffect` constructor sends it, then `register_handle`.
 The 20:22 boot never sends it.
 
@@ -124,9 +127,9 @@ effect after new FadeEffect
 ok
 ```
 
-Stock boot passes the former id-2955 wall and reaches RPC id 6135. It then
-exposes a separate compositor exit during `Clutter-Actor.allocate`; the client
-disconnect is aftermath. `READY=1` is therefore not yet reached.
+Stock boot passes the former id-2955 wall. The 2026-09-25 11:10 prove reaches
+`READY=1` and stops on `prepare-started` (script SIGKILL, not a compositor
+exit).
 
 The raw standalone `live-interface-gir-gate` intentionally remains FAIL until
 Vala respects non-introspectable interfaces while writing `<implements>`.

@@ -37,6 +37,7 @@ compositor_sources = files(
   'rpc/helper/SelectionSourceMemory.vala',
   'rpc/helper/WaylandClient.vala',
   'rpc/helper/ShapedTexture.vala',
+  'rpc/helper/Text.vala',
   'rpc/helper/ShaderEffect.vala',
   'rpc/helper/GLSLEffect.vala',
   'rpc/helper/BlurEffect.vala',
@@ -449,6 +450,7 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/PaintNode.override.vala',
   'gi-stub/overrides-clutter/Transition.override.vala',
   'gi-stub/overrides-clutter/Interval.override.vala',
+  'gi-stub/overrides-clutter/Text.override.vala',
 )
 # Two single-output emits — Meson 1.7 Vala cannot compile CustomTargetIndex
 # (clutter_generated[0] / [1]) as a source.
@@ -519,6 +521,7 @@ mutter_clutter_rpc_lib = shared_library(
     dependency('cairo'),
     dependency('atk'),
     dependency('pango'),
+    dependency('pangocairo'),
     dependency('graphene-gobject-1.0'),
     dependency('mutter-cogl-16'),
     dependency('mutter-mtk-16'),
@@ -528,6 +531,7 @@ mutter_clutter_rpc_lib = shared_library(
     '--pkg=gdesktopenums-3.0',
     '--pkg=atk',
     '--pkg=pango',
+    '--pkg=pangocairo',
     '--pkg=mutter-cogl-16',
     '--pkg=mutter-mtk-16',
     '--vapidir', meson.current_source_dir() / 'gi-stub',

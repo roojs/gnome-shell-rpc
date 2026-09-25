@@ -31,6 +31,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		SelectionSource.rpc_register();
 		SelectionSourceMemory.rpc_register();
 		ShapedTexture.rpc_register();
+		Text.rpc_register();
 		ShaderEffect.rpc_register();
 		GLSLEffect.rpc_register();
 		BlurEffect.rpc_register();

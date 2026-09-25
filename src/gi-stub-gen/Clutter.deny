@@ -30,6 +30,10 @@ Actor.set_accessible
 
 # --- Hand override owns GIR prop/method (generator must not emit) ---
 
+# Pango.Layout is not a wire type. Helper-Text returns the fields.
+# Text.override rebuilds a client Pango.Layout from those arguments.
+Text.get_layout
+
 # Vala forbids a property identifier {@code type} (even {@code @type}).
 # GIR construct-only InputDeviceToolType; get_tool_type stays generated.
 InputDeviceTool.type
