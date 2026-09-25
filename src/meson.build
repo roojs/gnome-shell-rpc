@@ -12,6 +12,7 @@ compositor_sources = files(
   'ui/Compositor.vala',
   'rpc/namespace.vala',
   'rpc/Bootstrap.vala',
+  'rpc/StartupFrameGate.vala',
   'rpc/Daemon.vala',
   'rpc/Connection.vala',
   'rpc/LiveCallback.vala',

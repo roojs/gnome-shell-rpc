@@ -15,10 +15,28 @@ namespace GnomeShellRpc.Rpc
 	public class Connection : OLLMrpc.Transport.Connection
 	{
 		private int emit_poll_depth = 0;
+		private bool stopped_emitted = false;
+
+		/**
+		 * Emitted once when this connection stops.
+		 */
+		public signal void stopped();
 
 		public Connection(GLib.SocketConnection? stream = null)
 		{
 			GLib.Object(stream: stream);
+		}
+
+		public override void stop()
+		{
+			if (this.stopped_emitted) {
+				base.stop();
+				return;
+			}
+
+			this.stopped_emitted = true;
+			base.stop();
+			this.stopped();
 		}
 
 		public override void emit_wait_poll()

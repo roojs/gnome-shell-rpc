@@ -150,6 +150,9 @@ namespace GnomeShellRpc.ShellClient
 						return 1;
 					}
 				}
+				if (script == INIT_MODULE || script.has_suffix("/ui/init.js")) {
+					GnomeShellRpc.call_value("RPC-Bootstrap.begin_shell_startup");
+				}
 				if (script.has_prefix("resource://")
 					|| script.contains("/ui/init.js")
 					|| script.contains("/gjs-embed/")) {

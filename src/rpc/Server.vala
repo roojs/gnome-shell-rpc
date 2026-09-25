@@ -25,6 +25,7 @@ namespace GnomeShellRpc.Rpc
 		public void start(Meta.Display display)
 		{
 			this.display = display;
+			var frame_gate = new StartupFrameGate(display);
 			OLLMrpc.rpc_register(true);
 			/* Prefer error codes on Callback.reply → reply_error (throws). */
 			Rpc.LiveCallback.rpc_register();
@@ -45,7 +46,7 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Bin.register("Clutter-Frame", typeof(Clutter.Frame));
 
 			Rpc.CancellableBridge.register();
-			Rpc.Helper.rpc_register();
+			Rpc.Helper.rpc_register(frame_gate);
 			Rpc.Helper.Settings.bind(display);
 			Rpc.Helper.AppLaunch.bind(display);
 			Rpc.Helper.GLSLEffect.bind(display);
@@ -107,7 +108,7 @@ namespace GnomeShellRpc.Rpc
 			GLib.debug("Gi.register Meta-16 ok (%u types)",
 				OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0);
 
-			var bootstrap = Bootstrap.bind(this.display);
+			var bootstrap = Bootstrap.bind(this.display, frame_gate);
 			OLLMrpc.Request.register("RPC-Bootstrap", bootstrap);
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");

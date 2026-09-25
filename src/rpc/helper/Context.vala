@@ -8,9 +8,16 @@ namespace GnomeShellRpc.Rpc.Helper
 {
 	public class Context : GLib.Object
 	{
-		public static void rpc_register()
+		private StartupFrameGate gate;
+
+		public Context(StartupFrameGate gate)
 		{
-			var helper = new Context();
+			this.gate = gate;
+		}
+
+		public static void rpc_register(StartupFrameGate gate)
+		{
+			var helper = new Context(gate);
 			OLLMrpc.Request.add_class(
 				"Helper-Context", typeof(Context),
 				"terminate_with_error", "sis",
@@ -21,9 +28,30 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request.add_class(
 				"Meta-Context", typeof(Context),
 				"terminate", "",
+				"notify_ready", "",
 				null
 			);
 			OLLMrpc.Request.register_live("Meta-Context", helper);
+		}
+
+		/**
+		 * Release the startup frame gate, then call stock notify_ready.
+		 *
+		 * @param request notify request from the shell connection
+		 */
+		public void notify_ready(OLLMrpc.Request request)
+		{
+			if (!this.gate.release((GnomeShellRpc.Rpc.Connection) request.connection)) {
+				request.connection.reply_error(
+					request, (int) OLLMrpc.RpcErrorCode.INVALID_REQUEST);
+				return;
+			}
+
+			((Meta.Context) request.connection.leases.get(
+				(int) request.lease_id)).notify_ready();
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
 		}
 
 		public void terminate_with_error(

@@ -7,21 +7,23 @@
  * == Example ==
  *
  * {{{
- * GnomeShellRpc.Rpc.Helper.rpc_register();
+ * GnomeShellRpc.Rpc.Helper.rpc_register(gate);
  * }}}
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
 	/**
 	 * Register all Override Helpers (wire tables + live singletons).
+	 *
+	 * @param gate startup frame gate shared with Meta.Context
 	 */
-	public void rpc_register()
+	public void rpc_register(StartupFrameGate gate)
 	{
 		SoundPlayer.rpc_register();
 		Background.rpc_register();
 		BackgroundImageCache.rpc_register();
 		BackgroundActor.rpc_register();
-		Context.rpc_register();
+		Context.rpc_register(gate);
 		Settings.rpc_register();
 		IdleMonitor.rpc_register();
 		Display.rpc_register();
