@@ -1,8 +1,8 @@
 # `Meta.Laters` callback intermittently SIGSEGVs in GJS
 
-**Status:** ⏳ open. Reproduced every run by `tests/call-sync-repro/later-callback-nested-add.js` (exit 139, `g_closure_ref` on refcount 0). Full-shell boot is still intermittent because the nested `Laters.add` is intermittent.
+**Status:** ✔️ closed 2026-09-26. A nested `Laters.add` was releasing the inner GJS trampoline before it was called. `Laters.add` now holds that callback once per unfinished `add`, and drops the leftover holds when the entry is freed, after the callback has returned. `later-callback-nested-add.js` with that hold exits 0 and frees the trampolines (`live=0`), including a callback that removes itself while it is running. One full-shell boot still logs `g_closure_unref` on a closure already at zero. That leftover is [`../2026-09-26-warning-laters-closure-unref.md`](../2026-09-26-warning-laters-closure-unref.md).
 
-**Plan:** [`0.8 init and interaction`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`0.8 init and interaction`](../../plans/0.8-init-complete-and-interaction.md)
 
 ## Seen
 
@@ -129,6 +129,22 @@ The inner callback is queued by `Later.add` while the outer `Later.add` has not 
 
 `later-callback-hold` and `later-callback-reenter` still exit 0. They never call `add` from inside `add`.
 
-Do not patch the `Laters` queue. Do not skip disposed callbacks.
+## Fixes tried on that sample
 
-This crash blocks the 15-second actor snapshot for [`overview picker`](2026-09-24-overview-picker-preview-gone.md). It does not replace that bug as the current UI target.
+`LATER_GUARD` / `LATER_NEST` on `later-callback-nested-add.js`. `refs` is the trampoline refcount at the call. `live` is how many of those trampolines were never freed.
+
+| Guard | What it does | One nested `add` | Two nested `add`s |
+| ----- | ------------ | ---------------- | ----------------- |
+| 0 | Nothing | inner `refs=0`, exit 139 | |
+| 3 | One extra `g_closure_ref` on a nested callback | exit 0, inner `refs=1` | inner `refs=0`, exit 139 |
+| 1 | One extra ref per outer `add` still on the stack | exit 0, `live=1` | exit 0, `live=2` |
+| 4 | Guard 1, then at entry finalize unref while `ref_count > 1` | exit 0, `live=0` | exit 0, `live=0` |
+| 2 | Run the nested `add` only after the outer `add` has returned | exit 0, every `refs=1`, `live=0` | exit 0, every `refs=1`, `live=0` |
+
+Guard 3 dies once two outer frames both unref the inner trampoline. Guard 1 keeps the inner alive and leaks every callback that was not the innermost (its `CallbackIn::release` unref was spent on the inner one). Guard 4 drops those leftover refs when the entry goes away and frees all of them. Guard 2 never overlaps the two `CallbackIn` frames, so the refcount stays 1 with nothing to sweep.
+
+`later-callback-hold` and `later-callback-reenter` still exit 0 with these hooks present and the guard left at 0.
+
+Do not patch the `Laters` queue. Do not skip disposed callbacks. Do not Idle in place of before-redraw. Guard 4 is the change that belongs on `Laters.add`: `ensure_before_update` can reenter `add` before it returns.
+
+The reproduced crash no longer blocks the overview snapshot. The leftover warning is [`../2026-09-26-warning-laters-closure-unref.md`](../2026-09-26-warning-laters-closure-unref.md). Current UI work stays [`../2026-09-24-overview-picker-preview-gone.md`](../2026-09-24-overview-picker-preview-gone.md).

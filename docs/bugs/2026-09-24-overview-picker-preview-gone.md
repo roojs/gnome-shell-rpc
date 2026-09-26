@@ -3,11 +3,12 @@
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and the boot overview matches stock WINDOW_PICKER, and clicking an app icon launches it. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
 **Status:** ⏳ current — user re-confirmed 2026-09-25 16:08: desktop
-preview gone, stray rectangle, dash missing, and icon click still dead. The
-standard interactive session also crashes nondeterministically while being
-used. A repeated `Meta.Laters` callback SIGSEGV now has its own report:
-[`2026-09-25-meta-laters-callback-segv.md`](2026-09-25-meta-laters-callback-segv.md).
-No evidence ties that crash to these four visual and interaction defects.
+preview gone, stray rectangle, dash missing, and icon click still dead.
+The `Meta.Laters` SIGSEGV that interrupted the delayed snapshot is closed
+([`done/2026-09-25-meta-laters-callback-segv.md`](done/2026-09-25-meta-laters-callback-segv.md)).
+A leftover closure warning is deferred
+([`2026-09-26-warning-laters-closure-unref.md`](2026-09-26-warning-laters-closure-unref.md)).
+No evidence ties that warning to these four visual and interaction defects.
 Smokes cited below are **2026-09-16 / 2026-09-22**. Re-prove before
 treating one as current.
 
@@ -156,6 +157,7 @@ Menu close gate `captured-event-smoke` was **ok**. A later freed-event bug on `c
 
 1. Name the actor for rows 3 and 4 (dash vs the red-dot rectangle) on a
    stay-up snap. The 2026-09-25 probe reached `READY=1` but the client hit
-   the separate `Meta.Laters` SIGSEGV before the delayed snapshot.
+   the `Meta.Laters` SIGSEGV before the delayed snapshot. That crash is
+   closed; the snapshot can be taken again.
 2. Score row 1 against the 2026-09-17 wallpaper pane (allocate smoke had `inner=800x400`; the user no longer sees that pane).
 3. Row 2 stays the `clicked` → `vfunc_clicked` class closure. Re-prove before another product edit. Generator gates are listed above.

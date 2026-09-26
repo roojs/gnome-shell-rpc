@@ -6,7 +6,7 @@
 **Status:** ✔️ archived 2026-09-25 — user: archive. Local GIR strip lets
 `message-view-construct-smoke` pass and stock boot passes the id-2955 wall.
 2026-09-25 11:10 prove reaches `READY=1` and `prepare-started`. Follow-on:
-[`../2026-09-25-unsubscribe-handler-not-on-instance.md`](../2026-09-25-unsubscribe-handler-not-on-instance.md).
+[`../2026-09-25-warning-unsubscribe-handler-not-on-instance.md`](../2026-09-25-warning-unsubscribe-handler-not-on-instance.md).
 Upstream `live-interface-gir-gate` stays FAIL.
 
 ## Seen

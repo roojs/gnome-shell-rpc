@@ -1,11 +1,22 @@
-# `unsubscribe` disconnects a handler id that is not on the instance
+# Warning: `unsubscribe` disconnects a handler id that is not on the instance
 
-**Status:** deferred — removed from the active 0.8 path on 2026-09-25.
-The warning was observed, but it was not reached in the follow-up prove and
-has not been established as the cause of the random interactive crashes.
-Resume only with a reproduction that ties an unsubscribe to a failure.
+**Status:** ⏳ deferred. Still logged. Not a crash, and not on the current
+fix path. Resume only with a reproduction that ties an unsubscribe to a
+failure.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+
+## Still seen
+
+2026-09-26 17:25 boot, `mutter-rpc.debug.log`. 37 lines, for example:
+
+```text
+instance '0x5c61664c4720' has no handler with id '8270'
+```
+
+`G_LOG_LEVEL_CRITICAL` from `g_signal_handler_disconnect`. The session kept
+going. The client log for that boot has 45 `RPC-Live-Subscribe.unsubscribe`
+calls.
 
 ## Result
 
@@ -48,4 +59,4 @@ So the log cannot show that 8017 was the handler stored for that subscription.
 
 ## Not this bug
 
-`Clutter.Text.get_layout` — [`2026-09-25-text-get-layout-pango-layout.md`](2026-09-25-text-get-layout-pango-layout.md).
+`Clutter.Text.get_layout` — [`done/2026-09-25-text-get-layout-pango-layout.md`](done/2026-09-25-text-get-layout-pango-layout.md).

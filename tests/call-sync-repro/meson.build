@@ -482,6 +482,7 @@ test(
 later_callback_hold_fixture = shared_library(
   'later-callback-hold-1.0',
   'later-callback-hold.vala',
+  'later-callback-hold-fix.c',
   dependencies: [dependency('gobject-2.0')],
   vala_gir: 'LaterCallbackHold-1.0.gir',
   install: false,

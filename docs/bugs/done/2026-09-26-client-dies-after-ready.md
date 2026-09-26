@@ -1,8 +1,12 @@
 # Client dies just after `READY=1`; the window looks hung
 
-**Status:** same crash as [`2026-09-25-meta-laters-callback-segv.md`](2026-09-25-meta-laters-callback-segv.md). The 08:47 gdb stack is `meta_laters_run_before_redraw`. A later trace names the GJS instruction: the ffi lambda loads `GjsCallbackTrampoline::m_info` after `g_closure_ref`. Fix work stays on that bug.
+**Status:** ✔️ closed 2026-09-26. This hang is the `Meta.Laters` callback
+SIGSEGV, closed in
+[`2026-09-25-meta-laters-callback-segv.md`](2026-09-25-meta-laters-callback-segv.md).
+The leftover unref line is
+[`../2026-09-26-warning-laters-closure-unref.md`](../2026-09-26-warning-laters-closure-unref.md).
 
-**Plan:** [`0.8 init and interaction`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`0.8 init and interaction`](../../plans/0.8-init-complete-and-interaction.md)
 
 ## Seen
 
@@ -63,6 +67,4 @@ oll_mrpc_client_call_poll
 
 ## Fix
 
-Not a queue guard. Not "skip the callback because the object was disposed" — the outside holder shows that call is still valid.
-
-The later id has to leave the table in the same step that releases the trampoline. That step is not `LaterEntry.finalize` on this crash. Do not patch `src/` until that release is named.
+Same death as the closed Laters bug. The nested-add hold is what landed. This note does not have a separate fix.
