@@ -511,3 +511,29 @@ test(
   depends: [later_callback_hold_fixture, later_callback_hold_typelib],
 )
 
+# Nested Later.add: the inner add runs before the outer add returns.
+# GJS 1.82 CallbackIn::release then unrefs the inner trampoline.
+test(
+  'later-callback-nested-add',
+  find_program('gjs'),
+  args: files('later-callback-nested-add.js'),
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [later_callback_hold_fixture, later_callback_hold_typelib],
+)
+
+# Nested poke: one callback removes itself and runs the queue again, which
+# calls the next SourceFunc. Then the JS wrapper is dropped and poke runs.
+test(
+  'later-callback-reenter',
+  find_program('gjs'),
+  args: files('later-callback-reenter.js'),
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [later_callback_hold_fixture, later_callback_hold_typelib],
+)
+

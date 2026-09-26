@@ -1,6 +1,6 @@
 # `Meta.Laters` callback intermittently SIGSEGVs in GJS
 
-**Status:** ⏳ open — still intermittent on the 2026-09-26 rebuild. One SIGSEGV in six stay-up probes.
+**Status:** ⏳ open. Reproduced every run by `tests/call-sync-repro/later-callback-nested-add.js` (exit 139, `g_closure_ref` on refcount 0). Full-shell boot is still intermittent because the nested `Laters.add` is intermittent.
 
 **Plan:** [`0.8 init and interaction`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -81,6 +81,8 @@ The entry was still in the map. `LaterEntry.finalize` nulls `func` after the des
 
 `tests/call-sync-repro/later-callback-hold` stores an `owned` `GLib.SourceFunc` the same way and calls it after `run_dispose()` and `System.gc()`. The callback runs. `Meta.Laters.add` is already `scope="notified"`. Dispose of the bound object does not free the trampoline.
 
+`tests/call-sync-repro/later-callback-reenter` runs the shell order outside the shell, then the variants that could drop the trampoline before the call: the same callback re-entered and removed while the outer call is still on the stack; the JS wrapper dropped while C holds the object; dispose from inside the callback with `poke()` from `vfunc_dispose`. All of those callbacks run. Process exit is 0. At shutdown GJS logs a critical that it blocked a `dispose()` vfunc during GC because that call would crash. That guard is inside the trampoline, after `g_closure_ref`. The shell SIGSEGV is that ref already failing, and this sample does not reach it.
+
 ## Named frame
 
 Four dprintf-only stay-up boots. Run 4 SIGSEGV (`/tmp/gsr-laters-trace-4.txt`). `libgjs0g-dbgsym` 1.82.1-1 names it. Load bias `0x7ffff7be7000` (the destroy-notify pointer `0x7ffff7c1e310` lands on the first instruction of that function).
@@ -111,8 +113,22 @@ The GJS ffi lambda refs the trampoline on the way in and unrefs it on the way ou
 
 Id 6 died on the way in. Finalize of that entry was still ahead, so the stored notify had not run, and the lambda's exit unref had not run either. `g_closure_ref` already saw refcount 0. The before-redraw call is in the right step. The trampoline's refcount hit 0 before that step, while the entry still held the notify.
 
-## Next
+## Reproduction
 
-Do not patch the `Laters` queue. Do not skip disposed callbacks: the outside holder still runs them. The open fact is what dropped the trampoline refcount to 0 while id 6's `g_closure_unref` notify was still stored on the entry.
+`tests/call-sync-repro/later-callback-nested-add.js`. Three runs, all exit 139:
+
+```text
+poke id=1
+outer
+poke id=2
+g_closure_ref: assertion 'closure->ref_count > 0' failed
+SIGSEGV
+```
+
+The inner callback is queued by `Later.add` while the outer `Later.add` has not returned. GJS 1.82 `CallbackIn::in` (`gi/arg-cache.cpp`) stores the ffi closure on the arg-cache field `m_ffi_closure`, then `CallbackIn::release` always `g_closure_unref`s that field when the C call returns. The nested `add` overwrites the field with the inner trampoline. The inner return unrefs it once (the extra ref from `in()`). The outer return unrefs it again, to 0. `LaterEntry` still holds the function pointer and the destroy notify at `arg-cache.cpp:1068`. That notify has not run. The next call is `g_closure_ref` on refcount 0, then the ffi lambda faults. Same pair as the shell: entry never finalized, refcount already 0.
+
+`later-callback-hold` and `later-callback-reenter` still exit 0. They never call `add` from inside `add`.
+
+Do not patch the `Laters` queue. Do not skip disposed callbacks.
 
 This crash blocks the 15-second actor snapshot for [`overview picker`](2026-09-24-overview-picker-preview-gone.md). It does not replace that bug as the current UI target.
