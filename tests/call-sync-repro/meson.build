@@ -476,3 +476,38 @@ test(
   depends: [live_interface_gir_fixture, live_interface_gir_typelib],
 )
 
+# Meta.Laters stores a GLib.SourceFunc and calls it from before-update.
+# This holder does only that store-and-call, after GJS has disposed the
+# bound object. A crash here is the callback lifetime, not the shell.
+later_callback_hold_fixture = shared_library(
+  'later-callback-hold-1.0',
+  'later-callback-hold.vala',
+  dependencies: [dependency('gobject-2.0')],
+  vala_gir: 'LaterCallbackHold-1.0.gir',
+  install: false,
+)
+
+later_callback_hold_typelib = custom_target(
+  'LaterCallbackHold-1.0.typelib',
+  output: 'LaterCallbackHold-1.0.typelib',
+  command: [
+    find_program('g-ir-compiler'),
+    '--output', '@OUTPUT@',
+    '--shared-library', 'liblater-callback-hold-1.0.so',
+    meson.current_build_dir() / 'LaterCallbackHold-1.0.gir',
+  ],
+  depends: later_callback_hold_fixture,
+  build_by_default: true,
+)
+
+test(
+  'later-callback-hold',
+  find_program('gjs'),
+  args: files('later-callback-hold.js'),
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [later_callback_hold_fixture, later_callback_hold_typelib],
+)
+
