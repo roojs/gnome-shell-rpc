@@ -1604,8 +1604,9 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * GIR object signals so client {@code g_signal_connect} / GJS
 		 * {@code .connect()} find the stock name. Vala identifier is
 		 * {@code signal_*} with {@code CCode cname} = GIR signal name.
-		 * Class-closure signals were already emitted at the class-struct
-		 * field; skip those here.
+		 * A class-struct signal is a plain virtual at that field
+		 * ({@code virtual_signal_fields}). The signal emitted here is not
+		 * virtual, so valac does not park it at the end of the class.
 		 */
 		private int emit_object_signals(
 			GLib.FileStream stream,
@@ -1616,17 +1617,12 @@ namespace GnomeShellRpc.Rpc.Helper
 			var class_name = oi.get_name();
 			var emitted = 0;
 			for (var s = 0; s < oi.get_n_signals(); s++) {
-				var field_name = this.vala_ident(oi.get_signal(s).get_name().replace("-", "_"));
-				if (field_name in virtual_signal_fields) {
-					var symbol = @"$(class_name).$(field_name)";
-					if (!this.overrides.has_key(symbol)
-							|| !this.overrides.get(symbol).has_key("split_signal_vfunc")
-							|| this.overrides.get(symbol).get("split_signal_vfunc") != "1") {
-						continue;
-					}
+				/* virtual_signal_fields holds the plain *_vfunc slots.
+				   This signal is not virtual, so it does not move them. */
+				if (virtual_signal_fields != null) {
+					emitted += this.emit_gir_signal(
+						stream, ns, class_name, oi.get_signal(s), false);
 				}
-				emitted += this.emit_gir_signal(
-					stream, ns, class_name, oi.get_signal(s), false);
 			}
 			return emitted;
 		}
@@ -1785,27 +1781,18 @@ namespace GnomeShellRpc.Rpc.Helper
 					}
 				}
 				if (sig != null) {
-					var symbol = @"$(class_name).$(fname)";
-					if (this.overrides.has_key(symbol)
-							&& this.overrides.get(symbol).has_key("split_signal_vfunc")
-							&& this.overrides.get(symbol).get("split_signal_vfunc") == "1") {
-						var n = this.emit_virtual_from_callback(
-							stream, ns, class_name, fname, cb, true);
-						if (n > 0) {
-							virtual_signal_fields.add(fname);
-							emitted += n;
-							if (this.overrides.get(symbol).has_key("relay")
-									&& this.overrides.get(symbol).get("relay") == "1") {
-								relayed.add(fname);
-							}
-							continue;
-						}
-					}
-					var n = this.emit_gir_signal(
-						stream, ns, class_name, sig, true);
+					/*
+					 * The field is a signal. A virtual signal would be
+					 * parked at the end of the class and shift every later
+					 * field. Plain virtual keeps this byte; the signal is
+					 * emitted afterwards and is not a class field.
+					 */
+					var n = this.emit_virtual_from_callback(
+						stream, ns, class_name, fname, cb, true);
 					if (n > 0) {
 						virtual_signal_fields.add(fname);
 						emitted += n;
+						var symbol = @"$(class_name).$(fname)";
 						if (this.overrides.has_key(symbol)
 								&& this.overrides.get(symbol).has_key("relay")
 								&& this.overrides.get(symbol).get("relay") == "1") {

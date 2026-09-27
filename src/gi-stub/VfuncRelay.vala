@@ -41,6 +41,8 @@ namespace GnomeShellRpc.GiStub
 		/** No JS override → fall through to server base / chain. */
 		public static bool use_base;
 		static Gee.HashMap<GLib.Type, Gee.HashSet<string>>? caps_by_type;
+		/** ns → class → byte offset → typelib vfunc name. */
+		static Gee.HashMap<string, Gee.HashMap<string, Gee.HashMap<int, string>>>? names_by_offset;
 
 		public static void begin(GLib.Object self)
 		{
@@ -100,6 +102,39 @@ namespace GnomeShellRpc.GiStub
 			}
 			caps_by_type.set(type, overridden);
 			return overridden;
+		}
+
+		/**
+		 * Typelib name for a vfunc byte offset.
+		 *
+		 * The first call for a class walks {@link OLLMrpc.Gi.vfunc_names}
+		 * and stores byte offset → name. Later calls read that map.
+		 * Empty when the typelib has no field at that byte.
+		 */
+		public static string name_of(string ns, string class_name, int offset)
+		{
+			if (names_by_offset == null) {
+				names_by_offset = new Gee.HashMap<string,
+					Gee.HashMap<string, Gee.HashMap<int, string>>>();
+			}
+			if (!names_by_offset.has_key(ns)) {
+				names_by_offset.set(ns,
+					new Gee.HashMap<string, Gee.HashMap<int, string>>());
+			}
+			var by_class = names_by_offset.get(ns);
+			if (!by_class.has_key(class_name)) {
+				var by_offset = new Gee.HashMap<int, string>();
+				foreach (var name in OLLMrpc.Gi.vfunc_names(ns, class_name)) {
+					by_offset.set(
+						OLLMrpc.Gi.vfunc_offset(ns, class_name, name), name);
+				}
+				by_class.set(class_name, by_offset);
+			}
+			var by_offset = by_class.get(class_name);
+			if (!by_offset.has_key(offset)) {
+				return "";
+			}
+			return by_offset.get(offset);
 		}
 	}
 }

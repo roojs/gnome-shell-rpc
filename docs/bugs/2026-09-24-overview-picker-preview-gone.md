@@ -12,13 +12,15 @@ No evidence ties that warning to these four visual and interaction defects.
 Smokes cited below are **2026-09-16 / 2026-09-22**. Re-prove before
 treating one as current.
 
-**2026-09-27:** the wallpaper inside the desktop frame is 0×0 because
-the function that sizes it is stored in the wrong place in the class,
-so the create list never includes it and layout never calls it. The
-frame itself is given a real size by ordinary layout. A runtime copy
-of that function onto the right place was tried and removed: it is not
-the design, and the full session aborted once the function actually
-ran. Details under “What the screen is actually doing”.
+**2026-09-27:** the wallpaper inside the desktop frame was 0×0 because
+`allocate` sat at the wrong byte in our class, so the create list never
+included it. The five signals in front of it are now plain virtuals, and
+`allocate` sits at the typelib byte. A direct allocate of
+`Shell.WorkspaceBackground` returns `inner=800x400`. A live boot reached
+`notify_ready` and was still building chrome when the timer stopped it.
+It did not die the way the earlier run did once the sizing function ran.
+The picture on that screen has not been measured again. Details under
+“What the screen is actually doing”.
 
 The birth of the helper used to hand out the lease before any override
 was stored. That split is its own bug, and the create request now
@@ -202,13 +204,13 @@ A snapshot taken in the first seconds of boot is useless here: nothing has been 
 
 ## Next
 
-1. Create now carries the override list
+1. Create carries the override list
    ([`2026-09-27-actor-created-before-overrides.md`](2026-09-27-actor-created-before-overrides.md)).
-   The list still does not contain the sizing function. The scan reads
-   the real library's field and the function was written into a different
-   field. See [Virtual functions](../vfuncs.md). That mismatch is what is
-   still wrong with this preview. Do not paper over it by copying the
-   pointer or by forcing the name onto the list.
-2. Before that function is called from the live overview, find why running it aborts the session.
+   `allocate` now sits at the typelib byte, and the direct test sizes the
+   picture. See [Virtual functions](../vfuncs.md). Measure the live
+   overview picture again.
+2. The earlier full-session abort, once this function ran, did not repeat
+   in a boot that ran until the timer. Confirm that on a boot long enough
+   to open the overview.
 3. On that same screen, see whether the bottom bar’s icons have a size, and whether the right-hand desktop is the stray rectangle.
 4. Icon click stays a separate problem. Do not change it while chasing the blank preview.

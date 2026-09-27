@@ -10,6 +10,10 @@ namespace GnomeShellRpc.Rpc.Helper
 		public Gee.HashMap<int, OLLMrpc.Live.Hook> vfuncs {
 			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
 		}
+		/** Typelib name for each key in {@link vfuncs}. */
+		public Gee.HashMap<int, string> method_names {
+			get; set; default = new Gee.HashMap<int, string>();
+		}
 		static int style_changed_id;
 		public string? client_type_name;
 
@@ -18,7 +22,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			var helper = new Actor();
 			OLLMrpc.Request.add_class(
 				"Helper-Actor", typeof(Actor),
-				"create", "sv",
+				"create", "sSvv",
 				"add_hook", "it",
 				"allocate_public", "ay",
 				"base_preferred_width", "d",
@@ -72,25 +76,29 @@ namespace GnomeShellRpc.Rpc.Helper
 		/**
 		 * ''Helper-Actor.create'' — type name plus the override list.
 		 *
-		 * ''hooks'' is ''a(it)'': each pair is a vfunc id and a callback
-		 * already registered on this connection. The map is filled before
-		 * the lease is returned. {@link add_hook} is for an actor that
-		 * already existed.
+		 * ''names'' is the typelib name of each ''vfunc_ids'' entry.
+		 * ''vfunc_ids'' is ''ai'' and ''hook_ids'' is ''at'', same length.
+		 * A pair cannot go on the wire. The map is filled before the lease
+		 * is returned. {@link add_hook} is for an actor that already existed.
 		 */
 		public void create(
 			OLLMrpc.Request request,
 			string type_name,
-			GLib.Variant hooks
+			string[] names,
+			GLib.Variant vfunc_ids,
+			GLib.Variant hook_ids
 		) {
 			var created = new Actor();
 			created.client_type_name = type_name;
-			var n = (int) hooks.n_children();
+			var n = (int) vfunc_ids.n_children();
 			for (var i = 0; i < n; i++) {
-				var pair = hooks.get_child_value(i);
-				created.vfuncs.set(
-					pair.get_child_value(0).get_int32(),
+				var id = vfunc_ids.get_child_value(i).get_int32();
+				created.vfuncs.set(id,
 					request.connection.callbacks.get(
-						(int) pair.get_child_value(1).get_uint64()));
+						(int) hook_ids.get_child_value(i).get_uint64()));
+				if (i < names.length) {
+					created.method_names.set(id, names[i]);
+				}
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

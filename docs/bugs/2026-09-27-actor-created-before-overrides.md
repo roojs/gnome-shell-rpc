@@ -36,6 +36,9 @@ The create request carries each replaced method and the callback that
 implements it. The server stores those on the new actor, then returns
 the lease. There is no leased actor whose override map is still empty.
 
+The wire cannot carry a list of pairs. The list goes as two arrays of
+the same length: the method ids, then the callback ids.
+
 `add_hook` stays for an actor that already existed, such as the stage.
 It is the wrong way to finish an actor we just created.
 

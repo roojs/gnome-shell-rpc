@@ -16,9 +16,6 @@ Namespace emit_class_slots=1
 
 Widget.get_focus_chain list_elem=Widget
 
-# TEMPORARY split: preserve GJS vfunc_style_changed and the stock signal.
-Widget.style_changed split_signal_vfunc=1
-
 # TEMPORARY — explicit inline CSS is commonly changed after construction.
 # Forwarding the server's synchronous style-changed emission re-enters libgjs
 # from call_poll() and crashes. Remove these when RPC notifications are

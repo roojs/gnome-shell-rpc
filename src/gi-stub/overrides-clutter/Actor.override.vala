@@ -117,10 +117,7 @@
 
 	void create_with_overrides()
 	{
-		/* event: GJS vfunc_event often matches StWidget Class.event at
-		 * attach — force-register (B3 panel path). captured_event:
-		 * PopupMenuManager uses connect(), not a vfunc — same force. */
-		string[] always = { "event", "captured_event" };
+		string[] always = {};
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
 		/*
@@ -128,18 +125,28 @@
 		 * actor with the list already attached. The lease comes back
 		 * only after the server has stored the map.
 		 */
-		var hooks = new GLib.VariantBuilder(new GLib.VariantType("a(it)"));
+		string[] names = {};
+		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
+		var hook_ids = new GLib.VariantBuilder(new GLib.VariantType("at"));
 		foreach (var name in overridden) {
 			var vfunc_id = -1;
 			var hook_id = this.bind_vfunc(name, out vfunc_id);
 			if (hook_id == 0) {
 				continue;
 			}
-			hooks.add("(it)", vfunc_id, hook_id);
+			var called = GnomeShellRpc.GiStub.VfuncRelay.name_of(
+				"Clutter", "Actor", vfunc_id);
+			if (called == "") {
+				continue;
+			}
+			names += called;
+			vfunc_ids.add("i", vfunc_id);
+			hook_ids.add("t", hook_id);
 		}
 		var response = GnomeShellRpc.call_value("Helper-Actor.create",
 			null,
-			OLLMrpc.args("sv", this.get_type().name(), hooks.end()));
+			OLLMrpc.args("sSvv", this.get_type().name(), names,
+				vfunc_ids.end(), hook_ids.end()));
 
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;

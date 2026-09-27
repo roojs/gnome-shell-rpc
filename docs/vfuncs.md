@@ -51,13 +51,20 @@ There is no later check for "was allocate replaced?" The map is the record. An e
 /* 1. Local. No lease yet. The ours/plain read, saved as a list of names. */
 names = overridden (this_class, "Clutter", "Actor", "StWidget");
 
-/* 2. Each name is a callback. Register the callback. It does not need a lease. */
-for (name in names)
-    hooks.add (offset_of (name), register_callback (name));
+/* 2. Each name is a callback. Register the callback. It does not need a lease.
+      The id is a byte count. Ask the typelib which field sits at that byte,
+      and keep that name. */
+for (name in names) {
+    id = offset_of (name);
+    called = typelib_name_at (id);          /* vfunc_names + vfunc_offset */
+    method_names.add (called);
+    method_ids.add (id);
+    callback_ids.add (register_callback (name));
+}
 
-/* 3. One create. The server stores the map, then returns the lease.
-      The list is not names alone: each entry is that callback. */
-lease_id = HelperActor.create (type_name, hooks);
+/* 3. One create. Names, byte counts, and callbacks, same length.
+      The server stores the map, then returns the lease. */
+lease_id = HelperActor.create (type_name, method_names, method_ids, callback_ids);
 ```
 
 The lease is the reply to that create. The actor is not addressable before the map is stored. Sending the type name first and the methods afterwards left a leased actor with an empty map; that split is [`2026-09-27-actor-created-before-overrides.md`](bugs/2026-09-27-actor-created-before-overrides.md).
@@ -138,13 +145,11 @@ Our hook exists to notice those writes and to call them. Looking at any other by
 
 ## Why that read goes wrong on our classes
 
-The client class is not the real `ClutterActorClass`. Vala generates it. The real struct interleaves ordinary methods and signal methods. Vala groups signal methods at the end. The field named `allocate` therefore sits at a different offset in our struct than in the real library.
+The client class is not the real `ClutterActorClass`. Vala generates it. The real struct interleaves ordinary methods and signal methods. Vala groups signal methods at the end, so a later field moves to a different byte than the typelib records.
 
-The typelib still says the real offset. The hook reads that offset in our struct and gets some other field. Vala did store the override, into the field named `allocate` in the generated struct. The hook never reads that field.
+When a class field is also a signal, the generator emits a plain virtual at that byte and a separate signal that is not a class field. Vala parks a virtual signal at the end of the class, which would move every later field. `allocate` sits at the typelib byte because the signals in front of it are plain virtuals. The scan and the callback read that byte.
 
-`c-vfunc-relay.c` says this directly: it calls the typelib offset on purpose, because a normal Vala virtual call reads the wrong field once GJS has written at the typelib offset. That file is marked temporary until the generated struct is emitted in the real order.
-
-So the mechanism is stable when the struct it peeks matches the typelib. GJS subclasses of a matching class work, because they write where the typelib says. A Vala override on a reordered struct does not, because the write and the read use different positions for the same name.
+`c-vfunc-relay.c` calls the typelib offset on purpose, because that is where GJS writes `vfunc_*`. The read is right when the generated field for that name is that byte.
 
 ## What this is not
 

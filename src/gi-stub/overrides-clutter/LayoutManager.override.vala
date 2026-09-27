@@ -78,18 +78,27 @@
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "LayoutManager",
 			typeof(LayoutManager).name(), always);
-		var hooks = new GLib.VariantBuilder(new GLib.VariantType("a(it)"));
+		string[] names = {};
+		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
+		var hook_ids = new GLib.VariantBuilder(new GLib.VariantType("at"));
 		foreach (var name in overridden) {
 			var vfunc_id = -1;
 			var hook_id = this.bind_vfunc(name, out vfunc_id);
 			if (hook_id == 0) {
 				continue;
 			}
-			hooks.add("(it)", vfunc_id, hook_id);
+			var called = GnomeShellRpc.GiStub.VfuncRelay.name_of(
+				"Clutter", "LayoutManager", vfunc_id);
+			if (called == "") {
+				continue;
+			}
+			names += called;
+			vfunc_ids.add("i", vfunc_id);
+			hook_ids.add("t", hook_id);
 		}
 		var minted = GnomeShellRpc.call_value(
 			"Helper-LayoutManager.create", null,
-			OLLMrpc.args("v", hooks.end()));
+			OLLMrpc.args("Svv", names, vfunc_ids.end(), hook_ids.end()));
 		var manager = (LayoutManager) GLib.Object.new(typeof(LayoutManager));
 		manager.rpc_lid = minted.args.get(0).get_uint64();
 		GnomeShellRpc.GiStub.Runtime.register_handle(manager);
