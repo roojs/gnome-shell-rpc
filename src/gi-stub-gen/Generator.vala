@@ -453,16 +453,26 @@ namespace GnomeShellRpc.Rpc.Helper
 			 * ************************************************************************
 			 */
 			if (this.type_has_ctor_props(oi)) {
+				var wire = ns + "-" + class_name;
 				stream.puts("""		construct {
 			if (this.rpc_lid != 0) {
 				this.rpc_ctor_clear();
 				return;
 			}
 			if (this.rpc_ctor_has()) {
-""");
-				this.emit_ctor_new_call(stream, ns, new_fi);
-				stream.puts("""				this.rpc_ctor_clear();
-				return;
+				var leaf = this.get_type();
+				while (leaf != GLib.Type.INVALID
+						&& (OLLMrpc.Bin.gtype_to_alias == null
+							|| !OLLMrpc.Bin.gtype_to_alias.has_key(leaf))) {
+					leaf = leaf.parent();
+				}
+				if (leaf != GLib.Type.INVALID
+						&& OLLMrpc.Bin.gtype_to_alias.get(leaf) == "%s") {
+""".printf(wire));
+				this.emit_ctor_new_call(stream, ns, new_fi, wire);
+				stream.puts("""					this.rpc_ctor_clear();
+					return;
+				}
 			}
 			this.rpc_ctor_clear();
 """);
@@ -515,8 +525,12 @@ namespace GnomeShellRpc.Rpc.Helper
 				if ((flags & GLib.ParamFlags.WRITABLE) == 0) {
 					continue;
 				}
-				if (pi.get_name() in ctor_args) {
-					return true;
+				var prop_name = pi.get_name();
+				foreach (var arg_name in ctor_args) {
+					if (arg_name == prop_name
+							|| arg_name.replace("_", "-") == prop_name) {
+						return true;
+					}
 				}
 			}
 			return false;
@@ -528,7 +542,8 @@ namespace GnomeShellRpc.Rpc.Helper
 		private void emit_ctor_new_call(
 			GLib.FileStream stream,
 			string ns,
-			GI.FunctionInfo fi
+			GI.FunctionInfo fi,
+			string wire
 		) {
 			var sig = "";
 			var packed = "";
@@ -545,7 +560,8 @@ namespace GnomeShellRpc.Rpc.Helper
 				var is_flags = iface != null && iface.get_type() == GI.InfoType.FLAGS;
 				var is_enum = iface != null && iface.get_type() == GI.InfoType.ENUM;
 				sig += letter;
-				stream.puts(@"				var _$(aname) = this.rpc_ctor_get(\"$(arg.get_name())\");
+				var lookup = arg.get_name().replace("_", "-");
+				stream.puts(@"				var _$(aname) = this.rpc_ctor_get(\"$(lookup)\");
 ");
 				string expr;
 				if (letter == "o") {
@@ -572,7 +588,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				}
 				packed += expr;
 			}
-			stream.puts(@"				var response = GnomeShellRpc.call_value(OLLMrpc.Bin.gtype_to_alias.get(this.get_type()) + \".new\", null, OLLMrpc.args(\"$(sig)\", $(packed)));
+			stream.puts(@"				var response = GnomeShellRpc.call_value(\"$(wire).new\", null, OLLMrpc.args(\"$(sig)\", $(packed)));
 				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 ");
 		}
@@ -1306,7 +1322,15 @@ namespace GnomeShellRpc.Rpc.Helper
 					 * client only receives the object (Context.name) and
 					 * a construct block would set_property on it.
 					 */
-					if (pname in ctor_args && gprop_ok) {
+					var ctor_prop = false;
+					foreach (var arg_name in ctor_args) {
+						if (arg_name == pname
+								|| arg_name.replace("_", "-") == pname) {
+							ctor_prop = true;
+							break;
+						}
+					}
+					if (ctor_prop && gprop_ok) {
 						write_gprop = true;
 					} else if (read_method || read_gprop) {
 						writable = false;
@@ -1457,7 +1481,17 @@ namespace GnomeShellRpc.Rpc.Helper
 				} else if (write_gprop) {
 					stream.puts(@"			[CCode (cname = \"$(class_name.down())_$(conv_set)_gprop\")]
 ");
-					if (construct_only && pname in ctor_args) {
+					var stashed = false;
+					if (construct_only) {
+						foreach (var arg_name in ctor_args) {
+							if (arg_name == pname
+									|| arg_name.replace("_", "-") == pname) {
+								stashed = true;
+								break;
+							}
+						}
+					}
+					if (stashed) {
 						stream.puts(@"			construct {
 				this.rpc_ctor_stash(\"$(pname)\", value);
 			}
