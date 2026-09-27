@@ -38,7 +38,7 @@
 	/**
 	 * Lease like the generator parent-walk ({@code Actor.new} denied).
 	 * First Bin-registered ancestor; {@code St-Widget} →
-	 * {@code this.relay_attach()} (Helper-Actor + hooks).
+	 * {@code this.create_with_overrides()} (server actor, overrides included).
 	 *
 	 * {@code Meta-BackgroundActor}: leave {@code rpc_lid == 0} for the leaf
 	 * Helper construct. Stock ctor needs display+monitor; null-arg
@@ -72,12 +72,12 @@
 				case "Clutter-Clone": // Clone.override new(source)
 					return;
 				case "St-Widget":
-					this.relay_attach();
+					this.create_with_overrides();
 					return;
 				case "Clutter-Actor":
 					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
 					if (this.get_type() != typeof(Actor)) {
-						this.relay_attach();
+						this.create_with_overrides();
 						return;
 					}
 					break;
@@ -115,7 +115,7 @@
 	string actor_name = "";
 	bool name_known = false;
 
-	void relay_attach()
+	void create_with_overrides()
 	{
 		/* event: GJS vfunc_event often matches StWidget Class.event at
 		 * attach — force-register (B3 panel path). captured_event:
@@ -123,10 +123,23 @@
 		string[] always = { "event", "captured_event" };
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
-
+		/*
+		 * Callbacks do not need a lease. Register them, then create the
+		 * actor with the list already attached. The lease comes back
+		 * only after the server has stored the map.
+		 */
+		var hooks = new GLib.VariantBuilder(new GLib.VariantType("a(it)"));
+		foreach (var name in overridden) {
+			var vfunc_id = -1;
+			var hook_id = this.bind_vfunc(name, out vfunc_id);
+			if (hook_id == 0) {
+				continue;
+			}
+			hooks.add("(it)", vfunc_id, hook_id);
+		}
 		var response = GnomeShellRpc.call_value("Helper-Actor.create",
 			null,
-			OLLMrpc.args("s", this.get_type().name()));
+			OLLMrpc.args("sv", this.get_type().name(), hooks.end()));
 
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
@@ -141,15 +154,6 @@
 		if (GLib.Signal.lookup("clicked", this.get_type()) != 0) {
 			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
 				this, "clicked");
-		}
-		foreach (var name in overridden) {
-			var vfunc_id = -1;
-			var hook_id = this.bind_vfunc(name, out vfunc_id);
-			if (hook_id == 0) {
-				continue;
-			}
-			GnomeShellRpc.call_value("Helper-Actor.add_hook", this,
-				OLLMrpc.args("it", vfunc_id, hook_id));
 		}
 	}
 
@@ -746,7 +750,7 @@
 				}
 				value.set_container(this);
 				GnomeShellRpc.call_value("Clutter-Actor.set_layout_manager",
-					this, OLLMrpc.args("o", value.ensure_helper_peer()));
+					this, OLLMrpc.args("o", value.create_server_manager()));
 			}
 		}
 	}

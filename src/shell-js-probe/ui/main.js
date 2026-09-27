@@ -148,7 +148,13 @@ function _sessionUpdated() {
 
 /** @returns {void} */
 export async function start() {
-    globalThis.log = console.log;
+    /* console.log is not in the mutter tee. Structured log is. */
+    globalThis.log = msg => {
+        GLib.log_structured('GNOME Shell', GLib.LogLevelFlags.LEVEL_MESSAGE, {
+            'MESSAGE': `${msg}`,
+        });
+    };
+    log('gsr-chrome: probe-main-loaded');
     globalThis.logError = function (err, msg) {
         const args = [formatError(err)];
         try {
@@ -459,7 +465,29 @@ async function _initializeUI() {
                                     const ws = wss[j];
                                     const bg = ws?._background;
                                     const ba = bg?._bgManager?.backgroundActor;
-                                    log(`gsr-chrome: overview-ws${i}.${j} ${actorGeom(ws)} bg ${actorGeom(bg)} bin ${actorGeom(bg?._bin)} group ${actorGeom(bg?._backgroundGroup)} actor ${actorGeom(ba)}`);
+                                    const boxOf = (actor) => {
+                                        if (!actor)
+                                            return 'null';
+                                        try {
+                                            const b = actor.get_allocation_box();
+                                            return `alloc=${b.get_width().toFixed(0)}x${b.get_height().toFixed(0)} scale=${actor.scale_x},${actor.scale_y}`;
+                                        } catch (e) {
+                                            return `alloc-err:${e}`;
+                                        }
+                                    };
+                                    let content = 'n/a';
+                                    try {
+                                        const node = bg?.get_theme_node?.();
+                                        const box = bg?.get_allocation_box?.();
+                                        if (node && box) {
+                                            const c = node.get_content_box(box);
+                                            content = `${c.get_width().toFixed(0)}x${c.get_height().toFixed(0)}`;
+                                        }
+                                    } catch (e) {
+                                        content = `err:${e}`;
+                                    }
+                                    const first = bg?.get_first_child?.();
+                                    log(`gsr-chrome: overview-ws${i}.${j} ${actorGeom(ws)} bg ${actorGeom(bg)} ${boxOf(bg)} content=${content} state=${bg?.state_adjustment_value} firstIsBin=${first === bg?._bin} bin ${actorGeom(bg?._bin)} ${boxOf(bg?._bin)} group ${actorGeom(bg?._backgroundGroup)} ${boxOf(bg?._backgroundGroup)} actor ${actorGeom(ba)} ${boxOf(ba)}`);
                                 }
                             }
                         } catch (e4) {
@@ -607,6 +635,11 @@ async function _initializeUI() {
             } catch (e) {
                 log(`gsr-chrome: panel-right preferred threw ${e}`);
             }
+
+            /* Menu open during this snap never returns, so notify_ready
+             * and the delayed overview snapshot never run. */
+            log(`gsr-chrome: ${tag} probe-done`);
+            return chromeSnaps < 2;
 
             const stageW = global.screen_width || 800;
 

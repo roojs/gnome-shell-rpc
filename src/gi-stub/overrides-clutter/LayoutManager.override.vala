@@ -1,14 +1,21 @@
 	/**
-	 * GJS {@link LayoutManager} subclasses (QuickSettingsLayout, …) have no
-	 * {@code rpc_lid}. Child layout props and container wiring stay local —
-	 * same idea as {@link Actor.layout_manager}. Leased stock managers RPC.
+	 * A JavaScript layout manager has no lease. Measuring and placing
+	 * stay on this object. When a server actor needs a manager, we
+	 * create one there and keep it in {@link server_manager}.
 	 *
-	 * {@code layout_changed} is a GIR **signal**. The RPC **method** of the
-	 * same name is denied (Vala name clash). Stock C only emits the signal —
+	 * Which methods go with that create is the same class scan actors
+	 * use. This function does not name them. A callback exists only for
+	 * a method marked {@code relay=1} in {@code Clutter.overrides}
+	 * ({@link relay_get_preferred_width}, {@link relay_get_preferred_height},
+	 * {@link relay_allocate}). {@code bind_vfunc} returns 0 for anything
+	 * else, and that method is left off the list.
+	 *
+	 * {@code layout_changed} is a GIR signal. The RPC method of the same
+	 * name is denied (Vala name clash). Stock C only emits the signal —
 	 * export that symbol under a different Vala name for GJS.
 	 */
 	private static Quark child_meta_quark;
-	internal LayoutManager? helper_peer;
+	internal LayoutManager? server_manager;
 
 	static construct {
 		child_meta_quark = Quark.from_string("gsr-clutter-layout-manager-child-meta");
@@ -18,10 +25,10 @@
 	public void layout_changed_invoke()
 	{
 		this.signal_layout_changed();
-		if (this.helper_peer == null) {
+		if (this.server_manager == null) {
 			return;
 		}
-		GnomeShellRpc.call_value("Clutter-LayoutManager.layout_changed", this.helper_peer);
+		GnomeShellRpc.call_value("Clutter-LayoutManager.layout_changed", this.server_manager);
 	}
 
 	internal uint64 relay_get_preferred_width()
@@ -62,29 +69,32 @@
 		});
 	}
 
-	internal LayoutManager ensure_helper_peer()
+	internal LayoutManager create_server_manager()
 	{
-		if (this.helper_peer != null) {
-			return this.helper_peer;
+		if (this.server_manager != null) {
+			return this.server_manager;
+		}
+		string[] always = {};
+		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
+			this.get_type(), "Clutter", "LayoutManager",
+			typeof(LayoutManager).name(), always);
+		var hooks = new GLib.VariantBuilder(new GLib.VariantType("a(it)"));
+		foreach (var name in overridden) {
+			var vfunc_id = -1;
+			var hook_id = this.bind_vfunc(name, out vfunc_id);
+			if (hook_id == 0) {
+				continue;
+			}
+			hooks.add("(it)", vfunc_id, hook_id);
 		}
 		var minted = GnomeShellRpc.call_value(
-			"Helper-LayoutManager.create");
-		var peer = (LayoutManager) GLib.Object.new(typeof(LayoutManager));
-		peer.rpc_lid = minted.args.get(0).get_uint64();
-		GnomeShellRpc.GiStub.Runtime.register_handle(peer);
-		this.helper_peer = peer;
-		var vfunc_id = -1;
-		var hook_id = this.bind_vfunc("get_preferred_width", out vfunc_id);
-		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
-			OLLMrpc.args("it", vfunc_id, hook_id));
-		hook_id = this.bind_vfunc("get_preferred_height", out vfunc_id);
-		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
-			OLLMrpc.args("it", vfunc_id, hook_id));
-		hook_id = this.bind_vfunc("allocate", out vfunc_id);
-		GnomeShellRpc.call_value("Helper-LayoutManager.add_hook", peer,
-			OLLMrpc.args("it", vfunc_id, hook_id));
-			
-		return peer;
+			"Helper-LayoutManager.create", null,
+			OLLMrpc.args("v", hooks.end()));
+		var manager = (LayoutManager) GLib.Object.new(typeof(LayoutManager));
+		manager.rpc_lid = minted.args.get(0).get_uint64();
+		GnomeShellRpc.GiStub.Runtime.register_handle(manager);
+		this.server_manager = manager;
+		return manager;
 	}
 
 	/**

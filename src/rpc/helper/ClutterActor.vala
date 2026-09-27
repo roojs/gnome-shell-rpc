@@ -18,7 +18,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			var helper = new Actor();
 			OLLMrpc.Request.add_class(
 				"Helper-Actor", typeof(Actor),
-				"create", "s",
+				"create", "sv",
 				"add_hook", "it",
 				"allocate_public", "ay",
 				"base_preferred_width", "d",
@@ -70,12 +70,28 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.create'' — type_name only; hooks via add_hook.
+		 * ''Helper-Actor.create'' — type name plus the override list.
+		 *
+		 * ''hooks'' is ''a(it)'': each pair is a vfunc id and a callback
+		 * already registered on this connection. The map is filled before
+		 * the lease is returned. {@link add_hook} is for an actor that
+		 * already existed.
 		 */
-		public void create(OLLMrpc.Request request, string type_name)
-		{
+		public void create(
+			OLLMrpc.Request request,
+			string type_name,
+			GLib.Variant hooks
+		) {
 			var created = new Actor();
 			created.client_type_name = type_name;
+			var n = (int) hooks.n_children();
+			for (var i = 0; i < n; i++) {
+				var pair = hooks.get_child_value(i);
+				created.vfuncs.set(
+					pair.get_child_value(0).get_int32(),
+					request.connection.callbacks.get(
+						(int) pair.get_child_value(1).get_uint64()));
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("t",

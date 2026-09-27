@@ -37,8 +37,8 @@ the same tick as the container’s allocate.
 
 | Reference process | RPC client | RPC server |
 | ----------------- | ---------- | ---------- |
-| | `Helper-Actor.create` / `add_hook` (`Actor.override.vala` `relay_attach`) — once, at construct | |
-| | | `Helper-Actor.create` mints the peer; `add_hook` binds `vfuncs["allocate"]` |
+| | `Helper-Actor.create` (`Actor.override.vala` `create_with_overrides`) — once, at construct, carrying the override list | |
+| | | `Helper-Actor.create` mints the peer with `vfuncs["allocate"]` already stored, then returns the lease |
 | GJS `actor.queue_relayout()` | JS `actor.queue_relayout()` → generated `Clutter-Actor.queue_relayout` | |
 | `clutter_actor_queue_relayout` (`clutter-actor.c` ~7848) | | GI invoke → same C on the leased peer |
 | `_clutter_actor_queue_only_relayout` (~7771) emits `::queue-relayout` | | same C on the peer |

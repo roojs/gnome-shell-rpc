@@ -35,7 +35,8 @@ namespace Shell
 				return;
 			}
 
-			var scaled_height = height - 12 * 2 * St.ThemeContext.get_for_stage((Clutter.Stage) this.get_stage()).scale_factor;
+			var scaled_height = height - 12 * 2 * St.ThemeContext.get_for_stage(
+					(Clutter.Stage) this.get_stage()).scale_factor;
 			var scaled_width = (scaled_height / height) * width;
 			var content_box = Clutter.ActorBox();
 			content_box.init_rect(

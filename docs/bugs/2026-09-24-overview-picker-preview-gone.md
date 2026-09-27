@@ -12,6 +12,20 @@ No evidence ties that warning to these four visual and interaction defects.
 Smokes cited below are **2026-09-16 / 2026-09-22**. Re-prove before
 treating one as current.
 
+**2026-09-27:** the wallpaper inside the desktop frame is 0×0 because
+the function that sizes it is stored in the wrong place in the class,
+so the create list never includes it and layout never calls it. The
+frame itself is given a real size by ordinary layout. A runtime copy
+of that function onto the right place was tried and removed: it is not
+the design, and the full session aborted once the function actually
+ran. Details under “What the screen is actually doing”.
+
+The birth of the helper used to hand out the lease before any override
+was stored. That split is its own bug, and the create request now
+carries the list:
+[`2026-09-27-actor-created-before-overrides.md`](2026-09-27-actor-created-before-overrides.md).
+It does not put `allocate` on the list. The scan still misses it.
+
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
 **Supersedes (archived 2026-09-24):**
@@ -153,11 +167,48 @@ Menu close gate `captured-event-smoke` was **ok**. A later freed-event bug on `c
 
 ---
 
+## What the screen is actually doing
+
+Measured 2026-09-27 09:06, about 20 seconds after the overview had opened. The screen is the window picker (search, desktops, bottom bar), not the app grid. The nested screen is 800×600.
+
+The desktop preview looks gone because the **picture inside it has no size**. The box that should show the current desktop is on screen, about 540×383, fully opaque, under the search bar. The wallpaper inside that box is **0×0**. The two containers around the wallpaper are 0×0 as well. Same for the next desktop, which sits to the right and hangs off the screen. An empty box with no picture is what “the preview disappeared” looks like.
+
+The theme area inside the frame is 540×383, and the picture is the frame’s first child. Nothing is scaling it down to nothing. The allocation really is 0×0.
+
+The function that is supposed to give that picture a size did not run once in a full boot. Layout did size the frame: twice to 540×383 and twice to 800×568. Each of those calls had no link to the sizing function, so the ordinary widget layout ran instead and left the picture at its default 0×0.
+
+On 2026-09-17 that inner picture had a real size and the wallpaper showed. A direct test of the same function now also leaves the picture at 0×0. The function is in the class. The hook reads a different field and finds an ordinary widget there. How that read works, and why the field is the real library's field, is [Virtual functions](../vfuncs.md).
+
+Putting the function where the hook reads, then running it, aborted the full session (the connection dropped, then a fatal “not connected”). Do not turn the function on until that abort is understood.
+
+| Piece | Where it is | What you would see |
+| ----- | ----------- | ------------------ |
+| Search | 215,32 — 370×55 | On screen, just under the top bar |
+| Small desktop row | 121,94 — 558×28, 14 children | The row exists. Whether it looks like anything is still open. |
+| Current desktop frame | 130,126 — 540×383 | The frame is there |
+| Wallpaper inside it | 0×0 | Nothing. This is the missing preview. |
+| Next desktop, to the right | 709,138 — 508×360, picture also 0×0 | Hangs off the right edge. Candidate for the stray rectangle. Not confirmed as the red dot. |
+| Bottom bar | 0,520 — 800×80, fully opaque | The bar’s box is on screen. Icon contents not measured yet, so this does not clear “dash not visible”. |
+
+There are 12 workspaces, and dynamic workspaces are off. That is a lot of desktops to lay out across one monitor.
+
+The shell still reports that startup has not finished, 20 seconds in. The overview has nevertheless opened and the boxes above have sizes.
+
+## How we failed to see this at first
+
+The debug copy of the shell script was not the copy the shell ran. The stock script stayed in front of it. A one-line change in the shell client fixes that order. After that, the measurement above is from the debug script.
+
+A snapshot taken in the first seconds of boot is useless here: nothing has been given a size yet. The date-menu part of that debug script also stalled the boot, so it now stops after recording the overview.
+
 ## Next
 
-1. Name the actor for rows 3 and 4 (dash vs the red-dot rectangle) on a
-   stay-up snap. The 2026-09-25 probe reached `READY=1` but the client hit
-   the `Meta.Laters` SIGSEGV before the delayed snapshot. That crash is
-   closed; the snapshot can be taken again.
-2. Score row 1 against the 2026-09-17 wallpaper pane (allocate smoke had `inner=800x400`; the user no longer sees that pane).
-3. Row 2 stays the `clicked` → `vfunc_clicked` class closure. Re-prove before another product edit. Generator gates are listed above.
+1. Create now carries the override list
+   ([`2026-09-27-actor-created-before-overrides.md`](2026-09-27-actor-created-before-overrides.md)).
+   The list still does not contain the sizing function. The scan reads
+   the real library's field and the function was written into a different
+   field. See [Virtual functions](../vfuncs.md). That mismatch is what is
+   still wrong with this preview. Do not paper over it by copying the
+   pointer or by forcing the name onto the list.
+2. Before that function is called from the live overview, find why running it aborts the session.
+3. On that same screen, see whether the bottom bar’s icons have a size, and whether the right-hand desktop is the stray rectangle.
+4. Icon click stays a separate problem. Do not change it while chasing the blank preview.

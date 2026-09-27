@@ -354,6 +354,13 @@ namespace GnomeShellRpc.ShellClient
 				GLib.warning("js override overlay: load failed: %s", e.message);
 				return;
 			}
+			/* Static JS resources stay on GLib's lazy list until the first
+			 * lookup, and that lookup prepends them. Registering first
+			 * lets the stock bundle shadow this overlay. Flush, then
+			 * register, so the overlay is the one lookup finds. */
+			 
+			GLib.resources_lookup_data("/org/gnome/shell/ui/init.js", GLib.ResourceLookupFlags.NONE);
+			  
 			GLib.resources_register(overlay);
 			GLib.debug("js override overlay %d files from %s",
 				rel_paths.length, override_dir);
