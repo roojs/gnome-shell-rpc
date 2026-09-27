@@ -1,4 +1,5 @@
 subdir('call-sync-repro')
+subdir('clicked-slot-emit-gate')
 subdir('gstrv-gir-gate')
 subdir('class-struct-offset-gate')
 subdir('app-search-empty-gate')

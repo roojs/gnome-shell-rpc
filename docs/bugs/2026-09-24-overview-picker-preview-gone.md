@@ -1,32 +1,24 @@
-# Overview picker: desktop preview gone, stray rectangle, dash missing, icon click still dead
+# Overview: Terminal does not start from the icon
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and the boot overview matches stock WINDOW_PICKER, and clicking an app icon launches it. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ⏳ current — user re-confirmed 2026-09-25 16:08: desktop
-preview gone, stray rectangle, dash missing, and icon click still dead.
-The `Meta.Laters` SIGSEGV that interrupted the delayed snapshot is closed
-([`done/2026-09-25-meta-laters-callback-segv.md`](done/2026-09-25-meta-laters-callback-segv.md)).
-A leftover closure warning is deferred
+**Status:** ⏳ current — **Terminal icon click.** User 2026-09-27: the
+desktop background is on screen. That closes the preview row and the
+session abort that used to follow turning `allocate` on. The old crash
+write-ups for that abort, and for `Meta.Laters`, are sealed by the plain
+virtual layout ([Virtual functions](../vfuncs.md)). A leftover closure
+warning stays deferred and off this list
 ([`2026-09-26-warning-laters-closure-unref.md`](2026-09-26-warning-laters-closure-unref.md)).
-No evidence ties that warning to these four visual and interaction defects.
-Smokes cited below are **2026-09-16 / 2026-09-22**. Re-prove before
-treating one as current.
 
-**2026-09-27:** the wallpaper inside the desktop frame was 0×0 because
-`allocate` sat at the wrong byte in our class, so the create list never
-included it. The five signals in front of it are now plain virtuals, and
-`allocate` sits at the typelib byte. A direct allocate of
-`Shell.WorkspaceBackground` returns `inner=800x400`. A live boot reached
-`notify_ready` and was still building chrome when the timer stopped it.
-It did not die the way the earlier run did once the sizing function ran.
-The picture on that screen has not been measured again. Details under
-“What the screen is actually doing”.
+Create carries the override list
+([`done/2026-09-27-actor-created-before-overrides.md`](done/2026-09-27-actor-created-before-overrides.md)).
 
-The birth of the helper used to hand out the lease before any override
-was stored. That split is its own bug, and the create request now
-carries the list:
-[`2026-09-27-actor-created-before-overrides.md`](2026-09-27-actor-created-before-overrides.md).
-It does not put `allocate` on the list. The scan still misses it.
+| # | What | Stock piece | Seen |
+| - | ---- | ----------- | ---- |
+| 1 | Desktop preview | Wallpaper inside the current-desktop frame | **Closed, user 2026-09-27.** Background images show. |
+| 2 | Icon click | Dash icon → `AppIcon.vfunc_clicked` → `Shell.App.launch` | **Current.** Click Terminal. The app does not start. |
+| 3 | Stray rectangle | Unknown actor | Still open. Not this pass. |
+| 4 | Bottom chooser | Dash | Still open. Not this pass. |
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -43,14 +35,16 @@ Full logs and rejected edits stay in those files. This bug is the live score.
 
 ## Seen (user, 2026-09-24)
 
+Historical. The live score is the table at the top.
+
 Stock `user` mode lands on WINDOW_PICKER after boot: search, workspace thumbnails, current-desktop pane, dash.
 
-Re-confirmed unchanged by the user on 2026-09-25 16:08.
+Re-confirmed unchanged by the user on 2026-09-25 16:08. Row 1 has since closed.
 
 | # | What | Stock piece | Seen |
 | - | ---- | ----------- | ---- |
-| 1 | Desktop preview | Current-desktop pane: wallpaper plus window thumbnails (`WorkspacesDisplay` / `WorkspaceBackground`) | **Gone.** Was visible 2026-09-17 ~16:37. Gross regression. |
-| 2 | Icon click | App icon → `AppIcon.vfunc_clicked` → `Shell.App.launch` | **Still does not start the app.** Signal work since 2026-09-22 did not clear the user click. |
+| 1 | Desktop preview | Current-desktop pane: wallpaper plus window thumbnails (`WorkspacesDisplay` / `WorkspaceBackground`) | **Gone** on this date. Was visible 2026-09-17 ~16:37. Closed by the user on 2026-09-27. |
+| 2 | Icon click | App icon → `AppIcon.vfunc_clicked` → `Shell.App.launch` | **Did not start the app.** Still the current row. |
 | 3 | Stray rectangle | Unknown actor | Roughly square rectangle, mostly on the **right**, on top of the preview desktops. Small **red dot** at its top-left, just **below the search bar**. Same family as the old “grey square + red dot ~2/3 along.” |
 | 4 | Bottom chooser | Dash | **Not visible.** Open question: row 3 **is** that dash in the wrong place, or the dash has not appeared. |
 
@@ -113,13 +107,7 @@ Bar is still the session: overview → click an icon (Terminal) → the app open
 
 Rejected the same day: a generic `clicked` subscribe in `Actor.override.vala`, and a hand-written `clicked_vfunc` class handler in `Button.override.vala`. The isolated smoke passed. The integrated shell crashed. Removed. Do not restore it.
 
-`signal_prefer` is why. Vala cannot declare a signal and a method with the same name, so the generator keeps the GObject signal and renames the class-struct field to `*_vfunc`. Nothing generated makes signal emission invoke that slot. RPC re-emits `clicked`; GJS `vfunc_clicked` does not run. The same split covers `style_changed`, `long_press`, `repaint`, `popup_menu`, Entry icon-press names, and the Clutter event/gesture list. Generation has to keep, for each GIR collision:
-
-1. the stock signal name (`connect`, RPC);
-2. the stock class-struct slot (GJS `vfunc_*`);
-3. the class-closure from emission to that slot.
-
-Namespace-wide `signal_prefer=` lists are not that mechanism. Gates before a generator change: RPC `clicked` runs a GJS `vfunc_clicked`; chain-up still works; `style_changed` and one Clutter event name use the same path; `class-struct-offset-gate` stays PASS; a search click launches without crashing. Related generator note: [`2026-09-23-prefix-generated-vala-signals.md`](2026-09-23-prefix-generated-vala-signals.md).
+The slot and the signal are separate on purpose. A virtual signal would sit at the end of the class and move `allocate`. The generator emits a plain virtual `clicked_vfunc` at the typelib byte, and a non-virtual `signal_clicked`. GJS writes `vfunc_clicked` into that byte. Emitting the signal does not load that byte, which is why the notification arrived and the app did not start. Nothing generated makes that emission call the slot. A `clicked`-only connect in the generator was tried and removed: Vala allows one `construct` per class, and it is a special case, not the class closure.
 
 `Meta.Display.list_all_windows()` can fail RPC `-32602` while the compositor log has `Window.created`. `Shell.App.get_n_windows()` can stay 0 for that window. Do not treat `windows-normal=0` alone as “nothing mapped.”
 
@@ -181,7 +169,7 @@ The function that is supposed to give that picture a size did not run once in a 
 
 On 2026-09-17 that inner picture had a real size and the wallpaper showed. A direct test of the same function now also leaves the picture at 0×0. The function is in the class. The hook reads a different field and finds an ordinary widget there. How that read works, and why the field is the real library's field, is [Virtual functions](../vfuncs.md).
 
-Putting the function where the hook reads, then running it, aborted the full session (the connection dropped, then a fatal “not connected”). Do not turn the function on until that abort is understood.
+An earlier boot aborted when this function first ran (the connection dropped, then “not connected”). The user has since confirmed the background is on screen, so that abort is not the live bug.
 
 | Piece | Where it is | What you would see |
 | ----- | ----------- | ------------------ |
@@ -204,13 +192,6 @@ A snapshot taken in the first seconds of boot is useless here: nothing has been 
 
 ## Next
 
-1. Create carries the override list
-   ([`2026-09-27-actor-created-before-overrides.md`](2026-09-27-actor-created-before-overrides.md)).
-   `allocate` now sits at the typelib byte, and the direct test sizes the
-   picture. See [Virtual functions](../vfuncs.md). Measure the live
-   overview picture again.
-2. The earlier full-session abort, once this function ran, did not repeat
-   in a boot that ran until the timer. Confirm that on a boot long enough
-   to open the overview.
-3. On that same screen, see whether the bottom bar’s icons have a size, and whether the right-hand desktop is the stray rectangle.
-4. Icon click stays a separate problem. Do not change it while chasing the blank preview.
+Click Terminal. The notification `clicked` must run `AppIcon.vfunc_clicked`, which calls `Shell.App.launch`. Direct launch already maps a window.
+
+Why the emit misses the method, and whether pointing the signal at that method afterwards is a design fix or a workaround, is [`2026-09-27-clicked-signal-misses-vfunc.md`](2026-09-27-clicked-signal-misses-vfunc.md).

@@ -67,7 +67,7 @@ for (name in names) {
 lease_id = HelperActor.create (type_name, method_names, method_ids, callback_ids);
 ```
 
-The lease is the reply to that create. The actor is not addressable before the map is stored. Sending the type name first and the methods afterwards left a leased actor with an empty map; that split is [`2026-09-27-actor-created-before-overrides.md`](bugs/2026-09-27-actor-created-before-overrides.md).
+The lease is the reply to that create. The actor is not addressable before the map is stored. Sending the type name first and the methods afterwards left a leased actor with an empty map; that split is closed: [`bugs/done/2026-09-27-actor-created-before-overrides.md`](bugs/done/2026-09-27-actor-created-before-overrides.md).
 
 **Server** (`mutter-rpc`), every time Clutter lays the helper out. This class is the helper, a plain widget living in Mutter. Its `allocate` is our helper method, not the shell's function. The shell's function is not in this process.
 

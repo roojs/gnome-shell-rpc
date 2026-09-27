@@ -25,7 +25,13 @@
 > File/update the tracking bug, pick the next allowed step, rebuild, prove,
 > repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
 
-**Status:** ⚠️ **open / event, clicked, style and relayed layout proofs pass**
+**Status:** ⚠️ historical crash log. The SIGSEGV stacks below are the
+virtual-signal class closure, emitted from inside `call_poll`. That layout
+is gone: a class field that is also a signal is a plain virtual at the
+typelib byte, and the signal is not virtual
+([Virtual functions](../vfuncs.md)). Do not put `virtual signal` back.
+The live click work is
+[`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md).
 
 **Scope:** generated client GI stubs in `src/gi-stub-gen/Generator.vala`
 

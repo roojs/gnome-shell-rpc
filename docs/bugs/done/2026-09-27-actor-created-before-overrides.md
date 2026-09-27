@@ -1,15 +1,16 @@
 # The actor is leased before it is told which methods were replaced
 
-**Status:** ⏳ current. The create request now carries the list. Not yet
-re-proved in a nested session.
+**Status:** ✔️ archived 2026-09-27. Create carries the override list.
+The user confirmed the desktop background is on screen, which is the
+session proof: `allocate` was in that list and the helper ran it.
 
-**Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
-**How a virtual call works:** [`../vfuncs.md`](../vfuncs.md)
+**How a virtual call works:** [`../../vfuncs.md`](../../vfuncs.md)
 
-**Seen from:** [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md).
-That screen is still wrong for a separate reason, written there. This bug
-is the birth of every helper actor, not the wallpaper by itself.
+**Seen from:** [`../2026-09-24-overview-picker-preview-gone.md`](../2026-09-24-overview-picker-preview-gone.md).
+The wallpaper row of that bug is closed by the same confirmation. Icon
+click stays there.
 
 ## What happened
 
@@ -41,12 +42,3 @@ the same length: the method ids, then the callback ids.
 
 `add_hook` stays for an actor that already existed, such as the stage.
 It is the wrong way to finish an actor we just created.
-
-## What this does not fix
-
-The wallpaper inside the desktop frame is still 0×0 if `allocate` is not
-in the list. The scan that builds the list still misses that method,
-because the function sits in a different field than the one the scan
-reads. That is the preview bug. Turning the sizing function on by copying
-it, or by reshuffling fields until the scan happens to see it, works
-around a class that does not match the library. It is not this fix.

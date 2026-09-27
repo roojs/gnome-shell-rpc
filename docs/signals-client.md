@@ -163,46 +163,26 @@ GIR signal without a matching class field
   -> public signal ... signal_name(...)
 
 GIR class field matching a signal on that class
-  -> emit at the field's physical GIR position
+  -> plain virtual at that byte: name_vfunc, vfunc_name = stock name
+  -> the signal is not virtual, so valac does not park it at the end
   -> [CCode (cname = "stock-name")]
-  -> public virtual signal ... signal_name(...) { default body }
+  -> public signal ... signal_name(...)
 
 callable method with the same stock name
   -> emit independently under the stock Vala method name
 ```
 
-For example:
-
-```vala
-[CCode (cname = "clicked")]
-public virtual signal void signal_clicked(int clicked_button) {
-}
-```
-
-The generated C registers this as:
-
-```c
-g_signal_new(
-    "clicked",
-    ST_TYPE_BUTTON,
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(StButtonClass, clicked),
-    // ...
-);
-```
-
-This is one GObject signal with `StButtonClass.clicked` as its class closure,
-not the old pair of an ordinary signal plus an independent `clicked_vfunc`
-method. `signal_prefer`, `clicked_vfunc`, `style_changed_vfunc`, and the
-`Actor.destroy_rpc` naming workaround have been removed.
-
-The generated external views are:
+A virtual signal would be the class closure and would also move every
+later field, including `allocate`. The signal and the slot are therefore
+separate. Emitting the signal runs `connect()` handlers. It does not load
+the plain virtual, which is where GJS writes `vfunc_*`. That gap is why
+a `clicked` notification does not run `AppIcon.vfunc_clicked`.
 
 ```text
-Vala signal:       signal_clicked
-GObject signal:    clicked
-GIR/GJS signal:    clicked
-C class field:     StButtonClass.clicked
+Vala signal:        signal_clicked
+GObject signal:     clicked
+GIR/GJS signal:     clicked
+C class field:      clicked_vfunc at the typelib byte
 GJS class override: vfunc_clicked(...)
 ```
 
@@ -229,10 +209,9 @@ Helper-Actor.create returned, type has signal "clicked"
   -> same Shell.Signals.connect
 ```
 
-`vfunc_clicked` is a class slot (`Helper-Actor.add_hook`), not that named
-subscribe. A local `emit('clicked')` can run the class closure without a
-server notification, and a server notification can re-emit without a GJS
-`vfunc_*`.
+`vfunc_clicked` is the plain virtual on the client class. It is not a
+helper hook. The notification re-emits `clicked` and does not call that
+virtual.
 
 `style-changed` still has a temporary split. Notification delivery inside a
 synchronous `show()` RPC re-entered GJS and crashed, so the generated `style`
