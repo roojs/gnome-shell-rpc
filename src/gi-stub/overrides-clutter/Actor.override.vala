@@ -73,11 +73,13 @@
 					return;
 				case "St-Widget":
 					this.create_with_overrides();
+					this.signal_overrides(this.get_type());
 					return;
 				case "Clutter-Actor":
 					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
 					if (this.get_type() != typeof(Actor)) {
 						this.create_with_overrides();
+						this.signal_overrides(this.get_type());
 						return;
 					}
 					break;
@@ -88,17 +90,7 @@
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
-			/*
-			 * TEMPORARY split-signal bridge: non-helper St.Bin subclasses
-			 * such as BaseIcon need the server's initial style-changed after
-			 * lease mint. The signal has no class closure; Widget.override
-			 * forwards it to the stock-offset style_changed_vfunc.
-			 */
-			if (this.get_type() != t
-					&& GLib.Signal.lookup("style-changed", this.get_type()) != 0) {
-				GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-					this, "style-changed");
-			}
+			this.signal_overrides(this.get_type());
 			return;
 		}
 		GLib.error("lease construct: no Bin-registered ancestor for %s",
@@ -151,16 +143,51 @@
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
-		/*
-		 * TEMPORARY subscription policy: generated signal_clicked now owns
-		 * the stock StButtonClass.clicked closure, but GJS connect/vfunc
-		 * installation does not request the remote signal. Subscribe after
-		 * Helper-Actor.create has returned and the lease is registered.
-		 * Remove when generated virtual signals acquire subscription policy.
-		 */
-		if (GLib.Signal.lookup("clicked", this.get_type()) != 0) {
-			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-				this, "clicked");
+	}
+
+	/**
+	 * Subscribe each signal whose virtual this object replaced.
+	 *
+	 * Called from construct with this object's type. Calls itself
+	 * on the parent first. A type with no alias is skipped. The
+	 * leaf is not compared with itself.
+	 *
+	 * @param t parent type to compare against this object
+	 */
+	private void signal_overrides(GLib.Type t)
+	{
+		if (t == GLib.Type.INVALID) {
+			return;
+		}
+		this.signal_overrides(t.parent());
+		if (t == this.get_type()) {
+			return;
+		}
+		if (OLLMrpc.Bin.gtype_to_alias == null) {
+			return;
+		}
+		if (!OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
+			return;
+		}
+		var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
+		var dot = alias.index_of("-");
+		if (dot < 0) {
+			return;
+		}
+		var ns = alias.substring(0, dot);
+		var class_name = alias.substring(dot + 1);
+		var leaf = this.get_type();
+		foreach (var name in OLLMrpc.Gi.vfunc_names(ns, class_name)) {
+			var ours = OLLMrpc.Gi.vfunc_slot(leaf, ns, class_name, name);
+			var plain = OLLMrpc.Gi.vfunc_slot(t, ns, class_name, name);
+			if (ours == plain) {
+				continue;
+			}
+			var signal_name = name.replace("_", "-");
+			if (GLib.Signal.lookup(signal_name, leaf) == 0) {
+				continue;
+			}
+			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(this, signal_name);
 		}
 	}
 
