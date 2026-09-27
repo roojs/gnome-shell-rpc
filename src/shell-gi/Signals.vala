@@ -62,11 +62,6 @@ namespace Shell
 			GLib.Quark detail,
 			void* return_value);
 
-		[CCode (cname = "g_signal_type_cclosure_new", cheader_filename = "glib-object.h")]
-		private static extern unowned GLib.Closure type_cclosure(
-			GLib.Type itype,
-			uint struct_offset);
-
 		/**
 		 * {@code RPC-Live-Subscribe} is the leased C object, not the GJS
 		 * subclass. {@code registerClass} signals ({@code activate} on a
@@ -256,44 +251,6 @@ namespace Shell
 				vals[i + 1].set_boxed(new Clutter.Frame());
 			}
 			Signals.emitv(vals, signal_id, detail, null);
-			var vfunc_name = signal_name.replace("-", "_");
-			var leaf = obj.get_type();
-			var scan = leaf.parent();
-			var offset = -1;
-			while (scan != GLib.Type.INVALID && offset < 0) {
-				if (OLLMrpc.Bin.gtype_to_alias == null
-						|| !OLLMrpc.Bin.gtype_to_alias.has_key(scan)) {
-					scan = scan.parent();
-					continue;
-				}
-				var alias = OLLMrpc.Bin.gtype_to_alias.get(scan);
-				var dot = alias.index_of("-");
-				if (dot < 0) {
-					scan = scan.parent();
-					continue;
-				}
-				var ns = alias.substring(0, dot);
-				var class_name = alias.substring(dot + 1);
-				foreach (var name in OLLMrpc.Gi.vfunc_names(ns, class_name)) {
-					if (name != vfunc_name) {
-						continue;
-					}
-					if (OLLMrpc.Gi.vfunc_slot(leaf, ns, class_name, name)
-							== OLLMrpc.Gi.vfunc_slot(scan, ns, class_name, name)) {
-						continue;
-					}
-					offset = OLLMrpc.Gi.vfunc_offset(ns, class_name, name);
-					break;
-				}
-				scan = scan.parent();
-			}
-			if (offset >= 0) {
-				unowned GLib.Closure closure = Signals.type_cclosure(leaf, (uint) offset);
-				closure.sink();
-				GLib.Value none = {};
-				closure.invoke(ref none, vals);
-				closure.unref();
-			}
 			OLLMrpc.Bin.TypeOverride.release_params(query.param_types);
 		}
 	}

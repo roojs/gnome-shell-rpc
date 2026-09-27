@@ -201,3 +201,5 @@ private void signal_overrides(GLib.Type t)
 ### Add
 
 Inside `Signals.emit`, after `emitv`. **🚫** a new function. `g_signal_new` was passed `0`, so `emitv` does not call the method. The call is the pointer already in the class, written in `emit` itself.
+
+**✔️** Tried. `g_closure_invoke` of that pointer runs while `call_poll` is still inside JavaScript. First it died on `g_closure_ref` (`ref_count > 0`). After that ref was held, the process disappeared on the invoke, at `notify::allocation` during `St-Bin.get_child`, with no further log line. The call is back out of `emit`. The subscribe in `signal_overrides` stays.
