@@ -220,11 +220,11 @@ private void signal_overrides(GLib.Type t)
 
 Inside `Signals.emit`, after `emitv`. **🚫** a new function. `g_signal_new` was passed `0`, so `emitv` does not call the method. The call is the pointer already in the class, written in `emit` itself.
 
-**✔️** Back in `Signals.emit` after `emitv`, for `clicked` only (2026-09-28).
+**🚫** Do not limit this call to one signal name. A name check hides a null `closure.marshal`. `g_signal_type_cclosure_new` reads the class function, then calls `closure.marshal`. That field is unset, so the call jumps to address 0 when the class function is non-null. A null class function returns inside the meta marshaller and does not crash. Set `g_cclosure_marshal_generic` before `invoke`. The call stays for every replaced virtual.
 
 `g_signal_type_cclosure_new` returns a floating closure with one ref. `sink()` before `invoke()` frees it, and `invoke()` hits `g_closure_ref` (`ref_count > 0`). Invoke first, then sink. That was the 09:11 boot stop, on `notification method=event`.
 
-Calling the slot for every replaced virtual is the death this note already had. Hold `nested-weston-hold` (not a settle SIGKILL). `READY=1` at 09:31:42. Client log ends 09:32:07.907:
+Hold `nested-weston-hold` (not a settle SIGKILL). `READY=1` at 09:31:42. Client log ends 09:32:07.907:
 
 ```
 id=11712 method=St-Bin.get_child
@@ -233,4 +233,4 @@ property 'allocation' of object class 'StWidget' is not writable
 replied id=11712
 ```
 
-No further client line. `gnome-shell-rpc` is gone. `mutter-rpc` is still up. Same stop as the earlier invoke: `notify::allocation` during `St-Bin.get_child`, while `call_poll` is inside JavaScript. `style-changed` had just been notified (09:32:07.851–07.871). `event` and `captured-event` stay on the actor hook. `style-changed` stays on the setter bridge. The class slot is `clicked`.
+No further client line. `gnome-shell-rpc` is gone. `mutter-rpc` is still up. Same stop as the earlier invoke: `notify::allocation` during `St-Bin.get_child`, while `call_poll` is inside JavaScript. `style-changed` had just been notified (09:32:07.851–07.871). That notification's class function is set, so the unset marshaller is what jumps to address 0. Do not answer that by naming `clicked`.

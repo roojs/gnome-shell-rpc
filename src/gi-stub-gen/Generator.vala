@@ -37,6 +37,13 @@ namespace GnomeShellRpc.GiStubGen
 		public Gee.HashSet<string> temporary = new Gee.HashSet<string>();
 
 		/**
+		 * Deny-file symbols under a {@code PERMANENT} section. Omitted
+		 * on purpose (override, invalid). Not recorded as gaps.
+		 * A {@code TEMPORARY} section deny is still a gap.
+		 */
+		public Gee.HashSet<string> deny_permanent = new Gee.HashSet<string>();
+
+		/**
 		 * {@code Type.method} or bare {@code Type} → override keys
 		 * (e.g. {@code list_elem=WindowActor}, {@code emit=union-as-class}).
 		 */
@@ -1213,7 +1220,30 @@ $(minted)				this.rpc_ctor_clear();
 						reason = "denied",
 						detail = "property",
 					});
+					/*
+					 * The override owns the property, so it owns the
+					 * Vala accessor C names. Emitting get_/set_ here
+					 * redefines them (Actor.set_allocation).
+					 */
+					var accessor = vala_name.replace("@", "");
+					prop_accessors.add("get_" + accessor);
+					prop_accessors.add("set_" + accessor);
+					this.deny.add(class_name + ".get_" + accessor);
+					this.deny.add(class_name + ".set_" + accessor);
 					continue;
+				}
+				/*
+				 * {@code Type.prop set_property=} is not a skip. Deny the
+				 * property and implement it in the override. A gap here
+				 * would look like a deny and generation would continue.
+				 */
+				var prop_key = @"$(class_name).$(vala_name)";
+				if (this.overrides.has_key(prop_key)
+						&& this.overrides.get(prop_key).has_key("set_property")) {
+					var set_target = this.overrides.get(prop_key).get("set_property");
+					GLib.error(
+						"gi-stub-gen: %s set_property=%s — deny the property; do not record a gap",
+						prop_key, set_target);
 				}
 				var vt = this.type_vala(ns, pi.get_type());
 				if (vt == "") {
@@ -1373,17 +1403,6 @@ $(minted)				this.rpc_ctor_clear();
 					}
 				}
 
-				var set_target = "";
-				var prop_key = @"$(class_name).$(vala_name)";
-				if (this.overrides.has_key(prop_key)
-						&& this.overrides.get(prop_key).has_key("set_property")) {
-					set_target = this.overrides.get(prop_key).get("set_property");
-				}
-				if (set_target != "") {
-					write_method = false;
-					write_gprop = true;
-				}
-
 				if (!read_method && !read_gprop && !write_method && !write_gprop) {
 					this.add_skipped_property(class_name, vala_name,
 						"no wireable getter or setter");
@@ -1432,19 +1451,13 @@ $(minted)				this.rpc_ctor_clear();
 					} else {
 						stream.puts("			get {\n");
 					}
-					if (set_target != "") {
-						stream.puts(@"				return this.$(set_target);
-");
-					}
-					if (set_target == "") {
-						stream.puts(@"				var response = GnomeShellRpc.call_value(
+					stream.puts(@"				var response = GnomeShellRpc.call_value(
 					\"$(ns)-$(class_name).get_property\", this,
 					OLLMrpc.args(\"s\", \"$(pname)\"));
 ");
-						this.emit_value_get(
-							stream, "\t\t\t\t", ns, vt, pi.get_type(), 0, true, ""
-						);
-					}
+					this.emit_value_get(
+						stream, "\t\t\t\t", ns, vt, pi.get_type(), 0, true, ""
+					);
 					stream.puts("			}\n");
 				}
 				if (write_method && setter != null) {
@@ -1505,18 +1518,14 @@ $(minted)				this.rpc_ctor_clear();
 						} else {
 							stream.puts("			set {\n");
 						}
-					if (set_target != "") {
-						stream.puts(@"				this.$(set_target) = value;
-");
-					}
-					if (set_target == "" && gprop_L == "ay") {
+					if (gprop_L == "ay") {
 						this.emit_boxed_bytes(stream, "\t\t\t\t", "value", vt);
 						stream.puts(@"				GnomeShellRpc.call_value(
 					\"$(ns)-$(class_name).set_property\", this,
 					OLLMrpc.args(\"say\", \"$(pname)\", value_bytes));
 ");
 					}
-					if (set_target == "" && gprop_L != "ay") {
+					if (gprop_L != "ay") {
 						stream.puts(@"				GnomeShellRpc.call_value(
 					\"$(ns)-$(class_name).set_property\", this,
 					OLLMrpc.args(\"s$(gprop_L)\", \"$(pname)\", value));

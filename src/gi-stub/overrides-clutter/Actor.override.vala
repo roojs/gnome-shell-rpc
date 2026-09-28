@@ -525,8 +525,43 @@
 				OLLMrpc.args("ff", (double) value.x, (double) value.y));
 		}
 	}
-	/* Not a GIR property. */
-	public ActorBox allocation_priv { get; set; default = ActorBox(); }
+	/**
+	 * Box for {@link allocation}. Setting it notifies {@code allocation}.
+	 * Not a GIR property.
+	 */
+	/* valac 0.56 does not support gir_skip (Vala 0.57+). */
+	// [CCode (gir_skip = true)]
+	public ActorBox allocation_relay {
+		get {
+			return this.allocation_priv;
+		}
+		set {
+			this.allocation_priv = value;
+			this.notify_property("allocation");
+		}
+	}
+	/* Not a GIR field. valac 0.56 does not support gir_skip (Vala 0.57+). */
+	// [CCode (gir_skip = true)]
+	ActorBox allocation_priv = ActorBox();
+
+	/**
+	 * Denied in {@code Clutter.deny} so the generator does not emit it.
+	 * {@code notify::allocation} sets this; the setter writes
+	 * {@link allocation_relay}, which stores {@link allocation_priv}
+	 * and notifies {@code allocation}. Do not call
+	 * {@code Clutter-Actor.set_allocation} here. Clutter allows that
+	 * only inside {@code allocate}.
+	 * {@code notify = false} so that notify is not emitted twice.
+	 */
+	[CCode (notify = false)]
+	public ActorBox allocation {
+		get {
+			return this.allocation_priv;
+		}
+		set {
+			this.allocation_relay = value;
+		}
+	}
 
 	/**
 	 * Stock {@code clutter_actor_queue_relayout} — generator body denied so

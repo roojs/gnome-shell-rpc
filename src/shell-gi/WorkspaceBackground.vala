@@ -31,7 +31,7 @@ namespace Shell
 			var height = 0f;
 			box.get_size(out width, out height);
 			if (width <= 0 || height <= 0) {
-				this.set_allocation(box);
+				this.allocation = box;
 				return;
 			}
 
@@ -46,7 +46,7 @@ namespace Shell
 
 			Clutter.ActorBox my_box;
 			box.interpolate(content_box, this.state_adjustment_value, out my_box);
-			this.set_allocation(my_box);
+			this.allocation = my_box;
 
 			this.get_theme_node().get_content_box(my_box, out content_box);
 			this.first_child.allocate(content_box);

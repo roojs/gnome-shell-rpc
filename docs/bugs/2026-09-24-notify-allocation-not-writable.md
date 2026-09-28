@@ -1,6 +1,6 @@
 # `notify::allocation` sets a property that is not writable
 
-**Status:** ⏳ open. `Actor.allocation set_property=allocation_priv` is read by the generator. The emitted getter returns `allocation_priv`. The emitted setter assigns `allocation_priv`. A live boot still has to show the critical gone.
+**Status:** ⏳ the notification step in [`2026-09-28-allocation-two-paths.md`](2026-09-28-allocation-two-paths.md). The allocate-time store is an earlier step in that same flow. Do not patch this file on its own.
 
 **Seen:** `org.gnome.ShellRpc.debug.log`. The connection stays up. No `unsupported bin value type`, no early end-of-stream.
 

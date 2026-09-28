@@ -141,14 +141,11 @@ Examples:
 			var ns = remaining_args[2];
 			var version = remaining_args[3];
 			if (remaining_args.length > 4) {
-				command_line.printerr(
-					"unexpected argument %s\n", remaining_args[4]
-				);
+				command_line.printerr("unexpected argument %s\n", remaining_args[4]);
 				return 1;
 			}
 			if (cmd != "emit" && cmd != "emit-headers") {
-				command_line.printerr(
-					"unknown command %s (emit or emit-headers)\n", cmd);
+				command_line.printerr("unknown command %s (emit or emit-headers)\n", cmd);
 				return 1;
 			}
 			if (cmd == "emit" && Application.opt_out == "") {
@@ -156,15 +153,15 @@ Examples:
 				return 1;
 			}
 			if (cmd == "emit-headers" && Application.opt_outdir == "") {
-				command_line.printerr(
-					"emit-headers requires --outdir=DIR (-I root)\n");
+				command_line.printerr("emit-headers requires --outdir=DIR (-I root)\n");
 				return 1;
 			}
 
 			Gee.HashSet<string> deny;
 			Gee.HashSet<string> noop;
 			Gee.HashSet<string> temporary;
-			this.load_deny(out deny, out noop, out temporary);
+			Gee.HashSet<string> deny_permanent;
+			this.load_deny(out deny, out noop, out temporary, out deny_permanent);
 
 			Gee.HashMap<string, Gee.HashMap<string, string>> overrides;
 			this.load_overrides(out overrides);
@@ -186,6 +183,7 @@ Examples:
 						deny = deny,
 						noop = noop,
 						temporary = temporary,
+						deny_permanent = deny_permanent,
 						overrides = overrides,
 						missing_out_path = Application.opt_missing_out,
 						helper_out_path = Application.opt_helper_out,
@@ -213,11 +211,14 @@ Examples:
 		private void load_deny(
 			out Gee.HashSet<string> deny,
 			out Gee.HashSet<string> noop,
-			out Gee.HashSet<string> temporary
+			out Gee.HashSet<string> temporary,
+			out Gee.HashSet<string> deny_permanent
 		) {
 			deny = new Gee.HashSet<string>();
 			noop = new Gee.HashSet<string>();
 			temporary = new Gee.HashSet<string>();
+			deny_permanent = new Gee.HashSet<string>();
+			var section_permanent = false;
 			if (Application.opt_deny_file == "") {
 				return;
 			}
@@ -235,7 +236,16 @@ Examples:
 			}
 			foreach (var line in contents.split("\n")) {
 				var name = line.strip();
-				if (name == "" || name.has_prefix("#")) {
+				if (name.has_prefix("#")) {
+					var comment = name.substring(1).strip();
+					if (comment.has_prefix("TEMPORARY")) {
+						section_permanent = false;
+					} else if (comment.has_prefix("PERMANENT")) {
+						section_permanent = true;
+					}
+					continue;
+				}
+				if (name == "") {
 					continue;
 				}
 				var hash = name.index_of("#");
@@ -248,6 +258,9 @@ Examples:
 				var space = name.index_of(" ");
 				if (space < 0) {
 					deny.add(name);
+					if (section_permanent) {
+						deny_permanent.add(name);
+					}
 					continue;
 				}
 				var symbol = name.substring(0, space);

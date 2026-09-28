@@ -14,6 +14,23 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 		}
 
+		/**
+		 * Send allocation notifies under the client property name.
+		 *
+		 * The server still listens to ''notify::allocation''. The message
+		 * name is what the client sets.
+		 *
+		 * @param name subscribed signal
+		 * @return ''notify::allocation_relay'' for allocation, otherwise name
+		 */
+		public override string rpc_signal_alias(string name)
+		{
+			if (name == "notify::allocation") {
+				return "notify::allocation-relay";
+			}
+			return name;
+		}
+
 		public override Gee.ArrayList<GLib.Value?> pack(GLib.Value src)
 		{
 			var box = (Clutter.ActorBox*) src.get_boxed();

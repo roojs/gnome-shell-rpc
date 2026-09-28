@@ -68,6 +68,18 @@ namespace Shell
 			uint struct_offset);
 
 		/**
+		 * Not in the Vala GObject vapi. {@link GLib.Closure.set_marshal}
+		 * takes a {@link GLib.ClosureMarshal}.
+		 */
+		[CCode (cname = "g_cclosure_marshal_generic", cheader_filename = "glib-object.h")]
+		private static extern void marshal_generic(
+			GLib.Closure closure,
+			out GLib.Value return_value,
+			[CCode (array_length_cname = "n_param_values", array_length_pos = 2.5, array_length_type = "guint")] GLib.Value[] param_values,
+			void* invocation_hint,
+			void* marshal_data);
+
+		/**
 		 * {@code RPC-Live-Subscribe} is the leased C object, not the GJS
 		 * subclass. {@code registerClass} signals ({@code activate} on a
 		 * BoxLayout item, {@code menu-set}, …) stay local — connecting them
@@ -256,6 +268,16 @@ namespace Shell
 				vals[i + 1].set_boxed(new Clutter.Frame());
 			}
 			Signals.emitv(vals, signal_id, detail, null);
+			/*
+			 * Never skip a signal by name here. g_signal_new was
+			 * passed 0, so emitv does not call the class method.
+			 * type_cclosure reads the function at this offset, then
+			 * calls closure.marshal. That field is unset, so the
+			 * call jumps to address 0 whenever the class function
+			 * is non-null. A null class function returns inside the
+			 * meta marshaller and looks fine, which is why gating
+			 * on a name hid this.
+			 */
 			var vfunc_name = signal_name.replace("-", "_");
 			var leaf = obj.get_type();
 			var scan = leaf.parent();
@@ -295,6 +317,7 @@ namespace Shell
 				 * a dead closure (ref_count > 0). Invoke first.
 				 */
 				unowned GLib.Closure closure = Signals.type_cclosure(leaf, (uint) offset);
+				closure.set_marshal((GLib.ClosureMarshal) Signals.marshal_generic);
 				GLib.Value none = {};
 				closure.invoke(ref none, vals);
 				closure.sink();

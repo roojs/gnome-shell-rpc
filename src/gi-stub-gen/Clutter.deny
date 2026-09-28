@@ -30,6 +30,11 @@ Actor.set_accessible
 
 # --- Hand override owns GIR prop/method (generator must not emit) ---
 
+# Actor.override owns allocation. notify::allocation sets it; the setter
+# writes allocation_relay, which stores allocation_priv and notifies
+# "allocation".
+Actor.allocation
+
 # Pango.Layout is not a wire type. Helper-Text returns the fields.
 # Text.override rebuilds a client Pango.Layout from those arguments.
 Text.get_layout
