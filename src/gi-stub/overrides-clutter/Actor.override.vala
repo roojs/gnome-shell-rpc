@@ -101,7 +101,6 @@
 	bool relayout_queued;
 	/* Stock ClutterActor:visible default TRUE — the flag, not is_visible(). */
 	bool actor_visible = true;
-	ActorBox actor_allocation;
 	double cached_scale_x = 1.0;
 	double cached_scale_y = 1.0;
 	string actor_name = "";
@@ -415,7 +414,7 @@
 			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			return;
 		}
-		this.actor_allocation = box;
+		this.allocation_priv = box;
 		if (this.helper_attached) {
 			uint8[] helper_data = new uint8[sizeof(ActorBox)];
 			*((ActorBox*) helper_data) = box;
@@ -526,32 +525,8 @@
 				OLLMrpc.args("ff", (double) value.x, (double) value.y));
 		}
 	}
-
-	/**
-	 * GIR allocation is ActorBox; getter is caller-allocates OUT so the
-	 * generator skips the GObject property. GJS actor.allocation uses
-	 * g_object_class_find_property, not get_allocation_box. Stock
-	 * GridSearchResults._getMaxDisplayedResults does
-	 * this.allocation.get_width() before updateSearch's try.
-	 * Return mutter's box when that width is finite. Do not copy
-	 * {@code -Infinity} / empty (first query would skip the
-	 * {@code width === 0} shortcut).
-	 */
-	public ActorBox allocation {
-		get {
-			if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
-				return this.actor_allocation;
-			}
-			ActorBox box;
-			this.get_allocation_box(out box);
-			var w = box.get_width();
-			if (w <= 0.0f || w >= float.INFINITY) {
-				return this.actor_allocation;
-			}
-			this.actor_allocation = box;
-			return box;
-		}
-	}
+	/* Not a GIR property. */
+	public ActorBox allocation_priv { get; set; default = ActorBox(); }
 
 	/**
 	 * Stock {@code clutter_actor_queue_relayout} — generator body denied so

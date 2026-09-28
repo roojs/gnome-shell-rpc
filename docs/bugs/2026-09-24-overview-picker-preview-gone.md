@@ -16,7 +16,7 @@ Create carries the override list
 | # | What | Stock piece | Seen |
 | - | ---- | ----------- | ---- |
 | 1 | Desktop preview | Wallpaper inside the current-desktop frame | **Closed, user 2026-09-27.** Background images show. |
-| 2 | Icon click | Dash icon → `AppIcon.vfunc_clicked` → `Shell.App.launch` | **Current.** Click Terminal. The app does not start. |
+| 2 | Icon click | Dash icon → `AppIcon.vfunc_clicked` → `Shell.App.launch` | **Current.** Click Terminal. The app does not start. Reconfirmed 2026-09-28 09:00: `clicked` arrives, no `Helper-AppLaunch`. [`2026-09-27-clicked-signal-misses-vfunc.md`](2026-09-27-clicked-signal-misses-vfunc.md) |
 | 3 | Stray rectangle | Unknown actor | Still open. Not this pass. |
 | 4 | Bottom chooser | Dash | Still open. Not this pass. |
 
@@ -101,7 +101,7 @@ Bar is still the session: overview → click an icon (Terminal) → the app open
 
 **Works when called directly (2026-09-22):** `AppIcon.activate()` / `Shell.App.launch()` → compositor `Helper-AppLaunch.launch_desktop_file`. Gio reports success. `Helper-AppLaunch.make_launch_context()` unsets only the private `WAYLAND_SOCKET`. It does not unset `DISPLAY` or force `GDK_BACKEND`. After that, `app-launch-boundary-smoke` mapped `org.gtk.Demo4` on mutter (`ok target=mutter`). Terminal’s server can activate on the private nested bus and map NORMAL windows. Do not add a second launch Helper.
 
-**Does not work on a real click (user 20:25, and again 2026-09-24):** press/release produced client `notification method=clicked`. `AppIcon.vfunc_clicked` did not run. No `Helper-AppLaunch` from that click.
+**Does not work on a real click (user 20:25, and again 2026-09-24, and again 2026-09-28 09:00):** press/release produced client `notification method=clicked`. `AppIcon.vfunc_clicked` did not run. No `Helper-AppLaunch` from that click. Three presses in `org.gnome.ShellRpc.debug.log` (09:00:49.968, 09:00:51.177, 09:00:51.329). Detail: [`2026-09-27-clicked-signal-misses-vfunc.md`](2026-09-27-clicked-signal-misses-vfunc.md).
 
 `AppIcon` overrides `vfunc_clicked`. It does not `connect('clicked')`. There is no fallback in `appDisplay.js`.
 

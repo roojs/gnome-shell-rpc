@@ -1,12 +1,28 @@
 # A click notification comes back, and the client does not launch
 
-**Status:** ⏳ open. Not applied to the shell. Waiting on a design call.
+**Status:** ⏳ open. `Signals.emit` calls the class slot after `emitv` only for `clicked`. A hold on 2026-09-28 09:32 reached `READY=1`, then the client vanished. Last client line is `St-Bin.get_child` with `notify::allocation` in flight. Mutter stayed up. A live click still has to show `Helper-AppLaunch`.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
 **Seen from:** [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md). Clicking Terminal does not start it. Calling `Shell.App.launch` directly does.
 
 The **client** is `gnome-shell-rpc`. The **server** is `mutter-rpc`. This is the order things happen.
+
+## Seen (2026-09-28 09:00)
+
+Live nest, `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`. Three presses: 09:00:49.851, 09:00:51.044, 09:00:51.244.
+
+Each press logs `notification method=button-press-event`, then `notification method=clicked` about 120ms later (09:00:49.968, 09:00:51.177, 09:00:51.329). After each `clicked` the next lines are `before-update` and the in-flight `St-Widget.get_theme_node` reply. No `JS ERROR` on that notification. No `Helper-AppLaunch` anywhere in the log. `Signals.emit` is still `emitv` only (`src/shell-gi/Signals.vala`).
+
+The same presses throw earlier, on `button-press-event`:
+
+```
+JS ERROR: Could not locate clutter_event_get_device
+_onButtonPress@resource:///org/gnome/shell/ui/dnd.js:184
+_onCapturedEvent@resource:///org/gnome/shell/ui/searchController.js:311
+```
+
+`dnd.js:184` is `event.get_device()`. That is the button-press handler. The server still sent `clicked`. The launch is still the missing class handler on that signal.
 
 ## 1. The object is created
 
@@ -126,7 +142,9 @@ The gate then tells GLib, at class init, to call `klass->clicked` when the signa
 
 Doing that call while `call_poll` is still inside JavaScript crashed the client ([`2026-09-23-prefix-generated-vala-signals.md`](2026-09-23-prefix-generated-vala-signals.md)). The gate runs it from `main`.
 
-## Design — not applied
+## Design
+
+`signal_overrides` is in `Actor.override.vala` and runs from `construct`. The class-slot call is in `Signals.emit` after `emitv`, and only when the virtual is `clicked`.
 
 **⏳ 🔷** One method on `Clutter.Actor`, `signal_overrides`, called from the existing `construct` after `create_with_overrides`. It calls itself on the parent type. No class names are passed in. No second constructor. The name is two words. `register_overridden_signals` is four, which the coding standard rejects.
 
@@ -202,4 +220,17 @@ private void signal_overrides(GLib.Type t)
 
 Inside `Signals.emit`, after `emitv`. **🚫** a new function. `g_signal_new` was passed `0`, so `emitv` does not call the method. The call is the pointer already in the class, written in `emit` itself.
 
-**✔️** Tried. `g_closure_invoke` of that pointer runs while `call_poll` is still inside JavaScript. First it died on `g_closure_ref` (`ref_count > 0`). After that ref was held, the process disappeared on the invoke, at `notify::allocation` during `St-Bin.get_child`, with no further log line. The call is back out of `emit`. The subscribe in `signal_overrides` stays.
+**✔️** Back in `Signals.emit` after `emitv`, for `clicked` only (2026-09-28).
+
+`g_signal_type_cclosure_new` returns a floating closure with one ref. `sink()` before `invoke()` frees it, and `invoke()` hits `g_closure_ref` (`ref_count > 0`). Invoke first, then sink. That was the 09:11 boot stop, on `notification method=event`.
+
+Calling the slot for every replaced virtual is the death this note already had. Hold `nested-weston-hold` (not a settle SIGKILL). `READY=1` at 09:31:42. Client log ends 09:32:07.907:
+
+```
+id=11712 method=St-Bin.get_child
+notification method=notify::allocation
+property 'allocation' of object class 'StWidget' is not writable
+replied id=11712
+```
+
+No further client line. `gnome-shell-rpc` is gone. `mutter-rpc` is still up. Same stop as the earlier invoke: `notify::allocation` during `St-Bin.get_child`, while `call_poll` is inside JavaScript. `style-changed` had just been notified (09:32:07.851–07.871). `event` and `captured-event` stay on the actor hook. `style-changed` stays on the setter bridge. The class slot is `clicked`.

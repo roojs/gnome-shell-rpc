@@ -1,6 +1,6 @@
 # `notify::allocation` sets a property that is not writable
 
-**Status:** ⏳ open — 2026-09-24 20:22
+**Status:** ⏳ open. `Actor.allocation set_property=allocation_priv` is read by the generator. The emitted getter returns `allocation_priv`. The emitted setter assigns `allocation_priv`. A live boot still has to show the critical gone.
 
 **Seen:** `org.gnome.ShellRpc.debug.log`. The connection stays up. No `unsupported bin value type`, no early end-of-stream.
 

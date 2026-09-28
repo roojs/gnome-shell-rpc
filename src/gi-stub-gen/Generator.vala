@@ -1373,6 +1373,17 @@ $(minted)				this.rpc_ctor_clear();
 					}
 				}
 
+				var set_target = "";
+				var prop_key = @"$(class_name).$(vala_name)";
+				if (this.overrides.has_key(prop_key)
+						&& this.overrides.get(prop_key).has_key("set_property")) {
+					set_target = this.overrides.get(prop_key).get("set_property");
+				}
+				if (set_target != "") {
+					write_method = false;
+					write_gprop = true;
+				}
+
 				if (!read_method && !read_gprop && !write_method && !write_gprop) {
 					this.add_skipped_property(class_name, vala_name,
 						"no wireable getter or setter");
@@ -1421,13 +1432,19 @@ $(minted)				this.rpc_ctor_clear();
 					} else {
 						stream.puts("			get {\n");
 					}
-					stream.puts(@"				var response = GnomeShellRpc.call_value(
+					if (set_target != "") {
+						stream.puts(@"				return this.$(set_target);
+");
+					}
+					if (set_target == "") {
+						stream.puts(@"				var response = GnomeShellRpc.call_value(
 					\"$(ns)-$(class_name).get_property\", this,
 					OLLMrpc.args(\"s\", \"$(pname)\"));
 ");
-					this.emit_value_get(
-						stream, "\t\t\t\t", ns, vt, pi.get_type(), 0, true, ""
-					);
+						this.emit_value_get(
+							stream, "\t\t\t\t", ns, vt, pi.get_type(), 0, true, ""
+						);
+					}
 					stream.puts("			}\n");
 				}
 				if (write_method && setter != null) {
@@ -1488,13 +1505,18 @@ $(minted)				this.rpc_ctor_clear();
 						} else {
 							stream.puts("			set {\n");
 						}
-					if (gprop_L == "ay") {
+					if (set_target != "") {
+						stream.puts(@"				this.$(set_target) = value;
+");
+					}
+					if (set_target == "" && gprop_L == "ay") {
 						this.emit_boxed_bytes(stream, "\t\t\t\t", "value", vt);
 						stream.puts(@"				GnomeShellRpc.call_value(
 					\"$(ns)-$(class_name).set_property\", this,
 					OLLMrpc.args(\"say\", \"$(pname)\", value_bytes));
 ");
-					} else {
+					}
+					if (set_target == "" && gprop_L != "ay") {
 						stream.puts(@"				GnomeShellRpc.call_value(
 					\"$(ns)-$(class_name).set_property\", this,
 					OLLMrpc.args(\"s$(gprop_L)\", \"$(pname)\", value));

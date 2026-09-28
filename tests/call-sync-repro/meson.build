@@ -328,6 +328,15 @@ executable('event-tiidu-gate',
   install: false,
 )
 
+# Null GObject in Notification.args must round-trip (calendar close).
+executable('null-object-arg-gate',
+  'null-object-arg-gate.vala',
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Ffi "as" vs "S" for Vala length-bearing string[] (spawnv argv).
 executable('ffi-as-string-array-gate',
   [
