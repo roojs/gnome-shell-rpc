@@ -545,22 +545,33 @@
 	ActorBox allocation_priv = ActorBox();
 
 	/**
-	 * Denied in {@code Clutter.deny} so the generator does not emit it.
-	 * {@code notify::allocation} sets this; the setter writes
-	 * {@link allocation_relay}, which stores {@link allocation_priv}
-	 * and notifies {@code allocation}. Do not call
-	 * {@code Clutter-Actor.set_allocation} here. Clutter allows that
-	 * only inside {@code allocate}.
-	 * {@code notify = false} so that notify is not emitted twice.
+	 * GIR property is read-only. {@code notify::allocation-relay} writes
+	 * {@link allocation_relay}. The store is {@link relay_allocation}.
 	 */
-	[CCode (notify = false)]
 	public ActorBox allocation {
 		get {
 			return this.allocation_priv;
 		}
-		set {
-			this.allocation_relay = value;
-		}
+	}
+
+	/**
+	 * Weird one. The {@code allocation} property is read-only, so there is
+	 * no property setter. Shell JavaScript still calls {@code set_allocation}.
+	 * That is a separate GIR method, legal only inside {@code allocate}, and
+	 * its C symbol is {@code clutter_actor_set_allocation}.
+	 *
+	 * This method is that symbol. Vala calls {@link relay_allocation}.
+	 * {@code gir_skip} only keeps the Vala name out of a generated GIR.
+	 * The stock GIR already exposes {@code set_allocation}.
+	 */
+	[CCode (cname = "clutter_actor_set_allocation", gir_skip = true)]
+	public void relay_allocation(ActorBox box)
+	{
+		this.allocation_priv = box;
+		uint8[] data = new uint8[sizeof(ActorBox)];
+		*((ActorBox*) data) = box;
+		GnomeShellRpc.call_value("Clutter-Actor.set_allocation", this,
+			OLLMrpc.args("ay", new GLib.Bytes(data)));
 	}
 
 	/**

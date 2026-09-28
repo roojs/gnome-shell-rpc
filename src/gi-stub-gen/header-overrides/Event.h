@@ -31,5 +31,6 @@ union _ClutterEvent
 		guint32 button;
 		guint32 state;
 		guint32 keyval;
+		ClutterActor *related;
 	};
 };

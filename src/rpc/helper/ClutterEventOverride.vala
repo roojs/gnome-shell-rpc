@@ -1,7 +1,9 @@
 /**
- * Server pack of a {@link Clutter.Event}: type, x, y, button, key symbol.
+ * Server pack of a {@link Clutter.Event}: type, x, y, button, key symbol,
+ * related actor.
  *
- * The client rebuilds the event. This process only writes the fields.
+ * The client rebuilds the event. A crossing event's related actor is the
+ * last field. Uint64 0 means there is none.
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
@@ -17,7 +19,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * Write src as type, x, y, button, key symbol.
+		 * Write src as type, x, y, button, key symbol, related actor.
 		 *
 		 * @param src the signal argument
 		 * @return fields in wire order
@@ -30,6 +32,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			ev.get_coords(out x, out y);
 			var button = 0u;
 			var key = 0u;
+			Clutter.Actor? related = null;
 			switch (ev.get_type()) {
 				case Clutter.EventType.BUTTON_PRESS:
 				case Clutter.EventType.BUTTON_RELEASE:
@@ -41,14 +44,24 @@ namespace GnomeShellRpc.Rpc.Helper
 				case Clutter.EventType.KEY_RELEASE:
 					key = ev.get_key_symbol();
 					break;
+				case Clutter.EventType.ENTER:
+				case Clutter.EventType.LEAVE:
+					related = ev.get_related();
+					break;
 				default:
 					break;
 			}
-			return OLLMrpc.args("idduu",
+			var fields = OLLMrpc.args("idduu",
 				(int) ev.get_type(),
 				(double) x, (double) y,
 				button,
 				key);
+			if (related == null) {
+				fields.add(OLLMrpc.val("t", (uint64) 0));
+			} else {
+				fields.add(OLLMrpc.val("o", related));
+			}
+			return fields;
 		}
 
 		/**
@@ -64,7 +77,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			int index,
 			out int consumed
 		) {
-			consumed = 5;
+			consumed = 6;
 			return GLib.Value(typeof(Clutter.Event));
 		}
 	}

@@ -2,20 +2,14 @@
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and the boot overview matches stock WINDOW_PICKER, and clicking an app icon launches it. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ⏳ current — **Terminal icon click.** User 2026-09-27: the
-desktop background is on screen. That closes the preview row and the
-session abort that used to follow turning `allocate` on. The old crash
-write-ups for that abort, and for `Meta.Laters`, are sealed by the plain
-virtual layout ([Virtual functions](../vfuncs.md)). A leftover closure
-warning stays deferred and off this list
-([`2026-09-26-warning-laters-closure-unref.md`](2026-09-26-warning-laters-closure-unref.md)).
+**Status:** ⏳ current — **Terminal icon click**, after the 2026-09-28 regression. Desktop wallpaper was on screen 2026-09-27, then `set_allocation` stopped reaching the server. Search keystrokes throw `device is null` in `keyboard.js` (`last-device-changed` drops `MetaInputDeviceX11`) and `_updateSearchProgress` never finishes, so no results appear.
 
 Create carries the override list
 ([`done/2026-09-27-actor-created-before-overrides.md`](done/2026-09-27-actor-created-before-overrides.md)).
 
 | # | What | Stock piece | Seen |
 | - | ---- | ----------- | ---- |
-| 1 | Desktop preview | Wallpaper inside the current-desktop frame | **Closed, user 2026-09-27.** Background images show. |
+| 1 | Desktop preview | Wallpaper inside the current-desktop frame | **Regressed 2026-09-28.** `set_allocation` was only a client cache, so the server actor never stored the box (`needs an allocation`). |
 | 2 | Icon click | Dash icon → `AppIcon.vfunc_clicked` → `Shell.App.launch` | **Current.** Click Terminal. The app does not start. Reconfirmed 2026-09-28 09:00: `clicked` arrives, no `Helper-AppLaunch`. [`2026-09-27-clicked-signal-misses-vfunc.md`](2026-09-27-clicked-signal-misses-vfunc.md) |
 | 3 | Stray rectangle | Unknown actor | Still open. Not this pass. |
 | 4 | Bottom chooser | Dash | Still open. Not this pass. |

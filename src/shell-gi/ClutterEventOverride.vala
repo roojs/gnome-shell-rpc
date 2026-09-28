@@ -1,5 +1,6 @@
 /**
- * Wire form of a {@link Clutter.Event}: type, x, y, button, key symbol.
+ * Wire form of a {@link Clutter.Event}: type, x, y, button, key symbol,
+ * related actor.
  *
  * Registered from {@link GnomeShellRpc.GiStub.Runtime.register} with the
  * other client bin types.
@@ -36,7 +37,7 @@ namespace Shell
 		}
 
 		/**
-		 * Write src as type, x, y, button, key symbol.
+		 * Write src as type, x, y, button, key symbol, related actor.
 		 *
 		 * @param src the signal argument
 		 * @return fields in wire order
@@ -49,6 +50,7 @@ namespace Shell
 			ev.get_coords(out x, out y);
 			var button = 0u;
 			var key = 0u;
+			Clutter.Actor? related = null;
 			switch (ev.type()) {
 				case Clutter.EventType.button_press:
 				case Clutter.EventType.button_release:
@@ -60,14 +62,24 @@ namespace Shell
 				case Clutter.EventType.key_release:
 					key = ev.get_key_symbol();
 					break;
+				case Clutter.EventType.enter:
+				case Clutter.EventType.leave:
+					related = ev.get_related();
+					break;
 				default:
 					break;
 			}
-			return OLLMrpc.args("idduu",
+			var fields = OLLMrpc.args("idduu",
 				(int) ev.type(),
 				(double) x, (double) y,
 				button,
 				key);
+			if (related == null) {
+				fields.add(OLLMrpc.val("t", (uint64) 0));
+			} else {
+				fields.add(OLLMrpc.val("o", related));
+			}
+			return fields;
 		}
 
 		/**
@@ -83,14 +95,15 @@ namespace Shell
 			int index,
 			out int consumed
 		) {
-			consumed = 5;
+			consumed = 6;
 			var ev = Clutter.Event.from_local(
 				(Clutter.EventType) fields.get(index).get_int(),
 				(float) fields.get(index + 1).get_double(),
 				(float) fields.get(index + 2).get_double(),
 				fields.get(index + 3).get_uint(),
 				0,
-				fields.get(index + 4).get_uint());
+				fields.get(index + 4).get_uint(),
+				Clutter.Event.actor_from_value(fields.get(index + 5)));
 			if (ClutterEventOverride.held == null) {
 				ClutterEventOverride.held = new Gee.ArrayList<void*>();
 			}

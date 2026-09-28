@@ -23,13 +23,18 @@
 		if (response.args.size > 5) {
 			keyval = response.args.get(5).get_uint();
 		}
+		Actor? related = null;
+		if (response.args.size > 6) {
+			related = Event.actor_from_value(response.args.get(6));
+		}
 		current_event_cache = new Event.local(
 			(EventType) response.args.get(0).get_int(),
 			(float) response.args.get(1).get_double(),
 			(float) response.args.get(2).get_double(),
 			response.args.get(3).get_uint(),
 			response.args.get(4).get_uint(),
-			keyval);
+			keyval,
+			related);
 		return current_event_cache;
 	}
 
@@ -88,6 +93,7 @@
 		public uint32 button;
 		public uint32 state;
 		public uint32 keyval;
+		public Actor? related;
 
 		public Event.local(
 			EventType type,
@@ -95,7 +101,8 @@
 			float y,
 			uint32 button,
 			uint32 state = 0,
-			uint32 keyval = 0
+			uint32 keyval = 0,
+			Actor? related = null
 		) {
 			this.event_type = type;
 			this.x = x;
@@ -103,6 +110,7 @@
 			this.button = button;
 			this.state = state;
 			this.keyval = keyval;
+			this.related = related;
 		}
 
 		public static Event from_local(
@@ -111,16 +119,36 @@
 			float y,
 			uint32 button,
 			uint32 state = 0,
-			uint32 keyval = 0
+			uint32 keyval = 0,
+			Actor? related = null
 		) {
-			return new Event.local(type, x, y, button, state, keyval);
+			return new Event.local(type, x, y, button, state, keyval, related);
+		}
+
+		/**
+		 * Related actor from a wire field. Uint64 0 is none. An object
+		 * is the leased actor. A non-zero uint64 is that actor's lease id.
+		 */
+		public static Actor? actor_from_value(GLib.Value src)
+		{
+			if (src.holds(typeof(uint64))) {
+				var lid = (int) src.get_uint64();
+				if (lid == 0 || GnomeShellRpc.GiStub.Runtime.client == null) {
+					return null;
+				}
+				return GnomeShellRpc.GiStub.Runtime.client.proxies.get(lid) as Actor;
+			}
+			if (src.type().is_a(typeof(GLib.Object))) {
+				return src.get_object() as Actor;
+			}
+			return null;
 		}
 
 		[CCode (cname = "clutter_event_copy")]
 		public Event copy() {
 			return new Event.local(
 				this.event_type, this.x, this.y, this.button,
-				this.state, this.keyval);
+				this.state, this.keyval, this.related);
 		}
 
 		[CCode (cname = "clutter_event_type")]
@@ -153,6 +181,15 @@
 		[CCode (cname = "clutter_event_get_key_symbol")]
 		public uint get_key_symbol() {
 			return this.keyval;
+		}
+
+		/**
+		 * Stock {@code clutter_event_get_related}. The other actor of a
+		 * crossing event, packed with the event. Null when the event has none.
+		 */
+		[CCode (cname = "clutter_event_get_related")]
+		public unowned Actor? get_related() {
+			return this.related;
 		}
 	}
 

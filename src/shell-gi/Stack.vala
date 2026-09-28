@@ -93,7 +93,7 @@ namespace Shell
 
 		public override void allocate_vfunc(Clutter.ActorBox box)
 		{
-			this.allocation = box;
+			this.relay_allocation(box);
 
 			Clutter.ActorBox content_box;
 			this.get_theme_node().get_content_box(box, out content_box);

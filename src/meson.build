@@ -48,6 +48,7 @@ compositor_sources = files(
   'rpc/helper/ClutterEventOverride.vala',
   'rpc/helper/ActorBoxOverride.vala',
   'rpc/helper/InputDeviceOverride.vala',
+  'rpc/helper/PickContextOverride.vala',
   'rpc/helper/Interval.vala',
   'rpc/helper/Constraint.vala',
   'rpc/helper/St.vala',
@@ -452,6 +453,7 @@ clutter_override_files = files(
   'gi-stub/overrides-clutter/Transition.override.vala',
   'gi-stub/overrides-clutter/Interval.override.vala',
   'gi-stub/overrides-clutter/Text.override.vala',
+  'gi-stub/overrides-clutter/InputDevice.override.vala',
 )
 # Two single-output emits — Meson 1.7 Vala cannot compile CustomTargetIndex
 # (clutter_generated[0] / [1]) as a source.
@@ -866,6 +868,8 @@ shell_gi_lib = shared_library(
     'shell-gi/Signals.vala',
     'shell-gi/ClutterEventOverride.vala',
     'shell-gi/ActorBoxOverride.vala',
+    'shell-gi/InputDeviceOverride.vala',
+    'shell-gi/PickContextOverride.vala',
     'shell-gi/ActionMode.vala',
     'shell-gi/AppState.vala',
     'shell-gi/AppLaunchGpu.vala',

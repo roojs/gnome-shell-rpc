@@ -1,8 +1,9 @@
 /**
  * Server pack of a {@link Clutter.InputDevice}.
  *
- * A {@code MetaInputDeviceX11} is dropped. Any other device is written
- * unchanged.
+ * {@code MetaInputDeviceX11} has no wire schema. Pack its
+ * {@code device_type} instead. The client rebuilds a device from that.
+ * Any other device is written unchanged.
  */
 namespace GnomeShellRpc.Rpc.Helper
 {
@@ -18,17 +19,17 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * Drop an X11 device. Pass any other device through.
+		 * Pack an X11 device as its type. Pass any other device through.
 		 *
 		 * @param src the signal argument
-		 * @return no fields for {@code MetaInputDeviceX11}, otherwise src
+		 * @return one uint for {@code MetaInputDeviceX11}, otherwise src
 		 */
 		public override Gee.ArrayList<GLib.Value?> pack(GLib.Value src)
 		{
-			var device = src.get_object();
+			var device = src.get_object() as Clutter.InputDevice;
 			if (device != null
 					&& device.get_type().name() == "MetaInputDeviceX11") {
-				return new Gee.ArrayList<GLib.Value?>();
+				return OLLMrpc.args("u", (uint) device.get_device_type());
 			}
 			var fields = new Gee.ArrayList<GLib.Value?>();
 			fields.add(src);
@@ -36,7 +37,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * Unused on the compositor. The client does not rebuild a device.
+		 * Unused on the compositor. The client rebuilds the device.
 		 *
 		 * @param fields the notification arguments
 		 * @param index first field for this argument

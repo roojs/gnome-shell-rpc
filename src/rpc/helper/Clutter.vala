@@ -21,7 +21,8 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * Pack stock {@code clutter_get_current_event} as
-		 * type / x / y / button / state / keyval ({@code iddduu}); empty args = none.
+		 * type / x / y / button / state / keyval / related actor.
+		 * Empty args means no event. Related actor is uint64 0 when there is none.
 		 */
 		public void get_current_event(OLLMrpc.Request request)
 		{
@@ -37,6 +38,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			var et = ev.get_type();
 			uint32 button = 0;
 			uint key = 0;
+			Clutter.Actor? related = null;
 			switch (et) {
 				case Clutter.EventType.BUTTON_PRESS:
 				case Clutter.EventType.BUTTON_RELEASE:
@@ -48,14 +50,24 @@ namespace GnomeShellRpc.Rpc.Helper
 				case Clutter.EventType.KEY_RELEASE:
 					key = ev.get_key_symbol();
 					break;
+				case Clutter.EventType.ENTER:
+				case Clutter.EventType.LEAVE:
+					related = ev.get_related();
+					break;
 				default:
 					break;
 			}
+			var args = OLLMrpc.args("iddduu",
+				(int) et, (double) x, (double) y, button,
+				(uint) ev.get_state(), key);
+			if (related == null) {
+				args.add(OLLMrpc.val("t", (uint64) 0));
+			} else {
+				args.add(OLLMrpc.val("o", related));
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("iddduu",
-					(int) et, (double) x, (double) y, button,
-					(uint) ev.get_state(), key),
+				args = args,
 			});
 		}
 	}

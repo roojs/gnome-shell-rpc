@@ -30,10 +30,14 @@ Actor.set_accessible
 
 # --- Hand override owns GIR prop/method (generator must not emit) ---
 
-# Actor.override owns allocation. notify::allocation sets it; the setter
-# writes allocation_relay, which stores allocation_priv and notifies
-# "allocation".
+# Actor.override owns the read-only allocation property. relay_allocation
+# exports clutter_actor_set_allocation, the GIR method's C symbol.
+# notify::allocation-relay does not call it.
 Actor.allocation
+
+# InputDevice.override owns device_type. A rebuilt X11 device stores the
+# type locally. A leased device still asks the server.
+InputDevice.device_type
 
 # Pango.Layout is not a wire type. Helper-Text returns the fields.
 # Text.override rebuilds a client Pango.Layout from those arguments.

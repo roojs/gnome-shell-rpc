@@ -1,6 +1,6 @@
 # Layout stores a box, then tells the client
 
-**Status:** ⏳ open. Allocate should end with the box on the server and on the client. One setter in `Actor.override.vala` is doing both jobs.
+**Status:** ⏳ open. The GIR property `allocation` is read-only. `relay_allocation` stores the box on the server. It is not a new GIR method. `notify::allocation` arrives as `notify::allocation-relay`.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
