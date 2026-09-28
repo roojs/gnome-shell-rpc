@@ -454,28 +454,19 @@ namespace GnomeShellRpc.Rpc.Helper
 			 */
 			if (this.type_has_ctor_props(oi)) {
 				var wire = ns + "-" + class_name;
-				stream.puts("""		construct {
+				var minted = this.emit_ctor_new_call(ns, new_fi, wire);
+				var construct_head = @"		construct {
 			if (this.rpc_lid != 0) {
 				this.rpc_ctor_clear();
 				return;
 			}
-			if (this.rpc_ctor_has()) {
-				var leaf = this.get_type();
-				while (leaf != GLib.Type.INVALID
-						&& (OLLMrpc.Bin.gtype_to_alias == null
-							|| !OLLMrpc.Bin.gtype_to_alias.has_key(leaf))) {
-					leaf = leaf.parent();
-				}
-				if (leaf != GLib.Type.INVALID
-						&& OLLMrpc.Bin.gtype_to_alias.get(leaf) == "%s") {
-""".printf(wire));
-				this.emit_ctor_new_call(stream, ns, new_fi, wire);
-				stream.puts("""					this.rpc_ctor_clear();
-					return;
-				}
+			if (this.rpc_ctor_has(\"$(wire)\")) {
+$(minted)				this.rpc_ctor_clear();
+				return;
 			}
 			this.rpc_ctor_clear();
-""");
+";
+				stream.puts(construct_head);
 			} else {
 				stream.puts("""		construct {
 			if (this.rpc_lid != 0) {
@@ -539,14 +530,10 @@ namespace GnomeShellRpc.Rpc.Helper
 		/**
 		 * Positional {@code .new} from the stashed construct properties.
 		 */
-		private void emit_ctor_new_call(
-			GLib.FileStream stream,
-			string ns,
-			GI.FunctionInfo fi,
-			string wire
-		) {
+		private string emit_ctor_new_call(string ns, GI.FunctionInfo fi,string wire) {
 			var sig = "";
 			var packed = "";
+			var lines = "";
 			for (var a = 0; a < fi.get_n_args(); a++) {
 				var arg = fi.get_arg(a);
 				if (arg.is_skip() || arg.get_direction() != GI.Direction.IN) {
@@ -561,8 +548,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				var is_enum = iface != null && iface.get_type() == GI.InfoType.ENUM;
 				sig += letter;
 				var lookup = arg.get_name().replace("_", "-");
-				stream.puts(@"				var _$(aname) = this.rpc_ctor_get(\"$(lookup)\");
-");
+				lines += @"				var _$(aname) = this.rpc_ctor_get(\"$(lookup)\");\n";
 				string expr;
 				if (letter == "o") {
 					expr = @"(_$(aname) == null ? null : (_$(aname).get_object() as $(vt)))";
@@ -588,9 +574,9 @@ namespace GnomeShellRpc.Rpc.Helper
 				}
 				packed += expr;
 			}
-			stream.puts(@"				var response = GnomeShellRpc.call_value(\"$(wire).new\", null, OLLMrpc.args(\"$(sig)\", $(packed)));
-				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-");
+			lines += @"				var response = GnomeShellRpc.call_value(\"$(wire).new\", null, OLLMrpc.args(\"$(sig)\", $(packed)));\n";
+			lines += "				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;\n";
+			return lines;
 		}
 
 		/**
