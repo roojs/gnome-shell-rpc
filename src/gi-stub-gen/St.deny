@@ -10,6 +10,31 @@
 # TEMPORARY — revisit / undeny when implementing (keep this block together)
 # ************************************************************************
 
+# Not wireable (no dbus letter / unmapped type). Generator aborts on these
+# unless they are denied. Undeny and implement; do not leave them here.
+Clipboard.get_content
+Clipboard.get_text
+Clipboard.set_content
+IconColors.equal
+IconInfo.load_icon_async
+IconInfo.load_symbolic_async
+ImageContent.set_bytes
+Shadow.equal
+Shadow.get_box
+ShadowHelper.paint
+ShadowHelper.update
+TextureCache.load_file_to_cairo_surface
+ThemeContext.get_font
+ThemeContext.set_font
+ThemeNode.new
+ThemeNode.get_element_type
+ThemeNode.get_font
+ThemeNodePaintState.init
+ThemeNodePaintState.invalidate
+ThemeNodePaintState.invalidate_for_file
+ThemeNodePaintState.set_node
+Widget.paint_background
+
 # ************************************************************************
 # PERMANENT — not deferred RPC work
 # ************************************************************************

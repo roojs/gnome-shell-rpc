@@ -18,3 +18,21 @@ gsr_clutter_event_key_new (ClutterEventType type,
 	                              0,
 	                              0);
 }
+
+ClutterEvent *
+gsr_clutter_event_key_insert (ClutterEventType type,
+                              uint32_t keyval,
+                              ClutterModifierType modifiers)
+{
+	GsrClutterModifierSet raw = { 0, 0, 0 };
+	return clutter_event_key_new (type,
+	                              CLUTTER_EVENT_FLAG_SYNTHETIC,
+	                              0,
+	                              NULL,
+	                              raw,
+	                              modifiers,
+	                              keyval,
+	                              0,
+	                              0,
+	                              clutter_keysym_to_unicode (keyval));
+}

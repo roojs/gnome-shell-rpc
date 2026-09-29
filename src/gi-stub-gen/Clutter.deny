@@ -24,6 +24,56 @@ Actor.accessible
 Actor.get_accessible
 Actor.set_accessible
 
+# Not wireable (no dbus letter / unmapped type). Generator aborts on these
+# unless they are denied. Undeny and implement; do not leave them here.
+Actor.bind_model
+Actor.continue_paint
+Actor.continue_pick
+Actor.get_paint_volume
+Actor.get_transformed_paint_volume
+Actor.paint
+Actor.pick
+Actor.pick_box
+Actor.should_pick
+BindingPool.get_for_class
+BindingPool.install_action
+BindingPool.override_action
+EOTF.get_default_luminance
+Gesture.get_point_event
+GestureAction.get_last_event
+GestureAction.get_sequence
+InputFocus.filter_event
+InputFocus.process_event
+InputMethod.notify_key_event
+Interval.compute
+# St Adjustment / Widget overrides call this. Flag keeps the method;
+# a bare deny drops the name and the client does not compile.
+Interval.compute_value temporary
+Interval.new_with_values
+KeyframeTransition.get_key_frame
+KeyframeTransition.set_key_frame
+PaintContext.get_redraw_clip
+PaintNode.paint
+PaintVolume.copy
+PaintVolume.union
+PipelineCache.set_pipeline
+PipelineCache.unset_all_pipelines
+Primaries.ensure_normalized_range
+Seat.query_state
+ShaderEffect.set_uniform_value
+Stage.get_device_actor
+Stage.handle_event
+Stage.pointing_input_foreach
+Text.set_preedit_string
+Timeline.set_progress_func
+actor_box_clamp_to_pixel
+event_add_filter
+event_get
+value_dup_paint_node
+value_get_paint_node
+value_set_paint_node
+value_take_paint_node
+
 # ************************************************************************
 # PERMANENT — not deferred RPC work
 # ************************************************************************
@@ -151,6 +201,12 @@ Actor.set_layout_manager
 # Actor.override — get_transition still RPCs; arms Live.Subscribe for
 # Transition::stopped so environment.js ease() onComplete can run.
 Actor.get_transition
+
+# Actor.override — Compact Event has no dbus letter, so the generated
+# method was GLib.error. Overview search calls clutter_text.event() on
+# the first key (searchController.startSearch). Helper-Actor.deliver_event
+# runs clutter_actor_event.
+Actor.event
 
 # Stage.override — Event is Compact / not wireable; pick at event coords
 # (captured-event-smoke / PopupMenuManager close).

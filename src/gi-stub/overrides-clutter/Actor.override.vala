@@ -435,6 +435,29 @@
 	}
 
 	/**
+	 * Stock {@code clutter_actor_event}. Compact {@link Event} is not a
+	 * wire type. Pack type / capture / coords / button / keyval / state.
+	 * {@code Helper-Actor.deliver_event} calls {@code clutter_actor_event}.
+	 */
+	public bool event(Event? event, bool capture)
+	{
+		if (event == null) {
+			return false;
+		}
+		var response = GnomeShellRpc.call_value(
+			"Helper-Actor.deliver_event", this,
+			OLLMrpc.args("ibddduu",
+				(int) event.type(),
+				capture,
+				(double) event.x,
+				(double) event.y,
+				event.button,
+				event.keyval,
+				(uint) event.get_state()));
+		return response.retval.get_boolean();
+	}
+
+	/**
 	 * Stock-offset Class fallthrough ({@code allocate_vfunc} etc.). GJS
 	 * replaces the Class slot; these run only when no JS override.
 	 */

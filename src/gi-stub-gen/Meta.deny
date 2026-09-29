@@ -27,6 +27,15 @@ MultiTexture.new_simple temporary
 WaylandClient.new
 WaylandClient.spawnv
 
+# Not wireable (no dbus letter / unmapped type). Generator aborts on these
+# unless they are denied. Undeny and implement; do not leave them here.
+FrameBorders.clear
+KeyBinding.get_mask
+KeyBinding.get_modifiers
+KeyBinding.get_name
+KeyBinding.is_builtin
+KeyBinding.is_reversed
+
 # ************************************************************************
 # PERMANENT — not deferred RPC work
 # ************************************************************************

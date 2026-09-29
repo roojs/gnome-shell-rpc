@@ -27,4 +27,9 @@ ClutterEvent * gsr_clutter_event_key_new (ClutterEventType type,
                                           uint32_t keyval,
                                           ClutterModifierType modifiers);
 
+/* Synthetic key for Clutter.Text insert: unicode from the keysym. */
+ClutterEvent * gsr_clutter_event_key_insert (ClutterEventType type,
+                                             uint32_t keyval,
+                                             ClutterModifierType modifiers);
+
 G_END_DECLS

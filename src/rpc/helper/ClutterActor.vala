@@ -30,6 +30,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				"pointer_click", "dd",
 				"fire_button_press", "",
 				"fire_key", "uu",
+				"deliver_event", "ibddduu",
 				null);
 			OLLMrpc.Request.register_live("Helper-Actor", helper);
 			ActorVfuncIds.register_vfunc_ids();
@@ -341,6 +342,89 @@ namespace GnomeShellRpc.Rpc.Helper
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});
+		}
+
+		[CCode (cname = "clutter_actor_event")]
+		private static extern bool clutter_actor_event(
+			Clutter.Actor actor,
+			unowned Clutter.Event event,
+			bool capture
+		);
+
+		[CCode (cname = "gsr_clutter_event_key_insert", cheader_filename = "gsr-clutter-event-key.h")]
+		private static extern Clutter.Event gsr_clutter_event_key_insert(
+			Clutter.EventType type,
+			uint32 keyval,
+			Clutter.ModifierType modifiers
+		);
+
+		/**
+		 * ''Helper-Actor.deliver_event'' — stock {@code clutter_actor_event}.
+		 *
+		 * The client event is Compact. When {@code clutter_get_current_event}
+		 * is still that press (overview search re-delivers the stage key
+		 * from inside the handler), use it so unicode and device stay.
+		 * Otherwise build a synthetic key. Other types with no current
+		 * event propagate.
+		 */
+		public void deliver_event(
+			OLLMrpc.Request request,
+			int event_type,
+			bool capture,
+			double x,
+			double y,
+			uint button,
+			uint keyval,
+			uint state
+		) {
+			var actor = request.connection.leases.get(
+				(int) request.lease_id) as Clutter.Actor;
+			if (actor == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var type = (Clutter.EventType) event_type;
+			unowned var current = Clutter.get_current_event();
+			var stop = false;
+			if (current != null && Actor.event_matches(current, type, button, keyval)) {
+				stop = clutter_actor_event(actor, current, capture);
+			} else if (type == Clutter.EventType.KEY_PRESS
+					|| type == Clutter.EventType.KEY_RELEASE) {
+				var ev = gsr_clutter_event_key_insert(
+					type, keyval, (Clutter.ModifierType) state);
+				if (ev != null) {
+					stop = clutter_actor_event(actor, ev, capture);
+					ev.free();
+				}
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("b", stop),
+			});
+		}
+
+		static bool event_matches(
+			Clutter.Event current,
+			Clutter.EventType type,
+			uint button,
+			uint keyval
+		) {
+			if (current.get_type() != type) {
+				return false;
+			}
+			switch (type) {
+				case Clutter.EventType.KEY_PRESS:
+				case Clutter.EventType.KEY_RELEASE:
+					return current.get_key_symbol() == keyval;
+				case Clutter.EventType.BUTTON_PRESS:
+				case Clutter.EventType.BUTTON_RELEASE:
+				case Clutter.EventType.PAD_BUTTON_PRESS:
+				case Clutter.EventType.PAD_BUTTON_RELEASE:
+					return current.get_button() == button;
+				default:
+					return true;
+			}
 		}
 
 		/**

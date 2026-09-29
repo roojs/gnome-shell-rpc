@@ -2496,34 +2496,7 @@ $(tab){
 				return 1;
 			}
 
-			this.gaps.add(new Gap() {
-				symbol = symbol,
-				reason = "not_wired",
-			});
-
-			if (is_constructor) {
-				stream.puts(
-					tab + @"public $(this.constructor_decl(type_name, name))($(arglist))$(throws_clause)
-$(tab){
-$(indent)Object();
-$(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
-$(tab)}
-"
-				);
-			} else if (ret == "void") {
-				stream.puts(tab + @"$(vis) void $(vala_name)($(arglist))$(throws_clause)
-$(tab){
-$(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
-$(tab)}
-");
-			} else {
-				stream.puts(tab + @"$(vis) $(ret) $(vala_name)($(arglist))$(throws_clause)
-$(tab){
-$(indent)GLib.error(\"gi-stub: $(rpc) not wired\");
-$(tab)}
-");
-			}
-			return 1;
+			GLib.error("gi-stub-gen: %s is not wired", rpc);
 		}
 
 		/**
