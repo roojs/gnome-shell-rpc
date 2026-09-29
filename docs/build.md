@@ -41,18 +41,18 @@ sudo apt install \
 - **gjs** / **libgjs-dev** — `gjs-embed` and smoke scripts
 - **libgee-0.8-dev**, **libjson-glib-dev**, **libsoup-3.0-dev** — `libocrpc` headers at compile time
 - **libgtk-4-dev** — `fake-shell` test client
-- **gnome-shell** — stock **`libst-16.so`**, **`St-16.typelib`**, **`Gvc-1.0.gir`** under `/usr/lib/gnome-shell/` and `/usr/share/gnome-shell/`; runtime JS path is separate
+- **gnome-shell** — stock **`libst-16.so`**, **`St-16.gir`**, **`Gvc-1.0.gir`** under `/usr/lib/gnome-shell/` and `/usr/share/gnome-shell/`. Runtime JS is the pinned **`vendor/gnome-shell/js`** checkout, not this package's JS.
 - **libpolkit-agent-1-dev**, **libgcr-4-dev** — only if enabling legacy vendored client-lib build (`-Dgnome_shell_client_libs=enabled`)
 - **dbus-x11** — `dbus-run-session` for nested compositor runs
 
 Build OLLMchat **libocrpc** first, then pass its output directory to meson:
 
 ```bash
-meson setup build -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc
+meson setup build 
 ninja -C build
 ```
 
-Vendor checkout is **auto** by default: if `vendor/gnome-shell/` exists it is used; if missing, `meson setup` errors with fetch instructions. Stock **`libst-16` / St GIR** still come from distro **`gnome-shell`** — configure fails with `apt install gnome-shell` if those files are absent. Runtime JS prefers distro, else falls back to vendor.
+`vendor/gnome-shell/` is required. `meson setup` fetches it and pins it to **48.0** when the directory is missing or is not 48.x. That checkout is the runtime JS (`vendor/gnome-shell/js`). It is gitignored; open that path when reading shell JavaScript. Stock **`libst-16` / St GIR** still come from distro **`gnome-shell`** — configure fails with `apt install gnome-shell` if those files are absent. **`-Dgnome_shell_js_dir=`** replaces the vendor JS tree for one configure.
 
 ```bash
 ./scripts/gnome-shell-fetch.sh                                       # once
@@ -69,7 +69,7 @@ Main artifacts under `build/src/`:
 | Output | Role |
 | --- | --- |
 | `mutter-rpc` | Compositor binary (mutter plugin) |
-| `gnome-shell-rpc` | Shell client (GJS + distro gnome-shell JS path) |
+| `gnome-shell-rpc` | Shell client (GJS + pinned `vendor/gnome-shell/js`) |
 | `gjs-embed` | **Temporary** test GJS host (manual smokes only) |
 | `libmutter-rpc-16.so` | Client Meta stubs (RPC to plugin) |
 | `Meta-16.typelib` | GI typelib → `libmutter-rpc-16.so` |

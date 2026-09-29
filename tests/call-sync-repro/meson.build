@@ -253,6 +253,7 @@ executable('clutter-interval-gvalue-gate',
     meson.project_source_root() / 'src' / 'rpc' / 'Connection.vala',
   ],
   dependencies: [
+    mutter_vapi_dep,
     ocrpc_dep,
     dependency('gio-unix-2.0'),
     dependency('gobject-introspection-1.0'),

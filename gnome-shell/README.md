@@ -1,16 +1,18 @@
 # gnome-shell integration layer
 
-Build integration for upstream GNOME Shell. **`vendor/gnome-shell/`** is a gitignored checkout for **build / CI / reference** — we do **not** install or ship upstream JavaScript.
+Build integration for upstream GNOME Shell. This project tracks **one gnome-shell version at a time** (currently **48.x**). **`vendor/gnome-shell/`** is that checkout. It is gitignored. `meson setup` clones it, and re-pins it to **48.0** if the tree is missing or is another major. We do **not** install or ship that JavaScript.
 
 | Path | In git? | Role |
 | --- | --- | --- |
-| `vendor/gnome-shell/` | No | Upstream checkout (build-time only) |
+| `vendor/gnome-shell/` | No | Pinned upstream checkout. Required. Meson fetches it. |
 | `gnome-shell/` (here) | Yes | Meson integration |
 | `scripts/gnome-shell-fetch.sh` | Yes | Clone / refresh vendor tree |
 
 ## Runtime JavaScript
 
-**Prefer distro** `/usr/share/gnome-shell/js` when present. If that tree is missing, configure **falls back to `vendor/gnome-shell/js`** (dev machines without a full gnome-shell JS install). Override with **`-Dgnome_shell_js_dir=`** or runtime **`GNOME_SHELL_JS_DIR`**. We still do **not** install or ship upstream JS from vendor into packages.
+The client runs **`vendor/gnome-shell/js`**. Read shell JavaScript there. Workspace search skips it because the directory is gitignored.
+
+The distro `gnome-shell` package is **`libst-16.so`** and **`St-16.gir`** only. It is not the JS tree for this version pin. Override the vendor tree with **`-Dgnome_shell_js_dir=`** or runtime **`GNOME_SHELL_JS_DIR`**. We still do **not** install or ship upstream JS from vendor into packages.
 
 Stock **`libst-16.so`** (server link) and **`St-16.gir`** (schema for client stubs) must exist under `/usr/lib/gnome-shell` and `/usr/share/gnome-shell` — if not, **`meson setup` errors** with `sudo apt install gnome-shell`. Distro **St typelib is not** what the RPC client loads; that is **`build/src/St-16.typelib` → `libst-rpc-16.so`**.
 

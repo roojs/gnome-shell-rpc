@@ -1,6 +1,7 @@
-# Phase 0.7: vendored upstream gnome-shell for build/CI.
-# Stock libst / St GIR still come from the distro gnome-shell package when present.
-# Runtime JS prefers distro; falls back to vendor for dev machines without a full install.
+# Phase 0.7: vendored upstream gnome-shell, pinned to 48.x.
+# meson setup checks out vendor/gnome-shell if it is missing or not 48.x.
+# Stock libst / St GIR still come from the distro gnome-shell package.
+# Runtime JS is that vendor tree, not the distro package's JS.
 
 fs = import('fs')
 
@@ -142,7 +143,7 @@ endif
 
 gnome_shell_vendor_root = vendor_root
 message(
-  'gnome-shell vendor root: @0@ (version @1@; build/CI only; JS not installed)'.format(
+  'gnome-shell vendor root: @0@ (version @1@; runtime JS; not installed)'.format(
     gnome_shell_vendor_root,
     vendor_version,
   ),
@@ -178,7 +179,8 @@ message('gnome-shell stock pkglibdir (server libst/Gvc): @0@'.format(gnome_shell
 message('gnome-shell stock girdir (St-16.gir schema only): @0@'.format(gnome_shell_girdir))
 
 # --- Runtime JS search path (gjs-embed / overrides) ---
-# Prefer distro; if absent, fall back to vendor (dev machines without gnome-shell.pc / unpacked js/).
+# The client runs the pinned vendor checkout. Distro gnome-shell is libst / St GIR
+# only. -Dgnome_shell_js_dir replaces the vendor tree for one configure.
 
 js_dir_override = get_option('gnome_shell_js_dir')
 js_runtime_source = ''
@@ -186,47 +188,8 @@ if js_dir_override != ''
   gnome_shell_js_runtime_dir = js_dir_override
   js_runtime_source = 'option -Dgnome_shell_js_dir'
 else
-  # Prefer on-disk paths (no pkg-config noise when gnome-shell.pc is absent).
-  gnome_shell_js_runtime_dir = ''
-  prefix_js = get_option('prefix') / get_option('datadir') / 'gnome-shell' / 'js'
-  if fs.exists('/usr/share/gnome-shell/js')
-    gnome_shell_js_runtime_dir = '/usr/share/gnome-shell/js'
-    js_runtime_source = '/usr/share/gnome-shell/js'
-  elif fs.exists(prefix_js)
-    gnome_shell_js_runtime_dir = prefix_js
-    js_runtime_source = 'prefix'
-  else
-    gnome_shell_pc = dependency('gnome-shell', required: false)
-    if gnome_shell_pc.found()
-      jsdir = gnome_shell_pc.get_variable('jsdir', default_value: '')
-      if jsdir != '' and fs.exists(jsdir)
-        gnome_shell_js_runtime_dir = jsdir
-        js_runtime_source = 'gnome-shell.pc jsdir'
-      else
-        pkgdatadir = gnome_shell_pc.get_variable('pkgdatadir', default_value: '')
-        if pkgdatadir != '' and fs.exists(pkgdatadir / 'js')
-          gnome_shell_js_runtime_dir = pkgdatadir / 'js'
-          js_runtime_source = 'gnome-shell.pc pkgdatadir/js'
-        endif
-      endif
-    endif
-  endif
-
-  if gnome_shell_js_runtime_dir == ''
-    if fs.exists(vendor_js)
-      gnome_shell_js_runtime_dir = vendor_js
-      js_runtime_source = 'vendor (no distro gnome-shell JS tree)'
-    else
-      error(
-        'No gnome-shell JS directory found for GNOME_SHELL_JS_DIR.\n' +
-        '  Distro tree missing and vendor/gnome-shell/js missing.\n' +
-        '  Fix one of:\n' +
-        '    ./scripts/gnome-shell-fetch.sh\n' +
-        '    sudo apt install gnome-shell\n' +
-        '    meson setup -Dgnome_shell_js_dir=/path/to/js',
-      )
-    endif
-  endif
+  gnome_shell_js_runtime_dir = vendor_js
+  js_runtime_source = 'vendor/gnome-shell/js (pinned 48.x)'
 endif
 
 message(

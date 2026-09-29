@@ -22,15 +22,21 @@ second `Helper-ThemeContext.set_theme`). Active work:
 
 ```
 mutter-rpc (compositor)                 gnome-shell-rpc (shell)
-  real libmutter                             distro gnome-shell js/ + libmutter-rpc-16
+  real libmutter                             vendor/gnome-shell/js + libmutter-rpc-16
          ▲                                            │
          └──────────── libocrpc / Unix socket ────────┘
 ```
 
 - **Compositor** — **`mutter-rpc`**: mutter plugin in this repo; real Mutter.
-- **Client** — **`gnome-shell-rpc`**: stock GJS + distro gnome-shell JS;
-  **`libmutter-rpc-16`** stands in for `libmutter`. We do **not** ship upstream `js/`.
-- **`vendor/gnome-shell/`** — build/CI reference only (gitignored); not installed.
+- **Client** — **`gnome-shell-rpc`**: stock GJS + the **pinned** gnome-shell 48
+  JavaScript in **`vendor/gnome-shell/js`**. **`libmutter-rpc-16`** stands in
+  for `libmutter`. We do **not** install or ship that `js/` tree.
+- **`vendor/gnome-shell/`** — required checkout. `meson setup` fetches it and
+  pins it to **48.0** when the directory is missing or is not 48.x. It is
+  gitignored, so workspace search will not see it; open
+  `vendor/gnome-shell/js/` directly when reading shell JavaScript. The distro
+  `gnome-shell` package supplies **`libst`** and **`St-16.gir`**, not the JS
+  this client runs.
 
 All development uses **nested** mutter. Do **not** point this at your host
 `gnome-shell`, and do **not** nest under host GNOME (that freezes the desktop).

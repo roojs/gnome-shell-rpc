@@ -11,6 +11,23 @@
 
 		public GLib.ParamSpec? find_property(string property_name)
 		{
+			/*
+			 * @layout.<name> is the client layout manager's property.
+			 * GJS installs it (LabelExpanderLayout.expansion). The server
+			 * stand-in from create_server_manager() does not have it, so
+			 * this lookup cannot be an RPC.
+			 */
+			if (property_name.has_prefix("@layout.")) {
+				var layout = this.layout_manager;
+				if (layout == null) {
+					return null;
+				}
+				var name = property_name.substring("@layout.".length);
+				if (name.index_of(".") >= 0) {
+					return null;
+				}
+				return ((GLib.Object) layout).get_class().find_property(name);
+			}
 			return ((GLib.Object) this).get_class().find_property(property_name);
 		}
 

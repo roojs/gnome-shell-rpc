@@ -30,7 +30,7 @@ option(
   'gnome_shell_js_dir',
   type: 'string',
   value: '',
-  description: 'Override distro gnome-shell JS directory (default: auto from prefix or /usr/share/gnome-shell/js)',
+  description: 'Override the runtime JS directory (default: vendor/gnome-shell/js, pinned to gnome-shell 48.x)',
 )
 
 option(

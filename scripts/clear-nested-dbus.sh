@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Reap leftover dbus-run-session buses from nested mutter-rpc.
 #
-# Not a product bug — prove/hold SIGKILL mutter and leave
-# ``dbus-daemon --print-address --session`` reparented to init. Enough of
-# those (plus extra at-spi buses) and the machine hits D-Bus max
-# connections and the session bus stops working.
+# Not a product bug — prove/hold SIGKILL mutter and leave the private
+# bus reparented to init. ``dbus-run-session --config-file=`` starts
+# ``dbus-daemon --nofork --print-address N --config-file …/session.conf``
+# and does not pass ``--session`` (dbus-launch(1): config-file replaces
+# that flag). Matching only ``--session`` reaps nothing.
+# Enough of those buses and the system bus hits
+# max_connections_per_user for this UID.
 #
 # Does not touch the systemd user bus or the system bus.
 #
@@ -44,7 +47,8 @@ while read -r pid rest; do
 			continue
 			;;
 	esac
-	if [[ "$rest" == *"--print-address"* && "$rest" == *"--session"* ]]; then
+	if [[ "$rest" == *gsr-nested-dbus* \
+		|| ( "$rest" == *"--print-address"* && "$rest" == *"--session"* ) ]]; then
 		if kill -9 "$pid" 2>/dev/null; then
 			killed=$((killed + 1))
 		fi

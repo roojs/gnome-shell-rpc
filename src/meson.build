@@ -810,6 +810,7 @@ st_rpc_lib = shared_library(
   st_generated,
   files('gi-stub/namespace.vala'),
   dependencies: [
+    mutter_vapi_dep,
     ocrpc_dep,
     mutter_clutter_rpc_link_dep,
     dependency('gio-2.0'),
@@ -904,6 +905,7 @@ shell_gi_lib = shared_library(
     'shell-gi/CameraMonitor.vala',
   ),
   dependencies: [
+    mutter_vapi_dep,
     ocrpc_dep,
     dependency('gio-2.0'),
     dependency('gio-unix-2.0'),
@@ -1091,6 +1093,7 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
     'shell-client/ShellApplication.vala',
   ) + shell_js_resources + gsr_js_resources,
   dependencies: gjs_shell_deps + [
+    mutter_vapi_dep,
     ocrpc_dep,
     dependency('gdk-pixbuf-2.0'),
     # NetworkAgent / Polkit / KeyringPrompt types leak into shell-gi-16.vapi.
