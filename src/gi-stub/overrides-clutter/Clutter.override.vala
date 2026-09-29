@@ -15,27 +15,124 @@
 	{
 		var response = GnomeShellRpc.call_value(
 			"Helper-Clutter.get_current_event");
-		if (response.args.size < 5) {
-			current_event_cache = null;
+		current_event_cache = event_from_values(response.args);
+		return current_event_cache;
+	}
+
+	private static Event? event_from_values(
+		Gee.ArrayList<GLib.Value?> fields
+	)
+	{
+		if (fields.size < 5) {
 			return null;
 		}
 		var keyval = 0u;
-		if (response.args.size > 5) {
-			keyval = response.args.get(5).get_uint();
+		if (fields.size > 5) {
+			keyval = fields.get(5).get_uint();
 		}
 		Actor? related = null;
-		if (response.args.size > 6) {
-			related = Event.actor_from_value(response.args.get(6));
+		if (fields.size > 6) {
+			related = Event.actor_from_value(fields.get(6));
 		}
-		current_event_cache = new Event.local(
-			(EventType) response.args.get(0).get_int(),
-			(float) response.args.get(1).get_double(),
-			(float) response.args.get(2).get_double(),
-			response.args.get(3).get_uint(),
-			response.args.get(4).get_uint(),
+		return new Event.local(
+			(EventType) fields.get(0).get_int(),
+			(float) fields.get(1).get_double(),
+			(float) fields.get(2).get_double(),
+			fields.get(3).get_uint(),
+			fields.get(4).get_uint(),
 			keyval,
 			related);
-		return current_event_cache;
+	}
+
+	/**
+	 * Stock filter callback: event, the device actor, user data.
+	 * {@code CLUTTER_EVENT_STOP} / {@code TRUE} swallows the event.
+	 */
+	[CCode (has_target = false)]
+	public delegate bool EventFilterFunc(
+		Event event,
+		Actor? event_actor,
+		void* user_data
+	);
+
+	private class EventFilterRegistration : GLib.Object
+	{
+		public uint id;
+		public uint64 callback_id;
+		public GLib.DestroyNotify? destroy_notify;
+		public void* user_data;
+	}
+
+	private static EventFilterRegistration[] event_filters;
+
+	/**
+	 * Stock {@code clutter_event_add_filter}. The filter runs synchronously
+	 * in the compositor and relays the event here; the returned boolean keeps
+	 * Clutter's stop/propagate semantics.
+	 */
+	public static uint event_add_filter(
+		Stage? stage,
+		EventFilterFunc func,
+		GLib.DestroyNotify? notify,
+		void* user_data
+	) {
+		var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			var event = event_from_values(call.args);
+			if (event == null) {
+				return OLLMrpc.args("b", false);
+			}
+			Actor? event_actor = null;
+			if (call.args.size > 7) {
+				event_actor = Event.actor_from_value(call.args.get(7));
+			}
+			return OLLMrpc.args(
+				"b", func(event, event_actor, user_data));
+		});
+		var stage_lid = stage == null ? 0 : stage.rpc_lid;
+		var response = GnomeShellRpc.call_value(
+			"Helper-Clutter.event_add_filter", null,
+			OLLMrpc.args("tt", stage_lid, callback_id));
+		var row = new EventFilterRegistration() {
+			id = response.retval.get_uint(),
+			callback_id = callback_id,
+			destroy_notify = notify,
+			user_data = user_data,
+		};
+		event_filters += row;
+		return row.id;
+	}
+
+	/**
+	 * Stock {@code clutter_event_remove_filter}. Drops a registration
+	 * from {@link event_add_filter} and runs its destroy notify.
+	 */
+	public static void event_remove_filter(uint id)
+	{
+		EventFilterRegistration[] kept = {};
+		foreach (var row in event_filters) {
+			if (row.id != id) {
+				kept += row;
+				continue;
+			}
+			GnomeShellRpc.call_value(
+				"Helper-Clutter.event_remove_filter", null,
+				OLLMrpc.args("u", id));
+			GnomeShellRpc.GiStub.Runtime.callback_unbind(row.callback_id);
+			if (row.destroy_notify != null) {
+				row.destroy_notify(row.user_data);
+			}
+		}
+		event_filters = kept;
+	}
+
+	/**
+	 * Stock {@code clutter_event_get}: pop on the compositor's Clutter
+	 * queue, then rebuild the event locally from its packed fields.
+	 */
+	public static Event? event_get()
+	{
+		return event_from_values(GnomeShellRpc.call_value(
+			"Helper-Clutter.event_get").args);
 	}
 
 	/**

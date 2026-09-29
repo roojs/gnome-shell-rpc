@@ -36,6 +36,25 @@
 			Object();
 		}
 
+		/**
+		 * Stock {@code clutter_interval_new_with_values}. Vala adds the
+		 * {@code new_} prefix for the named {@code with_values} constructor.
+		 * GJS dlsyms this when the class is first touched.
+		 */
+		public Interval.with_values(
+			GLib.Type gtype,
+			GLib.Value* initial,
+			GLib.Value* final
+		) {
+			Object(value_type: gtype);
+			if (initial != null) {
+				this.set_initial_value(*initial);
+			}
+			if (final != null) {
+				this.set_final_value(*final);
+			}
+		}
+
 		public void set_initial_value(GLib.Value value)
 		{
 			this.store_and_relay(true, value);

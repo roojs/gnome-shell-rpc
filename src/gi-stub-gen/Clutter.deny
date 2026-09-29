@@ -49,7 +49,6 @@ Interval.compute
 # St Adjustment / Widget overrides call this. Flag keeps the method;
 # a bare deny drops the name and the client does not compile.
 Interval.compute_value temporary
-Interval.new_with_values
 KeyframeTransition.get_key_frame
 KeyframeTransition.set_key_frame
 PaintContext.get_redraw_clip
@@ -66,9 +65,6 @@ Stage.handle_event
 Stage.pointing_input_foreach
 Text.set_preedit_string
 Timeline.set_progress_func
-actor_box_clamp_to_pixel
-event_add_filter
-event_get
 value_dup_paint_node
 value_get_paint_node
 value_set_paint_node
@@ -146,6 +142,9 @@ ActorBox.is_initialized
 ActorBox.scale
 ActorBox.interpolate
 ActorBox.union
+# GIR <function> (not a method). GJS dlsyms it when ActorBox is first
+# touched (layout allocate). Body in ActorBox.override.
+actor_box_clamp_to_pixel
 
 # Actor.override — lease walk (St-Widget → Helper-Actor.create); layout relay.
 Actor.new
@@ -234,6 +233,9 @@ Interval.peek_initial_value
 Interval.peek_final_value
 Interval.get_initial_value
 Interval.get_final_value
+# GIR constructor. GJS dlsyms it when Interval is first touched
+# (environment.js ease). Body is named constructor Interval.with_values.
+Interval.new_with_values
 
 # LayoutManager.override — GJS subclasses (QuickSettingsLayout, …) are
 # client-owned; child meta / set_container stay local (no rpc_lid).
@@ -316,10 +318,18 @@ threads_add_repaint_func
 # Compact Event — pack type/x/y/button/state via Helper-Clutter.
 get_current_event
 
-# Nested Event <function>s duplicate ns clutter_event_* cnames.
+# Nested Event <function>s share ns clutter_event_* cnames.
+# Stock typelib still lists them. GJS dlsyms add_filter / get when
+# popupMenu.js reads Clutter.Event.$gtype. Bodies in Clutter.override.
+# EventFilterFunc is that callback (3 args, has_target = false). The
+# generated delegate drops user_data and would change add_filter's ABI.
 Event.add_filter
 Event.get
 Event.remove_filter
+event_add_filter
+event_get
+event_remove_filter
+EventFilterFunc
 
 # Boxed ref/unref clash with GObject.
 PaintContext.ref

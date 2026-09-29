@@ -125,3 +125,15 @@
 			result.x2 = this.x2 > b.x2 ? this.x2 : b.x2;
 			result.y2 = this.y2 > b.y2 ? this.y2 : b.y2;
 		}
+
+		/**
+		 * Stock {@code clutter_actor_box_clamp_to_pixel}: floor the origin,
+		 * ceil the far edge, so a fractional box covers every pixel it touches.
+		 */
+		public void clamp_to_pixel()
+		{
+			this.x1 = (float) Math.floor((double) this.x1);
+			this.y1 = (float) Math.floor((double) this.y1);
+			this.x2 = (float) Math.ceil((double) this.x2);
+			this.y2 = (float) Math.ceil((double) this.y2);
+		}

@@ -239,6 +239,21 @@ namespace GnomeShellRpc.GiStub
 		}
 
 		/**
+		 * Remove a handler registered by {@link callback_bind} on both peers.
+		 */
+		public static void callback_unbind(uint64 callback_id)
+		{
+			if (Runtime.handlers == null
+				|| !Runtime.handlers.has_key((int) callback_id)) {
+				return;
+			}
+			GnomeShellRpc.call_value(
+				"RPC-Live-Callback.unregister", null,
+				OLLMrpc.args("t", callback_id));
+			Runtime.handlers.unset((int) callback_id);
+		}
+
+		/**
 		 * Pack leased stubs into a Variant ''at'' for typelib GLIST / GSLIST IN.
 		 *
 		 * Server {@code Gi.convert_list} resolves each id via connection leases.
