@@ -1,7 +1,8 @@
 /**
- * Observe-only hook for the held session. Does not type, allocate, or
- * change search behavior. Logs the stock second-updateSearch inputs
- * the live RPC log already showed: fill, then a later clear.
+ * Debug-only hook for the held session. Logs every operation inside the
+ * stock updateSearch try/catch, which otherwise swallows the exception.
+ * Set GI_RPC_APP_SEARCH_OBSERVE to a term (for example "ter") to reproduce
+ * by assigning the normal search entry text after the probe is installed.
  *
  *   GI_RPC_GJS_EMBED_DIR=src/gjs-embed \
  *   GI_RPC_REGISTER_CLASS_TRACE=1 \
@@ -11,6 +12,8 @@
 import GLib from 'gi://GLib';
 
 const TAG = 'app-search-observe';
+const observe = GLib.getenv('GI_RPC_APP_SEARCH_OBSERVE') || '';
+const reproTerm = ['1', 'true'].includes(observe.toLowerCase()) ? '' : observe;
 
 function observeLog(message) {
 	log(TAG + ': ' + message);
@@ -62,8 +65,11 @@ function install(main) {
 
 	function wrapThrow(name, fn) {
 		return function (...args) {
+			observeLog(name + ' enter');
 			try {
-				return fn.apply(this, args);
+				const ret = fn.apply(this, args);
+				observeLog(name + ' ok');
+				return ret;
 			} catch (e) {
 				observeLog(name + ' threw ' + errText(e));
 				throw e;
@@ -73,8 +79,12 @@ function install(main) {
 
 	const origEnsure = display._ensureResultActors.bind(display);
 	display._ensureResultActors = async function (results) {
+		observeLog('_ensureResultActors enter n='
+			+ (results == null ? -1 : results.length));
 		try {
-			return await origEnsure(results);
+			const ret = await origEnsure(results);
+			observeLog('_ensureResultActors ok');
+			return ret;
 		} catch (e) {
 			observeLog('_ensureResultActors threw ' + errText(e)
 				+ ' n=' + (results == null ? -1 : results.length));
@@ -102,7 +112,9 @@ function install(main) {
 			+ ' width=' + widthOf(display)
 			+ ' stack=' + stack);
 		try {
-			return origClear();
+			const ret = origClear();
+			observeLog('_clearResultDisplay ok');
+			return ret;
 		} catch (e) {
 			observeLog('_clearResultDisplay threw ' + errText(e));
 			throw e;
@@ -184,6 +196,14 @@ function install(main) {
 	};
 
 	observeLog('installed');
+	if (reproTerm.length > 0) {
+		const entry = main.overview.searchEntry;
+		main.overview.show();
+		entry.grab_key_focus();
+		observeLog('reproduce set clutter_text.text='
+			+ JSON.stringify(reproTerm));
+		entry.clutter_text.text = reproTerm;
+	}
 }
 
 GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {

@@ -247,8 +247,7 @@ namespace GnomeShellRpc.GiStub
 				|| !Runtime.handlers.has_key((int) callback_id)) {
 				return;
 			}
-			GnomeShellRpc.call_value(
-				"RPC-Live-Callback.unregister", null,
+			GnomeShellRpc.call_value("RPC-Live-Callback.unregister", null,
 				OLLMrpc.args("t", callback_id));
 			Runtime.handlers.unset((int) callback_id);
 		}

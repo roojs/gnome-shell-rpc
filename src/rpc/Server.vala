@@ -1,6 +1,13 @@
 namespace GnomeShellRpc.Rpc
 {
 	/**
+	 * {@code G_DEFINE_TYPE} registers this class on the first
+	 * {@code get_type} call. {@code Type.from_name} stays invalid until then.
+	 */
+	[CCode (cname = "meta_window_wayland_get_type")]
+	extern GLib.Type meta_window_wayland_get_type ();
+
+	/**
 	 * RPC server boot — socket, registrations, display/window notifications,
 	 * then spawn {@code gnome-shell-rpc} (default {@code init.js}; no pid watch).
 	 *
@@ -104,6 +111,12 @@ namespace GnomeShellRpc.Rpc
 			if (seat != null && !OLLMrpc.Bin.gtype_to_alias.has_key(seat.get_type())) {
 				/* Concrete seat subclass — PadOsd main.js L233. */
 				OLLMrpc.Bin.register_alias("Clutter-Seat", seat.get_type());
+			}
+			/* Gi.register maps MetaWindow only. Nested clients are
+			 * MetaWindowWayland (--no-x11). from_name does not load it. */
+			var wayland_window = meta_window_wayland_get_type();
+			if (!OLLMrpc.Bin.gtype_to_alias.has_key(wayland_window)) {
+				OLLMrpc.Bin.register_alias("Meta-Window", wayland_window);
 			}
 			GLib.debug("Gi.register Meta-16 ok (%u types)",
 				OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0);

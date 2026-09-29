@@ -859,6 +859,25 @@
 	}
 
 	/**
+	 * Stock {@code clutter_actor_get_effect}.
+	 *
+	 * The GIR also has a write-only {@code effect} property. Denying that
+	 * property reserves its conventional accessor symbol, so the generated
+	 * method is intentionally replaced here.
+	 */
+	public Effect? get_effect(string name)
+	{
+		var response = GnomeShellRpc.call_value(
+			"Clutter-Actor.get_effect", this,
+			OLLMrpc.args("s", name));
+		if (response.retval.type() == GLib.Type.INVALID
+				|| response.retval.get_object() == null) {
+			return null;
+		}
+		return (Effect) response.retval.get_object();
+	}
+
+	/**
 	 * TEMPORARY — mock a11y only. GIR {@code get/set_accessible} denied;
 	 * BarLevel's {@link St.GenericAccessible} has no {@code rpc_lid}. Undeny
 	 * when server Atk peers are leased. Role / name / state stay RPC.

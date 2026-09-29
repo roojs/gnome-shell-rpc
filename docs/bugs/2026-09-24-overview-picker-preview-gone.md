@@ -2,7 +2,14 @@
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and the boot overview matches stock WINDOW_PICKER, and clicking an app icon launches it. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ⏳ current — **Terminal icon click**, after the 2026-09-28 regression. Desktop wallpaper was on screen 2026-09-27, then `set_allocation` stopped reaching the server. Search keystrokes throw `device is null` in `keyboard.js` (`last-device-changed` drops `MetaInputDeviceX11`) and `_updateSearchProgress` never finishes, so no results appear.
+**Status:** ⏳ current — **app window reaches the shell**. 2026-09-29 15:58: a click launched GNOME Settings inside mutter (`Updating client: name='GNOME Settings'`). The shell then died:
+
+```text
+connection write error: Unregistered class type schema: MetaWindowWayland
+Client.vala:702: Unexpected early end-of-stream
+```
+
+The Settings window stayed mapped in mutter. The shell process was gone, so later Terminal clicks left the starting spinner and never launched again. `Type.from_name("MetaWindowWayland")` does not load the class (`G_DEFINE_TYPE`), so the boot alias was skipped and the same write error returned at 16:25:06. `Server.start` calls `meta_window_wayland_get_type()` and aliases that to `Meta-Window`. Nested mutter is `--no-x11`.
 
 Create carries the override list
 ([`done/2026-09-27-actor-created-before-overrides.md`](done/2026-09-27-actor-created-before-overrides.md)).
