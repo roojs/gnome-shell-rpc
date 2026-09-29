@@ -30,7 +30,7 @@ option(
   'gnome_shell_js_dir',
   type: 'string',
   value: '',
-  description: 'Override the runtime JS directory (default: vendor/gnome-shell/js, pinned to gnome-shell 48.x)',
+  description: 'Optional disk JS directory (GNOME_SHELL_JS_DIR). Default is empty: the client runs the gresource compiled from vendor/gnome-shell/js',
 )
 
 option(

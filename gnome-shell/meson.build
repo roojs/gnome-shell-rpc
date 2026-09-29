@@ -1,7 +1,7 @@
-# Phase 0.7: vendored upstream gnome-shell, pinned to 48.x.
+# Phase 0.7: vendored upstream gnome-shell for build/CI.
 # meson setup checks out vendor/gnome-shell if it is missing or not 48.x.
 # Stock libst / St GIR still come from the distro gnome-shell package.
-# Runtime JS is that vendor tree, not the distro package's JS.
+# vendor/gnome-shell/js is compiled into the client gresource. The client runs that.
 
 fs = import('fs')
 
@@ -143,7 +143,7 @@ endif
 
 gnome_shell_vendor_root = vendor_root
 message(
-  'gnome-shell vendor root: @0@ (version @1@; runtime JS; not installed)'.format(
+  'gnome-shell vendor root: @0@ (version @1@; compiled into client gresource; not installed)'.format(
     gnome_shell_vendor_root,
     vendor_version,
   ),
@@ -178,18 +178,18 @@ endif
 message('gnome-shell stock pkglibdir (server libst/Gvc): @0@'.format(gnome_shell_pkglibdir))
 message('gnome-shell stock girdir (St-16.gir schema only): @0@'.format(gnome_shell_girdir))
 
-# --- Runtime JS search path (gjs-embed / overrides) ---
-# The client runs the pinned vendor checkout. Distro gnome-shell is libst / St GIR
-# only. -Dgnome_shell_js_dir replaces the vendor tree for one configure.
+# --- Optional disk override (gjs-embed / GNOME_SHELL_JS_DIR) ---
+# The client runs resource:///org/gnome/shell from the gresource built out of
+# vendor/gnome-shell/js. A directory is only used when this option or the env
+# var is set.
 
 js_dir_override = get_option('gnome_shell_js_dir')
-js_runtime_source = ''
 if js_dir_override != ''
   gnome_shell_js_runtime_dir = js_dir_override
   js_runtime_source = 'option -Dgnome_shell_js_dir'
 else
-  gnome_shell_js_runtime_dir = vendor_js
-  js_runtime_source = 'vendor/gnome-shell/js (pinned 48.x)'
+  gnome_shell_js_runtime_dir = ''
+  js_runtime_source = 'client gresource (vendor JS compiled in)'
 endif
 
 message(

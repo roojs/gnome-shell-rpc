@@ -8,11 +8,11 @@ Build integration for upstream GNOME Shell. This project tracks **one gnome-shel
 | `gnome-shell/` (here) | Yes | Meson integration |
 | `scripts/gnome-shell-fetch.sh` | Yes | Clone / refresh vendor tree |
 
-## Runtime JavaScript
+## JavaScript
 
-The client runs **`vendor/gnome-shell/js`**. Read shell JavaScript there. Workspace search skips it because the directory is gitignored.
+**`vendor/gnome-shell/js`** is compiled into the client gresource. The client runs `resource:///org/gnome/shell`. Read shell JavaScript in that vendor tree; workspace search skips it because the directory is gitignored. We do **not** install that tree.
 
-The distro `gnome-shell` package is **`libst-16.so`** and **`St-16.gir`** only. It is not the JS tree for this version pin. Override the vendor tree with **`-Dgnome_shell_js_dir=`** or runtime **`GNOME_SHELL_JS_DIR`**. We still do **not** install or ship upstream JS from vendor into packages.
+**`-Dgnome_shell_js_dir=`** or **`GNOME_SHELL_JS_DIR`** is an optional disk override.
 
 Stock **`libst-16.so`** (server link) and **`St-16.gir`** (schema for client stubs) must exist under `/usr/lib/gnome-shell` and `/usr/share/gnome-shell` — if not, **`meson setup` errors** with `sudo apt install gnome-shell`. Distro **St typelib is not** what the RPC client loads; that is **`build/src/St-16.typelib` → `libst-rpc-16.so`**.
 

@@ -41,7 +41,7 @@ sudo apt install \
 - **gjs** / **libgjs-dev** — `gjs-embed` and smoke scripts
 - **libgee-0.8-dev**, **libjson-glib-dev**, **libsoup-3.0-dev** — `libocrpc` headers at compile time
 - **libgtk-4-dev** — `fake-shell` test client
-- **gnome-shell** — stock **`libst-16.so`**, **`St-16.gir`**, **`Gvc-1.0.gir`** under `/usr/lib/gnome-shell/` and `/usr/share/gnome-shell/`. Runtime JS is the pinned **`vendor/gnome-shell/js`** checkout, not this package's JS.
+- **gnome-shell** — stock **`libst-16.so`**, **`St-16.gir`**, **`Gvc-1.0.gir`** under `/usr/lib/gnome-shell/` and `/usr/share/gnome-shell/`. Shell JS for the client is compiled from **`vendor/gnome-shell/js`** into our gresource.
 - **libpolkit-agent-1-dev**, **libgcr-4-dev** — only if enabling legacy vendored client-lib build (`-Dgnome_shell_client_libs=enabled`)
 - **dbus-x11** — `dbus-run-session` for nested compositor runs
 
@@ -52,7 +52,7 @@ meson setup build
 ninja -C build
 ```
 
-`vendor/gnome-shell/` is required. `meson setup` fetches it and pins it to **48.0** when the directory is missing or is not 48.x. That checkout is the runtime JS (`vendor/gnome-shell/js`). It is gitignored; open that path when reading shell JavaScript. Stock **`libst-16` / St GIR** still come from distro **`gnome-shell`** — configure fails with `apt install gnome-shell` if those files are absent. **`-Dgnome_shell_js_dir=`** replaces the vendor JS tree for one configure.
+`vendor/gnome-shell/` is required at build time. `meson setup` fetches it and pins it to **48.0** when the directory is missing or is not 48.x. That `js/` tree is compiled into the client gresource (`resource:///org/gnome/shell`). It is gitignored; open that path when reading shell JavaScript. **`-Dgnome_shell_js_dir=`** or **`GNOME_SHELL_JS_DIR`** is an optional disk override. Stock **`libst-16` / St GIR** still come from distro **`gnome-shell`**.
 
 ```bash
 ./scripts/gnome-shell-fetch.sh                                       # once
@@ -62,14 +62,14 @@ meson setup build -Dgnome_shell_client_libs=enabled --reconfigure    # legacy cl
 ./scripts/gnome-shell-fetch.sh --refresh                             # refresh vendor pin
 ```
 
-See [`gnome-shell/README.md`](../gnome-shell/README.md). Override runtime JS: **`-Dgnome_shell_js_dir=…`** or **`GNOME_SHELL_JS_DIR`**.
+See [`gnome-shell/README.md`](../gnome-shell/README.md). Optional disk override: **`-Dgnome_shell_js_dir=…`** or **`GNOME_SHELL_JS_DIR`**.
 
 Main artifacts under `build/src/`:
 
 | Output | Role |
 | --- | --- |
 | `mutter-rpc` | Compositor binary (mutter plugin) |
-| `gnome-shell-rpc` | Shell client (GJS + pinned `vendor/gnome-shell/js`) |
+| `gnome-shell-rpc` | Shell client (GJS + gresource compiled from `vendor/gnome-shell/js`) |
 | `gjs-embed` | **Temporary** test GJS host (manual smokes only) |
 | `libmutter-rpc-16.so` | Client Meta stubs (RPC to plugin) |
 | `Meta-16.typelib` | GI typelib → `libmutter-rpc-16.so` |
