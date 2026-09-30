@@ -1,10 +1,10 @@
 # Generator picks the property batch
 
-**Status:** ⏳ open. The code is in and the client rebuilt. `batch_call_value` is emitted for the whitelist. A boot tally is not in yet. 18:08 stay-up passed `notify_ready` with no `Clutter-Actor.hide` `-32602` and no minimum-height abort. The run was killed at ~11s, so it is not the 30s tally.
+**Status:** ✔️ archived 2026-09-30. The 18:48 binary ran this path. `set_style_class_name` in that log is 339 (was 1,652). The tally is [`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md). The notes below are the move onto the generator.
 
 ## Boot abort
 
-Not a segfault. `SIGTRAP` / `int3` in `libglib` is `g_log` at error level. `ClutterBoxLayout` calls `g_error` when a mapped child's minimum height is negative. Same abort as [`ClutterBoxLayout` minimum height `-12`](done/2026-09-25-box-layout-negative-min-height.md).
+Not a segfault. `SIGTRAP` / `int3` in `libglib` is `g_log` at error level. `ClutterBoxLayout` calls `g_error` when a mapped child's minimum height is negative. Same abort as [`ClutterBoxLayout` minimum height `-12`](2026-09-25-box-layout-negative-min-height.md).
 
 ```text
 ClutterBoxLayout child unnamed [GnomeShellRpcRpcHelperActor] minimum height: -12.000000 < 0 for width 182.000000
@@ -16,7 +16,7 @@ ClutterBoxLayout child unnamed [GnomeShellRpcRpcHelperActor] minimum height: -12
 
 `show` and `hide` store `visible` while `prop_batch_open`, then call `call_value` with no arguments. That flush sends the map, then the real `show` / `hide`.
 
-**Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
 **Counts:** [`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md). `set_style_class_name` is still 1,652. The guess in `call_value` turns that method into `style-class-name`. The property is `style-class`.
 

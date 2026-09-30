@@ -82,6 +82,9 @@ namespace GnomeShellRpc.GiStub
 		[CCode (cname = "shell_actor_box_override_register")]
 		private static extern void actor_box_override_register();
 
+		[CCode (cname = "shell_graphene_point_override_register")]
+		private static extern void graphene_point_override_register();
+
 		[CCode (cname = "shell_input_device_override_register")]
 		private static extern void input_device_override_register();
 
@@ -151,6 +154,7 @@ namespace GnomeShellRpc.GiStub
 			// NASTY needs fixing
 			Runtime.clutter_event_override_register();
 			Runtime.actor_box_override_register();
+			Runtime.graphene_point_override_register();
 			Runtime.input_device_override_register();
 			Runtime.pick_context_override_register();
 

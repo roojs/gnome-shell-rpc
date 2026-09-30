@@ -1,8 +1,47 @@
-# Boot still sends about 30k RPC calls
+# Boot and first launch still send about 35k RPC calls
 
-**Status:** ⏳ open. `Helper-Actor.add_signals` is in. The 17:41 prove was killed at 8 seconds, before a tally. The 16:40 stay-up is still the scoreboard: 27,703 calls. The four-call attempt is [`done/2026-09-29-rpc-call-volume.md`](done/2026-09-29-rpc-call-volume.md).
+**Status:** ✔️ archived 2026-09-30. `add_signals` and the generator property batch are in the binary that produced the log below. Another pass over the same rows does not shrink it. The 2,835 `rpc_signal` calls are one name each. The notes under "The attempt" are the batching work. The four-call attempt is [`2026-09-29-rpc-call-volume.md`](2026-09-29-rpc-call-volume.md).
 
-**Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
+
+## 18:48 through opening a terminal
+
+**Seen:** 2026-09-30 18:48:52–18:49:50. `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`. 34,660 `Client.vala:1018` calls, ids 2–34661. One `Helper-AppLaunch.launch_desktop_file`.
+
+| When | Calls | What |
+| ---- | ----: | ---- |
+| 18:48:52–18:49:10 | 20,313 | Boot |
+| 18:49:11–18:49:13 | 61 | Click. `get_actor_at_pos`, key focus |
+| 18:49:14–18:49:25 | 12,116 | Second actor tree. 350 `Helper-Actor.create`, 344 `St-Bin.new`, 332 `Clutter-BinLayout.new`, 186 `St-Button.new`, 176 `St-Label.new` |
+| 18:49:26–18:49:39 | 0 | Quiet |
+| 18:49:40–18:49:43 | 2,165 | Window animation |
+| 18:49:44–18:49:50 | 5 | `Helper-Icon.set_gicon`, `St-Icon.set_fallback_icon_name` |
+
+`before-update` is 491 notifications. 64 of them are after 18:49:44, with those 5 calls. The stage clock keeps notifying after the terminal is up. The call log does not.
+
+`rpc_signal` is 2,835. `add_signals` is 271. Boot sends 1,296 `rpc_signal` and 102 `add_signals`. The second tree sends 1,529 and 169. The lists are the 271. The rest are one name.
+
+`set_style_class_name` is 339 (1,652 on 16:40). `set_x_expand` is 480, and 347 of those are on the second tree, after `set_layout_manager` and `set_child` have closed the batch. Same for `set_y_expand` 347, `set_x_align` 344, `set_y_align` 341.
+
+| Kind | Calls | Share |
+| ---- | ----: | ----: |
+| construct, parent, setters | 15,106 | 44% |
+| layout size and allocate | 6,063 | 17% |
+| other | 3,335 | 10% |
+| signal subscribe | 3,164 | 9% |
+| vfunc `reply` | 2,332 | 7% |
+| theme node | 1,811 | 5% |
+| adjustment | 1,026 | 3% |
+| animation and compositor | 1,035 | 3% |
+| theme context | 788 | 2% |
+
+`get_next_sibling` is 579, and it never runs twice in a row. 316 of them are followed by `get_preferred_height`, 166 by `get_preferred_width`. The client layout vfunc measures each child as its own call. `allocate_align_fill` is 856, 808 of them during boot. `RPC-Live-Callback.reply` is 2,332, 1,873 during boot.
+
+The four-second animation is that conversation per frame: `St-Adjustment.get_value` 278, `set_value` 92, `St-ThemeContext.get_for_stage` 100, `get_scale_factor` 100, `layout_changed` 98, `Meta-BackgroundContent.set_rounded_clip_radius` 84, plus theme-node border, padding, and length. `get_for_stage` builds a new proxy on every call (`ThemeContext.override.vala`).
+
+`mapped` is still one critical each for `DateMenuButton`, `QuickSettings`, `InputSourceIndicator`, `StEntry`, `StWidget`, and `WorkspacesDisplay`.
+
+## The attempt
 
 **Seen:** 2026-09-30 13:05:02–13:07:10 and 14:31:17–14:31:47. `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`.
 

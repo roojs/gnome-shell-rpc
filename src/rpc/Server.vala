@@ -156,6 +156,11 @@ namespace GnomeShellRpc.Rpc
 			this.spawn_client();
 
 			display.window_created.connect((meta_window) => {
+				if (this.listen != null) {
+					foreach (var connection in this.listen.connections) {
+						connection.export(meta_window);
+					}
+				}
 				if (!this.window_actor_aliased) {
 					var priv = meta_window.get_compositor_private();
 					if (priv != null) {

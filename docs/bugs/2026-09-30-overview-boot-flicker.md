@@ -2,7 +2,7 @@
 
 > **Do not stop** to narrate a prove, a dead end, or a rebuild. Update this bug and take the next phase. Stop only if you need the user, or if OPC is the problem (FAIL gate, then stop).
 
-**Status:** ⏳ open. User 2026-09-30. Only UI bug. RPC flood: [`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md).
+**Status:** ⏳ open. User 2026-09-30. Only UI bug. RPC call batching is archived: [`done/2026-09-30-rpc-call-volume.md`](done/2026-09-30-rpc-call-volume.md).
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -37,6 +37,10 @@ Shots 14:31. Left: our nest. Right: GNOME Shell.
 | Dash | Icon row at the bottom | Icon row at the bottom |
 | Extra | Orange dot under the search | |
 
+## Dash icons
+
+Bottom bar icons are the wrong size. User 2026-09-30, after checking the picker. Recorded. Not investigated.
+
 ## Phases
 
 | Phase | Find out | Change |
@@ -45,9 +49,10 @@ Shots 14:31. Left: our nest. Right: GNOME Shell.
 | 2 | Why the picture can look like the desktop while the log says shown | State transition interval peeked as 0, so the workspace got the full-screen hidden box. Mirror keeps the real 0→1. A stuck transition still lays out the picker. |
 | 3 | Dash missing on the picker | Show-apps item preferred width was 0. Its layout manager said 48. The button now allocates 44×80. |
 | 4 | Grey square over the dash | Workspace thumbnails. Asking for their own preferred size during allocate returned 0, so the scale went negative and the full-size thumbnail backgrounds painted over the dash. Preferred size during allocate now runs the size vfunc. Scale is positive. The icon row is visible. |
-| 5 | Why the top-left button does not open and close the overview | Click proves 17:29–17:32. The click is the hot corner, not the button vfunc. Hide starts. `hide-done` is not reliable: absent for 5s, then present in 0.7s after a `stopped` subscribe, then absent again for 5s with that same subscribe. While `anim` stays true the next click is refused. Subscribe reverted. |
+| 5 | Why the top-left button does not open and close the overview | Click proves 17:29–17:32. The click is the hot corner, not the button vfunc. Hide starts. `hide-done` is not reliable: absent for 5s, then present in 0.7s after a `stopped` subscribe, then absent again for 5s with that same subscribe. While `anim` stays true the next click is refused. Subscribe reverted. Still open. Unsure it is still the live problem. |
+| 6 | Bottom bar icons are the wrong size | Recorded 2026-09-30. Not investigated. |
 
-Phase 1 probe stays at `src/shell-js-probe/overview-boot/ui/overview.js`. Layout waits.
+Phase 1 probe stays at `src/shell-js-probe/overview-boot/ui/overview.js`. Layout waits. Phase 6 is recorded only.
 
 ---
 
