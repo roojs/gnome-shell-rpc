@@ -651,15 +651,21 @@
 	public void show()
 	{
 		this.actor_visible = true;
-		GnomeShellRpc.batch_call_value("Clutter-Actor.show", this, "visible",
-			OLLMrpc.args("b", true));
+		if (this.prop_batch_open) {
+			GnomeShellRpc.batch_call_value("Clutter-Actor.show", this, "visible",
+				OLLMrpc.args("b", true));
+		}
+		GnomeShellRpc.call_value("Clutter-Actor.show", this);
 	}
 
 	public void hide()
 	{
 		this.actor_visible = false;
-		GnomeShellRpc.batch_call_value("Clutter-Actor.hide", this, "visible",
-			OLLMrpc.args("b", false));
+		if (this.prop_batch_open) {
+			GnomeShellRpc.batch_call_value("Clutter-Actor.hide", this, "visible",
+				OLLMrpc.args("b", false));
+		}
+		GnomeShellRpc.call_value("Clutter-Actor.hide", this);
 	}
 
 	/**

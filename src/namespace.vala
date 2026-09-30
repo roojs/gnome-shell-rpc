@@ -88,7 +88,7 @@ namespace GnomeShellRpc
 				send.add(entry.value);
 			}
 			actor.prop_batch.clear();
-			GnomeShellRpc.call_value("Helper-Actor.add_properties", actor, send);
+			call_value("Helper-Actor.add_properties", actor, send);
 		}
 		uint64 lease_id = 0;
 		if (instance != null) {

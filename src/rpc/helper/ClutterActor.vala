@@ -352,20 +352,6 @@ namespace GnomeShellRpc.Rpc.Helper
 		public override bool event(Clutter.Event clutter_event)
 		{
 			var hook = this.vfuncs.get(ActorVfuncIds.event_id);
-			var type = clutter_event.get_type();
-			if (type == Clutter.EventType.BUTTON_PRESS
-					|| type == Clutter.EventType.BUTTON_RELEASE) {
-				var named = "";
-				if (this.method_names.has_key(ActorVfuncIds.event_id)) {
-					named = this.method_names.get(ActorVfuncIds.event_id);
-				}
-				GLib.debug(
-					"gsr-actor-event type=%d hook=%s vfunc=%s client=%s",
-					(int) type,
-					hook != null ? "yes" : "no",
-					named,
-					this.client_type_name != null ? this.client_type_name : "?");
-			}
 			if (hook == null) {
 				/* Parent ClutterActorClass.event is NULL on St.Widget —
 				 * Vala base.event would call through 0 (motion SIGSEGV). */

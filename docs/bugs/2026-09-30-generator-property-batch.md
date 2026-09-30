@@ -1,6 +1,20 @@
 # Generator picks the property batch
 
-**Status:** ⏳ open. The code is in and the client rebuilt. `batch_call_value` is emitted for the whitelist. A boot tally is not in yet.
+**Status:** ⏳ open. The code is in and the client rebuilt. `batch_call_value` is emitted for the whitelist. A boot tally is not in yet. 18:08 stay-up passed `notify_ready` with no `Clutter-Actor.hide` `-32602` and no minimum-height abort. The run was killed at ~11s, so it is not the 30s tally.
+
+## Boot abort
+
+Not a segfault. `SIGTRAP` / `int3` in `libglib` is `g_log` at error level. `ClutterBoxLayout` calls `g_error` when a mapped child's minimum height is negative. Same abort as [`ClutterBoxLayout` minimum height `-12`](done/2026-09-25-box-layout-negative-min-height.md).
+
+```text
+ClutterBoxLayout child unnamed [GnomeShellRpcRpcHelperActor] minimum height: -12.000000 < 0 for width 182.000000
+```
+
+17:57 stay-up: `notify_ready` at 17:57:33.584, abort at 17:57:34.088, during `BoxPointer` allocate. `Helper-Actor.add_signals` had already been replied to.
+
+`Clutter-Actor.hide` was the failure. The batch was closed, so `batch_call_value` relayed `OLLMrpc.args("b", false)` into `Clutter-Actor.hide`. That method takes no arguments. Mutter returned `-32602`. The client logged an uncaught error at `Clutter_generated.vala:2448` and left the actor mapped. The first frame after the gate opened then hit the empty grid.
+
+`show` and `hide` store `visible` while `prop_batch_open`, then call `call_value` with no arguments. That flush sends the map, then the real `show` / `hide`.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -22,7 +36,7 @@ A 15 second chrome log on 2026-09-30 17:31 (15,189 calls, grid not built) is the
 - `write_method` only when `property_setter_matches`: one IN argument, and the argument letter matches the property letter.
 - `write_gprop` uses `pname` and the property type. It still has to be in the whitelist.
 
-`hide` and `show` are not generated setters. `Actor.override.vala` owns them. They call `batch_call_value` with `visible`. A `call_value` from `hide` would flush the map and close it. `visible` is not a generated setter, so it is not a line in the file.
+`hide` and `show` are not generated setters. `Actor.override.vala` owns them. While `prop_batch_open` they store `visible`, then `call_value` flushes the map and sends `hide` / `show` with no arguments. Passing the boolean into that method is `-32602`. `visible` is not a line in the whitelist.
 
 ## Proposed code
 
@@ -76,15 +90,21 @@ While `prop_batch_open` is set, store `name` and the one argument and return. Ot
 	public void show()
 	{
 		this.actor_visible = true;
-		GnomeShellRpc.batch_call_value("Clutter-Actor.show", this, "visible",
-			OLLMrpc.args("b", true));
+		if (this.prop_batch_open) {
+			GnomeShellRpc.batch_call_value("Clutter-Actor.show", this, "visible",
+				OLLMrpc.args("b", true));
+		}
+		GnomeShellRpc.call_value("Clutter-Actor.show", this);
 	}
 
 	public void hide()
 	{
 		this.actor_visible = false;
-		GnomeShellRpc.batch_call_value("Clutter-Actor.hide", this, "visible",
-			OLLMrpc.args("b", false));
+		if (this.prop_batch_open) {
+			GnomeShellRpc.batch_call_value("Clutter-Actor.hide", this, "visible",
+				OLLMrpc.args("b", false));
+		}
+		GnomeShellRpc.call_value("Clutter-Actor.hide", this);
 	}
 ```
 
