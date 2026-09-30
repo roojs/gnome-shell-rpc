@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
   Peer typelib for Meta.RpcSubprocess (compositor Gio.Subprocess is not on
-  the wire). Same pattern as OLLMrpc-1.0.gir — do **not** patch stock Meta GIR.
+  the wire). Do not patch stock Meta GIR.
 
   GJS resolves methods via g_irepository_find_by_gtype after require().
 -->

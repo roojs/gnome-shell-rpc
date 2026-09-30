@@ -44,7 +44,6 @@ if ocrpc_libdir == ''
   # default vapidir (/usr/share/vala/vapi), ocrpc.h on the default
   # include path.
   ocrpc_lib = cc.find_library('ocrpc', required: true)
-  ocrpc_shared_library = 'libocrpc.so'
   ocrpc_vala_args = [
     '--pkg=ocrpc',
     '--pkg=json-glib-1.0',
@@ -61,7 +60,6 @@ if ocrpc_libdir == ''
   ocrpc_rpath = ''
 else
   ocrpc_lib = ocrpc_libdir / 'libocrpc.so'
-  ocrpc_shared_library = ocrpc_lib
   ocrpc_vapi = ocrpc_libdir / 'ocrpc.vapi'
   if not fs.exists(ocrpc_lib) or not fs.exists(ocrpc_vapi)
     error(
@@ -112,6 +110,83 @@ subdir('gnome-shell')
 subdir('vapi')
 subdir('src')
 subdir('tests')
+
+# These binaries compile sources from both src/ and tests/. Valac's --basedir
+# is the directory of the meson file that defines the target, so they live here.
+rpc_client = executable('rpc-client',
+  files(
+    'src/ApplicationInterface.vala',
+    'tests/ollm-demo-client/namespace.vala',
+    'tests/ollm-demo-client/Application.vala',
+    'src/shared/namespace.vala',
+    'src/shared/Rectangle.vala',
+    'src/shared/UiNamespace.vala',
+    'src/shared/Window.vala',
+  ),
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+gjs_embed = executable('gjs-embed',
+  files(
+    'src/ApplicationInterface.vala',
+    'tests/gjs-embed/namespace.vala',
+    'tests/gjs-embed/Application.vala',
+  ),
+  gjs_embed_config,
+  dependencies: gjs_shell_deps,
+  vala_args: gjs_shell_vala_args,
+  install: false,
+)
+
+if get_option('gi_rpc_mock')
+  gi_rpc_mock = executable('gi-rpc-mock',
+    rpc_config,
+    files(
+      'src/ApplicationInterface.vala',
+      'src/server/rpc/namespace.vala',
+      'src/server/Daemon.vala',
+      'src/server/rpc/Connection.vala',
+      'src/server/rpc/Listen.vala',
+      'tests/gi-rpc-mock/namespace.vala',
+      'tests/gi-rpc-mock/MockBootGraph.vala',
+      'tests/gi-rpc-mock/Bootstrap.vala',
+      'tests/gi-rpc-mock/HelperMock.vala',
+      'tests/gi-rpc-mock/Application.vala',
+    ),
+    dependencies: [ocrpc_dep, dependency('gobject-introspection-1.0')],
+    vala_args: ocrpc_vala_args + gi_stub_vala_args + [
+      '--pkg=gobject-introspection-1.0',
+    ],
+    build_rpath: ocrpc_rpath,
+    export_dynamic: true,
+    install: false,
+  )
+endif
+
+fake_shell = executable('fake-shell',
+  files(
+    'src/ApplicationInterface.vala',
+    'src/shared/namespace.vala',
+    'src/shared/Rectangle.vala',
+    'src/shared/UiNamespace.vala',
+    'src/shared/Window.vala',
+    'tests/fake-shell/namespace.vala',
+    'tests/fake-shell/Session.vala',
+    'tests/fake-shell/Display.vala',
+    'tests/fake-shell/Window.vala',
+    'tests/fake-shell/Application.vala',
+    'tests/fake-shell/TopBar.vala',
+  ),
+  dependencies: [ocrpc_dep, gtk4_dep],
+  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
+    '--pkg=gtk4',
+  ],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
 
 if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != ''
   subdir('gnome-shell/client-libs')

@@ -270,11 +270,14 @@ namespace GnomeShellRpc.Rpc
 				|| smoke_env == "init"
 				|| smoke_env == "init.js";
 
-			string[] argv;
+			string[] argv = { shell_bin };
+			/* --debug on mutter-rpc is the only switch. The client stays quiet
+			 * unless this process was started with it. */
+			if (GnomeShellRpc.debug_on) {
+				argv += "--debug";
+			}
 			/* Nested boot: user extensions off via host memory settings. */
-			if (use_init) {
-				argv = { shell_bin, "--debug" };
-			} else {
+			if (!use_init) {
 				var smoke_name = smoke_env;
 				if (!smoke_name.has_suffix(".js")) {
 					smoke_name += ".js";
@@ -285,7 +288,7 @@ namespace GnomeShellRpc.Rpc
 					GLib.warning("%s missing at %s — skip client spawn", smoke_name, script);
 					return;
 				}
-				argv = { shell_bin, "--debug", script };
+				argv += script;
 			}
 
 #if GSR_GDB_SPAWN

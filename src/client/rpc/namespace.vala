@@ -21,35 +21,8 @@ namespace GnomeShellRpc
 	//FIXME << what on earth is this doing here?
 	// probably sovled by the big rename project...
 #if GSR_GI_STUB
-	/**
-	 * Store one property while {@link Clutter.Actor.prop_batch_open}
-	 * is set. The generator passes the GIR property name. The last
-	 * argument is the value, so a setter's single argument and a
-	 * {@code set_property} pair both store that value.
-	 *
-	 * When the batch is closed, this calls {@link call_value} with
-	 * the same method and arguments.
-	 *
-	 * @param method wire method sent when the batch is closed
-	 * @param actor leased actor
-	 * @param name GIR property (''style-class'', ''visible'')
-	 * @param args arguments for {@link call_value}; last one is stored
-	 * @param buffer optional client→server {@link OLLMrpc.Live.Buffer}
-	 * @return empty when stored, otherwise the {@link call_value} response
-	 */
-	public OLLMrpc.Response batch_call_value(
-		string method,
-		Clutter.Actor actor,
-		string name,
-		Gee.ArrayList<GLib.Value?>? args = null,
-		OLLMrpc.Live.Buffer? buffer = null
-	) throws GLib.Error {
-		if (actor.prop_batch_open && args != null && args.size > 0) {
-			actor.prop_batch.set(name, args.get(args.size - 1));
-			return new OLLMrpc.Response();
-		}
-		return call_value(method, actor, args, buffer);
-	}
+	[CCode (cname = "gsr_flush_prop_batch")]
+	private extern void flush_prop_batch(GLib.Object? instance) throws GLib.Error;
 
 	/**
 	 * Sync RPC call with positional {@link GLib.Value}s and optional instance.
@@ -74,22 +47,7 @@ namespace GnomeShellRpc
 		Gee.ArrayList<GLib.Value?>? args = null,
 		OLLMrpc.Live.Buffer? buffer = null
 	) throws GLib.Error {
-		var actor = instance as Clutter.Actor;
-		if (actor != null && actor.prop_batch_open && actor.prop_batch.size == 0) {
-			actor.prop_batch_open = false;
-		}
-		if (actor != null && actor.prop_batch.size > 0) {
-			actor.prop_batch_open = false;
-			var send = new Gee.ArrayList<GLib.Value?>();
-			foreach (var entry in actor.prop_batch.entries) {
-				var key = GLib.Value(typeof(string));
-				key.set_string(entry.key);
-				send.add(key);
-				send.add(entry.value);
-			}
-			actor.prop_batch.clear();
-			call_value("Helper-Actor.add_properties", actor, send);
-		}
+		flush_prop_batch(instance);
 		uint64 lease_id = 0;
 		if (instance != null) {
 			lease_id = GiStub.Runtime.lease_id_of(instance, method);

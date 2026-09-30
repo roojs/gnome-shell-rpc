@@ -27,6 +27,9 @@ namespace GnomeShellRpc.GiStub
 		public static OLLMrpc.Client client;
 		private static bool connected = false;
 
+		[CCode (cname = "gsr_clutter_client_register")]
+		private static extern void clutter_client_register();
+
 		[CCode (cname = "meta_register", cheader_filename = "meta-register.h")]
 		private static extern void meta_register_bins();
 
@@ -36,18 +39,18 @@ namespace GnomeShellRpc.GiStub
 		public delegate Gee.ArrayList<GLib.Value?>? 
 			InvokeHandler(OLLMrpc.Live.Invoke call);
 
-		internal class InvokeRow : GLib.Object
+		public class InvokeRow : GLib.Object
 		{
 			public InvokeHandler handler;
 		}
 
-		internal static Gee.HashMap<int, InvokeRow>? handlers = null;
+		public static Gee.HashMap<int, InvokeRow>? handlers = null;
 
 		/**
 		 * Handlers queued while an actor binds virtuals during
 		 * create. Null once those ids are filed.
 		 */
-		internal static Gee.ArrayList<InvokeRow>? hook_rows;
+		public static Gee.ArrayList<InvokeRow>? hook_rows;
 
 		/**
 		 * C symbol of {@link Shell.Signals.pending_signals}.
@@ -57,15 +60,13 @@ namespace GnomeShellRpc.GiStub
 		 * connect.
 		 */
 		[CCode (cname = "shell_signals_pending_signals", array_length_cname = "shell_signals_pending_signals_length1", array_length_type = "int")]
-		internal static extern string[] pending_signals;
+		public static extern string[] pending_signals;
 
 		/**
 		 * Allocated length of {@link Shell.Signals.pending_signals}.
-		 *
-		 * Assigning that array from this library writes the symbol.
 		 */
 		[CCode (cname = "_shell_signals_pending_signals_size_")]
-		internal static extern int pending_signals_size;
+		public static extern int pending_signals_size;
 
 		// FIXME - THIS SHOULD USE SIGNAL DIRECT EVENTUALLY
 		[CCode (cname = "shell_signals_connect")]
@@ -144,13 +145,9 @@ namespace GnomeShellRpc.GiStub
 			GnomeShellRpc.Shared.Rectangle.rpc_register();
 			GnomeShellRpc.Ui.Window.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
-			Clutter.register();
+			clutter_client_register();
 			meta_register_bins();
 			st_register_bins();
-			OLLMrpc.Bin.register("Clutter-ActorMeta", typeof(Clutter.ActorMeta));
-			OLLMrpc.Bin.register("Clutter-Effect", typeof(Clutter.Effect));
-			OLLMrpc.Bin.register("Clutter-OffscreenEffect", typeof(Clutter.OffscreenEffect));
-			OLLMrpc.Bin.register("Clutter-Frame", typeof(Clutter.Frame));
 			// NASTY needs fixing
 			Runtime.clutter_event_override_register();
 			Runtime.actor_box_override_register();

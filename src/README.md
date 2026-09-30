@@ -2,9 +2,9 @@
 
 Builds **`mutter-rpc`** (compositor + OLLMrpc **server** + **Helper** relays) and **`gnome-shell-rpc`** (GJS + client typelibs). Meson: [`meson.build`](meson.build).
 
-**What RPCs:** stock-shaped **Meta**, **Clutter**, **St**, and **Shell** GI calls over one socket — not “mutter-only”. Names like **`libmutter-rpc-16`** and **`mutter-rpc`** are legacy; see [0.7.10](../docs/plans/0.7.10-src-directory-layout.md#what-actually-goes-over-rpc).
+**What RPCs:** stock-shaped **Meta**, **Clutter**, **St**, and **Shell** GI calls over one socket — not “mutter-only”. Names like **`libmutter-rpc-16`** and **`mutter-rpc`** are legacy; see [0.7.10](../docs/plans/0.7.10-src-directory-layout.md).
 
-**Overrides vs server:** client **`gi-stub/overrides*`**, **`overrides-clutter*`**, **`overrides-st*`** only; server uses **`rpc/helper/*`** (no `*.override.vala`). Per-library table + sample files: [Per-library map](../docs/plans/0.7.10-src-directory-layout.md#per-library-map-generator-client-overrides-server-helpers).
+**Overrides vs server:** client **`gi-stub/overrides*`**, **`overrides-clutter*`**, **`overrides-st*`** only; server uses **`rpc/helper/*`** (no `*.override.vala`). Layout: [0.7.10](../docs/plans/0.7.10-src-directory-layout.md).
 
 **Planned:** [`docs/plans/0.7.10-src-directory-layout.md`](../docs/plans/0.7.10-src-directory-layout.md) — **`Gsr`** prefix (replacing **`GnomeShellRpc`**), **`client/lib*`** dirs, **`tests/meta-mini/`**, etc.
 

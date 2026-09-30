@@ -61,12 +61,6 @@ namespace GnomeShellRpc.ShellClient
 
 			prepend_typelib_paths();
 			/*
-			 * Leased stubs implement OLLMrpc.Live.Interface. GJS walks GObject
-			 * interfaces via find_by_name; without a loaded typelib that
-			 * asserts and segfaults (Panel / DateMenu).
-			 */
-			GI.Repository.get_default().require("OLLMrpc", "1.0", 0);
-			/*
 			 * Meta.RpcSubprocess peer (DING stdout / wait). Stock Meta GIR
 			 * still returns Gio.Subprocess; GJS finds our methods by GType.
 			 */

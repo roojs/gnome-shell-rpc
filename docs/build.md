@@ -110,11 +110,13 @@ See [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md)
 
 ```bash
 ./scripts/weston-gsr-session.sh
+./scripts/weston-gsr-session.sh --debug
 ```
 
-Session mode opens `weston-terminal` inside Weston. That terminal runs
-`mutter-rpc --wayland --nested --no-x11` on Weston’s XWayland (`DISPLAY=:N`,
-not host `:0`) and follows the debug logs.
+Plain session mode starts `mutter-rpc --wayland --nested --no-x11` on Weston’s
+XWayland (`DISPLAY=:N`, not host `:0`) with no `--debug`, no debug logs, and
+no log terminal. The nested window fills Weston. `--debug` opens
+`weston-terminal` inside Weston and follows the debug logs.
 Prove mode still starts mutter from Weston autolaunch. Log:
 `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`.
 

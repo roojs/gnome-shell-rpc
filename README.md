@@ -75,9 +75,12 @@ Weston itself is an **X11 window** on your desktop. Close the Weston window to
 throw the prove away; host GNOME stays usable.
 
 ```bash
-# Interactive nest. Weston window, with weston-terminal inside it that
-# starts mutter-rpc and follows the debug logs. Close Weston to stop.
+# Interactive nest. No debug logs, no log terminal. The nested window
+# fills Weston. Close Weston to stop.
 ./scripts/weston-gsr-session.sh
+
+# Same session with debug logs and the in-Weston log terminal.
+./scripts/weston-gsr-session.sh --debug
 
 # Timed score / agent prove (~25s nest, 10s settle after READY)
 ./scripts/weston-gsr-prove.sh
@@ -88,7 +91,7 @@ GSR_NESTED_STAYUP=1 ./scripts/weston-gsr-prove.sh
 
 | Script | Role |
 | ------ | ---- |
-| `scripts/weston-gsr-session.sh` | Weston (X11) + in-Weston log terminal that starts mutter-rpc |
+| `scripts/weston-gsr-session.sh` | Weston (X11). `--debug` adds the log terminal |
 | `scripts/weston-gsr-prove.sh` | Timed prove for scoring / agents |
 | `scripts/nested-weston-prove.sh` | `dbus-run-session` + `mutter-rpc --nested` (inside Weston) |
 

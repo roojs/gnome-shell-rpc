@@ -99,9 +99,10 @@ namespace GnomeShellRpc
 		}
 
 		/**
-		 * Debug logging function that writes to
-		 * ~/.cache/gnome-shell-rpc/{app_id}.debug.log
-		 * Also writes to stderr for immediate console output.
+		 * Debug logging. Stderr gets debug output only when
+		 * {@link GnomeShellRpc.debug_on} is set, plus critical warnings.
+		 * The cache file ~/.cache/gnome-shell-rpc/{app_id}.debug.log is
+		 * opened only when debug is on.
 		 *
 		 * @param app_id The application ID to use for the log file name
 		 * @param in_domain The log domain (can be null)
@@ -142,7 +143,9 @@ namespace GnomeShellRpc
 					"Critical warning: [" + (in_domain ?? "") + "] " + message
 				);
 			}
-			// we carry on even if debug is off (so we can log the debug stuff)
+			if (!debug_on) {
+				return;
+			}
 			debug_log_in_progress = true;
 
 			// Open log file lazily on first use (using FileStream to avoid GIO initialization deadlock)

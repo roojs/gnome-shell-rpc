@@ -57,13 +57,13 @@ Host GNOME (wayland-0)          ← do not nest here
     └── X11 :0
           └── Weston (x11-backend)     socket: wayland-gsr
                 ├── XWayland :1        ← Mutter nested window
-                ├── weston-terminal    ← log window, same Weston
+                ├── weston-terminal    ← only with --debug
                 │     └── nested-weston-hold.sh
-                │           └── mutter-rpc --wayland --nested --no-x11
+                │           └── mutter-rpc --debug --wayland --nested --no-x11
                 │                 DISPLAY=:1
                 │                 --wayland-display=wayland-mutter-gsr
-                │                 └── gnome-shell-rpc (RPC client)
-                └── [autolaunch]       opens that terminal
+                │                 └── gnome-shell-rpc --debug
+                └── [autolaunch]       terminal, or hold directly
 ```
 
 ### Who owns which display
@@ -85,13 +85,19 @@ back under GNOME’s thumb). Weston’s `xwayland=true` plus autolaunch’s
 ## How to run
 
 ```bash
-./scripts/weston-gsr-session.sh
+./scripts/weston-gsr-session.sh           # no debug, nested window fills Weston
+./scripts/weston-gsr-session.sh --debug   # log terminal, debug logs, default window
 ```
 
-That opens Weston. Inside it, `weston-terminal` starts `mutter-rpc` and follows
-both debug logs from the start of the run. Close that terminal to stop mutter.
-Close the Weston window to stop the session. Agent prove
-(`./scripts/weston-gsr-prove.sh`) does not open that terminal.
+Without `--debug`, autolaunch starts `mutter-rpc` directly. Nothing is passed
+`--debug`, debug logs are not written, and no log terminal opens. The nested
+window is maximized inside Weston (the panel stays as the border).
+
+With `--debug`, `weston-terminal` starts `mutter-rpc --debug` and follows both
+debug logs. The nested window stays at its default size so the terminal has
+room. Close that terminal to stop mutter. Close the Weston window to stop the
+session. Agent prove (`./scripts/weston-gsr-prove.sh`) does not open that
+terminal; it still runs mutter with `--debug` so the prove markers are logged.
 
 Scripts:
 
@@ -99,8 +105,9 @@ Scripts:
 |--------|------|
 | `scripts/weston-gsr-session.sh` | Starts Weston (X11 window) with generated ini |
 | `scripts/weston-gsr.ini.in` | Template: XWayland + `[autolaunch]` |
-| `scripts/weston-gsr-autolaunch.sh` | Inside Weston → prove, or `weston-terminal` |
-| `scripts/weston-gsr-log-term.sh` | Inside Weston: start mutter and follow debug logs |
+| `scripts/weston-gsr-autolaunch.sh` | Inside Weston → prove, hold, or `weston-terminal` |
+| `scripts/weston-gsr-log-term.sh` | `--debug` only: start mutter and follow debug logs |
+| `scripts/weston-gsr-fill-window.sh` | No `--debug`: maximize the nested window in Weston |
 | `scripts/nested-weston-prove.sh` | `dbus-run-session` + `mutter-rpc … --nested` |
 
 Prove log: `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`.

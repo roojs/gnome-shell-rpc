@@ -1,74 +1,74 @@
 compositor_sources = files(
   'ApplicationInterface.vala',
-  'namespace.vala',
-  'Main.vala',
-  'Plugin.vala',
+  'client/rpc/namespace.vala',
+  'server/Main.vala',
+  'server/Plugin.vala',
+  'server/Daemon.vala',
+  'server/Bootstrap.vala',
+  'server/LiveCallback.vala',
+  'server/CancellableBridge.vala',
+  'server/StartupFrameGate.vala',
+  'server/namespace.vala',
+  'server/rpc/namespace.vala',
+  'server/rpc/Connection.vala',
+  'server/rpc/Listen.vala',
+  'server/rpc/Server.vala',
   'shared/namespace.vala',
   'shared/Rectangle.vala',
-  'ui/namespace.vala',
-  'ui/Window.vala',
-  'ui/Workspace.vala',
-  'ui/Display.vala',
-  'ui/Compositor.vala',
-  'rpc/namespace.vala',
-  'rpc/Bootstrap.vala',
-  'rpc/StartupFrameGate.vala',
-  'rpc/Daemon.vala',
-  'rpc/Connection.vala',
-  'rpc/LiveCallback.vala',
-  'rpc/Listen.vala',
-  'rpc/Server.vala',
-  'rpc/CancellableBridge.vala',
-  'rpc/helper/namespace.vala',
-  'rpc/helper/SoundPlayer.vala',
-  'rpc/helper/Background.vala',
-  'rpc/helper/Barrier.vala',
-  'rpc/helper/BackgroundImageCache.vala',
-  'rpc/helper/BackgroundActor.vala',
-  'rpc/helper/Context.vala',
-  'rpc/helper/Settings.vala',
-  'rpc/helper/AppLaunch.vala',
-  'rpc/helper/IdleMonitor.vala',
-  'rpc/helper/Display.vala',
-  'rpc/helper/Window.vala',
-  'rpc/helper/WindowActor.vala',
-  'rpc/helper/Devices.vala',
-  'rpc/helper/Selection.vala',
-  'rpc/helper/SelectionSource.vala',
-  'rpc/helper/SelectionSourceMemory.vala',
-  'rpc/helper/WaylandClient.vala',
-  'rpc/helper/ShapedTexture.vala',
-  'rpc/helper/Text.vala',
-  'rpc/helper/ShaderEffect.vala',
-  'rpc/helper/GLSLEffect.vala',
-  'rpc/helper/BlurEffect.vala',
-  'rpc/helper/InvertLightnessEffect.vala',
-  'rpc/helper/ClutterThreads.vala',
-  'rpc/helper/Clutter.vala',
-  'rpc/helper/ClutterEventOverride.vala',
-  'rpc/helper/ActorBoxOverride.vala',
-  'rpc/helper/GraphenePointOverride.vala',
-  'rpc/helper/InputDeviceOverride.vala',
-  'rpc/helper/PickContextOverride.vala',
-  'rpc/helper/Interval.vala',
-  'rpc/helper/Constraint.vala',
-  'rpc/helper/St.vala',
-  'rpc/helper/ThemeContext.vala',
-  'rpc/helper/Icon.vala',
-  'rpc/helper/IconTheme.vala',
-  'rpc/helper/ImageContent.vala',
-  'rpc/helper/FocusManager.vala',
-  'rpc/helper/LayoutHooks.vala',
-  'rpc/helper/ClutterActor.vala',
-  'rpc/helper/ClutterLayoutManager.vala',
-  'rpc/helper/ClutterPaintContext.vala',
-  'rpc/helper/ClutterStage.vala',
-  'rpc/helper/shader-uniform-apply.c',
+  'shared/UiNamespace.vala',
+  'shared/Window.vala',
+  'shared/Workspace.vala',
+  'server/libmutter-16/Display.vala',
+  'server/libmutter-16/Compositor.vala',
+  'server/libmutter-16/HelperDisplay.vala',
+  'server/libmutter-16/Window.vala',
+  'server/libmutter-16/WindowActor.vala',
+  'server/libmutter-16/Context.vala',
+  'server/libmutter-16/Settings.vala',
+  'server/libmutter-16/IdleMonitor.vala',
+  'server/libmutter-16/SoundPlayer.vala',
+  'server/libmutter-16/Background.vala',
+  'server/libmutter-16/BackgroundActor.vala',
+  'server/libmutter-16/BackgroundImageCache.vala',
+  'server/libmutter-16/Selection.vala',
+  'server/libmutter-16/SelectionSource.vala',
+  'server/libmutter-16/SelectionSourceMemory.vala',
+  'server/libmutter-16/ShapedTexture.vala',
+  'server/libmutter-16/Barrier.vala',
+  'server/libmutter-16/WaylandClient.vala',
+  'server/libmutter-16/AppLaunch.vala',
+  'server/libmutter-clutter-16/ClutterActor.vala',
+  'server/libmutter-clutter-16/Clutter.vala',
+  'server/libmutter-clutter-16/ClutterStage.vala',
+  'server/libmutter-clutter-16/ClutterThreads.vala',
+  'server/libmutter-clutter-16/ClutterLayoutManager.vala',
+  'server/libmutter-clutter-16/ClutterPaintContext.vala',
+  'server/libmutter-clutter-16/Constraint.vala',
+  'server/libmutter-clutter-16/Interval.vala',
+  'server/libmutter-clutter-16/Text.vala',
+  'server/libmutter-clutter-16/ShaderEffect.vala',
+  'server/libmutter-clutter-16/Devices.vala',
+  'server/libmutter-clutter-16/LayoutHooks.vala',
+  'server/libmutter-clutter-16/ClutterEventOverride.vala',
+  'server/libmutter-clutter-16/ActorBoxOverride.vala',
+  'server/libmutter-clutter-16/GraphenePointOverride.vala',
+  'server/libmutter-clutter-16/InputDeviceOverride.vala',
+  'server/libmutter-clutter-16/PickContextOverride.vala',
+  'server/libmutter-clutter-16/shader-uniform-apply.c',
+  'server/libst-16/St.vala',
+  'server/libst-16/ThemeContext.vala',
+  'server/libst-16/Icon.vala',
+  'server/libst-16/IconTheme.vala',
+  'server/libst-16/ImageContent.vala',
+  'server/libst-16/FocusManager.vala',
+  'server/libshell-16/GLSLEffect.vala',
+  'server/libshell-16/BlurEffect.vala',
+  'server/libshell-16/InvertLightnessEffect.vala',
 )
 
 rpc_gdb_spawn = get_option('rpc_gdb_spawn')
 if rpc_gdb_spawn
-  compositor_sources += files('rpc/GdbSpawnWrap.vala')
+  compositor_sources += files('server/GdbSpawnWrap.vala')
 endif
 
 mutter_vala_args = [
@@ -84,7 +84,7 @@ mutter_vala_args = [
   '--vapidir', meson.project_source_root() / 'vapi',
 ]
 
-# meta-mini/*.vala uses Clutter / Mtk / Graphene types in a few hand stubs.
+# ../tests/meta-mini/*.vala uses Clutter / Mtk / Graphene types in a few hand stubs.
 meta_mini_deps = [
   dependency('graphene-gobject-1.0'),
   dependency('mutter-clutter-16'),
@@ -117,7 +117,7 @@ gnome_shell_st_link_args = [
 ]
 
 rpc_config = configure_file(
-  input: 'rpc/Config.vala.in',
+  input: 'server/Config.vala.in',
   output: 'Config.vala',
   configuration: configuration_data({
     'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
@@ -131,32 +131,8 @@ if ocrpc_rpath != ''
   compositor_rpath += ':' + ocrpc_rpath
 endif
 
-rpc_client_sources = files(
-  'ApplicationInterface.vala',
-  'rpc-client/namespace.vala',
-  'rpc-client/Application.vala',
-  'shared/namespace.vala',
-  'shared/Rectangle.vala',
-  'ui/namespace.vala',
-  'ui/Window.vala',
-)
-
-rpc_client = executable('rpc-client',
-  rpc_client_sources,
-  dependencies: [ocrpc_dep],
-  vala_args: ocrpc_vala_args,
-  build_rpath: ocrpc_rpath,
-  install: false,
-)
-
 gjs_dep = dependency('gjs-1.0')
 girepository_dep = dependency('gobject-introspection-1.0')
-
-gjs_shell_sources = files(
-  'ApplicationInterface.vala',
-  'gjs-embed/namespace.vala',
-  'gjs-embed/Application.vala',
-)
 
 gjs_shell_deps = [
   gjs_dep,
@@ -174,7 +150,7 @@ gjs_shell_vala_args = [
 ]
 
 gjs_embed_config = configure_file(
-  input: 'gjs-embed/Config.vala.in',
+  input: 'client/Config.vala.in',
   output: 'GjsEmbedConfig.vala',
   configuration: configuration_data({
     'GNOME_SHELL_JS_DIR': gnome_shell_js_runtime_dir,
@@ -182,16 +158,8 @@ gjs_embed_config = configure_file(
   }),
 )
 
-gjs_embed = executable('gjs-embed',
-  gjs_shell_sources,
-  gjs_embed_config,
-  dependencies: gjs_shell_deps,
-  vala_args: gjs_shell_vala_args,
-  install: false,
-)
-
 gnome_shell_rpc_config = configure_file(
-  input: 'gjs-embed/Config.vala.in',
+  input: 'client/Config.vala.in',
   output: 'GnomeShellRpcConfig.vala',
   configuration: configuration_data({
     'GNOME_SHELL_JS_DIR': gnome_shell_js_runtime_dir,
@@ -204,11 +172,11 @@ g_ir_compiler = find_program('g-ir-compiler')
 gi_stub_gen = executable('gi-stub-gen',
   files(
     'ApplicationInterface.vala',
-    'gi-stub-gen/namespace.vala',
-    'gi-stub-gen/HeaderConfig.vala',
-    'gi-stub-gen/Generator.vala',
-    'gi-stub-gen/HeaderGenerator.vala',
-    'gi-stub-gen/Application.vala',
+    'generator/namespace.vala',
+    'generator/HeaderConfig.vala',
+    'generator/Generator.vala',
+    'generator/HeaderGenerator.vala',
+    'generator/Application.vala',
   ),
   dependencies: [
     girepository_dep,
@@ -227,7 +195,7 @@ gi_stub_gen = executable('gi-stub-gen',
 if get_option('legacy_gi_rpc_smoke')
   # Schema typelib from handwritten GIR (signatures only; no .so required yet).
   girpcsmoke_typelib_schema = custom_target('GiRpcSmoke-1.0-schema.typelib',
-    input: files('gi-rpc-smoke/GiRpcSmoke-1.0.gir'),
+    input: files('../tests/gi-rpc-smoke/GiRpcSmoke-1.0.gir'),
     output: 'GiRpcSmoke-1.0-schema.typelib',
     command: [
       g_ir_compiler,
@@ -266,28 +234,28 @@ if get_option('legacy_gi_rpc_smoke')
   girpcsmoke_lib = shared_library('girpcsmoke',
     girpcsmoke_generated,
     files(
-      'gi-rpc-smoke/namespace.vala',
-      'namespace.vala',
-      'gi-stub/namespace.vala',
-      'gi-stub/Runtime.vala',
-      'meta-mini/namespace.vala',
-      'meta-mini/Window.vala',
-      'meta-mini/WindowActor.vala',
-      'meta-mini/Context.vala',
-      'meta-mini/Display.vala',
-      'meta-mini/Compositor.vala',
-      'meta-mini/Backend.vala',
-      'meta-mini/StartupNotification.vala',
-      'meta-mini/LaunchContext.vala',
-      'meta-mini/SoundPlayer.vala',
-      'meta-mini/IdleMonitor.vala',
-      'gi-stub/PaintedContent.vala',
-      'gi-stub/CancellableBridge.vala',
+      '../tests/gi-rpc-smoke/namespace.vala',
+      'client/rpc/namespace.vala',
+      'client/rpc/GiStubNamespace.vala',
+      'client/rpc/Runtime.vala',
+      '../tests/meta-mini/namespace.vala',
+      '../tests/meta-mini/Window.vala',
+      '../tests/meta-mini/WindowActor.vala',
+      '../tests/meta-mini/Context.vala',
+      '../tests/meta-mini/Display.vala',
+      '../tests/meta-mini/Compositor.vala',
+      '../tests/meta-mini/Backend.vala',
+      '../tests/meta-mini/StartupNotification.vala',
+      '../tests/meta-mini/LaunchContext.vala',
+      '../tests/meta-mini/SoundPlayer.vala',
+      '../tests/meta-mini/IdleMonitor.vala',
+      'client/libmutter-rpc-16/PaintedContent.vala',
+      'client/rpc/CancellableBridge.vala',
       'shared/namespace.vala',
       'shared/Rectangle.vala',
-      'ui/namespace.vala',
-      'ui/Window.vala',
-      'rpc/namespace.vala',
+      'shared/UiNamespace.vala',
+      'shared/Window.vala',
+      'server/rpc/namespace.vala',
     ),
     dependencies: [ocrpc_dep] + meta_mini_deps,
     vala_args: ocrpc_vala_args + gi_stub_vala_args + meta_mini_vala_args,
@@ -296,7 +264,7 @@ if get_option('legacy_gi_rpc_smoke')
   )
 
   girpcsmoke_typelib = custom_target('GiRpcSmoke-1.0.typelib',
-    input: files('gi-rpc-smoke/GiRpcSmoke-1.0.gir'),
+    input: files('../tests/gi-rpc-smoke/GiRpcSmoke-1.0.gir'),
     output: 'GiRpcSmoke-1.0.typelib',
     command: [
       g_ir_compiler,
@@ -310,15 +278,15 @@ if get_option('legacy_gi_rpc_smoke')
   gi_rpc_echo = executable('gi-rpc-echo',
     files(
       'ApplicationInterface.vala',
-      'rpc/namespace.vala',
-      'rpc/Daemon.vala',
-      'rpc/Connection.vala',
-      'rpc/Listen.vala',
-      'gi-rpc-smoke/namespace.vala',
-      'gi-rpc-smoke/PingResult.vala',
-      'gi-rpc-echo/namespace.vala',
-      'gi-rpc-echo/Echo.vala',
-      'gi-rpc-echo/Application.vala',
+      'server/rpc/namespace.vala',
+      'server/Daemon.vala',
+      'server/rpc/Connection.vala',
+      'server/rpc/Listen.vala',
+      '../tests/gi-rpc-smoke/namespace.vala',
+      '../tests/gi-rpc-smoke/PingResult.vala',
+      '../tests/gi-rpc-echo/namespace.vala',
+      '../tests/gi-rpc-echo/Echo.vala',
+      '../tests/gi-rpc-echo/Application.vala',
     ),
     dependencies: [ocrpc_dep],
     vala_args: ocrpc_vala_args,
@@ -328,64 +296,40 @@ if get_option('legacy_gi_rpc_smoke')
   )
 endif
 
-if get_option('gi_rpc_mock')
-  gi_rpc_mock = executable('gi-rpc-mock',
-    rpc_config,
-    files(
-      'ApplicationInterface.vala',
-      'rpc/namespace.vala',
-      'rpc/Daemon.vala',
-      'rpc/Connection.vala',
-      'rpc/Listen.vala',
-      'gi-rpc-mock/namespace.vala',
-      'gi-rpc-mock/MockBootGraph.vala',
-      'gi-rpc-mock/Bootstrap.vala',
-      'gi-rpc-mock/HelperMock.vala',
-      'gi-rpc-mock/Application.vala',
-    ),
-    dependencies: [ocrpc_dep, dependency('gobject-introspection-1.0')],
-    vala_args: ocrpc_vala_args + gi_stub_vala_args + [
-      '--pkg=gobject-introspection-1.0',
-    ],
-    build_rpath: ocrpc_rpath,
-    export_dynamic: true,
-    install: false,
-  )
-endif
 
 # Client Meta from gi-stub-gen (0.6 Phase 2 / 0.5.2 Phase 9).
 # Install layout mirrors mutter: .so in libdir; Meta-16 typelib + GIR in
 # ${libdir}/mutter-rpc-16/ — never stock mutter-16 or /usr/share/gir-1.0.
 # MUTTER_TL=$(pkg-config --variable=typelibdir libmutter-16)
 # GI_TYPELIB_PATH=$(pkg-config --variable=typelibdir libmutter-rpc-16):$MUTTER_TL \
-#   ./build/src/gjs-embed --debug src/gjs-embed/meta-smoke.js
+#   ./build/src/gjs-embed --debug src/../tests/gjs-embed/meta-smoke.js
 mutter_rpc_typelib_install_dir = get_option('libdir') / mutter_rpc_gir_name
 
-meta_deny_file = files('gi-stub-gen/Meta.deny')
-meta_overrides_file = files('gi-stub-gen/Meta.overrides')
-meta_override_dir = meson.current_source_dir() / 'gi-stub/overrides'
+meta_deny_file = files('generator/Meta.deny')
+meta_overrides_file = files('generator/Meta.overrides')
+meta_override_dir = meson.current_source_dir() / 'client/libmutter-rpc-16/overrides'
 meta_override_files = files(
-  'gi-stub/overrides/SoundPlayer.override.vala',
-  'gi-stub/overrides/Background.override.vala',
-  'gi-stub/overrides/BackgroundActor.override.vala',
-  'gi-stub/overrides/BackgroundImageCache.override.vala',
-  'gi-stub/overrides/Context.override.vala',
-  'gi-stub/overrides/Backend.override.vala',
-  'gi-stub/overrides/Settings.override.vala',
-  'gi-stub/overrides/IdleMonitor.override.vala',
-  'gi-stub/overrides/Laters.override.vala',
-  'gi-stub/overrides/Workspace.override.vala',
-  'gi-stub/overrides/WorkspaceManager.override.vala',
-  'gi-stub/overrides/Display.override.vala',
-  'gi-stub/overrides/Window.override.vala',
-  'gi-stub/overrides/Meta.override.vala',
-  'gi-stub/overrides/WindowActor.override.vala',
-  'gi-stub/overrides/Selection.override.vala',
-  'gi-stub/overrides/SelectionSource.override.vala',
-  'gi-stub/overrides/SelectionSourceMemory.override.vala',
-  'gi-stub/overrides/ShapedTexture.override.vala',
-  'gi-stub/overrides/WaylandCompositor.override.vala',
-  'gi-stub/overrides/WaylandClient.override.vala',
+  'client/libmutter-rpc-16/overrides/SoundPlayer.override.vala',
+  'client/libmutter-rpc-16/overrides/Background.override.vala',
+  'client/libmutter-rpc-16/overrides/BackgroundActor.override.vala',
+  'client/libmutter-rpc-16/overrides/BackgroundImageCache.override.vala',
+  'client/libmutter-rpc-16/overrides/Context.override.vala',
+  'client/libmutter-rpc-16/overrides/Backend.override.vala',
+  'client/libmutter-rpc-16/overrides/Settings.override.vala',
+  'client/libmutter-rpc-16/overrides/IdleMonitor.override.vala',
+  'client/libmutter-rpc-16/overrides/Laters.override.vala',
+  'client/libmutter-rpc-16/overrides/Workspace.override.vala',
+  'client/libmutter-rpc-16/overrides/WorkspaceManager.override.vala',
+  'client/libmutter-rpc-16/overrides/Display.override.vala',
+  'client/libmutter-rpc-16/overrides/Window.override.vala',
+  'client/libmutter-rpc-16/overrides/Meta.override.vala',
+  'client/libmutter-rpc-16/overrides/WindowActor.override.vala',
+  'client/libmutter-rpc-16/overrides/Selection.override.vala',
+  'client/libmutter-rpc-16/overrides/SelectionSource.override.vala',
+  'client/libmutter-rpc-16/overrides/SelectionSourceMemory.override.vala',
+  'client/libmutter-rpc-16/overrides/ShapedTexture.override.vala',
+  'client/libmutter-rpc-16/overrides/WaylandCompositor.override.vala',
+  'client/libmutter-rpc-16/overrides/WaylandClient.override.vala',
 )
 
 meta_window_generated = custom_target('Meta_window_generated.vala',
@@ -427,35 +371,35 @@ foreach f : mutter_clutter_cflags_raw
 endforeach
 mutter_clutter_cflags = mutter_clutter_dep_cflags
 
-clutter_deny_file = files('gi-stub-gen/Clutter.deny')
-clutter_overrides_file = files('gi-stub-gen/Clutter.overrides')
-batch_whitelist = files('gi-stub-gen/batch.whitelist')
-clutter_override_dir = meson.current_source_dir() / 'gi-stub/overrides-clutter'
+clutter_deny_file = files('generator/Clutter.deny')
+clutter_overrides_file = files('generator/Clutter.overrides')
+batch_whitelist = files('generator/batch.whitelist')
+clutter_override_dir = meson.current_source_dir() / 'client/libmutter-clutter-rpc-16/overrides'
 clutter_override_files = files(
-  'gi-stub/overrides-clutter/Clutter.override.vala',
-  'gi-stub/overrides-clutter/AlignConstraint.override.vala',
-  'gi-stub/overrides-clutter/BindConstraint.override.vala',
-  'gi-stub/overrides-clutter/BrightnessContrastEffect.override.vala',
-  'gi-stub/overrides-clutter/DesaturateEffect.override.vala',
-  'gi-stub/overrides-clutter/Clone.override.vala',
-  'gi-stub/overrides-clutter/Constraint.override.vala',
-  'gi-stub/overrides-clutter/ActorBox.override.vala',
-  'gi-stub/overrides-clutter/ClickAction.override.vala',
-  'gi-stub/overrides-clutter/GestureAction.override.vala',
-  'gi-stub/overrides-clutter/Stage.override.vala',
-  'gi-stub/overrides-clutter/Actor.override.vala',
-  'gi-stub/overrides-clutter/LayoutManager.override.vala',
-  'gi-stub/overrides-clutter/LayoutMeta.override.vala',
-  'gi-stub/overrides-clutter/Backend.override.vala',
-  'gi-stub/overrides-clutter/SnapConstraint.override.vala',
-  'gi-stub/overrides-clutter/ActorIter.override.vala',
-  'gi-stub/overrides-clutter/PipelineNode.override.vala',
-  'gi-stub/overrides-clutter/PaintContext.override.vala',
-  'gi-stub/overrides-clutter/PaintNode.override.vala',
-  'gi-stub/overrides-clutter/Transition.override.vala',
-  'gi-stub/overrides-clutter/Interval.override.vala',
-  'gi-stub/overrides-clutter/Text.override.vala',
-  'gi-stub/overrides-clutter/InputDevice.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Clutter.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/AlignConstraint.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/BindConstraint.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/BrightnessContrastEffect.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/DesaturateEffect.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Clone.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Constraint.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/ActorBox.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/ClickAction.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/GestureAction.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Stage.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Actor.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/LayoutManager.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/LayoutMeta.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Backend.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/SnapConstraint.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/ActorIter.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/PipelineNode.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/PaintContext.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/PaintNode.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Transition.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Interval.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/Text.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/InputDevice.override.vala',
 )
 # Two single-output emits — Meson 1.7 Vala cannot compile CustomTargetIndex
 # (clutter_generated[0] / [1]) as a source.
@@ -467,7 +411,7 @@ clutter_generated = custom_target('Clutter_generated.vala',
     '--missing-out=' + meson.current_build_dir() / 'Clutter_generated.missing.md',
     '--typelib-dir=' + mutter_typelib_dir,
     '--deny-file=@INPUT0@',
-    '--batch-file=' + meson.current_source_dir() / 'gi-stub-gen/batch.whitelist',
+    '--batch-file=' + meson.current_source_dir() / 'generator/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + clutter_override_dir,
     'emit', 'Clutter', '16',
@@ -484,7 +428,7 @@ clutter_helper_vfunc_ids = custom_target('Clutter_helper_vfunc_ids.vala',
     '--helper-out=@OUTPUT@',
     '--typelib-dir=' + mutter_typelib_dir,
     '--deny-file=@INPUT0@',
-    '--batch-file=' + meson.current_source_dir() / 'gi-stub-gen/batch.whitelist',
+    '--batch-file=' + meson.current_source_dir() / 'generator/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + clutter_override_dir,
     'emit', 'Clutter', '16',
@@ -492,6 +436,47 @@ clutter_helper_vfunc_ids = custom_target('Clutter_helper_vfunc_ids.vala',
   input: [clutter_deny_file, clutter_overrides_file, batch_whitelist] + clutter_override_files,
   depends: [gi_stub_gen],
   build_by_default: true,
+)
+
+# Client RPC base. Other client libs link this. It does not link them:
+# meta_register / st_register / shell hooks / prop-batch flush stay unresolved
+# until gsr-client loads every .so.
+gsr_rpc_lib = shared_library(
+  'gsr-rpc-16',
+  files(
+    'client/rpc/namespace.vala',
+    'client/rpc/GiStubNamespace.vala',
+    'client/rpc/Runtime.vala',
+    'client/rpc/CancellableBridge.vala',
+    'client/rpc/VfuncRelay.vala',
+    'client/rpc/c-vfunc-relay.c',
+    'shared/namespace.vala',
+    'shared/Rectangle.vala',
+    'shared/UiNamespace.vala',
+    'shared/Window.vala',
+  ),
+  dependencies: [
+    ocrpc_dep,
+    dependency('gio-2.0'),
+    dependency('gee-0.8'),
+  ],
+  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
+    '--pkg=gio-2.0',
+    '--pkg=gee-0.8',
+  ],
+  c_args: [
+    '-I' + meson.current_source_dir() / 'client/rpc',
+  ],
+  link_args: ['-Wl,--unresolved-symbols=ignore-all'],
+  vala_header: 'gsr-rpc-16.h',
+  vala_vapi: 'gsr-rpc-16.vapi',
+  build_rpath: ocrpc_rpath,
+  install: true,
+)
+
+gsr_rpc_dep = declare_dependency(
+  link_with: gsr_rpc_lib,
+  dependencies: [ocrpc_dep],
 )
 
 # Stub Clutter (separate from Meta — stock-like mutter-clutter split).
@@ -502,28 +487,18 @@ mutter_clutter_rpc_lib = shared_library(
   'mutter-clutter-rpc-16',
   clutter_generated,
   files(
-    'namespace.vala',
-    'gi-stub/namespace.vala',
-    'gi-stub/Runtime.vala',
-    'gi-stub/CancellableBridge.vala',
-    'gi-stub/ShaderEffectUniform.vala',
-    'gi-stub/ClutterStageAbi.vala',
-    'gi-stub/ClutterEffectRelay.vala',
-    'gi-stub/VfuncRelay.vala',
-    'gi-stub/c-vfunc-relay.c',
-    'gi-stub/c-clutter-st-abi-gaps.c',
-    'gi-stub/c-clutter-event-type.c',
-    'gi-stub/c-clutter-frame-type.c',
-    'gi-stub/c-clutter-effect-abi.c',
-    'shared/namespace.vala',
-    'shared/Rectangle.vala',
-    'ui/namespace.vala',
-    'ui/Window.vala',
-    'rpc/namespace.vala',
+    'client/libmutter-clutter-rpc-16/ClientRegister.vala',
+    'client/libmutter-clutter-rpc-16/ShaderEffectUniform.vala',
+    'client/libmutter-clutter-rpc-16/ClutterStageAbi.vala',
+    'client/libmutter-clutter-rpc-16/ClutterEffectRelay.vala',
+    'client/libmutter-clutter-rpc-16/c-clutter-st-abi-gaps.c',
+    'client/libmutter-clutter-rpc-16/c-clutter-event-type.c',
+    'client/libmutter-clutter-rpc-16/c-clutter-frame-type.c',
+    'client/libmutter-clutter-rpc-16/c-clutter-effect-abi.c',
   ),
   dependencies: [
     mutter_vapi_dep,
-    ocrpc_dep,
+    gsr_rpc_dep,
     dependency('gio-2.0'),
     dependency('cairo'),
     dependency('atk'),
@@ -541,45 +516,46 @@ mutter_clutter_rpc_lib = shared_library(
     '--pkg=pangocairo',
     '--pkg=mutter-cogl-16',
     '--pkg=mutter-mtk-16',
-    '--vapidir', meson.current_source_dir() / 'gi-stub',
+    '--pkg=gsr-rpc-16',
+    '--vapidir', meson.current_build_dir(),
+    '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '--pkg=gsr-clutter-effect-abi',
     '--vapidir', meson.project_build_root() / 'vapi',
     '--vapidir', meson.project_source_root() / 'vapi',
   ],
   c_args: [
-    '-I' + meson.current_source_dir() / 'gi-stub',
+    '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
   ] + mutter_clutter_cflags + mutter_clutter_stock_inc,
-  # meta_register / st_register / shell_register: libmutter-rpc-16,
-  # libst-rpc-16, libshell-gi-16 (lazy-bound on first Runtime.register).
-  link_args: ['-Wl,--unresolved-symbols=ignore-all'],
   vala_header: 'mutter-clutter-rpc-16.h',
   vala_vapi: 'mutter-clutter-rpc-16.vapi',
   build_rpath: ocrpc_rpath,
+  # Actor overrides write Shell.Signals symbols defined in libshell-16.
+  link_args: ['-Wl,--unresolved-symbols=ignore-all'],
   install: true,
 )
 
 # Generator-owned stock-shaped clutter/ tree (0.7.4).
-clutter_headers_config = files('gi-stub-gen/Clutter.headers')
+clutter_headers_config = files('generator/Clutter.headers')
 clutter_header_override_files = files(
-  'gi-stub-gen/header-overrides/Event.h',
-  'gi-stub-gen/header-overrides/ActorBox.h',
-  'gi-stub-gen/header-overrides/ActorIter.h',
-  'gi-stub-gen/header-overrides/Actor.methods.h',
-  'gi-stub-gen/header-overrides/Interval.methods.h',
-  'gi-stub-gen/header-overrides/PaintContext.methods.h',
-  'gi-stub-gen/header-overrides/PaintNode.methods.h',
-  'gi-stub-gen/header-overrides/ShaderEffect.methods.h',
-  'gi-stub-gen/header-overrides/Stage.methods.h',
-  'gi-stub-gen/header-overrides/TextBuffer.h',
-  'gi-stub-gen/header-overrides/TextBuffer.methods.h',
-  'gi-stub-gen/header-overrides/clutter-keysyms.h',
-  'gi-stub-gen/header-overrides/clutter-macros.h',
-  'gi-stub-gen/header-overrides/clutter-main.h',
-  'gi-stub-gen/header-overrides/clutter-pango.h',
-  'gi-stub-gen/header-overrides/pango/clutter-actor-pango.h',
-  'gi-stub-gen/header-overrides/pango/clutter-text.h',
-  'gi-stub-gen/header-overrides/pango/clutter-text-buffer.h',
-  'gi-stub-gen/header-overrides/pango/clutter-text-node.h',
+  'generator/header-overrides/Event.h',
+  'generator/header-overrides/ActorBox.h',
+  'generator/header-overrides/ActorIter.h',
+  'generator/header-overrides/Actor.methods.h',
+  'generator/header-overrides/Interval.methods.h',
+  'generator/header-overrides/PaintContext.methods.h',
+  'generator/header-overrides/PaintNode.methods.h',
+  'generator/header-overrides/ShaderEffect.methods.h',
+  'generator/header-overrides/Stage.methods.h',
+  'generator/header-overrides/TextBuffer.h',
+  'generator/header-overrides/TextBuffer.methods.h',
+  'generator/header-overrides/clutter-keysyms.h',
+  'generator/header-overrides/clutter-macros.h',
+  'generator/header-overrides/clutter-main.h',
+  'generator/header-overrides/clutter-pango.h',
+  'generator/header-overrides/pango/clutter-actor-pango.h',
+  'generator/header-overrides/pango/clutter-text.h',
+  'generator/header-overrides/pango/clutter-text-buffer.h',
+  'generator/header-overrides/pango/clutter-text-node.h',
 )
 stage_clutter_headers = custom_target(
   'clutter-rpc-headers',
@@ -647,6 +623,7 @@ pkg.generate(
 mutter_clutter_rpc_link_dep = declare_dependency(
   link_with: mutter_clutter_rpc_lib,
   dependencies: [
+    gsr_rpc_dep,
     ocrpc_dep,
     dependency('gee-0.8'),
     dependency('mutter-mtk-16'),
@@ -661,7 +638,7 @@ mutter_clutter_rpc_client_dep = declare_dependency(
   dependencies: [mutter_clutter_rpc_link_dep],
   compile_args: [
     '-I' + mutter_clutter_rpc_incdir,
-    '-I' + meson.current_source_dir() / 'gi-stub',
+    '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
   ] + mutter_clutter_dep_cflags,
   sources: [stage_clutter_headers],
 )
@@ -671,7 +648,7 @@ mutter_clutter_rpc_client_dep = declare_dependency(
 # NOT see -include mutter-clutter-rpc-16.h (Vala) or generated clutter-include.
 gsr_meta_shell_gaps = static_library(
   'gsr-meta-shell-gaps',
-  'gi-stub/c-meta-shell-gaps.c',
+  'client/libmutter-rpc-16/c-meta-shell-gaps.c',
   c_args: [
     '-I' + mutter_includedir,
   ] + mutter_clutter_stock_inc + mutter_clutter_dep_cflags,
@@ -683,13 +660,13 @@ gsr_meta_shell_gaps = static_library(
 
 mutter_rpc_lib = shared_library('mutter-rpc-16',
   files(
-    'gi-stub/namespace.vala',
-    'gi-stub/PaintedContent.vala',
-    'gi-stub/BackgroundContent.vala',
-    'gi-stub/RpcSubprocess.vala',
-    'gi-stub/MetaSettingsAbi.vala',
-    'gi-stub/c-gio-subprocess-launcher-cwd.c',
-    'gi-stub/c-closure-ref.c',
+    'client/rpc/GiStubNamespace.vala',
+    'client/libmutter-rpc-16/PaintedContent.vala',
+    'client/libmutter-rpc-16/BackgroundContent.vala',
+    'client/libmutter-rpc-16/RpcSubprocess.vala',
+    'client/libmutter-rpc-16/MetaSettingsAbi.vala',
+    'client/libmutter-rpc-16/c-gio-subprocess-launcher-cwd.c',
+    'client/libmutter-rpc-16/c-closure-ref.c',
   ),
   meta_window_generated,
   dependencies: [
@@ -713,8 +690,9 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     '--pkg=pango',
     '--pkg=mutter-cogl-16',
     '--pkg=mutter-mtk-16',
-    '--vapidir', meson.current_source_dir() / 'gi-stub',
+    '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '--pkg=gsr-clutter-effect-abi',
+    '--pkg=gsr-rpc-16',
     # mutter_clutter_rpc_link_dep supplies mutter-clutter-rpc-16.vapi; --pkg duplicates it.
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.project_build_root() / 'vapi',
@@ -722,7 +700,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
   ],
   c_args: [
     '-I' + mutter_includedir,
-    '-I' + meson.current_source_dir() / 'gi-stub',
+    '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     # Vala Clutter types for Meta .c — not the generated clutter-include tree.
     '-include', 'mutter-clutter-rpc-16.h',
   ] + mutter_clutter_cflags,
@@ -736,7 +714,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
 # mutter_rpc_client_dep is declared after st_rpc_lib (Clutter Runtime needs st_register).
 
 # Stock Meta GIR → our stub .so (same pattern as Clutter).
-# Hand meta-mini/Meta-16.gir stays for docs / early smokes; typelib must list
+# Hand ../tests/meta-mini/Meta-16.gir stays for docs / early smokes; typelib must list
 # Background etc. for init.js.
 # RpcSubprocess peer: separate GnomeShellRpc-1.0.gir — do not patch stock Meta.
 mutter_meta_gir = mutter_typelib_dir / 'Meta-16.gir'
@@ -773,9 +751,9 @@ clutter_rpc_typelib = custom_target('Clutter-16.typelib',
   install_dir: mutter_rpc_typelib_install_dir,
 )
 
-st_deny_file = files('gi-stub-gen/St.deny')
-st_overrides_file = files('gi-stub-gen/St.overrides')
-st_override_dir = meson.current_source_dir() / 'gi-stub/overrides-st'
+st_deny_file = files('generator/St.deny')
+st_overrides_file = files('generator/St.overrides')
+st_override_dir = meson.current_source_dir() / 'client/libst-rpc-16/overrides'
 st_generated = custom_target('St_generated.vala',
   output: 'St_generated.vala',
   command: [
@@ -784,26 +762,26 @@ st_generated = custom_target('St_generated.vala',
     '--missing-out=' + meson.current_build_dir() / 'St_generated.missing.md',
     '--typelib-dir=' + gnome_shell_pkglibdir + ':' + mutter_typelib_dir,
     '--deny-file=@INPUT0@',
-    '--batch-file=' + meson.current_source_dir() / 'gi-stub-gen/batch.whitelist',
+    '--batch-file=' + meson.current_source_dir() / 'generator/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + st_override_dir,
     'emit', 'St', '16',
   ],
   input: [st_deny_file, st_overrides_file, batch_whitelist] + files(
-    'gi-stub/overrides-st/Theme.override.vala',
-    'gi-stub/overrides-st/ThemeContext.override.vala',
-    'gi-stub/overrides-st/Adjustment.override.vala',
-    'gi-stub/overrides-st/Icon.override.vala',
-    'gi-stub/overrides-st/IconTheme.override.vala',
-    'gi-stub/overrides-st/ImageContent.override.vala',
-    'gi-stub/overrides-st/Widget.override.vala',
-    'gi-stub/overrides-st/FocusManager.override.vala',
-    'gi-stub/overrides-st/Settings.override.vala',
-    'gi-stub/overrides-st/Viewport.override.vala',
-    'gi-stub/overrides-st/ScrollView.override.vala',
-    'gi-stub/overrides-st/GenericAccessible.override.vala',
-    'gi-stub/overrides-st/Entry.override.vala',
-    'gi-stub/overrides-st/DrawingArea.override.vala',
+    'client/libst-rpc-16/overrides/Theme.override.vala',
+    'client/libst-rpc-16/overrides/ThemeContext.override.vala',
+    'client/libst-rpc-16/overrides/Adjustment.override.vala',
+    'client/libst-rpc-16/overrides/Icon.override.vala',
+    'client/libst-rpc-16/overrides/IconTheme.override.vala',
+    'client/libst-rpc-16/overrides/ImageContent.override.vala',
+    'client/libst-rpc-16/overrides/Widget.override.vala',
+    'client/libst-rpc-16/overrides/FocusManager.override.vala',
+    'client/libst-rpc-16/overrides/Settings.override.vala',
+    'client/libst-rpc-16/overrides/Viewport.override.vala',
+    'client/libst-rpc-16/overrides/ScrollView.override.vala',
+    'client/libst-rpc-16/overrides/GenericAccessible.override.vala',
+    'client/libst-rpc-16/overrides/Entry.override.vala',
+    'client/libst-rpc-16/overrides/DrawingArea.override.vala',
   ),
   depends: [gi_stub_gen],
   build_by_default: true,
@@ -813,7 +791,7 @@ st_rpc_gir_name = 'st-rpc-16'
 st_rpc_lib = shared_library(
   'st-rpc-16',
   st_generated,
-  files('gi-stub/namespace.vala'),
+  files('client/rpc/GiStubNamespace.vala'),
   dependencies: [
     mutter_vapi_dep,
     ocrpc_dep,
@@ -830,15 +808,16 @@ st_rpc_lib = shared_library(
     '--pkg=gdk-pixbuf-2.0',
     '--pkg=mutter-cogl-16',
     '--pkg=mutter-mtk-16',
+    '--pkg=gsr-rpc-16',
     '--pkg=mutter-clutter-rpc-16',
-    '--vapidir', meson.current_source_dir() / 'gi-stub',
+    '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '--pkg=gsr-clutter-effect-abi',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.project_build_root() / 'vapi',
     '--vapidir', meson.project_source_root() / 'vapi',
   ],
   c_args: [
-    '-I' + meson.current_source_dir() / 'gi-stub',
+    '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '-include', 'mutter-clutter-rpc-16.h',
   ],
   link_args: ['-L' + meson.current_build_dir(), '-lmutter-rpc-16'],
@@ -868,47 +847,47 @@ mutter_rpc_client_dep = declare_dependency(
 # libsystemd has no Vala vapi — assert found, link with -lsystemd only.
 dependency('libsystemd')
 shell_gi_lib = shared_library(
-  'shell-gi-16',
+  'shell-16',
   files(
-    'shell-gi/namespace.vala',
-    'shell-gi/Signals.vala',
-    'shell-gi/ClutterEventOverride.vala',
-    'shell-gi/ActorBoxOverride.vala',
-    'shell-gi/GraphenePointOverride.vala',
-    'shell-gi/InputDeviceOverride.vala',
-    'shell-gi/PickContextOverride.vala',
-    'shell-gi/ActionMode.vala',
-    'shell-gi/AppState.vala',
-    'shell-gi/AppLaunchGpu.vala',
-    'shell-gi/Util.vala',
-    'shell-gi/App.vala',
-    'shell-gi/AppSystem.vala',
-    'shell-gi/app-system-search.c',
-    'shell-gi/GLSLEffect.vala',
-    'shell-gi/BlurMode.vala',
-    'shell-gi/BlurEffect.vala',
-    'shell-gi/InvertLightnessEffect.vala',
-    'shell-gi/NetworkAgentResponse.vala',
-    'shell-gi/NetworkAgentRequest.vala',
-    'shell-gi/NetworkAgentKeyringSave.vala',
-    'shell-gi/NetworkAgent.vala',
-    'shell-gi/MountOperation.vala',
-    'shell-gi/PolkitAuthenticationAgent.vala',
-    'shell-gi/SecureTextBuffer.vala',
-    'shell-gi/KeyringPrompt.vala',
-    'shell-gi/PerfLog.vala',
-    'shell-gi/SquareBin.vala',
-    'shell-gi/Stack.vala',
-    'shell-gi/WindowPreview.vala',
-    'shell-gi/WindowPreviewLayout.vala',
-    'shell-gi/WorkspaceBackground.vala',
-    'shell-gi/Screenshot.vala',
-    'shell-gi/WindowTracker.vala',
-    'shell-gi/AppUsage.vala',
-    'shell-gi/WM.vala',
-    'shell-gi/Global.vala',
-    'shell-gi/TimeChangeSource.vala',
-    'shell-gi/CameraMonitor.vala',
+    'client/libshell-16/namespace.vala',
+    'client/libshell-16/Signals.vala',
+    'client/libshell-16/ClutterEventOverride.vala',
+    'client/libshell-16/ActorBoxOverride.vala',
+    'client/libshell-16/GraphenePointOverride.vala',
+    'client/libshell-16/InputDeviceOverride.vala',
+    'client/libshell-16/PickContextOverride.vala',
+    'client/libshell-16/ActionMode.vala',
+    'client/libshell-16/AppState.vala',
+    'client/libshell-16/AppLaunchGpu.vala',
+    'client/libshell-16/Util.vala',
+    'client/libshell-16/App.vala',
+    'client/libshell-16/AppSystem.vala',
+    'client/libshell-16/app-system-search.c',
+    'client/libshell-16/GLSLEffect.vala',
+    'client/libshell-16/BlurMode.vala',
+    'client/libshell-16/BlurEffect.vala',
+    'client/libshell-16/InvertLightnessEffect.vala',
+    'client/libshell-16/NetworkAgentResponse.vala',
+    'client/libshell-16/NetworkAgentRequest.vala',
+    'client/libshell-16/NetworkAgentKeyringSave.vala',
+    'client/libshell-16/NetworkAgent.vala',
+    'client/libshell-16/MountOperation.vala',
+    'client/libshell-16/PolkitAuthenticationAgent.vala',
+    'client/libshell-16/SecureTextBuffer.vala',
+    'client/libshell-16/KeyringPrompt.vala',
+    'client/libshell-16/PerfLog.vala',
+    'client/libshell-16/SquareBin.vala',
+    'client/libshell-16/Stack.vala',
+    'client/libshell-16/WindowPreview.vala',
+    'client/libshell-16/WindowPreviewLayout.vala',
+    'client/libshell-16/WorkspaceBackground.vala',
+    'client/libshell-16/Screenshot.vala',
+    'client/libshell-16/WindowTracker.vala',
+    'client/libshell-16/AppUsage.vala',
+    'client/libshell-16/WM.vala',
+    'client/libshell-16/Global.vala',
+    'client/libshell-16/TimeChangeSource.vala',
+    'client/libshell-16/CameraMonitor.vala',
   ),
   dependencies: [
     mutter_vapi_dep,
@@ -952,6 +931,7 @@ shell_gi_lib = shared_library(
     '--pkg=polkit-gobject-1',
     '--pkg=gcr-4',
     '--pkg=mutter-rpc-16',
+    '--pkg=gsr-rpc-16',
     '--pkg=mutter-clutter-rpc-16',
     '--pkg=st-rpc-16',
     '--pkg=mutter-cogl-16',
@@ -959,15 +939,15 @@ shell_gi_lib = shared_library(
     '--pkg=atk',
     '--pkg=pango',
     '--pkg=graphene-gobject-1.0',
-    '--vapidir', meson.current_source_dir() / 'gi-stub',
+    '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.project_build_root() / 'vapi',
     '--vapidir', meson.project_source_root() / 'vapi',
   ],
   c_args: [
     '-I' + mutter_includedir,
-    '-I' + meson.current_source_dir() / 'gi-stub',
-    '-I' + meson.current_source_dir() / 'shell-gi',
+    '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
+    '-I' + meson.current_source_dir() / 'client/libshell-16',
     '-I' + meson.current_build_dir(),
     '-include', 'mutter-clutter-rpc-16.h',
     '-include', 'NetworkManager.h',
@@ -979,8 +959,8 @@ shell_gi_lib = shared_library(
     '-DGCR_API_SUBJECT_TO_CHANGE',
   ] + mutter_clutter_cflags,
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
-  vala_header: 'shell-gi-16.h',
-  vala_vapi: 'shell-gi-16.vapi',
+  vala_header: 'shell-16.h',
+  vala_vapi: 'shell-16.vapi',
   vala_gir: 'Shell-16.gir',
   install: false,
 )
@@ -997,11 +977,11 @@ shell_gi_gir = custom_target(
     meson.current_build_dir() / 'Shell-16.gir',
     '@OUTPUT@',
     meson.project_source_root() / 'scripts/gir-inject.xsl',
-    meson.current_source_dir() / 'shell-gi/search.function.gir',
-    meson.current_source_dir() / 'shell-gi/app-info.gir',
+    meson.current_source_dir() / 'client/libshell-16/search.function.gir',
+    meson.current_source_dir() / 'client/libshell-16/app-info.gir',
   ],
   depend_files: [
-    files('shell-gi/search.function.gir', 'shell-gi/app-info.gir'),
+    files('client/libshell-16/search.function.gir', 'client/libshell-16/app-info.gir'),
     meson.project_source_root() / 'scripts/gir-inject.xsl',
     meson.project_source_root() / 'scripts/gir-xslt-inject.sh',
   ],
@@ -1016,7 +996,7 @@ shell_gi_typelib = custom_target(
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
-    '--shared-library', 'libshell-gi-16.so',
+    '--shared-library', 'libshell-16.so',
     '--includedir', mutter_typelib_dir,
     '--includedir', gnome_shell_girdir,
     '--includedir', meson.current_build_dir(),
@@ -1027,26 +1007,10 @@ shell_gi_typelib = custom_target(
   install: false,
 )
 
-# GJS walks GObject interfaces on leased stubs; without OLLMrpc typelib,
-# find_by_name(OLLMrpc, LiveHandle) asserts and segfaults (Panel/DateMenu).
-ollmrpc_typelib = custom_target(
-  'OLLMrpc-1.0.typelib',
-  input: meson.current_source_dir() / 'gi-stub' / 'OLLMrpc-1.0.gir',
-  output: 'OLLMrpc-1.0.typelib',
-  command: [
-    g_ir_compiler,
-    '--output', '@OUTPUT@',
-    '--shared-library', ocrpc_shared_library,
-    '@INPUT@',
-  ],
-  build_by_default: true,
-  install: false,
-)
-
 # Meta.RpcSubprocess peer methods for GJS (find_by_gtype). Not stock Meta GIR.
 gsr_rpc_subprocess_typelib = custom_target(
   'GnomeShellRpc-1.0.typelib',
-  input: meson.current_source_dir() / 'gi-stub' / 'GnomeShellRpc-1.0.gir',
+  input: meson.current_source_dir() / 'client/libmutter-rpc-16' / 'GnomeShellRpc-1.0.gir',
   output: 'GnomeShellRpc-1.0.typelib',
   command: [
     g_ir_compiler,
@@ -1070,7 +1034,7 @@ if not fs.exists(generate_app_list_script)
   generate_app_list_script = gnome_shell_vendor_root / 'build-aux' / 'generate-app-list.py'
 endif
 generate_app_list = find_program(generate_app_list_script)
-subdir('shell-js')
+subdir('client/gresource')
 st_gir = gnome_shell_girdir / 'St-16.gir'
 # Typelib is ours (→ libst-rpc-16.so). Distro St-16.gir is schema only; includedir
 # resolves GIR imports. Do not point shared-library at stock libst.
@@ -1092,23 +1056,23 @@ st_rpc_typelib = custom_target('St-16.typelib',
 
 # Thin gnome-shell-rpc host (no libshell / no client libst).
 # Link st-rpc for Runtime.st_register without --pkg/st vapi (Gdk noise).
-gnome_shell_rpc = executable('gnome-shell-rpc',
+gnome_shell_rpc = executable('gsr-client',
   files(
     'ApplicationInterface.vala',
-    'shell-client/namespace.vala',
-    'shell-client/ShellApplication.vala',
+    'client/namespace.vala',
+    'client/ShellApplication.vala',
   ) + shell_js_resources + gsr_js_resources,
   dependencies: gjs_shell_deps + [
     mutter_vapi_dep,
     ocrpc_dep,
     dependency('gdk-pixbuf-2.0'),
-    # NetworkAgent / Polkit / KeyringPrompt types leak into shell-gi-16.vapi.
+    # NetworkAgent / Polkit / KeyringPrompt types leak into shell-16.vapi.
     dependency('libnm'),
     dependency('polkit-agent-1'),
     dependency('polkit-gobject-1'),
     dependency('gcr-4'),
     declare_dependency(
-      link_with: [mutter_rpc_lib, mutter_clutter_rpc_lib, shell_gi_lib],
+      link_with: [gsr_rpc_lib, mutter_rpc_lib, mutter_clutter_rpc_lib, shell_gi_lib],
       dependencies: [
         dependency('mutter-mtk-16'),
         dependency('mutter-cogl-16'),
@@ -1127,24 +1091,25 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
     '--pkg=polkit-gobject-1',
     '--pkg=gcr-4',
     '--pkg=mutter-rpc-16',
+    '--pkg=gsr-rpc-16',
     '--pkg=mutter-clutter-rpc-16',
     '--pkg=st-rpc-16',
-    '--pkg=shell-gi-16',
+    '--pkg=shell-16',
     '--pkg=mutter-cogl-16',
     '--pkg=mutter-mtk-16',
     '--pkg=atk',
     '--pkg=pango',
     '--vapidir', meson.current_build_dir(),
-    '--vapidir', meson.current_source_dir() / 'gi-stub',
+    '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '--vapidir', meson.project_build_root() / 'vapi',
     '--vapidir', meson.project_source_root() / 'vapi',
   ],
   c_args: [
     '-I' + mutter_includedir,
-    '-I' + meson.current_source_dir() / 'gi-stub',
+    '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '-I' + meson.current_build_dir(),
     '-include', 'mutter-clutter-rpc-16.h',
-    # shell-gi-16.h embeds NetworkAgent → NMSecretAgentOld.
+    # shell-16.h embeds NetworkAgent → NMSecretAgentOld.
     '-include', 'NetworkManager.h',
     '-include', 'nm-secret-agent-old.h',
     '-DPOLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE',
@@ -1157,7 +1122,6 @@ gnome_shell_rpc = executable('gnome-shell-rpc',
     mutter_rpc_typelib,
     clutter_rpc_typelib,
     st_rpc_typelib,
-    ollmrpc_typelib,
     gsr_rpc_subprocess_typelib,
   ],
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
@@ -1195,7 +1159,7 @@ pkg.generate(
 )
 
 install_data(
-  files('meta-mini/Meta-16.gir'),
+  files('../tests/meta-mini/Meta-16.gir'),
   install_dir: mutter_rpc_typelib_install_dir,
 )
 
@@ -1207,7 +1171,7 @@ configure_file(
     'prefix': meson.project_build_root(),
     'libdir': meson.current_build_dir(),
     'typelibdir': meson.current_build_dir(),
-    'girdir': meson.current_source_dir() / 'meta-mini',
+    'girdir': meson.current_source_dir() / '../tests/meta-mini',
     'clientlibdir': gnome_shell_client_libdir,
     'mutter_includedir': mutter_includedir,
     'version': meson.project_version(),
@@ -1242,27 +1206,27 @@ pkg.generate(
 if get_option('legacy_gi_rpc_smoke')
   meta_override_client = static_library('meta-override-client',
     files(
-      'namespace.vala',
-      'gi-stub/namespace.vala',
-      'gi-stub/Runtime.vala',
-      'meta-mini/namespace.vala',
-      'meta-mini/Window.vala',
-      'meta-mini/WindowActor.vala',
-      'meta-mini/Context.vala',
-      'meta-mini/Display.vala',
-      'meta-mini/Compositor.vala',
-      'meta-mini/Backend.vala',
-      'meta-mini/StartupNotification.vala',
-      'meta-mini/LaunchContext.vala',
-      'meta-mini/SoundPlayer.vala',
-      'meta-mini/IdleMonitor.vala',
-      'gi-stub/CancellableBridge.vala',
-      'gi-stub/PaintedContent.vala',
+      'client/rpc/namespace.vala',
+      'client/rpc/GiStubNamespace.vala',
+      'client/rpc/Runtime.vala',
+      '../tests/meta-mini/namespace.vala',
+      '../tests/meta-mini/Window.vala',
+      '../tests/meta-mini/WindowActor.vala',
+      '../tests/meta-mini/Context.vala',
+      '../tests/meta-mini/Display.vala',
+      '../tests/meta-mini/Compositor.vala',
+      '../tests/meta-mini/Backend.vala',
+      '../tests/meta-mini/StartupNotification.vala',
+      '../tests/meta-mini/LaunchContext.vala',
+      '../tests/meta-mini/SoundPlayer.vala',
+      '../tests/meta-mini/IdleMonitor.vala',
+      'client/rpc/CancellableBridge.vala',
+      'client/libmutter-rpc-16/PaintedContent.vala',
       'shared/namespace.vala',
       'shared/Rectangle.vala',
-      'ui/namespace.vala',
-      'ui/Window.vala',
-      'rpc/namespace.vala',
+      'shared/UiNamespace.vala',
+      'shared/Window.vala',
+      'server/rpc/namespace.vala',
     ),
     dependencies: [ocrpc_dep] + meta_mini_deps,
     vala_args: ocrpc_vala_args + gi_stub_vala_args + meta_mini_vala_args,
@@ -1272,28 +1236,6 @@ if get_option('legacy_gi_rpc_smoke')
 endif
 
 gtk4_dep = dependency('gtk4')
-
-fake_shell = executable('fake-shell',
-  files(
-    'ApplicationInterface.vala',
-    'shared/namespace.vala',
-    'shared/Rectangle.vala',
-    'ui/namespace.vala',
-    'ui/Window.vala',
-    'fake-shell/namespace.vala',
-    'fake-shell/Session.vala',
-    'fake-shell/Display.vala',
-    'fake-shell/Window.vala',
-    'fake-shell/Application.vala',
-    'fake-shell/TopBar.vala',
-  ),
-  dependencies: [ocrpc_dep, gtk4_dep],
-  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
-    '--pkg=gtk4',
-  ],
-  build_rpath: ocrpc_rpath,
-  install: false,
-)
 
 if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != ''
   # Legacy vendored libshell/libst — optional comparison only (0.7.7 default host is thin).
@@ -1306,7 +1248,7 @@ if rpc_gdb_spawn
   mutter_rpc_vala_args += '--define=GSR_GDB_SPAWN'
 endif
 
-mutter_rpc = executable('mutter-rpc',
+mutter_rpc = executable('gsr-server',
   compositor_sources,
   clutter_helper_vfunc_ids,
   files(meson.project_source_root() / 'vapi' / 'gsr-clutter-event-key.c'),

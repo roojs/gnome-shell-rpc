@@ -36,3 +36,7 @@ if ! grep -q 'c:type="char\*\*\*"' "$out"; then
 	echo "FAIL gir-inject: nested GStrv missing from $out" >&2
 	exit 1
 fi
+if grep -q 'OLLMrpc\.' "$out"; then
+	echo "FAIL gir-inject: OLLMrpc interface edge still in $out" >&2
+	exit 1
+fi

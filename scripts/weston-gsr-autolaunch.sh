@@ -2,9 +2,11 @@
 # Runs *inside* Weston ([autolaunch]). Starts nested mutter-rpc on Weston's
 # XWayland DISPLAY (Mutter nested is MetaBackendX11Nested).
 #
-# GSR_WESTON_MODE=session (default) — open weston-terminal inside this Weston.
-#   That terminal starts mutter via hold. Autolaunch stays alive so Weston
-#   stays up if the terminal closes.
+# GSR_WESTON_MODE=session (default)
+#   GSR_DEBUG=1 — open weston-terminal inside this Weston. That terminal
+#     starts mutter via hold and follows the debug logs.
+#   GSR_DEBUG=0 — start hold directly. No log terminal. The nested window
+#     fills Weston. Autolaunch stays alive so Weston stays up if mutter exits.
 # GSR_WESTON_MODE=prove — nested-weston-prove.sh (short timeout). Weston stays
 #   up after prove unless GSR_WESTON_AUTO_CLOSE=1 (agents: weston-gsr-prove.sh).
 set -euo pipefail
@@ -57,6 +59,24 @@ done
 		exec sleep infinity
 	fi
 	printf '%s\n' "$DISPLAY" >"$XDG_RUNTIME_DIR/gsr-weston-xdisplay"
+	if [[ "${GSR_DEBUG:-0}" != "1" ]]; then
+		echo "weston-gsr-autolaunch: debug off — mutter-rpc, no log terminal"
+		"$ROOT/scripts/nested-weston-hold.sh" &
+		HOLD=$!
+		echo "weston-gsr-autolaunch: hold pid=$HOLD xdisplay=$DISPLAY"
+		cleanup() {
+			if [[ -n "${HOLD:-}" ]] && kill -0 "$HOLD" 2>/dev/null; then
+				kill "$HOLD" 2>/dev/null || true
+				wait "$HOLD" 2>/dev/null || true
+			fi
+			GSR_CLEAR_WESTON=0 "$ROOT/scripts/clear-nested-dbus.sh" >/dev/null 2>&1 || true
+		}
+		trap 'cleanup; exit 0' INT TERM
+		trap cleanup EXIT
+		wait "$HOLD" || true
+		echo "weston-gsr-autolaunch: mutter-rpc exited — Weston stays up"
+		exec sleep infinity
+	fi
 	# weston-terminal is a client of this Weston (WAYLAND_DISPLAY=wayland-gsr).
 	# gnome-terminal is not: its server lives on the host bus and opens outside.
 	if command -v weston-terminal >/dev/null; then
