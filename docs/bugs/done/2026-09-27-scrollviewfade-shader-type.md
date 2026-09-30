@@ -6,7 +6,7 @@ The hand override is gone. `shader-type` now matches the `.new` argument `shader
 
 **Plan:** [`../../plans/0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)
 
-**Not** the Terminal click ([`../2026-09-27-clicked-signal-misses-vfunc.md`](../2026-09-27-clicked-signal-misses-vfunc.md)). The shell gets through overview and search, then dies while laying out a scroll view.
+**Not** the Terminal click ([`2026-09-27-clicked-signal-misses-vfunc.md`](2026-09-27-clicked-signal-misses-vfunc.md)). The shell gets through overview and search, then dies while laying out a scroll view.
 
 The **client** is `gnome-shell-rpc`. The **server** is `mutter-rpc`.
 

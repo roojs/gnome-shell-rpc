@@ -22,8 +22,11 @@ namespace GnomeShellRpc
 	 * Sync RPC call with positional {@link GLib.Value}s and optional instance.
 	 *
 	 * While {@link Clutter.Actor.prop_batch_open} is set, ''hide'',
-	 * ''show'', or a one-argument setter is stored and this returns
-	 * an empty response. The next other call sends
+	 * ''show'', or a one-argument setter whose value matches the
+	 * property is stored and this returns an empty response. A
+	 * setter whose value cannot be stored on that property, such as
+	 * ''Helper-Icon.set_gicon'' (a string for a ''GIcon''), is sent
+	 * as itself. The next other call sends
 	 * ''Helper-Actor.add_properties'' and then runs itself.
 	 *
 	 * @param method wire method (e.g. ''Meta-Window.minimize'')
@@ -59,8 +62,14 @@ namespace GnomeShellRpc
 				name = tail.substring(4).replace("_", "-");
 			}
 		}
-		if (name != "" && actor.get_class().find_property(name) == null) {
-			name = "";
+		if (name != "") {
+			var pspec = actor.get_class().find_property(name);
+			var held = args.get(0);
+			if (pspec == null || held == null
+					|| (!held.type().is_a(pspec.value_type)
+						&& !GLib.Value.type_transformable(held.type(), pspec.value_type))) {
+				name = "";
+			}
 		}
 		if (name != "") {
 			actor.prop_batch.set(name, args.get(0));

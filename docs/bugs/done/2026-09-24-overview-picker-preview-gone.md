@@ -2,7 +2,9 @@
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and the boot overview matches stock WINDOW_PICKER, and clicking an app icon launches it. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ⏳ current — **app window reaches the shell**. 2026-09-29 15:58: a click launched GNOME Settings inside mutter (`Updating client: name='GNOME Settings'`). The shell then died:
+**Status:** ✔️ archived 2026-09-30. User: an icon click launches a program. Boot flicker, the highlighted picker button, and overview layout are [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). The table below is the old score, not the live one.
+
+2026-09-29 15:58: a click launched GNOME Settings inside mutter (`Updating client: name='GNOME Settings'`). The shell then died:
 
 ```text
 connection write error: Unregistered class type schema: MetaWindowWayland
@@ -12,12 +14,12 @@ Client.vala:702: Unexpected early end-of-stream
 The Settings window stayed mapped in mutter. The shell process was gone, so later Terminal clicks left the starting spinner and never launched again. `Type.from_name("MetaWindowWayland")` does not load the class (`G_DEFINE_TYPE`), so the boot alias was skipped and the same write error returned at 16:25:06. `Server.start` calls `meta_window_wayland_get_type()` and aliases that to `Meta-Window`. Nested mutter is `--no-x11`.
 
 Create carries the override list
-([`done/2026-09-27-actor-created-before-overrides.md`](done/2026-09-27-actor-created-before-overrides.md)).
+([`done/2026-09-27-actor-created-before-overrides.md`](2026-09-27-actor-created-before-overrides.md)).
 
 | # | What | Stock piece | Seen |
 | - | ---- | ----------- | ---- |
 | 1 | Desktop preview | Wallpaper inside the current-desktop frame | **Regressed 2026-09-28.** `set_allocation` was only a client cache, so the server actor never stored the box (`needs an allocation`). |
-| 2 | Icon click | Dash icon → `AppIcon.vfunc_clicked` → `Shell.App.launch` | **Current.** Click Terminal. The app does not start. Reconfirmed 2026-09-28 09:00: `clicked` arrives, no `Helper-AppLaunch`. [`2026-09-27-clicked-signal-misses-vfunc.md`](2026-09-27-clicked-signal-misses-vfunc.md) |
+| 2 | Icon click | Dash icon → `AppIcon.vfunc_clicked` → `Shell.App.launch` | **Closed 2026-09-30.** User: an icon click launches a program. [`2026-09-27-clicked-signal-misses-vfunc.md`](2026-09-27-clicked-signal-misses-vfunc.md) |
 | 3 | Stray rectangle | Unknown actor | Still open. Not this pass. |
 | 4 | Bottom chooser | Dash | Still open. Not this pass. |
 
@@ -25,12 +27,12 @@ Create carries the override list
 
 **Supersedes (archived 2026-09-24):**
 
-- [`done/2026-09-16-chrome-panel-menus-overlay.md`](done/2026-09-16-chrome-panel-menus-overlay.md) — panel, menus, grey overlay, WINDOW_PICKER layout
-- [`done/2026-09-22-search-result-click-no-launch.md`](done/2026-09-22-search-result-click-no-launch.md) — icon click does not spawn
+- [`done/2026-09-16-chrome-panel-menus-overlay.md`](2026-09-16-chrome-panel-menus-overlay.md) — panel, menus, grey overlay, WINDOW_PICKER layout
+- [`done/2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md) — icon click does not spawn
 
-**Still open, not this bug:** [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md) — `local_emit_after` setter bridge. Do not remove it from the overview ticket.
+**Archived with this board clear:** [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md) — `local_emit_after` setter bridge. Taken off the board 2026-09-30. The bridge may still be in the tree.
 
-Full logs and rejected edits stay in those files. This bug is the live score.
+Full logs and rejected edits stay in those files. This file is the old score.
 
 ---
 
@@ -53,7 +55,7 @@ Re-confirmed unchanged by the user on 2026-09-25 16:08. Row 1 has since closed.
 
 ## Stock layout (carried)
 
-Not a miss that the overview is showing. Nested session is stock `user`, `hasOverview: true`. Startup eases **HIDDEN → WINDOW_PICKER** (`state=1`), `showAppsButton.checked=false`, and drops the search entry from the top. The app grid is only when `state > WINDOW_PICKER`. Search fill (icons in results) is closed: [`done/2026-09-19-overview-app-search-empty.md`](done/2026-09-19-overview-app-search-empty.md).
+Not a miss that the overview is showing. Nested session is stock `user`, `hasOverview: true`. Startup eases **HIDDEN → WINDOW_PICKER** (`state=1`), `showAppsButton.checked=false`, and drops the search entry from the top. The app grid is only when `state > WINDOW_PICKER`. Search fill (icons in results) is closed: [`done/2026-09-19-overview-app-search-empty.md`](2026-09-19-overview-app-search-empty.md).
 
 Top to bottom on real nested Shell:
 
@@ -142,7 +144,7 @@ Current startup bridge: generated `St.Widget.style` and `style_class` setters ca
 | Quick Settings volume / preferred `-12` | Deferred. `quicksettings-layout-neg-smoke` **FAIL** `min=-12 nat=-12` on an unmapped grid. Not the live bar. |
 | `messageTray` / date-menu BoxPointer | Allocation still odd (stage-wide preferred on the popover). |
 
-Menu close gate `captured-event-smoke` was **ok**. A later freed-event bug on `captured-event` is separate: [`done/2026-09-24-captured-event-freed-pointer.md`](done/2026-09-24-captured-event-freed-pointer.md).
+Menu close gate `captured-event-smoke` was **ok**. A later freed-event bug on `captured-event` is separate: [`done/2026-09-24-captured-event-freed-pointer.md`](2026-09-24-captured-event-freed-pointer.md).
 
 ---
 
@@ -152,7 +154,7 @@ Menu close gate `captured-event-smoke` was **ok**. A later freed-event bug on `c
 - Another launch Helper, `unset DISPLAY`, or `GDK_BACKEND=` inside `AppLaunch.vala`.
 - Idle, vendor `js/`, client `layout_changed` → `queue_relayout`, Actor allocate Hook as the layout manager, `rpc_lid` on the GJS layout manager.
 - Never-shrink `actor_allocation` globally. That crashed the clock menu and was reverted.
-- `Bin.register("Shell-GLSLEffect")` on mutter. Alias is `Clutter-OffscreenEffect` ([`done/2026-09-21-shell-glsleffect-bin-alias.md`](done/2026-09-21-shell-glsleffect-bin-alias.md)).
+- `Bin.register("Shell-GLSLEffect")` on mutter. Alias is `Clutter-OffscreenEffect` ([`done/2026-09-21-shell-glsleffect-bin-alias.md`](2026-09-21-shell-glsleffect-bin-alias.md)).
 - Score early snaps (`startingUp=true`, empty Quick Settings). Score `delayed15s` plus this live look.
 - Treat stay-up as this screen being fixed.
 

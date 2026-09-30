@@ -1,6 +1,6 @@
 # Layout stores a box, then tells the client
 
-**Status:** ⏳ open. The GIR property `allocation` is read-only. `relay_allocation` stores the box on the server. It is not a new GIR method. `notify::allocation` arrives as `notify::allocation-relay`.
+**Status:** ✔️ archived 2026-09-30 — taken off the board. Layout that is still wrong is [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). The notes below are the earlier two-path writeup.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 

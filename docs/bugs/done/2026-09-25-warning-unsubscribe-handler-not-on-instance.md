@@ -1,8 +1,6 @@
 # Warning: `unsubscribe` disconnects a handler id that is not on the instance
 
-**Status:** ⏳ deferred. Still logged. Not a crash, and not on the current
-fix path. Resume only with a reproduction that ties an unsubscribe to a
-failure.
+**Status:** ✔️ archived 2026-09-30 — taken off the board. Resume only with a reproduction that ties an unsubscribe to a failure.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 
@@ -59,4 +57,4 @@ So the log cannot show that 8017 was the handler stored for that subscription.
 
 ## Not this bug
 
-`Clutter.Text.get_layout` — [`done/2026-09-25-text-get-layout-pango-layout.md`](done/2026-09-25-text-get-layout-pango-layout.md).
+`Clutter.Text.get_layout` — [`done/2026-09-25-text-get-layout-pango-layout.md`](2026-09-25-text-get-layout-pango-layout.md).

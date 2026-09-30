@@ -221,10 +221,12 @@ returns (`local_emit_after` in `St.overrides`). The `.new` lease path
 `ensure_signal_subscribe(actor, "style-changed")` when the type has that
 signal, so the server's later emission can reach GJS `.connect` handlers.
 
-See [Prefix generated Vala signals](bugs/2026-09-23-prefix-generated-vala-signals.md)
-and [Overview picker](bugs/2026-09-24-overview-picker-preview-gone.md).
-[`style-changed` manual subscription](bugs/2026-09-22-style-changed-manual-subscription.md)
-is still open. Archived: [search click](bugs/done/2026-09-22-search-result-click-no-launch.md).
+See [Prefix generated Vala signals](bugs/done/2026-09-23-prefix-generated-vala-signals.md)
+and [Overview picker](bugs/done/2026-09-24-overview-picker-preview-gone.md).
+The live overview complaint is [boot flicker](bugs/2026-09-30-overview-boot-flicker.md).
+[`style-changed` manual subscription](bugs/done/2026-09-22-style-changed-manual-subscription.md)
+was taken off the board on 2026-09-30. The setter bridge above is still the code.
+Archived: [search click](bugs/done/2026-09-22-search-result-click-no-launch.md).
 
 ## GJS connection
 

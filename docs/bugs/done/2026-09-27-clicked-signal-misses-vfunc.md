@@ -1,6 +1,6 @@
 # A click notification comes back, and the client does not launch
 
-**Status:** ⏳ open. `Signals.emit` calls the class slot after `emitv` only for `clicked`. A hold on 2026-09-28 09:32 reached `READY=1`, then the client vanished. Last client line is `St-Bin.get_child` with `notify::allocation` in flight. Mutter stayed up. A live click still has to show `Helper-AppLaunch`.
+**Status:** ✔️ closed 2026-09-30. User: clicking an icon launches a program. The notes below are the earlier miss.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 

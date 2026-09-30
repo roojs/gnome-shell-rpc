@@ -64,6 +64,34 @@
 			return this.actor;
 		}
 
+		/**
+		 * {@code peek_initial_value} reads the client mirror. Clutter
+		 * fills the server interval inside {@code start}, which does not
+		 * update that mirror. Snapshot the property before {@code start}.
+		 */
+		void mirror_transition_initial(Clutter.Transition transition)
+		{
+			var prop_transition = transition as Clutter.PropertyTransition;
+			if (prop_transition == null) {
+				return;
+			}
+			var prop = prop_transition.property_name;
+			if (prop == "") {
+				return;
+			}
+			var pspec = this.find_property(prop);
+			if (pspec == null) {
+				return;
+			}
+			var interval = transition.interval;
+			if (interval == null) {
+				return;
+			}
+			var current = GLib.Value(pspec.value_type);
+			this.get_property(pspec.name, ref current);
+			interval.mirror_value(true, current);
+		}
+
 		public void add_transition(string name, Clutter.Transition transition)
 		{
 			if (this.transitions.has_key(name)) {
@@ -73,6 +101,7 @@
 				return;
 			}
 			transition.animatable = this;
+			this.mirror_transition_initial(transition);
 			this.transitions.set(name, transition);
 			ulong stopped_id = 0;
 			stopped_id = transition.signal_stopped.connect((t, finished) => {

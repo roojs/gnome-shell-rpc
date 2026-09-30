@@ -211,5 +211,5 @@ closed by repeated production boot proofs.
 
 ## Related
 
-- [`style-changed manual subscription`](../2026-09-22-style-changed-manual-subscription.md)
+- [`style-changed manual subscription`](2026-09-22-style-changed-manual-subscription.md)
 - [`text get-layout`](2026-09-25-text-get-layout-pango-layout.md)

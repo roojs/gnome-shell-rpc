@@ -1,6 +1,6 @@
 # `Meta.Laters` callback intermittently SIGSEGVs in GJS
 
-**Status:** ✔️ closed 2026-09-26. A nested `Laters.add` was releasing the inner GJS trampoline before it was called. `Laters.add` now holds that callback once per unfinished `add`, and drops the leftover holds when the entry is freed, after the callback has returned. `later-callback-nested-add.js` with that hold exits 0 and frees the trampolines (`live=0`), including a callback that removes itself while it is running. One full-shell boot still logs `g_closure_unref` on a closure already at zero. That leftover is [`../2026-09-26-warning-laters-closure-unref.md`](../2026-09-26-warning-laters-closure-unref.md).
+**Status:** ✔️ closed 2026-09-26. A nested `Laters.add` was releasing the inner GJS trampoline before it was called. `Laters.add` now holds that callback once per unfinished `add`, and drops the leftover holds when the entry is freed, after the callback has returned. `later-callback-nested-add.js` with that hold exits 0 and frees the trampolines (`live=0`), including a callback that removes itself while it is running. One full-shell boot still logs `g_closure_unref` on a closure already at zero. That leftover is [`2026-09-26-warning-laters-closure-unref.md`](2026-09-26-warning-laters-closure-unref.md).
 
 **Plan:** [`0.8 init and interaction`](../../plans/0.8-init-complete-and-interaction.md)
 
@@ -147,4 +147,4 @@ Guard 3 dies once two outer frames both unref the inner trampoline. Guard 1 keep
 
 Do not patch the `Laters` queue. Do not skip disposed callbacks. Do not Idle in place of before-redraw. Guard 4 is the change that belongs on `Laters.add`: `ensure_before_update` can reenter `add` before it returns.
 
-The reproduced crash no longer blocks the overview snapshot. The leftover warning is [`../2026-09-26-warning-laters-closure-unref.md`](../2026-09-26-warning-laters-closure-unref.md). Current UI work stays [`../2026-09-24-overview-picker-preview-gone.md`](../2026-09-24-overview-picker-preview-gone.md).
+The reproduced crash no longer blocks the overview snapshot. The leftover warning is [`2026-09-26-warning-laters-closure-unref.md`](2026-09-26-warning-laters-closure-unref.md). Current UI work is [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). The old overview ticket is [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md).

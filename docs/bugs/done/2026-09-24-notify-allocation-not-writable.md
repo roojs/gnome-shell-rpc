@@ -1,6 +1,6 @@
 # `notify::allocation` sets a property that is not writable
 
-**Status:** ⏳ the notification step in [`2026-09-28-allocation-two-paths.md`](2026-09-28-allocation-two-paths.md). The allocate-time store is an earlier step in that same flow. Do not patch this file on its own.
+**Status:** ✔️ archived 2026-09-30 — taken off the board with [`2026-09-28-allocation-two-paths.md`](2026-09-28-allocation-two-paths.md). Live UI is [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md).
 
 **Seen:** `org.gnome.ShellRpc.debug.log`. The connection stays up. No `unsupported bin value type`, no early end-of-stream.
 

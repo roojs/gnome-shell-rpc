@@ -8,7 +8,7 @@ session proof: `allocate` was in that list and the helper ran it.
 
 **How a virtual call works:** [`../../vfuncs.md`](../../vfuncs.md)
 
-**Seen from:** [`../2026-09-24-overview-picker-preview-gone.md`](../2026-09-24-overview-picker-preview-gone.md).
+**Seen from:** [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md).
 The wallpaper row of that bug is closed by the same confirmation. Icon
 click stays there.
 

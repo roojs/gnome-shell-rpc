@@ -57,12 +57,18 @@
 
 		public void set_initial_value(GLib.Value value)
 		{
-			this.store_and_relay(true, value);
+			this.mirror_value(true, value);
+			GnomeShellRpc.call_value(
+				"Clutter-Interval.set_initial", this,
+				OLLMrpc.args("V", value));
 		}
 
 		public void set_final_value(GLib.Value value)
 		{
-			this.store_and_relay(false, value);
+			this.mirror_value(false, value);
+			GnomeShellRpc.call_value(
+				"Clutter-Interval.set_final", this,
+				OLLMrpc.args("V", value));
 		}
 
 		public void get_initial_value(out GLib.Value value)
@@ -95,19 +101,21 @@
 			return this.priv_has_final ? &this.priv_final : null;
 		}
 
-		void store_and_relay(bool is_initial, GLib.Value value)
+		/**
+		 * Keep the GValue {@code peek_*} returns. {@code Transition.set_to}
+		 * / {@code set_from} write the server interval and do not pass
+		 * through {@link set_initial_value}, so without this the mirror
+		 * stays empty and GJS reads the null peek as 0.
+		 */
+		public void mirror_value(bool is_initial, GLib.Value value)
 		{
 			if (is_initial) {
 				this.priv_initial = GLib.Value(value.type());
 				value.copy(ref this.priv_initial);
 				this.priv_has_initial = true;
-			} else {
-				this.priv_final = GLib.Value(value.type());
-				value.copy(ref this.priv_final);
-				this.priv_has_final = true;
+				return;
 			}
-			var method = is_initial
-				? "Clutter-Interval.set_initial"
-				: "Clutter-Interval.set_final";
-			GnomeShellRpc.call_value(method, this, OLLMrpc.args("V", value));
+			this.priv_final = GLib.Value(value.type());
+			value.copy(ref this.priv_final);
+			this.priv_has_final = true;
 		}

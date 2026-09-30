@@ -4,7 +4,7 @@
 SIGSEGV, closed in
 [`2026-09-25-meta-laters-callback-segv.md`](2026-09-25-meta-laters-callback-segv.md).
 The leftover unref line is
-[`../2026-09-26-warning-laters-closure-unref.md`](../2026-09-26-warning-laters-closure-unref.md).
+[`2026-09-26-warning-laters-closure-unref.md`](2026-09-26-warning-laters-closure-unref.md).
 
 **Plan:** [`0.8 init and interaction`](../../plans/0.8-init-complete-and-interaction.md)
 

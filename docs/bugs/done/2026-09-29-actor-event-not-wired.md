@@ -1,6 +1,6 @@
 # Typing in overview search aborts the client
 
-**Status:** ⏳ open. First key in the overview calls `clutter_text.event()`. The generated stub was `GLib.error("gi-stub: Clutter-Actor.event not wired")`, which kills `gnome-shell-rpc`. Mutter then logs `Unexpected early end-of-stream`.
+**Status:** ✔️ archived 2026-09-30 — taken off the board. Not re-reported that day. Live UI is [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). The notes below are the earlier abort.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 

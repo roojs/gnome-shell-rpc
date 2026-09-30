@@ -8,10 +8,21 @@
 		{
 			GnomeShellRpc.call_value("Clutter-Transition.set_to", this,
 				OLLMrpc.args("V", value));
+			this.mirror_interval_value(false, value);
 		}
 
 		public void set_from_value(GLib.Value value)
 		{
 			GnomeShellRpc.call_value("Clutter-Transition.set_from", this,
 				OLLMrpc.args("V", value));
+			this.mirror_interval_value(true, value);
+		}
+
+		void mirror_interval_value(bool is_initial, GLib.Value value)
+		{
+			var interval = this.interval;
+			if (interval == null) {
+				return;
+			}
+			interval.mirror_value(is_initial, value);
 		}

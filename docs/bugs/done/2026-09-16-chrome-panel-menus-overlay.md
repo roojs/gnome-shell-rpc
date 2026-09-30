@@ -53,7 +53,7 @@
 > plan) — do not re-splat onto other bugs/docs. Prove without modifying
 > the main codebase until the smoke names the fix.
 
-**Status:** ✔️ archived 2026-09-24 — superseded by [`2026-09-24-overview-picker-preview-gone.md`](../2026-09-24-overview-picker-preview-gone.md). Still-true layout notes live there. Re-prove before treating a smoke below as current.  
+**Status:** ✔️ archived 2026-09-24 — superseded by [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md), itself archived 2026-09-30. Live UI: [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md).  
 **Plan:** [`0.8-init-complete-and-interaction.md`](../../plans/0.8-init-complete-and-interaction.md)  
 **Allocate (done):** [`2026-09-16-allocate-follow-reference.md`](2026-09-16-allocate-follow-reference.md)
 

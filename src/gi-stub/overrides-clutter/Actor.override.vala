@@ -73,11 +73,13 @@
 					return;
 				case "St-Widget":
 					this.create_with_overrides();
+					this.signal_overrides(this.get_type());
 					return;
 				case "Clutter-Actor":
 					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
 					if (this.get_type() != typeof(Actor)) {
 						this.create_with_overrides();
+						this.signal_overrides(this.get_type());
 						return;
 					}
 					break;
@@ -88,7 +90,7 @@
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
-			this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+			this.signal_overrides(this.get_type());
 			this.prop_batch_open = true;
 			return;
 		}
@@ -108,29 +110,13 @@
 	/**
 	 * Initial property sets, held until the first call that is
 	 * not one of them.
-	 *
-	 * Empty means nothing is queued. {@link prop_batch_open}
-	 * closes the batch.
 	 */
 	internal Gee.HashMap<string, GLib.Value?> prop_batch {
 		get; set; default = new Gee.HashMap<string, GLib.Value?>();
 	}
 
-	/**
-	 * True from the end of construct until the first call that
-	 * is not an initial property set.
-	 */
 	internal bool prop_batch_open = false;
 
-	/**
-	 * Lease a helper actor, then send its signals and hooks and
-	 * open the initial property batch.
-	 *
-	 * Virtuals bind while {@link GnomeShellRpc.GiStub.Runtime.hook_rows}
-	 * is set, so those handlers are queued. One
-	 * ''Helper-Actor.add_hooks'' returns their ids. An empty
-	 * hook list sends no such call.
-	 */
 	void create_with_overrides()
 	{
 		GnomeShellRpc.GiStub.Runtime.hook_rows =
@@ -161,7 +147,6 @@
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
-		this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
 		if (names.length == 0) {
 			GnomeShellRpc.GiStub.Runtime.hook_rows = null;
 			this.prop_batch_open = true;
@@ -185,37 +170,21 @@
 	}
 
 	/**
-	 * Collect each signal whose virtual this object replaced,
-	 * then send them in one subscribe on the leaf type.
+	 * Subscribe each signal whose virtual this object replaced.
 	 *
 	 * Called from construct with this object's type. Calls itself
 	 * on the parent first. A type with no alias is skipped. The
-	 * leaf copies ''names'' into
-	 * {@link Shell.Signals.pending_signals} and connects the
-	 * first name. The clutter stub reaches that field through
-	 * {@link GnomeShellRpc.GiStub.Runtime.pending_signals}.
+	 * leaf is not compared with itself.
 	 *
 	 * @param t parent type to compare against this object
-	 * @param names signal names gathered on the way down
 	 */
-	private void signal_overrides(GLib.Type t, Gee.ArrayList<string> names)
+	private void signal_overrides(GLib.Type t)
 	{
 		if (t == GLib.Type.INVALID) {
 			return;
 		}
-		this.signal_overrides(t.parent(), names);
+		this.signal_overrides(t.parent());
 		if (t == this.get_type()) {
-			if (names.size == 0) {
-				return;
-			}
-			string[] pending_signals = {};
-			foreach (var name in names) {
-				pending_signals += name;
-			}
-			GnomeShellRpc.GiStub.Runtime.pending_signals = pending_signals;
-			GnomeShellRpc.GiStub.Runtime.pending_signals_size = pending_signals.length;
-			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
-				this, pending_signals[0]);
 			return;
 		}
 		if (OLLMrpc.Bin.gtype_to_alias == null) {
@@ -242,7 +211,7 @@
 			if (GLib.Signal.lookup(signal_name, leaf) == 0) {
 				continue;
 			}
-			names.add(signal_name);
+			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(this, signal_name);
 		}
 	}
 
@@ -259,16 +228,34 @@
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();
 			}
+			double out_min = min;
+			double out_nat = nat;
 			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
 				var for_height = call.args.get(1).get_double();
 				var response = GnomeShellRpc.call_value(
 					"Helper-Actor.base_preferred_width", this,
 					OLLMrpc.args("d", for_height));
-				return OLLMrpc.args("dd",
-					response.args.get(0).get_double(),
-					response.args.get(1).get_double());
+				out_min = response.args.get(0).get_double();
+				out_nat = response.args.get(1).get_double();
 			}
-			return OLLMrpc.args("dd", (double) min, (double) nat);
+			/* A JS preferred-width that only scales the parent size
+			 * reports 0 when that parent call returns 0. The layout
+			 * manager still knows the child. DashItemContainer is that
+			 * case: scale is 1, the button is ~48, the item was 0. */
+			if (out_min == 0.0 && out_nat == 0.0) {
+				var lm = this.priv_layout_manager;
+				if (lm != null) {
+					float lmin = 0.0f, lnat = 0.0f;
+					lm.get_preferred_width(
+						this, (float) call.args.get(1).get_double(),
+						out lmin, out lnat);
+					if (lmin != 0.0f || lnat != 0.0f) {
+						out_min = lmin;
+						out_nat = lnat;
+					}
+				}
+			}
+			return OLLMrpc.args("dd", out_min, out_nat);
 		});
 	}
 
@@ -285,16 +272,30 @@
 			} finally {
 				GnomeShellRpc.GiStub.VfuncRelay.end();
 			}
+			double out_min = min;
+			double out_nat = nat;
 			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
 				var for_width = call.args.get(1).get_double();
 				var response = GnomeShellRpc.call_value(
 					"Helper-Actor.base_preferred_height", this,
 					OLLMrpc.args("d", for_width));
-				return OLLMrpc.args("dd",
-					response.args.get(0).get_double(),
-					response.args.get(1).get_double());
+				out_min = response.args.get(0).get_double();
+				out_nat = response.args.get(1).get_double();
 			}
-			return OLLMrpc.args("dd", (double) min, (double) nat);
+			if (out_min == 0.0 && out_nat == 0.0) {
+				var lm = this.priv_layout_manager;
+				if (lm != null) {
+					float lmin = 0.0f, lnat = 0.0f;
+					lm.get_preferred_height(
+						this, (float) call.args.get(1).get_double(),
+						out lmin, out lnat);
+					if (lmin != 0.0f || lnat != 0.0f) {
+						out_min = lmin;
+						out_nat = lnat;
+					}
+				}
+			}
+			return OLLMrpc.args("dd", out_min, out_nat);
 		});
 	}
 
@@ -923,8 +924,7 @@
 	 */
 	public Effect? get_effect(string name)
 	{
-		var response = GnomeShellRpc.call_value(
-			"Clutter-Actor.get_effect", this,
+		var response = GnomeShellRpc.call_value("Clutter-Actor.get_effect", this,
 			OLLMrpc.args("s", name));
 		if (response.retval.type() == GLib.Type.INVALID
 				|| response.retval.get_object() == null) {

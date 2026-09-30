@@ -25,17 +25,19 @@
 > File/update the tracking bug, pick the next allowed step, rebuild, prove,
 > repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
 
-**Status:** ⚠️ historical crash log. The SIGSEGV stacks below are the
+**Status:** ✔️ archived 2026-09-30 — historical crash log, taken off the board. The SIGSEGV stacks below are the
 virtual-signal class closure, emitted from inside `call_poll`. That layout
 is gone: a class field that is also a signal is a plain virtual at the
 typelib byte, and the signal is not virtual
 ([Virtual functions](../vfuncs.md)). Do not put `virtual signal` back.
-The live click work is
+Icon launch is closed. The live UI bug is
+[`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md).
+The old overview ticket is
 [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md).
 
 **Scope:** generated client GI stubs in `src/gi-stub-gen/Generator.vala`
 
-Unblocks [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md) and [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md) (search-click archived: [`done/2026-09-22-search-result-click-no-launch.md`](done/2026-09-22-search-result-click-no-launch.md)).
+Unblocks [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md) and [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md) (search-click archived: [`done/2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md)).
 
 ## Agent handoff — 2026-09-23 18:10
 
@@ -468,7 +470,7 @@ The resulting split is the known cause of RPC `clicked` delivery not invoking `A
 See:
 
 - [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md)
-- [`done/2026-09-22-search-result-click-no-launch.md`](done/2026-09-22-search-result-click-no-launch.md)
+- [`done/2026-09-22-search-result-click-no-launch.md`](2026-09-22-search-result-click-no-launch.md)
 - [`2026-09-22-style-changed-manual-subscription.md`](2026-09-22-style-changed-manual-subscription.md)
 - [`../signals-client.md`](../signals-client.md)
 

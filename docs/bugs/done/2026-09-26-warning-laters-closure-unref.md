@@ -1,9 +1,8 @@
 # Warning: a callback is unref'd when it is already gone
 
-**Status:** ⏳ deferred warning, off the overview bar. The SIGSEGV this
-used to precede is closed, and the user (2026-09-27) treats that crash
-family as sealed with the plain-virtual layout:
-[`done/2026-09-25-meta-laters-callback-segv.md`](done/2026-09-25-meta-laters-callback-segv.md).
+**Status:** ✔️ archived 2026-09-30 — taken off the board. The SIGSEGV this
+used to precede stays closed:
+[`2026-09-25-meta-laters-callback-segv.md`](2026-09-25-meta-laters-callback-segv.md).
 
 **Plan:** [`0.8 init and interaction`](../plans/0.8-init-complete-and-interaction.md)
 

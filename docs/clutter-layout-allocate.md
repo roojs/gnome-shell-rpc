@@ -142,7 +142,7 @@ handler calling `allocate` itself.
 
 **Allocate (archived):**
 [`bugs/done/2026-09-16-allocate-follow-reference.md`](bugs/done/2026-09-16-allocate-follow-reference.md).
-Chrome residual: [`bugs/2026-09-24-overview-picker-preview-gone.md`](bugs/2026-09-24-overview-picker-preview-gone.md).
+Chrome residual: [`bugs/2026-09-30-overview-boot-flicker.md`](bugs/2026-09-30-overview-boot-flicker.md).
 
 ---
 

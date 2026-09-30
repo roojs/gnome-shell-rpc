@@ -27,11 +27,14 @@ namespace Shell
 			out float min_width_p,
 			out float natural_width_p
 		) {
-			float min_height;
-			float natural_height;
-			this.get_preferred_height(-1f, out min_height, out natural_height);
-			min_width_p = min_height;
-			natural_width_p = natural_height;
+			/* Stock calls get_preferred_height. The public method bails
+			 * with 0 while a preferred-size hook is active, which is
+			 * this call. Ask the server bin for its height instead. */
+			var response = GnomeShellRpc.call_value(
+				"Helper-Actor.base_preferred_height", this,
+				OLLMrpc.args("d", -1.0));
+			min_width_p = (float) response.args.get(0).get_double();
+			natural_width_p = (float) response.args.get(1).get_double();
 		}
 	}
 }
