@@ -22,8 +22,10 @@ namespace GnomeShellRpc.Rpc.Helper
 			var helper = new Actor();
 			OLLMrpc.Request.add_class(
 				"Helper-Actor", typeof(Actor),
-				"create", "sSvv",
+				"create", "s",
 				"add_hook", "it",
+				"add_hooks", "Sv",
+				"add_properties", "",
 				"allocate_public", "ay",
 				"base_preferred_width", "d",
 				"base_preferred_height", "d",
@@ -75,37 +77,111 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.create'' — type name plus the override list.
+		 * ''Helper-Actor.create'' — lease a helper for a client type.
 		 *
-		 * ''names'' is the typelib name of each ''vfunc_ids'' entry.
-		 * ''vfunc_ids'' is ''ai'' and ''hook_ids'' is ''at'', same length.
-		 * A pair cannot go on the wire. The map is filled before the lease
-		 * is returned. {@link add_hook} is for an actor that already existed.
+		 * Hooks and signals are later calls. {@link add_hook} is
+		 * still the call for one vfunc on an actor that already
+		 * exists.
+		 *
+		 * @param request inbound RPC
+		 * @param type_name client type, stored for later vfunc lookup
 		 */
-		public void create(
-			OLLMrpc.Request request,
-			string type_name,
-			string[] names,
-			GLib.Variant vfunc_ids,
-			GLib.Variant hook_ids
-		) {
+		public void create(OLLMrpc.Request request, string type_name)
+		{
 			var created = new Actor();
 			created.client_type_name = type_name;
-			var n = (int) vfunc_ids.n_children();
-			for (var i = 0; i < n; i++) {
-				var id = vfunc_ids.get_child_value(i).get_int32();
-				created.vfuncs.set(id,
-					request.connection.callbacks.get(
-						(int) hook_ids.get_child_value(i).get_uint64()));
-				if (i < names.length) {
-					created.method_names.set(id, names[i]);
-				}
-			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("t",
 					(uint64) request.connection.export(created)),
 			});
+		}
+
+		/**
+		 * ''Helper-Actor.add_hooks'' — store the construct vfuncs
+		 * on the leased actor.
+		 *
+		 * One hook id is allocated per ''vfunc_ids'' entry and
+		 * returned as ''at''. ''names'' is the typelib name for
+		 * each slot, when that index is present.
+		 *
+		 * @param request inbound RPC
+		 * @param names typelib name for each vfunc id
+		 * @param vfunc_ids ''ai'' of vfunc slots
+		 */
+		public void add_hooks(
+			OLLMrpc.Request request,
+			string[] names,
+			GLib.Variant vfunc_ids
+		) {
+			if (!request.connection.live_handles) {
+				GLib.error("Actor.add_hooks requires live_handles");
+			}
+			var created = request.connection.leases.get((int) request.lease_id) as Actor;
+			if (created == null) {
+				request.connection.reply_error(request,	(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var n = (int) vfunc_ids.n_children();
+			var ids = new GLib.VariantBuilder(new GLib.VariantType("at"));
+			for (var i = 0; i < n; i++) {
+				var id = request.connection.next_handle;
+				request.connection.next_handle++;
+				var hook = new OLLMrpc.Live.Hook() {
+					connection = request.connection,
+					id = id
+				};
+				request.connection.callbacks.set(id, hook);
+				ids.add("t", (uint64) id);
+				var vfunc_id = vfunc_ids.get_child_value(i).get_int32();
+				created.vfuncs.set(vfunc_id, hook);
+				if (i >= names.length) {
+					continue;
+				}
+				created.method_names.set(vfunc_id, names[i]);
+			}
+			request.reply(new OLLMrpc.Response() {
+				args = OLLMrpc.args("v", ids.end()),
+			});
+		}
+
+		/**
+		 * ''Helper-Actor.add_properties'' — apply initial property
+		 * pairs on the leased actor.
+		 *
+		 * Arguments are name, value, name, value. An object value
+		 * is a lease id. An odd count, a missing lease, or an
+		 * unknown property is ''-32602'' and no success reply.
+		 *
+		 * @param request inbound RPC; args are the pairs
+		 */
+		public void add_properties(OLLMrpc.Request request)
+		{
+			var obj = request.connection.leases.get((int) request.lease_id);
+			if (obj == null || request.args.size % 2 != 0) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			for (var i = 0; i < request.args.size; i += 2) {
+				var name = request.args.get(i).get_string();
+				var value = request.args.get(i + 1);
+				var pspec = obj.get_class().find_property(name);
+				if (pspec == null) {
+					request.connection.reply_error(request,
+						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+					return;
+				}
+				if (!pspec.value_type.is_a(GLib.Type.OBJECT)) {
+					obj.set_property(name, value);
+					continue;
+				}
+				var peer = request.connection.leases.get((int) value.get_uint64());
+				var obj_value = GLib.Value(pspec.value_type);
+				obj_value.set_object(peer);
+				obj.set_property(name, obj_value);
+			}
+			request.reply(new OLLMrpc.Response());
 		}
 
 		public override void get_preferred_width(

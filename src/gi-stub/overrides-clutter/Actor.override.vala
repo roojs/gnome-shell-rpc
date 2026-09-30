@@ -73,13 +73,11 @@
 					return;
 				case "St-Widget":
 					this.create_with_overrides();
-					this.signal_overrides(this.get_type());
 					return;
 				case "Clutter-Actor":
 					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
 					if (this.get_type() != typeof(Actor)) {
 						this.create_with_overrides();
-						this.signal_overrides(this.get_type());
 						return;
 					}
 					break;
@@ -90,7 +88,8 @@
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
-			this.signal_overrides(this.get_type());
+			this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+			this.prop_batch_open = true;
 			return;
 		}
 		GLib.error("lease construct: no Bin-registered ancestor for %s",
@@ -106,19 +105,41 @@
 	string actor_name = "";
 	bool name_known = false;
 
+	/**
+	 * Initial property sets, held until the first call that is
+	 * not one of them.
+	 *
+	 * Empty means nothing is queued. {@link prop_batch_open}
+	 * closes the batch.
+	 */
+	internal Gee.HashMap<string, GLib.Value?> prop_batch {
+		get; set; default = new Gee.HashMap<string, GLib.Value?>();
+	}
+
+	/**
+	 * True from the end of construct until the first call that
+	 * is not an initial property set.
+	 */
+	internal bool prop_batch_open = false;
+
+	/**
+	 * Lease a helper actor, then send its signals and hooks and
+	 * open the initial property batch.
+	 *
+	 * Virtuals bind while {@link GnomeShellRpc.GiStub.Runtime.hook_rows}
+	 * is set, so those handlers are queued. One
+	 * ''Helper-Actor.add_hooks'' returns their ids. An empty
+	 * hook list sends no such call.
+	 */
 	void create_with_overrides()
 	{
+		GnomeShellRpc.GiStub.Runtime.hook_rows =
+			new Gee.ArrayList<GnomeShellRpc.GiStub.Runtime.InvokeRow>();
 		string[] always = {};
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
-		/*
-		 * Callbacks do not need a lease. Register them, then create the
-		 * actor with the list already attached. The lease comes back
-		 * only after the server has stored the map.
-		 */
 		string[] names = {};
 		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
-		var hook_ids = new GLib.VariantBuilder(new GLib.VariantType("at"));
 		foreach (var name in overridden) {
 			var vfunc_id = -1;
 			var hook_id = this.bind_vfunc(name, out vfunc_id);
@@ -128,38 +149,73 @@
 			var called = GnomeShellRpc.GiStub.VfuncRelay.name_of(
 				"Clutter", "Actor", vfunc_id);
 			if (called == "") {
+				var rows = GnomeShellRpc.GiStub.Runtime.hook_rows;
+				rows.remove_at(rows.size - 1);
 				continue;
 			}
 			names += called;
 			vfunc_ids.add("i", vfunc_id);
-			hook_ids.add("t", hook_id);
 		}
-		var response = GnomeShellRpc.call_value("Helper-Actor.create",
-			null,
-			OLLMrpc.args("sSvv", this.get_type().name(), names,
-				vfunc_ids.end(), hook_ids.end()));
-
+		var response = GnomeShellRpc.call_value("Helper-Actor.create", null,
+			OLLMrpc.args("s", this.get_type().name()));
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
+		this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+		if (names.length == 0) {
+			GnomeShellRpc.GiStub.Runtime.hook_rows = null;
+			this.prop_batch_open = true;
+			return;
+		}
+		var hooks = GnomeShellRpc.call_value("Helper-Actor.add_hooks", this,
+			OLLMrpc.args("Sv", names, vfunc_ids.end()));
+		var ids = hooks.args.get(0).get_variant();
+		if (GnomeShellRpc.GiStub.Runtime.handlers == null) {
+			GnomeShellRpc.GiStub.Runtime.handlers = new Gee.HashMap<int,
+				GnomeShellRpc.GiStub.Runtime.InvokeRow>();
+		}
+		var n = (int) ids.n_children();
+		for (var i = 0; i < n; i++) {
+			var id = ids.get_child_value(i).get_uint64();
+			GnomeShellRpc.GiStub.Runtime.handlers.set((int) id,
+				GnomeShellRpc.GiStub.Runtime.hook_rows.get(i));
+		}
+		GnomeShellRpc.GiStub.Runtime.hook_rows = null;
+		this.prop_batch_open = true;
 	}
 
 	/**
-	 * Subscribe each signal whose virtual this object replaced.
+	 * Collect each signal whose virtual this object replaced,
+	 * then send them in one subscribe on the leaf type.
 	 *
 	 * Called from construct with this object's type. Calls itself
 	 * on the parent first. A type with no alias is skipped. The
-	 * leaf is not compared with itself.
+	 * leaf copies ''names'' into
+	 * {@link Shell.Signals.pending_signals} and connects the
+	 * first name. The clutter stub reaches that field through
+	 * {@link GnomeShellRpc.GiStub.Runtime.pending_signals}.
 	 *
 	 * @param t parent type to compare against this object
+	 * @param names signal names gathered on the way down
 	 */
-	private void signal_overrides(GLib.Type t)
+	private void signal_overrides(GLib.Type t, Gee.ArrayList<string> names)
 	{
 		if (t == GLib.Type.INVALID) {
 			return;
 		}
-		this.signal_overrides(t.parent());
+		this.signal_overrides(t.parent(), names);
 		if (t == this.get_type()) {
+			if (names.size == 0) {
+				return;
+			}
+			string[] pending_signals = {};
+			foreach (var name in names) {
+				pending_signals += name;
+			}
+			GnomeShellRpc.GiStub.Runtime.pending_signals = pending_signals;
+			GnomeShellRpc.GiStub.Runtime.pending_signals_size = pending_signals.length;
+			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+				this, pending_signals[0]);
 			return;
 		}
 		if (OLLMrpc.Bin.gtype_to_alias == null) {
@@ -186,7 +242,7 @@
 			if (GLib.Signal.lookup(signal_name, leaf) == 0) {
 				continue;
 			}
-			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(this, signal_name);
+			names.add(signal_name);
 		}
 	}
 

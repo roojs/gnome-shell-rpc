@@ -25,17 +25,45 @@ namespace Shell
 		/**
 		 * Per lease: signal name → our handler id ({@link next_handler_id}).
 		 *
-		 * First connect of a name sends {@code RPC-Live-Subscribe.rpc_signal}.
+		 * First connect of a name sends ''RPC-Live-Subscribe.rpc_signal''.
 		 * Notifications re-emit when {@code has_key(notif.method)}.
+		 * Created on the first {@link connect}.
 		 FIXME = SIGNALS SHOULD BE ID BASED ON THE WIRE - NOT STRINGS (AFTER REGISTRAITON)
 		 */
-		private static Gee.HashMap<int, Gee.HashMap<string, int>>? subs = null;
+		private static Gee.HashMap<int, Gee.HashMap<string, int>>? subs;
 
 		/**
 		 * Our handler id → how many local {@code .connect()}s share that name.
-		 * Last drop (count 0) sends {@code RPC-Live-Subscribe.unsubscribe}.
+		 *
+		 * Last drop (count 0) sends ''RPC-Live-Subscribe.unsubscribe''.
+		 * Created on the first {@link connect}, with {@link subs}.
 		 */
-		private static Gee.HashMap<int, int>? refs = null;
+		private static Gee.HashMap<int, int>? refs;
+
+		/**
+		 * True after the notification handler is connected.
+		 *
+		 * The first {@link connect} that reaches the wire sets this.
+		 * Later connects leave it set.
+		 */
+		private static bool notification_hooked = false;
+
+		/**
+		 * Signal names an actor has collected and not sent yet.
+		 *
+		 * Empty on a later {@link connect}. That connect sends this
+		 * list in one ''RPC-Live-Subscribe.rpc_signal'' and clears it.
+		 */
+		[CCode (cname = "shell_signals_pending_signals")]
+		public static string[] pending_signals = {};
+
+		/**
+		 * Allocated length of {@link pending_signals}.
+		 *
+		 * The clutter stub writes this when it replaces the array.
+		 */
+		[CCode (cname = "_shell_signals_pending_signals_size_")]
+		public static int pending_signals_size;
 
 		/**
 		 * GJS id map. Per lease: GJS handler id → our handler id.
@@ -104,6 +132,19 @@ namespace Shell
 			return false;
 		}
 
+		/**
+		 * Subscribe ''signal_name'' on the peer, or every name in
+		 * {@link pending_signals} when that list is not empty.
+		 *
+		 * The list is cleared before the one
+		 * ''RPC-Live-Subscribe.rpc_signal''. A name already in
+		 * {@link subs} only bumps {@link refs}.
+		 *
+		 * @param obj leased stub
+		 * @param signal_name signal or ''notify::'' property
+		 * @param gjs_handler_id GJS handler id, or 0 from Vala
+		 * @return our handler id, or 0 when the peer has no lease
+		 */
 		[CCode (cname = "shell_signals_connect")]
 		public static int connect(GLib.Object obj, string signal_name, int gjs_handler_id = 0)
 		{
@@ -120,8 +161,11 @@ namespace Shell
 				return 0;
 			}
 			var lid = (int) handle.rpc_lid;
-			if (Signals.subs != null
-					&& Signals.subs.has_key(lid)
+			if (Signals.subs == null) {
+				Signals.subs = new Gee.HashMap<int, Gee.HashMap<string, int>>();
+				Signals.refs = new Gee.HashMap<int, int>();
+			}
+			if (Signals.subs.has_key(lid)
 					&& Signals.subs.get(lid).has_key(signal_name)) {
 				var hid = Signals.subs.get(lid).get(signal_name);
 				Signals.refs.set(hid, Signals.refs.get(hid) + 1);
@@ -136,15 +180,18 @@ namespace Shell
 				}
 				return hid;
 			}
+			string[] signal_names = { signal_name };
+			if (Signals.pending_signals.length > 0) {
+				signal_names = Signals.pending_signals;
+				Signals.pending_signals = {};
+			}
 			GnomeShellRpc.GiStub.Runtime.client.proxies.set(lid, obj);
-			GnomeShellRpc.call_value(
-					"RPC-Live-Subscribe.rpc_signal", obj, OLLMrpc.args("s", signal_name));
-			if (Signals.subs == null) {
-				Signals.subs = new Gee.HashMap<int, Gee.HashMap<string, int>>();
-				Signals.refs = new Gee.HashMap<int, int>();
+			GnomeShellRpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
+				OLLMrpc.args("S", signal_names));
+			if (!Signals.notification_hooked) {
+				Signals.notification_hooked = true;
 				GnomeShellRpc.GiStub.Runtime.client.notification.connect((notif) => {
-					if (Signals.subs == null
-							|| !Signals.subs.has_key(notif.id)
+					if (!Signals.subs.has_key(notif.id)
 							|| !Signals.subs.get(notif.id).has_key(notif.method)) {
 						return;
 					}
@@ -155,13 +202,17 @@ namespace Shell
 					Signals.emit(target, notif.method, notif.args);
 				});
 			}
-			if (!Signals.subs.has_key(lid)) {
-				Signals.subs.set(lid, new Gee.HashMap<string, int>());
-			}
-			var hid = Signals.next_handler_id++;
-			Signals.subs.get(lid).set(signal_name, hid);
-			Signals.refs.set(hid, 1);
-			if (gjs_handler_id != 0) {
+			var hid = 0;
+			foreach (var name in signal_names) {
+				if (!Signals.subs.has_key(lid)) {
+					Signals.subs.set(lid, new Gee.HashMap<string, int>());
+				}
+				hid = Signals.next_handler_id++;
+				Signals.subs.get(lid).set(name, hid);
+				Signals.refs.set(hid, 1);
+				if (gjs_handler_id == 0 || name != signal_name) {
+					continue;
+				}
 				if (Signals.gjs_ids == null) {
 					Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
 				}
@@ -177,13 +228,11 @@ namespace Shell
 		public static void disconnect(GLib.Object obj, string signal_name)
 		{
 			var handle = obj as OLLMrpc.Live.Interface;
-			if (handle == null || handle.rpc_lid == 0
-					|| Signals.subs == null) {
+			if (handle == null || handle.rpc_lid == 0 || Signals.subs == null) {
 				return;
 			}
 			var lid = (int) handle.rpc_lid;
-			if (!Signals.subs.has_key(lid)
-					|| !Signals.subs.get(lid).has_key(signal_name)) {
+			if (!Signals.subs.has_key(lid)	|| !Signals.subs.get(lid).has_key(signal_name)) {
 				return;
 			}
 			var hid = Signals.subs.get(lid).get(signal_name);
@@ -202,13 +251,11 @@ namespace Shell
 		public static void disconnect_id(GLib.Object obj, int gjs_handler_id)
 		{
 			var handle = obj as OLLMrpc.Live.Interface;
-			if (handle == null || handle.rpc_lid == 0
-					|| Signals.gjs_ids == null) {
+			if (handle == null || handle.rpc_lid == 0 || Signals.gjs_ids == null) {
 				return;
 			}
 			var lid = (int) handle.rpc_lid;
-			if (!Signals.gjs_ids.has_key(lid)
-					|| !Signals.gjs_ids.get(lid).has_key(gjs_handler_id)) {
+			if (!Signals.gjs_ids.has_key(lid) || !Signals.gjs_ids.get(lid).has_key(gjs_handler_id)) {
 				return;
 			}
 			var hid = Signals.gjs_ids.get(lid).get(gjs_handler_id);
@@ -239,8 +286,7 @@ namespace Shell
 		) {
 			uint signal_id = 0;
 			GLib.Quark detail = 0;
-			if (!GLib.Signal.parse_name(signal_name, obj.get_type(),
-					out signal_id, out detail, false)
+			if (!GLib.Signal.parse_name(signal_name, obj.get_type(), out signal_id, out detail, false)
 					|| signal_id == 0) {
 				return;
 			}

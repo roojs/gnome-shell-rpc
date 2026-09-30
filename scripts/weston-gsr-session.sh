@@ -2,9 +2,12 @@
 # Weston in an X11 window for **looking** at the nested shell.
 # Nest stays up until you close the Weston window.
 #
+# Session mode opens weston-terminal inside that window. The terminal
+# starts mutter-rpc and follows the debug logs.
+#
 #   ./scripts/weston-gsr-session.sh
 #
-# Agent prove (auto-closes Weston): ./scripts/weston-gsr-prove.sh
+# Agent prove (auto-closes Weston, no log terminal): ./scripts/weston-gsr-prove.sh
 # Smoke, Weston stays up: GI_META_SMOKE=key-smoke ./scripts/weston-gsr-session.sh
 set -euo pipefail
 
@@ -20,6 +23,8 @@ AUTO="$ROOT/scripts/weston-gsr-autolaunch.sh"
 MODE="${GSR_WESTON_MODE:-session}"
 # Weston autolaunch often drops parent exports — prove/hold source this file.
 GSR_ENV_FILE="${RT}/gsr-weston-autolaunch.env"
+# Autolaunch writes Weston's XWayland DISPLAY here. The log terminal reads it.
+XDISPLAY_FILE="${RT}/gsr-weston-xdisplay"
 
 chmod 700 "$RT" 2>/dev/null || true
 export XDG_RUNTIME_DIR="$RT"
@@ -66,10 +71,11 @@ sed "s|@AUTOLAUNCH@|$AUTO|g" "$ROOT/scripts/weston-gsr.ini.in" >"$INI"
 } >"$GSR_ENV_FILE"
 
 echo "weston-gsr-session: mode=$MODE socket=$SOCK ${WIDTH}x${HEIGHT}${GI_META_SMOKE:+ smoke=$GI_META_SMOKE}"
+rm -f "$XDISPLAY_FILE"
 if [[ "$MODE" == "prove" ]]; then
 	echo "weston-gsr-session: autolaunch → nested prove (short timeout)"
 else
-	echo "weston-gsr-session: autolaunch → nested shell (close Weston window to stop)"
+	echo "weston-gsr-session: autolaunch → log terminal inside Weston (close Weston to stop)"
 fi
 
 exec weston \

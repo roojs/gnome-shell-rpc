@@ -38,29 +38,29 @@ After the grid exists, moving the pointer is a different pile: `get_next_sibling
 
 ## Cut
 
-Scoreboard against this log's 45,080 client calls. Rows do not overlap, so the firm numbers add. The top three are counted calls that go away. The bottom four keep a first fetch, and `style-changed` was firing in the same seconds as the layout bursts (283 notifications), so those rows do not get to claim every call they touch.
+Scoreboard against this log's 45,080 client calls. Row 3 is a counted call that goes away. Row 1 keeps one call per batch, so its removed count is the extras, not the whole bucket. The bottom four keep a first fetch, and `style-changed` was firing in the same seconds as the layout bursts (283 notifications), so those rows do not get to claim every call they touch.
 
 | | Change | Calls removed | Share |
 | - | ------ | ------------: | ----: |
-| 1 | Pack each new actor's first property sets and its signal subscribes into that `.new` | 14,200 | 32% |
-| 2 | Carry the initial `add_child` / `set_child` on that same create | 3,011 | 7% |
+| 1 | Four calls per new actor: create, signals, hooks, properties | every signal after the first, every hook register after the first, every initial setter after the property call | |
+| 2 | `add_child` / `set_child` stay their own call | | |
 | 3 | Local child list: `get_next_sibling`, `get_first_child`, `get_parent` | 2,813 | 6% |
 | 4 | Preferred size until `queue_relayout`, a child change, or `style-changed` | a few hundred of 2,331 | |
 | 5 | Theme node and `ThemeNode.get_length` until `style-changed` | a few hundred of 1,973 | |
 | 6 | `get_text_direction` and `St.Settings` until the matching notify | 331, plus settings getters each under 300 | ~1% |
 | 7 | Skip a setter when the cached value already matches | a few hundred | <1% |
 
-Rows 1–3 remove about **20,000** calls (44%). Row 7 does not shrink the app-grid spike: those sets happen once per new actor, which is why they belong in row 1.
+Row 3 removes **2,813** calls (6%). Row 1 is the init spike. It does not fold those calls into `.new`. Row 2 stays one call per `add_child` / `set_child` (2,330 + 681).
 
-Row 1 is 5,286 `RPC-Live-Subscribe.rpc_signal` plus 8,949 counted setters: `set_style_class_name` 1,740, `set_x_expand` 1,139, `set_y_expand` 1,006, `set_x_align` 923, `set_y_align` 821, `set_can_focus` 639, `set_layout_manager` 596, `set_reactive` 564, `St-Label.set_text` 462, `set_orientation` 397, `set_label_actor` 361, `set_pivot_point` 301. The `.new` itself stays. Initial `hide` is another 667 if `visible` rides along (not in the 14,200).
+Row 1's inputs are 5,286 `RPC-Live-Subscribe.rpc_signal`, the per-vfunc `RPC-Live-Callback.register`, and 8,949 counted setters: `set_style_class_name` 1,740, `set_x_expand` 1,139, `set_y_expand` 1,006, `set_x_align` 923, `set_y_align` 821, `set_can_focus` 639, `set_layout_manager` 596, `set_reactive` 564, `St-Label.set_text` 462, `set_orientation` 397, `set_label_actor` 361, `set_pivot_point` 301. The `.new` itself stays. Initial `hide` is another 667, as the `visible` property on the property call.
 
 Row 2 is `add_child` 2,330 and `St-Bin.set_child` 681.
 
 Row 3 is `get_next_sibling` 1,931, `get_first_child` 503, `get_parent` 379. The client already sent the `add_child`. `child-added` (257 notifications) covers a child the server inserts itself. `get_children` was under 300 and drops with the same list.
 
-## Packing
+## Four calls
 
-`.new` cannot carry the later calls as it stands. `Actor.construct` sends `Helper-Actor.create` or `St-*.new` and returns the lease, then `signal_overrides` subscribes, then JavaScript sets properties and connects. One app icon at 16:56:16, ids 37377–37411, is 35 calls from one `St-Button.new` to the next:
+One app icon at 16:56:16, ids 37377–37411, is 35 calls from one `St-Button.new` to the next:
 
 ```text
 St-Button.new
@@ -71,86 +71,38 @@ St-Bin.set_child
 … icon, label, add_child, set_text, hide, show, get_first_child
 ```
 
-Two different bags.
+That button is one create, one signal, and four setters. The box is one create and five setters. A subclass adds one `RPC-Live-Callback.register` per vfunc inside `create_with_overrides`, then `Helper-Actor.create` carries the resulting ids. The cut is those N calls down to four per actor:
 
-**Already known inside `construct`.** The vfunc hook list is already an argument of `Helper-Actor.create`. `signal_overrides` runs immediately after and is the `rpc_signal` on the next line. Those names can be a string list on that same create. The server subscribes before it returns the lease. No change to when `.new` is sent.
+| Call | What it replaces | When it is sent |
+| ---- | ---------------- | --------------- |
+| create | `St-*.new` or `Helper-Actor.create` | `construct`, as now |
+| signals | every `rpc_signal` for this actor's initial names | same `construct`, after the lease exists |
+| hooks | every `RPC-Live-Callback.register` for this actor's vfuncs | same `construct`, only when the list is non-empty |
+| properties | the initial `set_*` / `hide` / `show` | before the first call that is not one of those sets |
 
-**Known only after JavaScript runs.** `set_reactive`, style class, `set_text`, and a later `connect` happen once the lease exists, so each is its own call. They join the create only if the create waits. Hold type, hooks, property writes, and signal names on the stub while `rpc_lid` is still 0. Flush on the first call that needs the server actor. In this trace that call is `St-Bin.set_child` / `add_child` (row 2). Setters and subscribes before that flush stay off the wire.
+A stock icon has no vfunc hooks, so it is three calls. An empty signal list sends no signal call. Create does not take the other three.
 
-## Proposed code — pack into one create
+**🚫** Fields on `Clutter.Actor` for this. No `minted`, no `pack_alias`, no hook variants, no method list, no signal list stored on the instance. Signals and hooks are locals in the method that already walks them. The property batch is one map, allocated with the actor. `prop_batch_open` turns on at the end of construct and off when that call is sent. The map is cleared then.
 
-**⏳ 🔷** One create per actor carries the construct-time signal list and the property writes JavaScript makes before the actor is parented. `add_child` / `set_child` stay their own call (row 2 is not in this diff). Row 3 is not in this diff.
+**🚫** New methods around the four calls. `mint_stock`, `mint_helper`, `send_initial_signals`, `subscribe_many`, `remember`, `begin_hook_batch`, `finish_hook_batch`, `drop_hook_batch`, `queue_property`, `flush_properties`, `property_variant`. `create`, `rpc_signal`, `add_hooks`, and `add_properties` are the calls. `set_` is reserved, so these are not `set_hooks` or `set_properties`. The lines go in those methods.
 
-**ℹ️** Stock icons take `alias + ".new"` (`St-Button.new`). GJS subclasses take `Helper-Actor.create`. Both then call `signal_overrides`, which is the `rpc_signal` on the next line. JavaScript setters run after the lease exists. `Signals.connect` returns 0 when `rpc_lid` is 0, so a connect during a delayed create would be dropped unless it is queued.
+**🚫** Arguments on generated `St-Button.new`. Gi owns that signature.
 
-**⏳** Subscribing inside that create depends on [`OLLMchat` `docs/bugs/2026-09-29-subscribe-without-reply.md`](../../../OLLMchat/docs/bugs/2026-09-29-subscribe-without-reply.md). `Subscribe.attach` connects the signal and does not write a reply. This bug calls it. It does not add a second copy of the closure.
+**🚫** `Helper-St.pack`, an `a(sv)` of setter names, and an allow-list of `set_*` tails.
 
-**🚫** Do not add arguments to generated `St-Button.new`. Gi owns that signature.
+**🚫** Queue getters, `allocate`, `add_child`, or `set_child` into any of the four. Those stay their own call. The property call is sent first when one of them runs.
 
-**🚫** Do not queue getters, `allocate`, `add_child`, or `set_child`. Those flush, then run. The allow-list is the switch below. A name that is not a case is not packed.
+## Proposed code
 
-### ⏳ 🔷 `Actor` fields
+Each block is one edit. **Replace** removes the first fence and puts in the second. **Add** inserts the fence after the anchor. `create_with_overrides` is replaced once, under Hooks.
 
-**Where:** `src/gi-stub/overrides-clutter/Actor.override.vala`, the fields under `construct`.
+### ⏳ 🔷 Create
 
-**Replace:**
-
-```vala
-	protected bool helper_attached;
-	bool relayout_queued;
-	/* Stock ClutterActor:visible default TRUE — the flag, not is_visible(). */
-	bool actor_visible = true;
-	double cached_scale_x = 1.0;
-	double cached_scale_y = 1.0;
-	string actor_name = "";
-	bool name_known = false;
-```
-
-**Replace with:**
-
-```vala
-	protected bool helper_attached;
-	bool relayout_queued;
-	/* Stock ClutterActor:visible default TRUE — the flag, not is_visible(). */
-	bool actor_visible = true;
-	double cached_scale_x = 1.0;
-	double cached_scale_y = 1.0;
-	string actor_name = "";
-	bool name_known = false;
-	bool minted;
-	bool pack_helper;
-	string pack_alias = "";
-	string[] pack_hook_names = {};
-	GLib.Variant? pack_vfunc_ids;
-	GLib.Variant? pack_hook_ids;
-	Gee.ArrayList<string> pack_methods = new Gee.ArrayList<string>();
-	Gee.ArrayList<Gee.ArrayList<GLib.Value?>> pack_args =
-		new Gee.ArrayList<Gee.ArrayList<GLib.Value?>>();
-	Gee.ArrayList<string> pack_signals = new Gee.ArrayList<string>();
-```
-
-### ⏳ 🔷 `construct` records the create and returns
-
-**Where:** `construct`, from the lease check through the alias switch.
+**Where:** `src/gi-stub/overrides-clutter/Actor.override.vala` `construct`. The helper arms stop calling `signal_overrides` here. That call moves into `create_with_overrides`, replaced under Hooks.
 
 **Replace:**
 
 ```vala
-		if (this.rpc_lid != 0) {
-			return;
-		}
-		var t = this.get_type();
-		while (t != GLib.Type.INVALID) {
-			if (OLLMrpc.Bin.gtype_to_alias == null
-					|| !OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
-				t = t.parent();
-				continue;
-			}
-			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
-			switch (alias) {
-				case "Meta-BackgroundActor": // leaf Helper
-				case "Clutter-Clone": // Clone.override new(source)
-					return;
 				case "St-Widget":
 					this.create_with_overrides();
 					this.signal_overrides(this.get_type());
@@ -163,38 +115,11 @@ Two different bags.
 						return;
 					}
 					break;
-				default:
-					break;
-			}
-			var response = GnomeShellRpc.call_value(alias + ".new");
-			this.rpc_lid =
-				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-			GnomeShellRpc.GiStub.Runtime.register_handle(this);
-			this.signal_overrides(this.get_type());
-			return;
-		}
 ```
 
 **Replace with:**
 
 ```vala
-		if (this.rpc_lid != 0) {
-			this.minted = true;
-			return;
-		}
-		var t = this.get_type();
-		while (t != GLib.Type.INVALID) {
-			if (OLLMrpc.Bin.gtype_to_alias == null
-					|| !OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
-				t = t.parent();
-				continue;
-			}
-			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
-			switch (alias) {
-				case "Meta-BackgroundActor": // leaf Helper
-				case "Clutter-Clone": // Clone.override new(source)
-					this.minted = true;
-					return;
 				case "St-Widget":
 					this.create_with_overrides();
 					return;
@@ -205,18 +130,458 @@ Two different bags.
 						return;
 					}
 					break;
-				default:
-					break;
-			}
-			this.pack_alias = alias;
+```
+
+**Where:** the stock arm in that same `construct`, the `signal_overrides` call.
+
+**Replace:**
+
+```vala
+			GnomeShellRpc.GiStub.Runtime.register_handle(this);
 			this.signal_overrides(this.get_type());
+			return;
+```
+
+**Replace with:**
+
+```vala
+			GnomeShellRpc.GiStub.Runtime.register_handle(this);
+			this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+			this.prop_batch_open = true;
+			return;
+```
+
+**Where:** `src/rpc/helper/ClutterActor.vala` `rpc_register`, then `create`.
+
+**Replace:**
+
+```vala
+			OLLMrpc.Request.add_class(
+				"Helper-Actor", typeof(Actor),
+				"create", "sSvv",
+				"add_hook", "it",
+```
+
+**Replace with:**
+
+```vala
+			OLLMrpc.Request.add_class(
+				"Helper-Actor", typeof(Actor),
+				"create", "s",
+				"add_hook", "it",
+				"add_hooks", "Sv",
+				"add_properties", "",
+```
+
+`add_hook` stays `it`. `Global.bind_display` still sends one vfunc id and one hook id. The construct hook call is `add_hooks`. `RPC-Live-Callback.register` stays one callback id and does not touch the actor.
+
+**Replace:**
+
+```vala
+		public void create(
+			OLLMrpc.Request request,
+			string type_name,
+			string[] names,
+			GLib.Variant vfunc_ids,
+			GLib.Variant hook_ids
+		) {
+			var created = new Actor();
+			created.client_type_name = type_name;
+			var n = (int) vfunc_ids.n_children();
+			for (var i = 0; i < n; i++) {
+				var id = vfunc_ids.get_child_value(i).get_int32();
+				created.vfuncs.set(id,
+					request.connection.callbacks.get(
+						(int) hook_ids.get_child_value(i).get_uint64()));
+				if (i < names.length) {
+					created.method_names.set(id, names[i]);
+				}
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t",
+					(uint64) request.connection.export(created)),
+			});
+		}
+```
+
+**Replace with:**
+
+```vala
+		public void create(OLLMrpc.Request request, string type_name)
+		{
+			var created = new Actor();
+			created.client_type_name = type_name;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t",
+					(uint64) request.connection.export(created)),
+			});
+		}
+```
+
+`add_hook` stays for one later vfunc. It is not the construct call.
+
+### ⏳ 🔷 Signals
+
+`signal_overrides` already walks the names and calls `ensure_signal_subscribe` once per name. That is `Signals.connect`, which sends `rpc_signal`. The walk keeps a local list. One `rpc_signal` sends it. `connect` is the method that already writes `subs` / `refs`.
+
+**Where:** `src/gi-stub/overrides-clutter/Actor.override.vala` `signal_overrides`. The signature gains the list. The leaf frame, which already returns after the parent walk, sends.
+
+**Replace:**
+
+```vala
+	private void signal_overrides(GLib.Type t)
+	{
+		if (t == GLib.Type.INVALID) {
+			return;
+		}
+		this.signal_overrides(t.parent());
+		if (t == this.get_type()) {
 			return;
 		}
 ```
 
-`create_with_overrides` collects the hook list and the signal names. The stock arm stores `pack_alias` and the same signal names. Neither sends `.new`.
+**Replace with:**
 
-### ⏳ 🔷 `create_with_overrides` stores the hook list
+```vala
+	private void signal_overrides(GLib.Type t, Gee.ArrayList<string> names)
+	{
+		if (t == GLib.Type.INVALID) {
+			return;
+		}
+		this.signal_overrides(t.parent(), names);
+		if (t == this.get_type()) {
+			if (names.size == 0) {
+				return;
+			}
+			string[] pending_signals = {};
+			foreach (var name in names) {
+				pending_signals += name;
+			}
+			Shell.Signals.pending_signals = pending_signals;
+			Shell.Signals.connect(this, pending_signals[0], 0);
+			return;
+		}
+```
+
+**Replace:**
+
+```vala
+			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(this, signal_name);
+```
+
+**Replace with:**
+
+```vala
+			names.add(signal_name);
+```
+
+**Where:** `src/shell-gi/Signals.vala`, the `subs` and `refs` fields. Nothing assigns either back to null. `disconnect` only removes keys.
+
+**Replace:**
+
+```vala
+		private static Gee.HashMap<int, Gee.HashMap<string, int>>? subs = null;
+
+		/**
+		 * Our handler id → how many local {@code .connect()}s share that name.
+		 * Last drop (count 0) sends {@code RPC-Live-Subscribe.unsubscribe}.
+		 */
+		private static Gee.HashMap<int, int>? refs = null;
+```
+
+**Replace with:**
+
+```vala
+		private static Gee.HashMap<int, Gee.HashMap<string, int>> subs
+			= new Gee.HashMap<int, Gee.HashMap<string, int>>();
+
+		/**
+		 * Our handler id → how many local {@code .connect()}s share that name.
+		 * Last drop (count 0) sends {@code RPC-Live-Subscribe.unsubscribe}.
+		 */
+		private static Gee.HashMap<int, int> refs = new Gee.HashMap<int, int>();
+		/* Notification handler is connected on the first subscribe. */
+		private static bool notification_hooked = false;
+```
+
+**Add** in `src/shell-gi/Signals.vala`, after `notification_hooked`.
+
+**Anchor:**
+
+```vala
+		private static bool notification_hooked = false;
+```
+
+**Add:**
+
+```vala
+		/* Names signal_overrides has not sent yet. */
+		public static string[] pending_signals = {};
+```
+
+**Where:** `src/shell-gi/Signals.vala` `Signals.connect`, from the already-subscribed check through `return hid`.
+
+**Replace:**
+
+```vala
+			if (Signals.subs != null
+					&& Signals.subs.has_key(lid)
+					&& Signals.subs.get(lid).has_key(signal_name)) {
+				var hid = Signals.subs.get(lid).get(signal_name);
+				Signals.refs.set(hid, Signals.refs.get(hid) + 1);
+				if (gjs_handler_id != 0) {
+					if (Signals.gjs_ids == null) {
+						Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+					}
+					if (!Signals.gjs_ids.has_key(lid)) {
+						Signals.gjs_ids.set(lid, new Gee.HashMap<int, int>());
+					}
+					Signals.gjs_ids.get(lid).set(gjs_handler_id, hid);
+				}
+				return hid;
+			}
+			GnomeShellRpc.GiStub.Runtime.client.proxies.set(lid, obj);
+			GnomeShellRpc.call_value(
+					"RPC-Live-Subscribe.rpc_signal", obj, OLLMrpc.args("s", signal_name));
+			if (Signals.subs == null) {
+				Signals.subs = new Gee.HashMap<int, Gee.HashMap<string, int>>();
+				Signals.refs = new Gee.HashMap<int, int>();
+				GnomeShellRpc.GiStub.Runtime.client.notification.connect((notif) => {
+					if (Signals.subs == null
+							|| !Signals.subs.has_key(notif.id)
+							|| !Signals.subs.get(notif.id).has_key(notif.method)) {
+						return;
+					}
+					if (!GnomeShellRpc.GiStub.Runtime.client.proxies.has_key(notif.id)) {
+						return;
+					}
+					var target = GnomeShellRpc.GiStub.Runtime.client.proxies.get(notif.id);
+					Signals.emit(target, notif.method, notif.args);
+				});
+			}
+			if (!Signals.subs.has_key(lid)) {
+				Signals.subs.set(lid, new Gee.HashMap<string, int>());
+			}
+			var hid = Signals.next_handler_id++;
+			Signals.subs.get(lid).set(signal_name, hid);
+			Signals.refs.set(hid, 1);
+			if (gjs_handler_id != 0) {
+				if (Signals.gjs_ids == null) {
+					Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+				}
+				if (!Signals.gjs_ids.has_key(lid)) {
+					Signals.gjs_ids.set(lid, new Gee.HashMap<int, int>());
+				}
+				Signals.gjs_ids.get(lid).set(gjs_handler_id, hid);
+			}
+			return hid;
+```
+
+**Replace with:**
+
+```vala
+			if (Signals.subs.has_key(lid)
+					&& Signals.subs.get(lid).has_key(signal_name)) {
+				var hid = Signals.subs.get(lid).get(signal_name);
+				Signals.refs.set(hid, Signals.refs.get(hid) + 1);
+				if (gjs_handler_id != 0) {
+					if (Signals.gjs_ids == null) {
+						Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+					}
+					if (!Signals.gjs_ids.has_key(lid)) {
+						Signals.gjs_ids.set(lid, new Gee.HashMap<int, int>());
+					}
+					Signals.gjs_ids.get(lid).set(gjs_handler_id, hid);
+				}
+				return hid;
+			}
+			string[] signal_names = { signal_name };
+			if (Signals.pending_signals.length > 0) {
+				signal_names = Signals.pending_signals;
+				Signals.pending_signals = {};
+			}
+			GnomeShellRpc.GiStub.Runtime.client.proxies.set(lid, obj);
+			GnomeShellRpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
+				OLLMrpc.args("S", signal_names));
+			if (!Signals.notification_hooked) {
+				Signals.notification_hooked = true;
+				GnomeShellRpc.GiStub.Runtime.client.notification.connect((notif) => {
+					if (!Signals.subs.has_key(notif.id)
+							|| !Signals.subs.get(notif.id).has_key(notif.method)) {
+						return;
+					}
+					if (!GnomeShellRpc.GiStub.Runtime.client.proxies.has_key(notif.id)) {
+						return;
+					}
+					var target = GnomeShellRpc.GiStub.Runtime.client.proxies.get(notif.id);
+					Signals.emit(target, notif.method, notif.args);
+				});
+			}
+			var hid = 0;
+			foreach (var name in signal_names) {
+				if (!Signals.subs.has_key(lid)) {
+					Signals.subs.set(lid, new Gee.HashMap<string, int>());
+				}
+				hid = Signals.next_handler_id++;
+				Signals.subs.get(lid).set(name, hid);
+				Signals.refs.set(hid, 1);
+				if (gjs_handler_id == 0 || name != signal_name) {
+					continue;
+				}
+				if (Signals.gjs_ids == null) {
+					Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+				}
+				if (!Signals.gjs_ids.has_key(lid)) {
+					Signals.gjs_ids.set(lid, new Gee.HashMap<int, int>());
+				}
+				Signals.gjs_ids.get(lid).set(gjs_handler_id, hid);
+			}
+			return hid;
+```
+
+**Where:** libocrpc `libocrpc/Live/Subscribe.vala` `rpc_signal`. The signature is `S`. The body loops [`Live.Subscription.connect`](../../../OLLMchat/docs/bugs/2026-09-29-subscribe-without-reply.md) and replies once. That method is applied. It writes no reply.
+
+**Replace:**
+
+```vala
+				"rpc_signal", "s",
+```
+
+**Replace with:**
+
+```vala
+				"rpc_signal", "S",
+```
+
+**Replace:**
+
+```vala
+		public void rpc_signal(Request request, string name)
+		{
+			if (!request.connection.live_handles) {
+				GLib.error("Subscribe.signal requires live_handles");
+			}
+			var subscription = new Subscription() {
+				connection = request.connection,
+				method = name,
+				id = (int) request.lease_id
+			};
+			if (!subscription.connect()) {
+				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			request.reply(new Response());
+		}
+```
+
+**Replace with:**
+
+```vala
+		public void rpc_signal(Request request, string[] names)
+		{
+			if (!request.connection.live_handles) {
+				GLib.error("Subscribe.signal requires live_handles");
+			}
+			foreach (var name in names) {
+				var subscription = new Subscription() {
+					connection = request.connection,
+					method = name,
+					id = (int) request.lease_id
+				};
+				if (!subscription.connect()) {
+					request.connection.reply_error(request,
+						(int) RpcErrorCode.INVALID_PARAMS);
+					return;
+				}
+			}
+			request.reply(new Response());
+		}
+```
+
+A false `connect` is `reply_error` `-32602` and no success reply. An empty `method` or a missing lease is that false.
+
+**🚫** `Subscribe.attach`. The connect is `new OLLMrpc.Live.Subscription()`.
+
+### ⏳ 🔷 Hooks
+
+`add_hook` is unchanged. `Global.bind_display` still sends one vfunc id and one hook id. `RPC-Live-Callback.reply` is unchanged.
+
+**Add** in `src/gi-stub/Runtime.vala`, after `handlers`. `handlers` and `InvokeRow` become `internal` in the same edit so `create_with_overrides` can file the rows.
+
+**Replace:**
+
+```vala
+		private class InvokeRow : GLib.Object
+		{
+			public InvokeHandler handler;
+		}
+
+		private static Gee.HashMap<int, InvokeRow>? handlers = null;
+```
+
+**Replace with:**
+
+```vala
+		internal class InvokeRow : GLib.Object
+		{
+			public InvokeHandler handler;
+		}
+
+		internal static Gee.HashMap<int, InvokeRow>? handlers = null;
+		/* Non-null only while create_with_overrides is inside bind_vfunc. */
+		internal static Gee.ArrayList<InvokeRow>? hook_rows;
+```
+
+**Where:** `src/gi-stub/Runtime.vala` `callback_bind`. This replaces the whole method.
+
+**Replace:**
+
+```vala
+		public static uint64 callback_bind(owned InvokeHandler handler)
+		{
+			Runtime.register();
+			if (Runtime.handlers == null) {
+				Runtime.handlers = new Gee.HashMap<int, InvokeRow>();
+			}
+			var response = GnomeShellRpc.call_value("RPC-Live-Callback.register");
+			var id = (int) response.args.get(0).get_uint64();
+			var row = new InvokeRow();
+			row.handler = (owned) handler;
+			Runtime.handlers.set(id, row);
+			return (uint64) id;
+		}
+```
+
+**Replace with:**
+
+```vala
+		public static uint64 callback_bind(owned InvokeHandler handler)
+		{
+			if (Runtime.hook_rows != null) {
+				var row = new InvokeRow();
+				row.handler = (owned) handler;
+				Runtime.hook_rows.add(row);
+				return 1;
+			}
+			Runtime.register();
+			if (Runtime.handlers == null) {
+				Runtime.handlers = new Gee.HashMap<int, InvokeRow>();
+			}
+			var empty_ids = new GLib.Variant.array(
+				new GLib.VariantType("i"), new GLib.Variant[] {});
+			var response = GnomeShellRpc.call_value("RPC-Live-Callback.register",
+				null, OLLMrpc.args("iSv", 1, new string[] {}, empty_ids));
+			var id = response.args.get(0).get_child_value(0).get_uint64();
+			var row = new InvokeRow();
+			row.handler = (owned) handler;
+			Runtime.handlers.set((int) id, row);
+			return id;
+		}
+```
+
+**Where:** `src/gi-stub/overrides-clutter/Actor.override.vala` `create_with_overrides`. This replaces the whole method. It is not a second copy of the `construct` edit above.
 
 **Replace:**
 
@@ -265,16 +630,13 @@ Two different bags.
 ```vala
 	void create_with_overrides()
 	{
+		GnomeShellRpc.GiStub.Runtime.hook_rows =
+			new Gee.ArrayList<GnomeShellRpc.GiStub.Runtime.InvokeRow>();
 		string[] always = {};
 		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
-		/*
-		 * Callbacks do not need a lease. Register them now. The lease
-		 * comes back from flush_pack, after the server has stored the map.
-		 */
 		string[] names = {};
 		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
-		var hook_ids = new GLib.VariantBuilder(new GLib.VariantType("at"));
 		foreach (var name in overridden) {
 			var vfunc_id = -1;
 			var hook_id = this.bind_vfunc(name, out vfunc_id);
@@ -288,118 +650,108 @@ Two different bags.
 			}
 			names += called;
 			vfunc_ids.add("i", vfunc_id);
-			hook_ids.add("t", hook_id);
 		}
-		this.pack_helper = true;
-		this.pack_hook_names = names;
-		this.pack_vfunc_ids = vfunc_ids.end();
-		this.pack_hook_ids = hook_ids.end();
-		this.signal_overrides(this.get_type());
-	}
-```
-
-### ⏳ 🔷 `signal_overrides` records the name
-
-**Replace:**
-
-```vala
-		foreach (var name in OLLMrpc.Gi.vfunc_names(ns, class_name)) {
-			var ours = OLLMrpc.Gi.vfunc_slot(leaf, ns, class_name, name);
-			var plain = OLLMrpc.Gi.vfunc_slot(t, ns, class_name, name);
-			if (ours == plain) {
-				continue;
-			}
-			var signal_name = name.replace("_", "-");
-			if (GLib.Signal.lookup(signal_name, leaf) == 0) {
-				continue;
-			}
-			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(this, signal_name);
-		}
-	}
-```
-
-**Replace with:**
-
-```vala
-		foreach (var name in OLLMrpc.Gi.vfunc_names(ns, class_name)) {
-			var ours = OLLMrpc.Gi.vfunc_slot(leaf, ns, class_name, name);
-			var plain = OLLMrpc.Gi.vfunc_slot(t, ns, class_name, name);
-			if (ours == plain) {
-				continue;
-			}
-			var signal_name = name.replace("_", "-");
-			if (GLib.Signal.lookup(signal_name, leaf) == 0) {
-				continue;
-			}
-			this.pack_signals.add(signal_name);
-		}
-	}
-
-	internal void flush_pack()
-	{
-		if (this.minted) {
-			return;
-		}
-		this.minted = true;
-		if (this.pack_helper) {
-			this.flush_helper();
-			return;
-		}
-		this.flush_stock();
-	}
-
-	void flush_helper()
-	{
-		var response = GnomeShellRpc.call_value(
-			"Helper-Actor.create", null,
-			OLLMrpc.args("sSvvSS",
-				this.get_type().name(),
-				this.pack_hook_names,
-				this.pack_vfunc_ids,
-				this.pack_hook_ids,
-				this.pack_signal_names(),
-				Actor.pack_blob(this.pack_methods, this.pack_args)));
+		var response = GnomeShellRpc.call_value("Helper-Actor.create", null,
+			OLLMrpc.args("s", this.get_type().name()));
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
-		this.finish_flush();
-	}
-
-	void flush_stock()
-	{
-		var response = GnomeShellRpc.call_value(
-			"Helper-St.pack", null,
-			OLLMrpc.args("sSS",
-				this.pack_alias,
-				this.pack_signal_names(),
-				Actor.pack_blob(this.pack_methods, this.pack_args)));
-		this.rpc_lid =
-			(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-		this.finish_flush();
-	}
-
-	void finish_flush()
-	{
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
-		foreach (var name in this.pack_signals) {
-			Shell.Signals.remember(this, name);
+		this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+		if (names.length == 0) {
+			GnomeShellRpc.GiStub.Runtime.hook_rows = null;
+			this.prop_batch_open = true;
+			return;
 		}
-	}
-
-	string[] pack_signal_names()
-	{
-		string[] names = {};
-		foreach (var name in this.pack_signals) {
-			names += name;
+		var hooks = GnomeShellRpc.call_value("Helper-Actor.add_hooks", this,
+			OLLMrpc.args("Sv", names, vfunc_ids.end()));
+		var ids = hooks.args.get(0);
+		if (GnomeShellRpc.GiStub.Runtime.handlers == null) {
+			GnomeShellRpc.GiStub.Runtime.handlers = new Gee.HashMap<int,
+				GnomeShellRpc.GiStub.Runtime.InvokeRow>();
 		}
-		return names;
+		var n = (int) ids.n_children();
+		for (var i = 0; i < n; i++) {
+			var id = ids.get_child_value(i).get_uint64();
+			GnomeShellRpc.GiStub.Runtime.handlers.set((int) id,
+				GnomeShellRpc.GiStub.Runtime.hook_rows.get(i));
+		}
+		GnomeShellRpc.GiStub.Runtime.hook_rows = null;
+		this.prop_batch_open = true;
 	}
 ```
 
-`pack_blob` is an `a(sv)`: method name, then that call's one argument as a variant. `flush_pack` does not take `add_child` or `set_child`. The caller flushes, then sends that call.
+**Where:** `src/rpc/helper/ClutterActor.vala` `add_hooks`. `RPC-Live-Callback.register` stays the one-id allocator. It does not look up the actor.
 
-### ⏳ 🔷 `call_value` queues or flushes before `lease_id_of`
+**Add** after `add_hook`:
 
-**Where:** `src/namespace.vala` `call_value`.
+```vala
+		public void add_hooks(
+			OLLMrpc.Request request,
+			string[] names,
+			GLib.Variant vfunc_ids
+		) {
+			if (!request.connection.live_handles) {
+				GLib.error("Actor.add_hooks requires live_handles");
+			}
+			var created = request.connection.leases.get(
+				(int) request.lease_id) as Actor;
+			if (created == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var n = (int) vfunc_ids.n_children();
+			var ids = new GLib.VariantBuilder(new GLib.VariantType("at"));
+			for (var i = 0; i < n; i++) {
+				var id = request.connection.next_handle;
+				request.connection.next_handle++;
+				var hook = new OLLMrpc.Live.Hook() {
+					connection = request.connection,
+					id = id
+				};
+				request.connection.callbacks.set(id, hook);
+				ids.add("t", (uint64) id);
+				var vfunc_id = vfunc_ids.get_child_value(i).get_int32();
+				created.vfuncs.set(vfunc_id, hook);
+				if (i >= names.length) {
+					continue;
+				}
+				created.method_names.set(vfunc_id, names[i]);
+			}
+			request.reply(new OLLMrpc.Response() {
+				args = OLLMrpc.args("v", ids.end()),
+			});
+		}
+```
+
+### ⏳ 🔷 Properties
+
+One leased call. The map stores the property name and the `GLib.Value` the setter already built. `call_value` already sends those values. `hide` and `show` are `visible`. `set_style_class_name` is `style-class`. A set after the map has been sent is the normal setter. `set_pivot_point` has two arguments, so it does not join the map; the map is sent, then that call runs.
+
+The map is allocated with the actor and stays empty after the call goes out. `prop_batch_open` starts false, turns on at the end of construct, and turns off when the map is sent. Empty means nothing is queued.
+
+The first set of a property still crosses the wire, on this call. A construct default is not treated as already sent.
+
+**Add** in `src/gi-stub/overrides-clutter/Actor.override.vala`, after `name_known`.
+
+**Anchor:**
+
+```vala
+	string actor_name = "";
+	bool name_known = false;
+```
+
+**Add:**
+
+```vala
+	/* Initial sets, until the first call that is not one of them. */
+	internal Gee.HashMap<string, GLib.Value?> prop_batch {
+		get; set; default = new Gee.HashMap<string, GLib.Value?>();
+	}
+	internal bool prop_batch_open = false;
+```
+
+**Where:** `src/namespace.vala` `call_value`, the whole function. A queued property returns before `lease_id_of`. From `lease_id` through `do_call` is the end, and it stays at that indent.
 
 **Replace:**
 
@@ -414,6 +766,33 @@ Two different bags.
 		if (instance != null) {
 			lease_id = GiStub.Runtime.lease_id_of(instance, method);
 		}
+		var req = new OLLMrpc.Request() {
+			method = method,
+			lease_id = lease_id,
+			buffer = buffer,
+		};
+		if (args == null) {
+			return GiStub.Runtime.do_call(req);
+		}
+		foreach (var val in args) {
+			if (!val.type().is_a(GLib.Type.OBJECT)) {
+				req.args.add(val);
+				continue;
+			}
+			var obj = val.get_object();
+			if (obj == null) {
+				var zero = GLib.Value(GLib.Type.UINT64);
+				zero.set_uint64(0);
+				req.args.add(zero);
+				continue;
+			}
+			var lease = GiStub.Runtime.lease_id_of(obj, method);
+			var wire = GLib.Value(GLib.Type.UINT64);
+			wire.set_uint64(lease);
+			req.args.add(wire);
+		}
+		return GiStub.Runtime.do_call(req);
+	}
 ```
 
 **Replace with:**
@@ -426,318 +805,121 @@ Two different bags.
 		OLLMrpc.Live.Buffer? buffer = null
 	) throws GLib.Error {
 		var actor = instance as Clutter.Actor;
-		if (actor != null && actor.queue_or_flush(method, args)) {
+		if (actor != null && actor.prop_batch_open
+			&& (method.has_suffix(".hide") || method.has_suffix(".show"))) {
+			var held = GLib.Value(typeof(bool));
+			held.set_boolean(method.has_suffix(".show"));
+			actor.prop_batch.set("visible", held);
 			return new OLLMrpc.Response();
+		}
+		var name = "";
+		if (actor != null && actor.prop_batch_open && args != null && args.size == 1) {
+			var dot = method.last_index_of_char('.');
+			var tail = dot < 0 ? method : method.substring(dot + 1);
+			if (!tail.has_prefix("set_") || tail == "set_child") {
+				tail = "";
+			}
+			if (tail != "") {
+				name = tail.substring(4).replace("_", "-");
+			}
+		}
+		if (name != "" && actor.get_class().find_property(name) == null) {
+			name = "";
+		}
+		if (name != "") {
+			actor.prop_batch.set(name, args.get(0));
+			return new OLLMrpc.Response();
+		}
+		if (actor != null && actor.prop_batch_open) {
+			actor.prop_batch_open = false;
+			if (actor.prop_batch.size > 0) {
+				var send = new Gee.ArrayList<GLib.Value?>();
+				foreach (var entry in actor.prop_batch.entries) {
+					var key = GLib.Value(typeof(string));
+					key.set_string(entry.key);
+					send.add(key);
+					send.add(entry.value);
+				}
+				actor.prop_batch.clear();
+				GnomeShellRpc.call_value("Helper-Actor.add_properties", actor, send);
+			}
 		}
 		uint64 lease_id = 0;
 		if (instance != null) {
 			lease_id = GiStub.Runtime.lease_id_of(instance, method);
 		}
-```
-
-The rest of `call_value` stays. `queue_or_flush` on `Clutter.Actor`:
-
-```vala
-	internal bool queue_or_flush(string method, Gee.ArrayList<GLib.Value?>? args)
-	{
-		if (this.minted) {
-			return false;
-		}
-		this.flush_arg_actors(args);
-		if (!Actor.packable_setter(method, args)) {
-			this.flush_pack();
-			return false;
-		}
-		this.pack_methods.add(method);
-		var stored = args;
-		if (stored == null) {
-			stored = new Gee.ArrayList<GLib.Value?>();
-		}
-		this.pack_args.add(stored);
-		return true;
-	}
-
-	void flush_arg_actors(Gee.ArrayList<GLib.Value?>? args)
-	{
+		var req = new OLLMrpc.Request() {
+			method = method,
+			lease_id = lease_id,
+			buffer = buffer,
+		};
 		if (args == null) {
-			return;
+			return GiStub.Runtime.do_call(req);
 		}
 		foreach (var val in args) {
-			this.flush_arg_actor(val);
+			if (!val.type().is_a(GLib.Type.OBJECT)) {
+				req.args.add(val);
+				continue;
+			}
+			var obj = val.get_object();
+			if (obj == null) {
+				var zero = GLib.Value(GLib.Type.UINT64);
+				zero.set_uint64(0);
+				req.args.add(zero);
+				continue;
+			}
+			var lease = GiStub.Runtime.lease_id_of(obj, method);
+			var wire = GLib.Value(GLib.Type.UINT64);
+			wire.set_uint64(lease);
+			req.args.add(wire);
 		}
-	}
-
-	void flush_arg_actor(GLib.Value val)
-	{
-		if (!val.type().is_a(GLib.Type.OBJECT)) {
-			return;
-		}
-		var child = val.get_object() as Clutter.Actor;
-		if (child == null || child.minted) {
-			return;
-		}
-		child.flush_pack();
+		return GiStub.Runtime.do_call(req);
 	}
 ```
 
-### ⏳ 🔷 Which setters pack
+`call_value` already turns an object argument into a lease id. A `set_child`, a getter, `add_child`, or `allocate` is not stored, so the map is sent and then that call runs. `set_pivot_point` has two arguments, so it takes that same path.
 
-The wire prefix is `St-Button`, `St-Widget`, `Clutter-Actor`, and the rest. The switch is the name after the last dot, split into the actor methods and the St methods. A getter, `add_child`, or `set_child` is the default and flushes.
+**Add** in `src/rpc/helper/ClutterActor.vala`, after `create`. The signature line is already in the `rpc_register` replace above.
 
-```vala
-	internal static bool packable_setter(
-		string method,
-		Gee.ArrayList<GLib.Value?>? args
-	) {
-		if (args == null || args.size != 1) {
-			return false;
-		}
-		return Actor.packable_name(Actor.method_tail(method));
-	}
+**Anchor:** the `create` method this section already replaced.
 
-	static string method_tail(string method)
-	{
-		var dot = method.last_index_of_char('.');
-		if (dot < 0) {
-			return method;
-		}
-		return method.substring(dot + 1);
-	}
-
-	static bool packable_name(string name)
-	{
-		if (Actor.packable_actor(name)) {
-			return true;
-		}
-		return Actor.packable_st(name);
-	}
-
-	static bool packable_actor(string name)
-	{
-		switch (name) {
-			case "set_reactive":
-			case "set_x_expand":
-			case "set_y_expand":
-			case "set_x_align":
-			case "set_y_align":
-			case "set_pivot_point":
-			case "set_layout_manager":
-			case "hide":
-			case "show":
-				return true;
-			default:
-				return false;
-		}
-	}
-
-	static bool packable_st(string name)
-	{
-		switch (name) {
-			case "set_can_focus":
-			case "set_track_hover":
-			case "set_style_class_name":
-			case "set_label_actor":
-			case "set_orientation":
-			case "set_text":
-				return true;
-			default:
-				return false;
-		}
-	}
-```
-
-`hide` and `show` are actor cases. The 667 initial `hide` calls ride in the bag. A `show` before parenting stays as a later entry, in order.
-
-### ⏳ 🔷 `Signals.connect` while there is no lease
-
-**Where:** `src/shell-gi/Signals.vala` `connect`, after the `init-xserver` check.
-
-**Replace:**
+**Add:**
 
 ```vala
-			GnomeShellRpc.GiStub.Runtime.register();
-			var handle = obj as OLLMrpc.Live.Interface;
-			if (handle == null || handle.rpc_lid == 0) {
-				return 0;
-			}
-			if (!Signals.exists_on_peer(obj, signal_name)) {
-				return 0;
-			}
-```
-
-**Replace with:**
-
-```vala
-			GnomeShellRpc.GiStub.Runtime.register();
-			var handle = obj as OLLMrpc.Live.Interface;
-			if (handle == null) {
-				return 0;
-			}
-			if (handle.rpc_lid == 0) {
-				return Signals.queue_unminted(obj, signal_name, gjs_handler_id);
-			}
-			if (!Signals.exists_on_peer(obj, signal_name)) {
-				return 0;
-			}
-```
-
-`queue_unminted` follows `connect`:
-
-```vala
-		static int queue_unminted(GLib.Object obj, string signal_name, int gjs_handler_id)
+		public void add_properties(OLLMrpc.Request request)
 		{
-			var actor = obj as Clutter.Actor;
-			if (actor == null || actor.minted) {
-				return 0;
+			var obj = request.connection.leases.get((int) request.lease_id);
+			if (obj == null || request.args.size % 2 != 0) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
 			}
-			actor.pack_signals.add(signal_name);
-			return Signals.remember(obj, signal_name, gjs_handler_id);
-		}
-```
-
-`remember` is the current tail of `connect`: the `subs` / `refs` / `gjs_ids` inserts, and not the `RPC-Live-Subscribe.rpc_signal` call. `connect` calls `remember` after a real subscribe as well. A connect after `flush_pack` still sends `rpc_signal`.
-
-### ⏳ 🔷 `Helper-Actor.create` takes the lists
-
-**Where:** `src/rpc/helper/ClutterActor.vala` `rpc_register`, then `create`.
-
-**Replace:**
-
-```vala
-			OLLMrpc.Request.add_class(
-				"Helper-Actor", typeof(Actor),
-				"create", "sSvv",
-				"add_hook", "it",
-```
-
-**Replace with:**
-
-```vala
-			OLLMrpc.Request.add_class(
-				"Helper-Actor", typeof(Actor),
-				"create", "sSvvSS",
-				"add_hook", "it",
-```
-
-**Replace:**
-
-```vala
-		public void create(
-			OLLMrpc.Request request,
-			string type_name,
-			string[] names,
-			GLib.Variant vfunc_ids,
-			GLib.Variant hook_ids
-		) {
-			var created = new Actor();
-			created.client_type_name = type_name;
-			var n = (int) vfunc_ids.n_children();
-			for (var i = 0; i < n; i++) {
-				var id = vfunc_ids.get_child_value(i).get_int32();
-				created.vfuncs.set(id,
-					request.connection.callbacks.get(
-						(int) hook_ids.get_child_value(i).get_uint64()));
-				if (i < names.length) {
-					created.method_names.set(id, names[i]);
+			for (var i = 0; i < request.args.size; i += 2) {
+				var name = request.args.get(i).get_string();
+				var value = request.args.get(i + 1);
+				var pspec = obj.get_class().find_property(name);
+				if (pspec == null) {
+					request.connection.reply_error(request,
+						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+					return;
 				}
-			}
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				args = OLLMrpc.args("t",
-					(uint64) request.connection.export(created)),
-			});
-		}
-```
-
-**Replace with:**
-
-```vala
-		public void create(
-			OLLMrpc.Request request,
-			string type_name,
-			string[] names,
-			GLib.Variant vfunc_ids,
-			GLib.Variant hook_ids,
-			string[] signals,
-			GLib.Variant bag
-		) {
-			var created = new Actor();
-			created.client_type_name = type_name;
-			var n = (int) vfunc_ids.n_children();
-			for (var i = 0; i < n; i++) {
-				var id = vfunc_ids.get_child_value(i).get_int32();
-				created.vfuncs.set(id,
-					request.connection.callbacks.get(
-						(int) hook_ids.get_child_value(i).get_uint64()));
-				if (i < names.length) {
-					created.method_names.set(id, names[i]);
+				if (!pspec.value_type.is_a(GLib.Type.OBJECT)) {
+					obj.set_property(name, value);
+					continue;
 				}
+				var peer = request.connection.leases.get((int) value.get_uint64());
+				var obj_value = GLib.Value(pspec.value_type);
+				obj_value.set_object(peer);
+				obj.set_property(name, obj_value);
 			}
-			var handle = (uint64) request.connection.export(created);
-			this.attach_signals(request.connection, (int) handle, signals);
-			this.apply_bag(request.connection, created, bag);
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				args = OLLMrpc.args("t", handle),
-			});
-		}
-
-		void attach_signals(
-			OLLMrpc.Transport.Connection connection,
-			int id,
-			string[] signals
-		) {
-			foreach (var name in signals) {
-				OLLMrpc.Live.Subscribe.attach(connection, id, name);
-			}
+			request.reply(new OLLMrpc.Response());
 		}
 ```
 
-`Subscribe.attach` is the OLLMchat bug above. `apply_bag` walks the `a(sv)` and runs each setter on `created` in order. An object value is `connection.leases`. An unknown method is `reply_error` `-32601` before the success reply.
+A missing property is `reply_error` `-32602` and no success reply.
 
-### ⏳ 🔷 `Helper-St.pack` for a stock `.new`
+### After that
 
-**Where:** `src/rpc/helper/St.vala`. `mint` stays the `g_object_new` path for `St-Widget` / `St-DrawingArea` / `St-Viewport`. Stock icons (`St-Button` and the rest) go through `pack` instead of generated `.new`.
-
-**Replace:**
-
-```vala
-		public static void rpc_register()
-		{
-			var helper = new St();
-			OLLMrpc.Request.add_class("St-Widget", typeof(St), "new", "", null);
-			OLLMrpc.Request.register_live("St-Widget", helper);
-			OLLMrpc.Request.add_class("St-DrawingArea", typeof(St), "new", "", null);
-			OLLMrpc.Request.register_live("St-DrawingArea", helper);
-			OLLMrpc.Request.add_class("St-Viewport", typeof(St), "new", "", null);
-			OLLMrpc.Request.register_live("St-Viewport", helper);
-		}
-```
-
-**Replace with:**
-
-```vala
-		public static void rpc_register()
-		{
-			var helper = new St();
-			OLLMrpc.Request.add_class("St-Widget", typeof(St), "new", "", null);
-			OLLMrpc.Request.register_live("St-Widget", helper);
-			OLLMrpc.Request.add_class("St-DrawingArea", typeof(St), "new", "", null);
-			OLLMrpc.Request.register_live("St-DrawingArea", helper);
-			OLLMrpc.Request.add_class("St-Viewport", typeof(St), "new", "", null);
-			OLLMrpc.Request.register_live("St-Viewport", helper);
-			OLLMrpc.Request.add_class(
-				"Helper-St", typeof(St),
-				"pack", "sSS",
-				null);
-			OLLMrpc.Request.register_live("Helper-St", helper);
-		}
-```
-
-`pack` follows `mint`: alias `"St-Button"` becomes GType `"StButton"`, `g_object_new`, `export`, then the same `attach_signals` and `apply_bag` as `create`, then `mint`'s object reply.
-
-**⏳ 🔷** Rows 4–6 after that, same shape as `name` / `scale_x` in `Actor.override.vala`. Preferred size only with the invalidation in row 4. A stale size is a wrong allocation.
+**⏳ 🔷** Rows 4–6, same shape as `name` / `scale_x` in `Actor.override.vala`. Preferred size only with the invalidation in row 4. A stale size is a wrong allocation.
 
 **🚫** Leave on the wire: `get_actor_at_pos` (330), `allocate` (513), `RPC-Live-Callback.reply` (2,034), `captured-event`, `before-update`. Those are the pointer and the frame.
-
-**🚫** Do not skip the first set of a property by pretending the construct default was already sent. That first set is row 1, where it still crosses the wire once, inside the create.

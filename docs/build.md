@@ -112,8 +112,10 @@ See [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md)
 ./scripts/weston-gsr-session.sh
 ```
 
-Autolaunch runs `mutter-rpc --wayland --nested --no-x11` on Weston’s XWayland
-(`DISPLAY=:N`, not host `:0`). Log:
+Session mode opens `weston-terminal` inside Weston. That terminal runs
+`mutter-rpc --wayland --nested --no-x11` on Weston’s XWayland (`DISPLAY=:N`,
+not host `:0`) and follows the debug logs.
+Prove mode still starts mutter from Weston autolaunch. Log:
 `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`.
 
 ### Host-GNOME nested (manual only — freezes host)

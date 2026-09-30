@@ -2,8 +2,9 @@
 # Runs *inside* Weston ([autolaunch]). Starts nested mutter-rpc on Weston's
 # XWayland DISPLAY (Mutter nested is MetaBackendX11Nested).
 #
-# GSR_WESTON_MODE=session (default) — start mutter via hold; if mutter dies,
-#   autolaunch stays alive so Weston + XWayland stay up for manual debugging.
+# GSR_WESTON_MODE=session (default) — open weston-terminal inside this Weston.
+#   That terminal starts mutter via hold. Autolaunch stays alive so Weston
+#   stays up if the terminal closes.
 # GSR_WESTON_MODE=prove — nested-weston-prove.sh (short timeout). Weston stays
 #   up after prove unless GSR_WESTON_AUTO_CLOSE=1 (agents: weston-gsr-prove.sh).
 set -euo pipefail
@@ -51,7 +52,21 @@ done
 		echo "weston-gsr-autolaunch: prove ec=$ec — keeping Weston up (close window or GSR_WESTON_AUTO_CLOSE=1)"
 		exec sleep infinity
 	fi
-	"$ROOT/scripts/nested-weston-hold.sh" &
-	echo "weston-gsr-autolaunch: session hold pid=$! (mutter exit does not stop Weston)"
+	if [[ -z "${DISPLAY:-}" ]]; then
+		echo "weston-gsr-autolaunch: XWayland DISPLAY never appeared — not starting mutter-rpc"
+		exec sleep infinity
+	fi
+	printf '%s\n' "$DISPLAY" >"$XDG_RUNTIME_DIR/gsr-weston-xdisplay"
+	# weston-terminal is a client of this Weston (WAYLAND_DISPLAY=wayland-gsr).
+	# gnome-terminal is not: its server lives on the host bus and opens outside.
+	if command -v weston-terminal >/dev/null; then
+		weston-terminal --font-size=14 --shell="$ROOT/scripts/weston-gsr-log-term.sh" &
+		echo "weston-gsr-autolaunch: weston-terminal pid=$! xdisplay=$DISPLAY"
+	elif command -v xterm >/dev/null; then
+		xterm -T "gsr mutter-rpc" -geometry 110x32 -e bash "$ROOT/scripts/weston-gsr-log-term.sh" &
+		echo "weston-gsr-autolaunch: xterm pid=$! xdisplay=$DISPLAY (inside Weston XWayland)"
+	else
+		echo "weston-gsr-autolaunch: install weston-terminal or xterm — mutter-rpc not started"
+	fi
 	exec sleep infinity
 } >>"$LOG_DIR/weston-autolaunch-prove.log" 2>&1

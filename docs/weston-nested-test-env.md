@@ -55,17 +55,15 @@ host-freeze risk (see [`build.md`](build.md) Session safety).
 Host GNOME (wayland-0)          ← do not nest here
     │
     └── X11 :0
-          │
           └── Weston (x11-backend)     socket: wayland-gsr
-                │
-                ├── XWayland :1        ← Mutter nested window (MetaBackendX11Nested)
-                │
-                └── [autolaunch]
-                      └── nested-weston-prove.sh
-                            └── mutter-rpc --wayland --nested --no-x11
-                                  DISPLAY=:1
-                                  --wayland-display=wayland-mutter-gsr
-                                  └── gnome-shell-rpc (RPC client)
+                ├── XWayland :1        ← Mutter nested window
+                ├── weston-terminal    ← log window, same Weston
+                │     └── nested-weston-hold.sh
+                │           └── mutter-rpc --wayland --nested --no-x11
+                │                 DISPLAY=:1
+                │                 --wayland-display=wayland-mutter-gsr
+                │                 └── gnome-shell-rpc (RPC client)
+                └── [autolaunch]       opens that terminal
 ```
 
 ### Who owns which display
@@ -90,13 +88,19 @@ back under GNOME’s thumb). Weston’s `xwayland=true` plus autolaunch’s
 ./scripts/weston-gsr-session.sh
 ```
 
+That opens Weston. Inside it, `weston-terminal` starts `mutter-rpc` and follows
+both debug logs from the start of the run. Close that terminal to stop mutter.
+Close the Weston window to stop the session. Agent prove
+(`./scripts/weston-gsr-prove.sh`) does not open that terminal.
+
 Scripts:
 
 | Script | Role |
 |--------|------|
 | `scripts/weston-gsr-session.sh` | Starts Weston (X11 window) with generated ini |
 | `scripts/weston-gsr.ini.in` | Template: XWayland + `[autolaunch]` |
-| `scripts/weston-gsr-autolaunch.sh` | Inside Weston → prove |
+| `scripts/weston-gsr-autolaunch.sh` | Inside Weston → prove, or `weston-terminal` |
+| `scripts/weston-gsr-log-term.sh` | Inside Weston: start mutter and follow debug logs |
 | `scripts/nested-weston-prove.sh` | `dbus-run-session` + `mutter-rpc … --nested` |
 
 Prove log: `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`.

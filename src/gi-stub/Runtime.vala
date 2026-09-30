@@ -36,12 +36,36 @@ namespace GnomeShellRpc.GiStub
 		public delegate Gee.ArrayList<GLib.Value?>? 
 			InvokeHandler(OLLMrpc.Live.Invoke call);
 
-		private class InvokeRow : GLib.Object
+		internal class InvokeRow : GLib.Object
 		{
 			public InvokeHandler handler;
 		}
 
-		private static Gee.HashMap<int, InvokeRow>? handlers = null;
+		internal static Gee.HashMap<int, InvokeRow>? handlers = null;
+
+		/**
+		 * Handlers queued while an actor binds virtuals during
+		 * create. Null once those ids are filed.
+		 */
+		internal static Gee.ArrayList<InvokeRow>? hook_rows;
+
+		/**
+		 * C symbol of {@link Shell.Signals.pending_signals}.
+		 *
+		 * The clutter stub does not link shell-gi.
+		 * {@link ensure_signal_subscribe} reads this on the next
+		 * connect.
+		 */
+		[CCode (cname = "shell_signals_pending_signals", array_length_cname = "shell_signals_pending_signals_length1", array_length_type = "int")]
+		internal static extern string[] pending_signals;
+
+		/**
+		 * Allocated length of {@link Shell.Signals.pending_signals}.
+		 *
+		 * Assigning that array from this library writes the symbol.
+		 */
+		[CCode (cname = "_shell_signals_pending_signals_size_")]
+		internal static extern int pending_signals_size;
 
 		// FIXME - THIS SHOULD USE SIGNAL DIRECT EVENTUALLY
 		[CCode (cname = "shell_signals_connect")]
@@ -216,26 +240,35 @@ namespace GnomeShellRpc.GiStub
 		/**
 		 * Register a client handler and return the live callback id.
 		 *
-		 * Sends {@code RPC-Live-Callback.register}. Incoming
-		 * {@link OLLMrpc.Live.Invoke} runs {@code handler} then
-		 * {@code RPC-Live-Callback.reply} (handler return values after
-		 * {@code reply_id}; void returns {@code null}).
+		 * While {@link hook_rows} is set, the handler is queued and
+		 * this returns 1 so a zero id still means not bound.
+		 * Otherwise one ''RPC-Live-Callback.register'' runs and the
+		 * reply id is returned.
+		 *
+		 * An incoming {@link OLLMrpc.Live.Invoke} runs the handler,
+		 * then ''RPC-Live-Callback.reply''.
 		 *
 		 * @param handler demux for one callback id
 		 * @return wire callback id
 		 */
 		public static uint64 callback_bind(owned InvokeHandler handler)
 		{
+			if (Runtime.hook_rows != null) {
+				var row = new InvokeRow();
+				row.handler = (owned) handler;
+				Runtime.hook_rows.add(row);
+				return 1;
+			}
 			Runtime.register();
 			if (Runtime.handlers == null) {
 				Runtime.handlers = new Gee.HashMap<int, InvokeRow>();
 			}
 			var response = GnomeShellRpc.call_value("RPC-Live-Callback.register");
-			var id = (int) response.args.get(0).get_uint64();
+			var id = response.args.get(0).get_uint64();
 			var row = new InvokeRow();
 			row.handler = (owned) handler;
-			Runtime.handlers.set(id, row);
-			return (uint64) id;
+			Runtime.handlers.set((int) id, row);
+			return id;
 		}
 
 		/**

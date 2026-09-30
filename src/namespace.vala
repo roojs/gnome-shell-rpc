@@ -21,12 +21,18 @@ namespace GnomeShellRpc
 	/**
 	 * Sync RPC call with positional {@link GLib.Value}s and optional instance.
 	 *
-	 * @param method wire method (e.g. {@code Meta-Window.minimize})
+	 * While {@link Clutter.Actor.prop_batch_open} is set, ''hide'',
+	 * ''show'', or a one-argument setter is stored and this returns
+	 * an empty response. The next other call sends
+	 * ''Helper-Actor.add_properties'' and then runs itself.
+	 *
+	 * @param method wire method (e.g. ''Meta-Window.minimize'')
 	 * @param instance leased stub; {@link OLLMrpc.Live.Interface.rpc_lid}
 	 *     → {@link OLLMrpc.Request.lease_id}
 	 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
 	 * @param buffer optional client→server {@link OLLMrpc.Live.Buffer}
-	 *     (memfd / SCM_RIGHTS); not pixel {@code ay} on the bin
+	 *     (memfd / SCM_RIGHTS); not pixel ''ay'' on the bin
+	 * @return the peer response, or empty when the call was queued
 	 */
 	public OLLMrpc.Response call_value(
 		string method,
@@ -34,6 +40,46 @@ namespace GnomeShellRpc
 		Gee.ArrayList<GLib.Value?>? args = null,
 		OLLMrpc.Live.Buffer? buffer = null
 	) throws GLib.Error {
+		var actor = instance as Clutter.Actor;
+		if (actor != null && actor.prop_batch_open
+			&& (method.has_suffix(".hide") || method.has_suffix(".show"))) {
+			var held = GLib.Value(typeof(bool));
+			held.set_boolean(method.has_suffix(".show"));
+			actor.prop_batch.set("visible", held);
+			return new OLLMrpc.Response();
+		}
+		var name = "";
+		if (actor != null && actor.prop_batch_open && args != null && args.size == 1) {
+			var dot = method.last_index_of_char('.');
+			var tail = dot < 0 ? method : method.substring(dot + 1);
+			if (!tail.has_prefix("set_") || tail == "set_child") {
+				tail = "";
+			}
+			if (tail != "") {
+				name = tail.substring(4).replace("_", "-");
+			}
+		}
+		if (name != "" && actor.get_class().find_property(name) == null) {
+			name = "";
+		}
+		if (name != "") {
+			actor.prop_batch.set(name, args.get(0));
+			return new OLLMrpc.Response();
+		}
+		if (actor != null && actor.prop_batch_open) {
+			actor.prop_batch_open = false;
+			if (actor.prop_batch.size > 0) {
+				var send = new Gee.ArrayList<GLib.Value?>();
+				foreach (var entry in actor.prop_batch.entries) {
+					var key = GLib.Value(typeof(string));
+					key.set_string(entry.key);
+					send.add(key);
+					send.add(entry.value);
+				}
+				actor.prop_batch.clear();
+				GnomeShellRpc.call_value("Helper-Actor.add_properties", actor, send);
+			}
+		}
 		uint64 lease_id = 0;
 		if (instance != null) {
 			lease_id = GiStub.Runtime.lease_id_of(instance, method);
