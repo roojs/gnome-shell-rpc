@@ -1,0 +1,16 @@
+# Namespace.Class.method. batch_call_value stores these.
+# A setter not listed here is call_value and flushes.
+# Clutter.BoxLayout is not an actor. St.BoxLayout is.
+
+Clutter.Actor.set_x_expand
+Clutter.Actor.set_y_expand
+Clutter.Actor.set_x_align
+Clutter.Actor.set_y_align
+Clutter.Actor.set_reactive
+Clutter.Actor.set_opacity
+St.Widget.set_style_class_name
+St.Widget.set_can_focus
+St.Widget.set_track_hover
+St.Widget.set_label_actor
+St.Label.set_text
+St.BoxLayout.set_orientation

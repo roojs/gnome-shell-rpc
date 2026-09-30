@@ -73,13 +73,15 @@
 					return;
 				case "St-Widget":
 					this.create_with_overrides();
-					this.signal_overrides(this.get_type());
+					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+					this.prop_batch_open = true;
 					return;
 				case "Clutter-Actor":
 					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
 					if (this.get_type() != typeof(Actor)) {
 						this.create_with_overrides();
-						this.signal_overrides(this.get_type());
+						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+						this.prop_batch_open = true;
 						return;
 					}
 					break;
@@ -90,7 +92,7 @@
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			GnomeShellRpc.GiStub.Runtime.register_handle(this);
-			this.signal_overrides(this.get_type());
+			this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
 			this.prop_batch_open = true;
 			return;
 		}
@@ -149,7 +151,6 @@
 		GnomeShellRpc.GiStub.Runtime.register_handle(this);
 		if (names.length == 0) {
 			GnomeShellRpc.GiStub.Runtime.hook_rows = null;
-			this.prop_batch_open = true;
 			return;
 		}
 		var hooks = GnomeShellRpc.call_value("Helper-Actor.add_hooks", this,
@@ -166,25 +167,37 @@
 				GnomeShellRpc.GiStub.Runtime.hook_rows.get(i));
 		}
 		GnomeShellRpc.GiStub.Runtime.hook_rows = null;
-		this.prop_batch_open = true;
 	}
 
 	/**
-	 * Subscribe each signal whose virtual this object replaced.
+	 * Collect each signal whose virtual this object replaced,
+	 * then send them in one subscribe on the leaf type.
 	 *
 	 * Called from construct with this object's type. Calls itself
 	 * on the parent first. A type with no alias is skipped. The
-	 * leaf is not compared with itself.
+	 * leaf copies ''names'' into
+	 * {@link Shell.Signals.pending_signals} and connects the
+	 * first name. The clutter stub reaches that field through
+	 * {@link GnomeShellRpc.GiStub.Runtime.pending_signals}.
 	 *
 	 * @param t parent type to compare against this object
+	 * @param names signal names gathered on the way down
 	 */
-	private void signal_overrides(GLib.Type t)
+	private void signal_overrides(GLib.Type t, Gee.ArrayList<string> names)
 	{
 		if (t == GLib.Type.INVALID) {
 			return;
 		}
-		this.signal_overrides(t.parent());
+		this.signal_overrides(t.parent(), names);
 		if (t == this.get_type()) {
+			if (names.size == 0) {
+				return;
+			}
+			var pending_signals = names.to_array();
+			GnomeShellRpc.GiStub.Runtime.pending_signals = pending_signals;
+			GnomeShellRpc.GiStub.Runtime.pending_signals_size = pending_signals.length;
+			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+				this, pending_signals[0]);
 			return;
 		}
 		if (OLLMrpc.Bin.gtype_to_alias == null) {
@@ -211,7 +224,7 @@
 			if (GLib.Signal.lookup(signal_name, leaf) == 0) {
 				continue;
 			}
-			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(this, signal_name);
+			names.add(signal_name);
 		}
 	}
 
@@ -220,6 +233,7 @@
 		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 			float min = 0.0f, nat = 0.0f;
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			GnomeShellRpc.GiStub.VfuncRelay.size_hook = true;
 			try {
 				GnomeShellRpc.GiStub.vfunc_call_preferred_size(
 					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "get_preferred_width"),
@@ -264,6 +278,7 @@
 		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
 			float min = 0.0f, nat = 0.0f;
 			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			GnomeShellRpc.GiStub.VfuncRelay.size_hook = true;
 			try {
 				GnomeShellRpc.GiStub.vfunc_call_preferred_size(
 					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "get_preferred_height"),
@@ -414,15 +429,70 @@
 
 	/* Not virtual — extra Class slots shift every St.* GIR offset (GJS
 	 * then installs vfunc_clicked on style_changed). */
+	/**
+	 * Preferred size asked from this actor's allocate hook.
+	 * The public getter must not set {@code use_base}: that tells
+	 * the allocate relay to throw the JS layout away. Run the JS
+	 * size vfunc here instead. A nested public call still means
+	 * "C base", and that request is dropped so allocate keeps going.
+	 *
+	 * {@code is_width} selects get_preferred_width; otherwise height.
+	 */
+	void preferred_size_during_allocate(
+		bool is_width,
+		float for_size,
+		out float min_p,
+		out float natural_p
+	) {
+		min_p = 0.0f;
+		natural_p = 0.0f;
+		var vfunc = is_width ? "get_preferred_width" : "get_preferred_height";
+		var lm = this.priv_layout_manager;
+		if (lm != null && lm.rpc_lid == 0) {
+			if (is_width) {
+				lm.get_preferred_width_vfunc(
+					this, for_size, out min_p, out natural_p);
+			} else {
+				lm.get_preferred_height_vfunc(
+					this, for_size, out min_p, out natural_p);
+			}
+			return;
+		}
+		var caps = GnomeShellRpc.GiStub.VfuncRelay.overridden(
+			this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
+		if (!caps.contains(vfunc)) {
+			return;
+		}
+		GnomeShellRpc.GiStub.VfuncRelay.size_hook = true;
+		try {
+			GnomeShellRpc.GiStub.vfunc_call_preferred_size(
+				this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", vfunc),
+				for_size, out min_p, out natural_p);
+		} finally {
+			GnomeShellRpc.GiStub.VfuncRelay.size_hook = false;
+		}
+		if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+			GnomeShellRpc.GiStub.VfuncRelay.use_base = false;
+			min_p = 0.0f;
+			natural_p = 0.0f;
+		}
+	}
+
 	public void get_preferred_width(
 		float for_height,
 		out float min_width_p,
 		out float natural_width_p
 	) {
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this
+				&& GnomeShellRpc.GiStub.VfuncRelay.size_hook) {
 			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			min_width_p = 0.0f;
 			natural_width_p = 0.0f;
+			return;
+		}
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			this.preferred_size_during_allocate(
+				true, for_height, out min_width_p, out natural_width_p);
 			return;
 		}
 		var lm = this.priv_layout_manager;
@@ -444,10 +514,16 @@
 		out float min_height_p,
 		out float natural_height_p
 	) {
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this
+				&& GnomeShellRpc.GiStub.VfuncRelay.size_hook) {
 			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
 			min_height_p = 0.0f;
 			natural_height_p = 0.0f;
+			return;
+		}
+		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+			this.preferred_size_during_allocate(
+				false, for_width, out min_height_p, out natural_height_p);
 			return;
 		}
 		var lm = this.priv_layout_manager;
@@ -575,13 +651,15 @@
 	public void show()
 	{
 		this.actor_visible = true;
-		GnomeShellRpc.call_value("Clutter-Actor.show", this);
+		GnomeShellRpc.batch_call_value("Clutter-Actor.show", this, "visible",
+			OLLMrpc.args("b", true));
 	}
 
 	public void hide()
 	{
 		this.actor_visible = false;
-		GnomeShellRpc.call_value("Clutter-Actor.hide", this);
+		GnomeShellRpc.batch_call_value("Clutter-Actor.hide", this, "visible",
+			OLLMrpc.args("b", false));
 	}
 
 	/**

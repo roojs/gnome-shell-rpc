@@ -428,6 +428,7 @@ mutter_clutter_cflags = mutter_clutter_dep_cflags
 
 clutter_deny_file = files('gi-stub-gen/Clutter.deny')
 clutter_overrides_file = files('gi-stub-gen/Clutter.overrides')
+batch_whitelist = files('gi-stub-gen/batch.whitelist')
 clutter_override_dir = meson.current_source_dir() / 'gi-stub/overrides-clutter'
 clutter_override_files = files(
   'gi-stub/overrides-clutter/Clutter.override.vala',
@@ -465,11 +466,12 @@ clutter_generated = custom_target('Clutter_generated.vala',
     '--missing-out=' + meson.current_build_dir() / 'Clutter_generated.missing.md',
     '--typelib-dir=' + mutter_typelib_dir,
     '--deny-file=@INPUT0@',
+    '--batch-file=' + meson.current_source_dir() / 'gi-stub-gen/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + clutter_override_dir,
     'emit', 'Clutter', '16',
   ],
-  input: [clutter_deny_file, clutter_overrides_file] + clutter_override_files,
+  input: [clutter_deny_file, clutter_overrides_file, batch_whitelist] + clutter_override_files,
   depends: [gi_stub_gen],
   build_by_default: true,
 )
@@ -481,11 +483,12 @@ clutter_helper_vfunc_ids = custom_target('Clutter_helper_vfunc_ids.vala',
     '--helper-out=@OUTPUT@',
     '--typelib-dir=' + mutter_typelib_dir,
     '--deny-file=@INPUT0@',
+    '--batch-file=' + meson.current_source_dir() / 'gi-stub-gen/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + clutter_override_dir,
     'emit', 'Clutter', '16',
   ],
-  input: [clutter_deny_file, clutter_overrides_file] + clutter_override_files,
+  input: [clutter_deny_file, clutter_overrides_file, batch_whitelist] + clutter_override_files,
   depends: [gi_stub_gen],
   build_by_default: true,
 )
@@ -780,11 +783,12 @@ st_generated = custom_target('St_generated.vala',
     '--missing-out=' + meson.current_build_dir() / 'St_generated.missing.md',
     '--typelib-dir=' + gnome_shell_pkglibdir + ':' + mutter_typelib_dir,
     '--deny-file=@INPUT0@',
+    '--batch-file=' + meson.current_source_dir() / 'gi-stub-gen/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + st_override_dir,
     'emit', 'St', '16',
   ],
-  input: [st_deny_file, st_overrides_file] + files(
+  input: [st_deny_file, st_overrides_file, batch_whitelist] + files(
     'gi-stub/overrides-st/Theme.override.vala',
     'gi-stub/overrides-st/ThemeContext.override.vala',
     'gi-stub/overrides-st/Adjustment.override.vala',

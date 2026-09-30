@@ -2,7 +2,7 @@
 
 **Status:** ✔️ archived 2026-09-30. The four-call construction ran. The boot flood stayed the same size. Continued as [`../2026-09-30-rpc-call-volume.md`](../2026-09-30-rpc-call-volume.md). The notes below are that attempt.
 
-The four-call client is on `74c9562`. `prop_batch_open` turns on at the end of `construct`. An empty hook list sends no `Helper-Actor.add_hooks`. An empty property map sends no `Helper-Actor.add_properties`. The empty stage after that commit was `Shell.Signals.connect` packing a string array into `RPC-Live-Subscribe.rpc_signal`. That method is registered as `"s"` (`string name`). The array is not a value of that type, so `name` is null and the method returns without a reply. `connect` now sends one `"s"` per name. The 13:05 binary includes that.
+The four-call client is on `74c9562`. `prop_batch_open` turns on at the end of `construct`. An empty hook list sends no `Helper-Actor.add_hooks`. An empty property map sends no `Helper-Actor.add_properties`. The empty stage after that commit was `Shell.Signals.connect` sending `OLLMrpc.args("S", signal_names)`. `Request.add_class` defines `"S"` as one `string[]`. `rpc_signal` was still registered `"s"` and takes `string name`, so `name` was null and the method returned no reply. The client was then changed back to one `"s"` per name. The 13:05 binary includes the one-string client. `rpc_signal` stays `"s"`. The list is `Helper-Actor.add_signals`. Proposal: [`../2026-09-30-rpc-call-volume.md`](../2026-09-30-rpc-call-volume.md).
 
 ## After the construction change
 

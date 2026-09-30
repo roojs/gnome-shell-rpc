@@ -14,9 +14,7 @@
 
 ## Boot
 
-Overview appears, goes, appears, goes. Usually ends on the desktop.
-
-Sometimes it stays up. The 14:31 nest shot is one of those.
+Overview stays on the picker. User 2026-09-30, after phase 2.
 
 Log still busy after the picture settles. That is the RPC flood.
 
@@ -36,7 +34,7 @@ Shots 14:31. Left: our nest. Right: GNOME Shell.
 | Search | Under the panel | Hidden behind a notification in that shot |
 | Current workspace | Small, dark gap on the left | Large, icons and a window on it |
 | Next workspace | Sliver on the right | Slice on the right |
-| Dash | Missing | Icon row at the bottom |
+| Dash | Icon row at the bottom | Icon row at the bottom |
 | Extra | Orange dot under the search | |
 
 ## Phases
@@ -46,6 +44,8 @@ Shots 14:31. Left: our nest. Right: GNOME Shell.
 | 1 | Which call closes the overview on a hidden boot | No `hide()`. Grab ok. It is still shown. |
 | 2 | Why the picture can look like the desktop while the log says shown | State transition interval peeked as 0, so the workspace got the full-screen hidden box. Mirror keeps the real 0→1. A stuck transition still lays out the picker. |
 | 3 | Dash missing on the picker | Show-apps item preferred width was 0. Its layout manager said 48. The button now allocates 44×80. |
+| 4 | Grey square over the dash | Workspace thumbnails. Asking for their own preferred size during allocate returned 0, so the scale went negative and the full-size thumbnail backgrounds painted over the dash. Preferred size during allocate now runs the size vfunc. Scale is positive. The icon row is visible. |
+| 5 | Why the top-left button does not open and close the overview | Click proves 17:29–17:32. The click is the hot corner, not the button vfunc. Hide starts. `hide-done` is not reliable: absent for 5s, then present in 0.7s after a `stopped` subscribe, then absent again for 5s with that same subscribe. While `anim` stays true the next click is refused. Subscribe reverted. |
 
 Phase 1 probe stays at `src/shell-js-probe/overview-boot/ui/overview.js`. Layout waits.
 
@@ -86,6 +86,16 @@ No `hide`, no `startup-hidden-during`, no `syncGrab-grabbed`, no `syncGrab-seat`
 
 The picker card stays `540x383` in the `800x568` work area. That is `ControlsManagerLayout` WINDOW_PICKER after search 55, thumbnails 28, and dash 80. The GNOME shot is the Ubuntu session (dock, desktop icons). This nest is the stock overview.
 
-**Phase 3 log.** Stayed-up run only. `workspacesView.js` `vfunc_allocate` when fit mode is single: view size, workarea size, preferred width, first box origin and size. Dash box is a later overlay of `overviewControls.js`, and only if phase 1 says the overview was still shown.
+**Phase 4 result (2026-09-30 ~16:50).** Thumbnail scale was `-0.021` because preferred height during allocate returned 0. Full-size thumbnail backgrounds covered the dash. After the size-hook split, scale is `0.029` and the icon row is visible.
+
+**Phase 5 click proves (2026-09-30 17:29–17:32).** Probe `pointer_click` at the Activities button center `(48,16)`. Each click enters `HotCorner._toggleOverview` (`layout.js:1277`). No `ActivitiesButton.vfunc_event`.
+
+| Run | `stopped` subscribe | After the click |
+| --- | --- | --- |
+| 17:29 | no | `hide` at 17:29:18. `click-2` at 17:29:23 still `HIDING` `anim=true`. `should-toggle` `why=anim`. No `hide-done`. |
+| 17:31 | yes | `hide` at 17:31:16. `hide-done` at 17:31:17 from `onStopped@overviewControls.js:748`. State `HIDDEN` `anim=false`. Second click did not call `toggle` (corner already entered). |
+| 17:32 | yes | `hide` at 17:32:43. At 17:32:48 still `HIDING` `anim=true`. `should-toggle` `why=anim`. No `hide-done`. |
+
+`Adjustment.ease` connects `stopped` after `add_transition`. `Actor.ease` subscribes in `get_transition`. The subscribe made `hide-done` arrive once and miss once. It is not the fix. Reverted. Do not put it back on this table.
 
 **🚫** vendor `js/` as the ship path. **🚫** Idle. **🚫** layout.js ship hack. Overlay is a probe.

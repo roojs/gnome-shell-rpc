@@ -17,17 +17,48 @@
  */
 namespace GnomeShellRpc
 {
+
+	//FIXME << what on earth is this doing here?
+	// probably sovled by the big rename project...
 #if GSR_GI_STUB
+	/**
+	 * Store one property while {@link Clutter.Actor.prop_batch_open}
+	 * is set. The generator passes the GIR property name. The last
+	 * argument is the value, so a setter's single argument and a
+	 * {@code set_property} pair both store that value.
+	 *
+	 * When the batch is closed, this calls {@link call_value} with
+	 * the same method and arguments.
+	 *
+	 * @param method wire method sent when the batch is closed
+	 * @param actor leased actor
+	 * @param name GIR property (''style-class'', ''visible'')
+	 * @param args arguments for {@link call_value}; last one is stored
+	 * @param buffer optional client→server {@link OLLMrpc.Live.Buffer}
+	 * @return empty when stored, otherwise the {@link call_value} response
+	 */
+	public OLLMrpc.Response batch_call_value(
+		string method,
+		Clutter.Actor actor,
+		string name,
+		Gee.ArrayList<GLib.Value?>? args = null,
+		OLLMrpc.Live.Buffer? buffer = null
+	) throws GLib.Error {
+		if (actor.prop_batch_open && args != null && args.size > 0) {
+			actor.prop_batch.set(name, args.get(args.size - 1));
+			return new OLLMrpc.Response();
+		}
+		return call_value(method, actor, args, buffer);
+	}
+
 	/**
 	 * Sync RPC call with positional {@link GLib.Value}s and optional instance.
 	 *
-	 * While {@link Clutter.Actor.prop_batch_open} is set, ''hide'',
-	 * ''show'', or a one-argument setter whose value matches the
-	 * property is stored and this returns an empty response. A
-	 * setter whose value cannot be stored on that property, such as
-	 * ''Helper-Icon.set_gicon'' (a string for a ''GIcon''), is sent
-	 * as itself. The next other call sends
-	 * ''Helper-Actor.add_properties'' and then runs itself.
+	 * An open {@link Clutter.Actor.prop_batch} with nothing in it is
+	 * closed. A non-empty map is sent as
+	 * ''Helper-Actor.add_properties'' and closed. Entries are added
+	 * only by {@link batch_call_value} while the batch is open, so
+	 * the flush looks at the map size.
 	 *
 	 * @param method wire method (e.g. ''Meta-Window.minimize'')
 	 * @param instance leased stub; {@link OLLMrpc.Live.Interface.rpc_lid}
@@ -35,7 +66,7 @@ namespace GnomeShellRpc
 	 * @param args GIR-order IN / INOUT args from {@link OLLMrpc.args}
 	 * @param buffer optional client→server {@link OLLMrpc.Live.Buffer}
 	 *     (memfd / SCM_RIGHTS); not pixel ''ay'' on the bin
-	 * @return the peer response, or empty when the call was queued
+	 * @return the peer response
 	 */
 	public OLLMrpc.Response call_value(
 		string method,
@@ -44,50 +75,20 @@ namespace GnomeShellRpc
 		OLLMrpc.Live.Buffer? buffer = null
 	) throws GLib.Error {
 		var actor = instance as Clutter.Actor;
-		if (actor != null && actor.prop_batch_open
-			&& (method.has_suffix(".hide") || method.has_suffix(".show"))) {
-			var held = GLib.Value(typeof(bool));
-			held.set_boolean(method.has_suffix(".show"));
-			actor.prop_batch.set("visible", held);
-			return new OLLMrpc.Response();
-		}
-		var name = "";
-		if (actor != null && actor.prop_batch_open && args != null && args.size == 1) {
-			var dot = method.last_index_of_char('.');
-			var tail = dot < 0 ? method : method.substring(dot + 1);
-			if (!tail.has_prefix("set_") || tail == "set_child") {
-				tail = "";
-			}
-			if (tail != "") {
-				name = tail.substring(4).replace("_", "-");
-			}
-		}
-		if (name != "") {
-			var pspec = actor.get_class().find_property(name);
-			var held = args.get(0);
-			if (pspec == null || held == null
-					|| (!held.type().is_a(pspec.value_type)
-						&& !GLib.Value.type_transformable(held.type(), pspec.value_type))) {
-				name = "";
-			}
-		}
-		if (name != "") {
-			actor.prop_batch.set(name, args.get(0));
-			return new OLLMrpc.Response();
-		}
-		if (actor != null && actor.prop_batch_open) {
+		if (actor != null && actor.prop_batch_open && actor.prop_batch.size == 0) {
 			actor.prop_batch_open = false;
-			if (actor.prop_batch.size > 0) {
-				var send = new Gee.ArrayList<GLib.Value?>();
-				foreach (var entry in actor.prop_batch.entries) {
-					var key = GLib.Value(typeof(string));
-					key.set_string(entry.key);
-					send.add(key);
-					send.add(entry.value);
-				}
-				actor.prop_batch.clear();
-				GnomeShellRpc.call_value("Helper-Actor.add_properties", actor, send);
+		}
+		if (actor != null && actor.prop_batch.size > 0) {
+			actor.prop_batch_open = false;
+			var send = new Gee.ArrayList<GLib.Value?>();
+			foreach (var entry in actor.prop_batch.entries) {
+				var key = GLib.Value(typeof(string));
+				key.set_string(entry.key);
+				send.add(key);
+				send.add(entry.value);
 			}
+			actor.prop_batch.clear();
+			GnomeShellRpc.call_value("Helper-Actor.add_properties", actor, send);
 		}
 		uint64 lease_id = 0;
 		if (instance != null) {

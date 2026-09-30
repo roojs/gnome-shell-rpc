@@ -25,6 +25,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				"create", "s",
 				"add_hook", "it",
 				"add_hooks", "Sv",
+				"add_signals", "S",
 				"add_properties", "",
 				"allocate_public", "ay",
 				"base_preferred_width", "d",
@@ -143,6 +144,33 @@ namespace GnomeShellRpc.Rpc.Helper
 			request.reply(new OLLMrpc.Response() {
 				args = OLLMrpc.args("v", ids.end()),
 			});
+		}
+
+		/**
+		 * ''Helper-Actor.add_signals'' — subscribe each name on the lease.
+		 *
+		 * ''Subscription.connect'' writes no reply. This method
+		 * replies once after the list. An empty name or a missing
+		 * lease is ''-32602'' and no success reply.
+		 *
+		 * @param request inbound RPC
+		 * @param names signal or ''notify::'' property
+		 */
+		public void add_signals(OLLMrpc.Request request, string[] names)
+		{
+			for (var i = 0; i < names.length; i++) {
+				var subscription = new OLLMrpc.Live.Subscription() {
+					connection = request.connection,
+					method = names[i],
+					id = (int) request.lease_id
+				};
+				if (!subscription.connect()) {
+					request.connection.reply_error(request,
+						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+					return;
+				}
+			}
+			request.reply(new OLLMrpc.Response());
 		}
 
 		/**
@@ -324,6 +352,20 @@ namespace GnomeShellRpc.Rpc.Helper
 		public override bool event(Clutter.Event clutter_event)
 		{
 			var hook = this.vfuncs.get(ActorVfuncIds.event_id);
+			var type = clutter_event.get_type();
+			if (type == Clutter.EventType.BUTTON_PRESS
+					|| type == Clutter.EventType.BUTTON_RELEASE) {
+				var named = "";
+				if (this.method_names.has_key(ActorVfuncIds.event_id)) {
+					named = this.method_names.get(ActorVfuncIds.event_id);
+				}
+				GLib.debug(
+					"gsr-actor-event type=%d hook=%s vfunc=%s client=%s",
+					(int) type,
+					hook != null ? "yes" : "no",
+					named,
+					this.client_type_name != null ? this.client_type_name : "?");
+			}
 			if (hook == null) {
 				/* Parent ClutterActorClass.event is NULL on St.Widget —
 				 * Vala base.event would call through 0 (motion SIGSEGV). */

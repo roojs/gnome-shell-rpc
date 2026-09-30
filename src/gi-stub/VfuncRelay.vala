@@ -40,6 +40,12 @@ namespace GnomeShellRpc.GiStub
 		public static GLib.Object? hook_actor;
 		/** No JS override → fall through to server base / chain. */
 		public static bool use_base;
+		/**
+		 * The running hook is get_preferred_width / get_preferred_height.
+		 * A public size call then means "use the C base". An allocate
+		 * hook that asks for its own preferred size is not that.
+		 */
+		public static bool size_hook;
 		static Gee.HashMap<GLib.Type, Gee.HashSet<string>>? caps_by_type;
 		/** ns → class → byte offset → typelib vfunc name. */
 		static Gee.HashMap<string, Gee.HashMap<string, Gee.HashMap<int, string>>>? names_by_offset;
@@ -48,11 +54,13 @@ namespace GnomeShellRpc.GiStub
 		{
 			use_base = false;
 			hook_actor = self;
+			size_hook = false;
 		}
 
 		public static void end()
 		{
 			hook_actor = null;
+			size_hook = false;
 		}
 
 		/**

@@ -22,6 +22,7 @@ namespace GnomeShellRpc.GiStubGen
 		private static string opt_headers_config = "";
 		private static string opt_missing_out = "";
 		private static string opt_deny_file = "";
+		private static string opt_batch_file = "";
 		private static string opt_overrides_file = "";
 		/** Directory of `{Type}.override.vala` bodies — read by {@link Generator}. */
 		public static string opt_override_path = "";
@@ -52,6 +53,8 @@ Examples:
 				"Prepend typelib search path(s), colon-separated", "DIR[:DIR…]" },
 			{ "deny-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_deny_file,
 				"Deny list (one symbol per line; optional noop flag)", "FILE" },
+			{ "batch-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_batch_file,
+				"Setter whitelist (Class.method); emit batch_call_value", "FILE" },
 			{ "overrides-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_overrides_file,
 				"Overrides file (Type[.method] key=value; type emit=… policies)", "FILE" },
 			{ "override-path", 0, 0, GLib.OptionArg.FILENAME, ref opt_override_path,
@@ -95,6 +98,7 @@ Examples:
 			Application.opt_headers_config = "";
 			Application.opt_missing_out = "";
 			Application.opt_deny_file = "";
+			Application.opt_batch_file = "";
 			Application.opt_overrides_file = "";
 			Application.opt_override_path = "";
 
@@ -163,6 +167,9 @@ Examples:
 			Gee.HashSet<string> deny_permanent;
 			this.load_deny(out deny, out noop, out temporary, out deny_permanent);
 
+			Gee.HashSet<string> batch;
+			this.load_batch(out batch);
+
 			Gee.HashMap<string, Gee.HashMap<string, string>> overrides;
 			this.load_overrides(out overrides);
 
@@ -181,6 +188,7 @@ Examples:
 				if (cmd == "emit") {
 					var gen = new Generator() {
 						deny = deny,
+						batch = batch,
 						noop = noop,
 						temporary = temporary,
 						deny_permanent = deny_permanent,
@@ -207,6 +215,8 @@ Examples:
 			}
 			return 0;
 		}
+
+// FIXME - simpilfy file formats into a single parser
 
 		private void load_deny(
 			out Gee.HashSet<string> deny,
@@ -277,6 +287,37 @@ Examples:
 					"deny file %s: unknown flag %s on %s (noop|temporary)",
 					Application.opt_deny_file, flag, symbol
 				);
+			}
+		}
+
+		private void load_batch(out Gee.HashSet<string> batch)
+		{
+			batch = new Gee.HashSet<string>();
+			if (Application.opt_batch_file == "") {
+				return;
+			}
+			string contents;
+			size_t len;
+			try {
+				GLib.FileUtils.get_contents(
+					Application.opt_batch_file, out contents, out len);
+			} catch (GLib.Error e) {
+				GLib.error(
+					"cannot read batch file %s: %s",
+					Application.opt_batch_file, e.message);
+			}
+			foreach (var line in contents.split("\n")) {
+				var name = line.strip();
+				if (name == "" || name.has_prefix("#")) {
+					continue;
+				}
+				var hash = name.index_of("#");
+				if (hash >= 0) {
+					name = name.substring(0, hash).strip();
+				}
+				if (name != "") {
+					batch.add(name);
+				}
 			}
 		}
 

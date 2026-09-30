@@ -52,8 +52,8 @@ namespace Shell
 		 * Signal names an actor has collected and not sent yet.
 		 *
 		 * Empty on a later {@link connect}. That connect clears the
-		 * list and sends one ''RPC-Live-Subscribe.rpc_signal'' per
-		 * name. The method takes one string.
+		 * list. More than one name is one ''Helper-Actor.add_signals''.
+		 * One name is ''RPC-Live-Subscribe.rpc_signal''.
 		 */
 		[CCode (cname = "shell_signals_pending_signals")]
 		public static string[] pending_signals = {};
@@ -137,10 +137,10 @@ namespace Shell
 		 * Subscribe ''signal_name'' on the peer, or every name in
 		 * {@link pending_signals} when that list is not empty.
 		 *
-		 * The list is cleared first. Each name is its own
-		 * ''RPC-Live-Subscribe.rpc_signal'' with one string, the
-		 * signature that method is registered with. A name already
-		 * in {@link subs} only bumps {@link refs}.
+		 * The list is cleared first. More than one name is one
+		 * ''Helper-Actor.add_signals''. One name is
+		 * ''RPC-Live-Subscribe.rpc_signal''. A name already in
+		 * {@link subs} only bumps {@link refs}.
 		 *
 		 * @param obj leased stub
 		 * @param signal_name signal or ''notify::'' property
@@ -188,9 +188,12 @@ namespace Shell
 				Signals.pending_signals = {};
 			}
 			GnomeShellRpc.GiStub.Runtime.client.proxies.set(lid, obj);
-			foreach (var name in signal_names) {
+			if (signal_names.length > 1) {
+				GnomeShellRpc.call_value("Helper-Actor.add_signals", obj,
+					OLLMrpc.args("S", signal_names));
+			} else {
 				GnomeShellRpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
-					OLLMrpc.args("s", name));
+					OLLMrpc.args("s", signal_names[0]));
 			}
 			if (!Signals.notification_hooked) {
 				Signals.notification_hooked = true;

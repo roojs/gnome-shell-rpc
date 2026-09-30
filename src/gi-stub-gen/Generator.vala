@@ -27,6 +27,13 @@ namespace GnomeShellRpc.GiStubGen
 		 */
 		public Gee.HashSet<string> deny = new Gee.HashSet<string>();
 
+		/**
+		 * {@code Namespace.Class.method} lines from {@code batch.whitelist}.
+		 * A hit emits {@code batch_call_value}. A miss emits
+		 * {@code call_value}.
+		 */
+		public Gee.HashSet<string> batch = new Gee.HashSet<string>();
+
 		/** Same names as {@link deny}, but emit an empty / dummy-return stub. */
 		public Gee.HashSet<string> noop = new Gee.HashSet<string>();
 
@@ -1480,8 +1487,13 @@ $(minted)				this.rpc_ctor_clear();
 						}
 					}
 					var rpc = @"$(ns)-$(class_name).$(setter.get_name())";
+					string? batch_name = null;
+					if ((ns + "." + class_name + "." + setter.get_name()) in this.batch) {
+						batch_name = pname;
+					}
 					this.emit_call_values_body(
-						stream, ns, "\t\t\t\t", rpc, "this", setter, "void", false
+						stream, ns, "\t\t\t\t", rpc, "this", setter, "void", false,
+						batch_name
 					);
 					var setter_symbol = @"$(class_name).$(setter.get_name())";
 					if (this.overrides.has_key(setter_symbol)
@@ -1526,10 +1538,19 @@ $(minted)				this.rpc_ctor_clear();
 ");
 					}
 					if (gprop_L != "ay") {
-						stream.puts(@"				GnomeShellRpc.call_value(
-					\"$(ns)-$(class_name).set_property\", this,
-					OLLMrpc.args(\"s$(gprop_L)\", \"$(pname)\", value));
+						var gprop_rpc = @"$(ns)-$(class_name).set_property";
+						var gprop_args = @"OLLMrpc.args(\"s$(gprop_L)\", \"$(pname)\", value)";
+						if ((ns + "." + class_name + "." + conv_set) in this.batch) {
+							stream.puts(@"				GnomeShellRpc.batch_call_value(
+					\"$(gprop_rpc)\", this, \"$(pname)\",
+					$(gprop_args));
 ");
+						} else {
+							stream.puts(@"				GnomeShellRpc.call_value(
+					\"$(gprop_rpc)\", this,
+					$(gprop_args));
+");
+						}
 					}
 						stream.puts("			}\n");
 					}
@@ -2609,7 +2630,8 @@ $(tab){
 			string instance,
 			GI.FunctionInfo fi,
 			string ret_vala,
-			bool is_constructor = false
+			bool is_constructor = false,
+			string? batch_name = null
 		) {
 			if (is_constructor) {
 				stream.puts(indent + "Object();\n");
@@ -2667,7 +2689,9 @@ $(tab){
 			 * Vala 0.56 has no named arguments, so args without an instance
 			 * still need the positional null placeholder. */
 			string call;
-			if (instance == "this") {
+			if (batch_name != null && instance == "this" && packed != "") {
+				call = @"GnomeShellRpc.batch_call_value(\"$(rpc)\", this, \"$(batch_name)\", OLLMrpc.args(\"$(sig)\", $(packed)))";
+			} else if (instance == "this") {
 				if (packed != "") {
 					call = @"GnomeShellRpc.call_value(\"$(rpc)\", this, OLLMrpc.args(\"$(sig)\", $(packed)))";
 				} else {

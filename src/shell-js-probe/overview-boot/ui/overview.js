@@ -457,14 +457,22 @@ export class Overview extends Signals.EventEmitter {
     // the overview if the user both triggered the hot corner and
     // clicked the Activities button.
     shouldToggleByCornerOrButton() {
-        if (this._animationInProgress)
-            return false;
-        if (this._inItemDrag || this._inWindowDrag)
-            return false;
-        if (!this._activationTime ||
-            GLib.get_monotonic_time() / GLib.USEC_PER_SEC - this._activationTime > OVERVIEW_ACTIVATION_TIMEOUT)
-            return true;
-        return false;
+        let why = 'yes';
+        let allow = true;
+        if (this._animationInProgress) {
+            why = 'anim';
+            allow = false;
+        } else if (this._inItemDrag || this._inWindowDrag) {
+            why = 'drag';
+            allow = false;
+        } else if (this._activationTime &&
+            GLib.get_monotonic_time() / GLib.USEC_PER_SEC - this._activationTime <= OVERVIEW_ACTIVATION_TIMEOUT) {
+            why = 'activation-timeout';
+            allow = false;
+        }
+        gsrOverviewBoot(this, 'should-toggle',
+            `allow=${allow} why=${why} anim=${this._animationInProgress} visible=${this._visible} shown=${this._shown}`);
+        return allow;
     }
 
     _syncGrab() {
@@ -606,8 +614,11 @@ export class Overview extends Signals.EventEmitter {
     }
 
     _animateNotVisible() {
-        if (!this._visible || this._animationInProgress)
+        if (!this._visible || this._animationInProgress) {
+            gsrOverviewBoot(this, 'animate-hide-skip',
+                `visible=${this._visible} anim=${this._animationInProgress}`);
             return;
+        }
 
         this._animationInProgress = true;
         this._visibleTarget = false;
@@ -619,6 +630,15 @@ export class Overview extends Signals.EventEmitter {
         this._overview.prepareToLeaveOverview();
         this._changeShownState(OverviewShownState.HIDING);
         this._overview.animateFromOverview(() => this._hideDone());
+        const adj = this._overview?.controls?._stateAdjustment;
+        let armed = 'no-adj';
+        try {
+            const tr = adj.get_transition('value');
+            armed = `value=${adj.value} tr=${tr != null} dur=${tr?.duration}`;
+        } catch (e) {
+            armed = `err ${e}`;
+        }
+        gsrOverviewBoot(this, 'hide-armed', armed);
     }
 
     _hideDone() {
@@ -646,6 +666,8 @@ export class Overview extends Signals.EventEmitter {
         if (this.isDummy)
             return;
 
+        gsrOverviewBoot(this, 'toggle',
+            `visible=${this._visible} anim=${this._animationInProgress} shown=${this._shown}`);
         if (this._visible)
             this.hide();
         else
@@ -743,8 +765,70 @@ export class Overview extends Signals.EventEmitter {
         } catch (e) {
             lmW = `err ${e}`;
         }
+        const dash = controls?.dash;
+        const app = controls?._appDisplay;
+        const searchView = controls?._searchController;
+        const raw = actor => {
+            if (!actor)
+                return 'null';
+            try {
+                const b = actor.get_allocation_box();
+                return `v=${actor.visible} op=${actor.opacity} ${b.x1.toFixed(0)},${b.y1.toFixed(0)}-${b.x2.toFixed(0)},${b.y2.toFixed(0)}`;
+            } catch (e) {
+                return `err ${e}`;
+            }
+        };
+        const order = [];
+        const nd = dash?.get_n_children?.() ?? 0;
+        for (let i = 0; i < nd; i++) {
+            const c = dash.get_child_at_index(i);
+            order.push(`${c?.style_class || c?.name || '?'}:${boxOf(c)}`);
+        }
+        const activities = Main.panel?.statusArea?.activities;
+        if (activities && !this._gsrActivitiesLogged) {
+            this._gsrActivitiesLogged = true;
+            activities.connect('button-press-event', () => {
+                gsrOverviewBoot(this, 'activities-press', '');
+                return Clutter.EVENT_PROPAGATE;
+            });
+            activities.connect('button-release-event', () => {
+                gsrOverviewBoot(this, 'activities-release', '');
+                return Clutter.EVENT_PROPAGATE;
+            });
+        }
         gsrOverviewBoot(this, 'startup-shown',
-            `tp=${tp?.currentState}/${tp?.initialState}->${tp?.finalState} tr=${tp?.transitioning} display=${boxOf(display)} item=${boxOf(showItem)} itemW=${prefW(showItem)} scale=${showItem?.scale_x} btn=${boxOf(controls?.dash?.showAppsButton)}`);
+            `anim=${this._animationInProgress} visible=${this._visible} shown=${this._shown} order=${order.join('|')} app=${raw(app)} search=${raw(searchView)} dash=${raw(dash)}`);
+        const clickAt = (label, delay, x, y) => {
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+                try {
+                    let cx = x;
+                    let cy = y;
+                    if (cx == null) {
+                        const btn = Main.panel.statusArea.activities;
+                        const [bx, by] = btn.get_transformed_position();
+                        cx = bx + btn.get_width() / 2;
+                        cy = by + btn.get_height() / 2;
+                    }
+                    let pick = '?';
+                    try {
+                        const actor = global.stage.get_actor_at_pos(
+                            Clutter.PickMode.REACTIVE, cx, cy);
+                        pick = actor ? `${actor}` : 'null';
+                    } catch (e) {
+                        pick = `err ${e}`;
+                    }
+                    gsrOverviewBoot(this, `click-${label}`,
+                        `at=${cx.toFixed(0)},${cy.toFixed(0)} anim=${this._animationInProgress} visible=${this._visible} shown=${this._shown} pick=${pick}`);
+                    global.pointer_click(cx, cy);
+                } catch (e) {
+                    gsrOverviewBoot(this, `click-${label}-err`, `${e}`);
+                }
+                return GLib.SOURCE_REMOVE;
+            });
+        };
+        clickAt('1', 1500);
+        clickAt('away', 3000, 640, 400);
+        clickAt('2', 4500);
     }
 
     getShowAppsButton() {
