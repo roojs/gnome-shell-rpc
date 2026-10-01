@@ -16,14 +16,14 @@ namespace Meta
 			uint64 interval_msec,
 			IdleMonitorWatchFunc callback
 		) {
-			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+			var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
 				callback(
-					(IdleMonitor) Gsr.Client.Rpc.Runtime.client.proxies.get(
+					(IdleMonitor) Gsr.Client.Rpc.client.proxies.get(
 						(int) call.args.get(0).get_uint64()),
 					(uint32) call.args.get(1).get_uint());
 				return null;
 			});
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-IdleMonitor.add_idle_watch",
 				this,
 				OLLMrpc.args("tt", interval_msec, callback_id));
@@ -32,14 +32,14 @@ namespace Meta
 
 		public uint32 add_user_active_watch(IdleMonitorWatchFunc callback)
 		{
-			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+			var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
 				callback(
-					(IdleMonitor) Gsr.Client.Rpc.Runtime.client.proxies.get(
+					(IdleMonitor) Gsr.Client.Rpc.client.proxies.get(
 						(int) call.args.get(0).get_uint64()),
 					(uint32) call.args.get(1).get_uint());
 				return null;
 			});
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-IdleMonitor.add_user_active_watch",
 				this,
 				OLLMrpc.args("t", callback_id));
@@ -48,7 +48,7 @@ namespace Meta
 
 		public void remove_watch(uint32 id)
 		{
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Meta-IdleMonitor.remove_watch",
 				this,
 				OLLMrpc.args("u", (uint) id));

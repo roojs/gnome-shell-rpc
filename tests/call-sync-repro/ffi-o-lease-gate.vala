@@ -184,7 +184,7 @@ int main(string[] args)
 			return 2;
 		}
 
-		/* Same shape as Gsr.call_value object→lease rewrite. */
+		/* Same shape as Gsr.Client.Rpc.call_value object→lease rewrite. */
 		var lease_arg = GLib.Value(typeof(uint64));
 		lease_arg.set_uint64(peer.rpc_lid);
 		var echo_req = new OLLMrpc.Request() {

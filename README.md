@@ -75,8 +75,8 @@ Weston itself is an **X11 window** on your desktop. Close the Weston window to
 throw the prove away; host GNOME stays usable.
 
 ```bash
-# Interactive nest. No debug logs, no log terminal. The nested window
-# fills Weston. Close Weston to stop.
+# Interactive nest. Weston opens idle. The top-left panel button starts
+# the shell and fills the window. No debug logs. Close Weston to stop.
 ./scripts/weston-gsr-session.sh
 
 # Same session with debug logs and the in-Weston log terminal.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Stretch the nested mutter X window across Weston's XWayland work area.
-# Called only when the session is not in --debug. The log terminal is absent,
-# so the nested window should fill Weston and leave the panel as the border.
+# Make the nested compositor window cover Weston's XWayland output.
+# Mutter nested maps at 1024x768. That is exactly 80% of the default
+# 1280-wide Weston, so a "still small" check never resized it.
 #
 # Usage: weston-gsr-fill-window.sh DISPLAY
 set -euo pipefail
@@ -16,37 +16,45 @@ if ! command -v wmctrl >/dev/null || ! command -v xwininfo >/dev/null; then
 	exit 0
 fi
 
+find_id() {
+	DISPLAY="$DISP" wmctrl -lx 2>/dev/null | awk '
+		tolower($0) ~ /gsr-server|mutter/ { print $1; exit }
+	'
+}
+
 id=""
 for _ in $(seq 1 80); do
-	id="$(DISPLAY="$DISP" wmctrl -l 2>/dev/null | awk '/[Mm]utter/ {print $1; exit}')"
+	id="$(find_id)"
 	if [[ -n "$id" ]]; then
 		break
 	fi
 	sleep 0.25
 done
 if [[ -z "$id" ]]; then
-	echo "weston-gsr-fill-window: mutter window did not appear" >&2
+	echo "weston-gsr-fill-window: nested window did not appear" >&2
+	DISPLAY="$DISP" wmctrl -lx >&2 || true
 	exit 0
 fi
 
-# Weston desktop-shell honors maximize as "output minus the top panel".
-DISPLAY="$DISP" wmctrl -i -r "$id" -b add,maximized_vert,maximized_horz || true
-sleep 0.4
-
-win_w="$(DISPLAY="$DISP" xwininfo -id "$id" 2>/dev/null | awk '/Width:/ {print $2; exit}')"
 root_w="$(DISPLAY="$DISP" xwininfo -root 2>/dev/null | awk '/Width:/ {print $2; exit}')"
 root_h="$(DISPLAY="$DISP" xwininfo -root 2>/dev/null | awk '/Height:/ {print $2; exit}')"
-# Weston desktop-shell panel. Used only if maximize left the small frame.
-panel="${GSR_WESTON_PANEL:-32}"
-
-if [[ -n "${win_w:-}" && -n "${root_w:-}" && -n "${root_h:-}" ]] \
-		&& [[ "$win_w" -lt $((root_w * 8 / 10)) ]]; then
-	DISPLAY="$DISP" wmctrl -i -r "$id" -b remove,maximized_vert,maximized_horz || true
-	h=$((root_h - panel))
-	if [[ "$h" -lt 1 ]]; then
-		h=$root_h
-		panel=0
-	fi
-	DISPLAY="$DISP" wmctrl -i -r "$id" -e "0,0,${panel},${root_w},${h}" || true
+if [[ -z "${root_w:-}" || -z "${root_h:-}" ]]; then
+	echo "weston-gsr-fill-window: no root size" >&2
+	exit 0
 fi
+
+# Cover the Weston output, panel included. The panel button is for
+# starting the demo; after that the shell is the picture.
+for _ in 1 2 3 4 5 6 7 8; do
+	id="$(find_id)"
+	[[ -n "$id" ]] || break
+	DISPLAY="$DISP" wmctrl -i -a "$id" || true
+	DISPLAY="$DISP" wmctrl -i -r "$id" -b add,fullscreen || true
+	DISPLAY="$DISP" wmctrl -i -r "$id" -e "0,0,0,${root_w},${root_h}" || true
+	if command -v xdotool >/dev/null; then
+		DISPLAY="$DISP" xdotool windowmove "$id" 0 0 || true
+		DISPLAY="$DISP" xdotool windowsize "$id" "$root_w" "$root_h" || true
+	fi
+	sleep 0.5
+done
 exit 0

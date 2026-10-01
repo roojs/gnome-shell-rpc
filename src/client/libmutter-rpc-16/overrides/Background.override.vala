@@ -5,7 +5,7 @@
 		public Display meta_display { get; construct; }
 
 		construct {
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Background.create",
 				null,
 				OLLMrpc.args("o", this.meta_display)
@@ -15,7 +15,7 @@
 
 		public void set_file(GLib.File file, GDesktop.BackgroundStyle style)
 		{
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Background.set_file",
 				this,
 				OLLMrpc.args(

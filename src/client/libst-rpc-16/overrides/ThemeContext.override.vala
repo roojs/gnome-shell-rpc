@@ -9,7 +9,7 @@
 
 		public static ThemeContext get_for_stage(Clutter.Stage stage)
 		{
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"St-ThemeContext.get_for_stage", null,
 				OLLMrpc.args("o", stage));
 			return (ThemeContext) response.retval.get_object();
@@ -40,7 +40,7 @@
 			string theme_uri;
 			string default_uri;
 			theme.construct_uris(out application_uri, out theme_uri, out default_uri);
-			Gsr.call_value("Gsr-St-ThemeContext.set_theme", this,
+			Gsr.Client.Rpc.call_value("Gsr-St-ThemeContext.set_theme", this,
 				OLLMrpc.args("sssas",
 					application_uri, theme_uri,
 					default_uri, theme.stylesheet_uris()));

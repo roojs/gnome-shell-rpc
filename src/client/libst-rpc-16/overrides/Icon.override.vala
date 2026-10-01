@@ -4,7 +4,7 @@
 		 */
 		public GLib.Icon gicon {
 			owned get {
-				var response = Gsr.call_value(
+				var response = Gsr.Client.Rpc.call_value(
 					"Gsr-St-Icon.get_gicon", this);
 				unowned string? s = response.retval.get_string();
 				if (s == null || s.length == 0) {
@@ -22,14 +22,14 @@
 					string? wire = value.to_string();
 					s = wire != null ? wire : "";
 				}
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Gsr-St-Icon.set_gicon", this, OLLMrpc.args("s", s));
 			}
 		}
 
 		public GLib.Icon fallback_gicon {
 			owned get {
-				var response = Gsr.call_value(
+				var response = Gsr.Client.Rpc.call_value(
 					"Gsr-St-Icon.get_fallback_gicon", this);
 				unowned string? s = response.retval.get_string();
 				if (s == null || s.length == 0) {
@@ -47,7 +47,7 @@
 					string? wire = value.to_string();
 					s = wire != null ? wire : "";
 				}
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Gsr-St-Icon.set_fallback_gicon", this,
 					OLLMrpc.args("s", s));
 			}

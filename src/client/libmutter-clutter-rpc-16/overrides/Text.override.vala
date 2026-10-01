@@ -5,7 +5,7 @@
 		 */
 		public Pango.Layout? get_layout()
 		{
-			var response = Gsr.call_value("Gsr-Clutter-Text.get_layout", this);
+			var response = Gsr.Client.Rpc.call_value("Gsr-Clutter-Text.get_layout", this);
 			if (response.args.size < 10) {
 				return null;
 			}

@@ -9,20 +9,20 @@ namespace Gsr.Server
 	public class Bootstrap : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public global::Meta.Display meta_display { get; private set; }
-		public StartupFrameGate gate { get; private set; }
+		public StartupFrameLock gate { get; private set; }
 
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Bootstrap", typeof(Bootstrap));
 			OLLMrpc.Request.add_class(
-				"RPC-Bootstrap", typeof(Bootstrap),
+				"Server-Bootstrap", typeof(Bootstrap),
 				"get_display", "",
 				"begin_shell_startup", "",
 				null
 			);
 		}
 
-		public static Bootstrap bind(global::Meta.Display display, StartupFrameGate gate)
+		public static Bootstrap bind(global::Meta.Display display, StartupFrameLock gate)
 		{
 			var bootstrap = new Bootstrap();
 			bootstrap.meta_display = display;

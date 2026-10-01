@@ -13,7 +13,7 @@
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-BackgroundActor.create",
 				null,
 				OLLMrpc.args("oi", this.meta_display, this.monitor)

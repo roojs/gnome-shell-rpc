@@ -15,8 +15,8 @@ namespace Meta
 			GLib.Cancellable? cancellable
 		) {
 			uint64 cancel_id =
-				Gsr.Client.Rpc.CancellableBridge.register(cancellable);
-			Gsr.call_value(
+				Gsr.Client.Cancellable.register(cancellable);
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-SoundPlayer.play_from_file",
 				this,
 				OLLMrpc.args(
@@ -34,8 +34,8 @@ namespace Meta
 			GLib.Cancellable? cancellable
 		) {
 			uint64 cancel_id =
-				Gsr.Client.Rpc.CancellableBridge.register(cancellable);
-			Gsr.call_value(
+				Gsr.Client.Cancellable.register(cancellable);
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-SoundPlayer.play_from_theme",
 				this,
 				OLLMrpc.args("sst", name, description, cancel_id)

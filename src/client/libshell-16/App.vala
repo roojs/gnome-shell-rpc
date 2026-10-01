@@ -283,7 +283,7 @@ namespace Shell
 			}
 			var path = this.app_info.get_filename();
 			if (path != null && path.length > 0) {
-				var response = Gsr.call_value("Gsr-Mutter-AppLaunch.launch_desktop_file",
+				var response = Gsr.Client.Rpc.call_value("Gsr-Mutter-AppLaunch.launch_desktop_file",
 					null, OLLMrpc.args("sui", path, timestamp, workspace));
 				var ok = response.retval.get_boolean();
 				if (!ok) {
@@ -314,7 +314,7 @@ namespace Shell
 			}
 			var path = this.app_info.get_filename();
 			if (path != null && path.length > 0) {
-				Gsr.call_value("Gsr-Mutter-AppLaunch.launch_action",
+				Gsr.Client.Rpc.call_value("Gsr-Mutter-AppLaunch.launch_action",
 					null, OLLMrpc.args("ssui", path, action_name, timestamp, workspace));
 				return;
 			}

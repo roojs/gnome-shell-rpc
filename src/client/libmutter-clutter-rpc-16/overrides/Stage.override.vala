@@ -26,7 +26,8 @@
 	public StageView? get_view_at(float x, float y)
 	{
 		try {
-			var response = Gsr.call_value("Clutter-Stage.get_view_at", this, OLLMrpc.args("ff", x, y));
+			var response = Gsr.Client.Rpc.call_value("Clutter-Stage.get_view_at", 
+				this, OLLMrpc.args("ff", x, y));
 			if (response.args.size == 0) {
 				return null;
 			}
@@ -61,8 +62,8 @@
 			image_height = 1;
 		}
 		var n_bytes = stride * image_height;
-		var response = Gsr.call_value("Clutter-Stage.paint_to_buffer", this, OLLMrpc.args(
-			"iiiifiiuu",
+		var response = Gsr.Client.Rpc.call_value("Clutter-Stage.paint_to_buffer", 
+			this, OLLMrpc.args("iiiifiiuu",
 			rect.x, rect.y, rect.width, rect.height, scale,
 			n_bytes, stride, (uint) format, (uint) paint_flags));
 		if (response.args.size == 0) {

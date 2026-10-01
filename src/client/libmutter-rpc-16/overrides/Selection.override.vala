@@ -10,9 +10,9 @@
 			GLib.OutputStream output,
 			GLib.Cancellable? cancellable
 		) throws GLib.Error {
-			var cancel_id = Gsr.Client.Rpc.CancellableBridge.register(
+			var cancel_id = Gsr.Client.Cancellable.register(
 				cancellable);
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Selection.transfer", this,
 				OLLMrpc.args("isxt", (int) selection_type, mimetype,
 					(int64) size, cancel_id));

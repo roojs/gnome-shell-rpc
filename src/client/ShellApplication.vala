@@ -74,8 +74,8 @@ namespace Gsr.Client
 				this.install_js_override_overlay(override_dir);
 			}
 
-			Gsr.Client.Rpc.Runtime.register();
-			Shell.Global.bind_display(Meta.get_display());
+			Gsr.Client.Rpc.register();
+			global::Shell.Global.bind_display(global::Meta.get_display());
 			Application.apply_extension_policy();
 
 			var js_dir = GLib.Environment.get_variable("GNOME_SHELL_JS_DIR") ?? "";
@@ -145,7 +145,7 @@ namespace Gsr.Client
 					}
 				}
 				if (script == INIT_MODULE || script.has_suffix("/ui/init.js")) {
-					Gsr.call_value("RPC-Bootstrap.begin_shell_startup");
+					Gsr.Client.Rpc.call_value("Server-Bootstrap.begin_shell_startup");
 				}
 				if (script.has_prefix("resource://")
 					|| script.contains("/ui/init.js")
@@ -181,7 +181,7 @@ namespace Gsr.Client
 				"org.gnome.shell", Application.memory_settings_backend_new()
 			);
 			settings.set_boolean("disable-user-extensions", true);
-			Shell.Global.get().host_install_settings(settings);
+			global::Shell.Global.get().host_install_settings(settings);
 			GLib.message(
 				"gnome-shell-rpc: disable-user-extensions "
 				+ "(memory org.gnome.shell)"

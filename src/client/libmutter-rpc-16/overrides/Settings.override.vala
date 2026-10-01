@@ -5,7 +5,7 @@
 		public int get_ui_scaling_factor()
 		{
 			try {
-				var response = Gsr.call_value(
+				var response = Gsr.Client.Rpc.call_value(
 					"Gsr-Mutter-Settings.get_ui_scaling_factor");
 				return response.retval.get_int();
 			} catch (GLib.Error e) {

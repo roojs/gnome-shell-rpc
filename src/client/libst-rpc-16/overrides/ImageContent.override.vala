@@ -3,12 +3,12 @@
 
 		public static Clutter.Content new_with_preferred_size(int32 width, int32 height)
 		{
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-St-ImageContent.create",
 				null,
 				OLLMrpc.args("ii", width, height));
 			var obj = (ImageContent) response.retval.get_object();
-			Gsr.Client.Rpc.Runtime.register_handle(obj);
+			Gsr.Client.Rpc.register_handle(obj);
 			return obj;
 		}
 
@@ -34,7 +34,7 @@
 				throw new GLib.IOError.FAILED("ImageContent.set_data memfd");
 			}
 			Posix.lseek(fd, 0, Posix.SEEK_SET);
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-St-ImageContent.set_data", this,
 				OLLMrpc.args("uuuux", (uint) pixel_format, width, height,
 					row_stride, (int64) nbytes),
@@ -48,7 +48,7 @@
 		 */
 		public bool get_preferred_size(out float width, out float height)
 		{
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Clutter-Content.get_preferred_size", this);
 			width = (float) response.args.get(0).get_float();
 			height = (float) response.args.get(1).get_float();
@@ -60,7 +60,7 @@
 		 */
 		public void invalidate()
 		{
-			Gsr.call_value("Clutter-Content.invalidate", this);
+			Gsr.Client.Rpc.call_value("Clutter-Content.invalidate", this);
 		}
 
 		/**
@@ -68,7 +68,7 @@
 		 */
 		public void invalidate_size()
 		{
-			Gsr.call_value("Clutter-Content.invalidate_size", this);
+			Gsr.Client.Rpc.call_value("Clutter-Content.invalidate_size", this);
 		}
 
 		/**

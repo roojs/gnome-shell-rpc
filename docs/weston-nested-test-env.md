@@ -85,13 +85,14 @@ back under GNOME’s thumb). Weston’s `xwayland=true` plus autolaunch’s
 ## How to run
 
 ```bash
-./scripts/weston-gsr-session.sh           # no debug, nested window fills Weston
+./scripts/weston-gsr-session.sh           # panel button starts the shell
 ./scripts/weston-gsr-session.sh --debug   # log terminal, debug logs, default window
 ```
 
-Without `--debug`, autolaunch starts `mutter-rpc` directly. Nothing is passed
-`--debug`, debug logs are not written, and no log terminal opens. The nested
-window is maximized inside Weston (the panel stays as the border).
+Without `--debug`, Weston opens and waits. The top-left panel button (Wayland
+icon) starts the nested shell with no `--debug` and no log terminal. That
+window is sized to Weston's whole output. The terminal icon beside it is
+Weston's own terminal.
 
 With `--debug`, `weston-terminal` starts `mutter-rpc --debug` and follows both
 debug logs. The nested window stays at its default size so the terminal has
@@ -105,9 +106,10 @@ Scripts:
 |--------|------|
 | `scripts/weston-gsr-session.sh` | Starts Weston (X11 window) with generated ini |
 | `scripts/weston-gsr.ini.in` | Template: XWayland + `[autolaunch]` |
-| `scripts/weston-gsr-autolaunch.sh` | Inside Weston → prove, hold, or `weston-terminal` |
+| `scripts/weston-gsr-autolaunch.sh` | Inside Weston → prove, or wait for the panel button |
+| `scripts/weston-gsr-launch.sh` | Panel button: start the nested shell |
 | `scripts/weston-gsr-log-term.sh` | `--debug` only: start mutter and follow debug logs |
-| `scripts/weston-gsr-fill-window.sh` | No `--debug`: maximize the nested window in Weston |
+| `scripts/weston-gsr-fill-window.sh` | Size the nested window to the Weston output |
 | `scripts/nested-weston-prove.sh` | `dbus-run-session` + `mutter-rpc … --nested` |
 
 Prove log: `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`.

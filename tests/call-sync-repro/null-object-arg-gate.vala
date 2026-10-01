@@ -1,6 +1,6 @@
 /**
  * Gate: a null GObject in {@link OLLMrpc.Notification.args} must travel
- * as uint64 lease 0, the same form {@link Gsr.call_value} uses
+ * as uint64 lease 0, the same form {@link Gsr.Client.Rpc.call_value} uses
  * for a null IN object.
  *
  * An explicit uint64 0 parses. A raw null {@link GLib.Object} does not:

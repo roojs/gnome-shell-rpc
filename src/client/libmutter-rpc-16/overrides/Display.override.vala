@@ -4,18 +4,18 @@
 			KeyBindingFlags flags,
 			KeyHandlerFunc handler
 		) {
-			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
-				var display = (Display) Gsr.Client.Rpc.Runtime.client.proxies.get(
+			var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
+				var display = (Display) Gsr.Client.Rpc.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
 				Window? window = null;
 				var win_h = (int) call.args.get(1).get_uint64();
 				if (win_h != 0) {
-					window = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(win_h);
+					window = (Window) Gsr.Client.Rpc.client.proxies.get(win_h);
 				}
 				handler(display, window, null, KeyBinding());
 				return null;
 			});
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Display.add_keybinding", this,
 				OLLMrpc.args("ssut", name, settings.schema_id, (uint) flags, callback_id));
 			return response.retval.get_uint();
@@ -30,7 +30,7 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Display.request_pad_osd", this,
 				OLLMrpc.args("osb", wire, device_name, edition_mode));
 		}
@@ -46,7 +46,7 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Display.get_pad_button_label", this,
 				OLLMrpc.args("osi", wire, device_name, button_number));
 			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
@@ -69,7 +69,7 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Display.get_pad_feature_label", this,
 				OLLMrpc.args("osiui", wire, device_name,
 					(int) feature, (uint) direction, feature_number));
@@ -96,7 +96,7 @@
 		 */
 		public GLib.List<Window> list_all_windows()
 		{
-			var rows = Gsr.Client.Rpc.Runtime.call_list(
+			var rows = Gsr.Client.Rpc.call_list(
 				"Meta-Display.list_windows",
 				typeof(Gsr.Shared.Window)
 			);
@@ -105,7 +105,7 @@
 				var snap = (Gsr.Shared.Window) row;
 				var win = new Window();
 				win.rpc_lid = (uint64) snap.id;
-				Gsr.Client.Rpc.Runtime.register_handle(win);
+				Gsr.Client.Rpc.register_handle(win);
 				list.append(win);
 			}
 			return list;
@@ -113,7 +113,7 @@
 
 		public StartupNotification get_startup_notification()
 		{
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Meta-Display.get_startup_notification", this);
 			return (StartupNotification) response.retval.get_object();
 		}

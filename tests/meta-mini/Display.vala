@@ -36,7 +36,7 @@ namespace Meta
 		 */
 		public GLib.List<Window> list_all_windows()
 		{
-			var rows = Gsr.Client.Rpc.Runtime.call_list(
+			var rows = Gsr.Client.Rpc.call_list(
 				"Meta-Display.list_windows",
 				typeof(Gsr.Shared.Window)
 			);
@@ -61,7 +61,7 @@ namespace Meta
 		 */
 		public Window? get_focus_window()
 		{
-			var snap = (Gsr.Shared.Window?) Gsr.Client.Rpc.Runtime.call_object(
+			var snap = (Gsr.Shared.Window?) Gsr.Client.Rpc.call_object(
 				"Meta-Display.get_focused_window",
 				typeof(Gsr.Shared.Window)
 			);
@@ -90,7 +90,7 @@ namespace Meta
 		 */
 		public Compositor get_compositor()
 		{
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Meta-Display.get_compositor", this);
 			var compositor = new Compositor();
 			compositor.rpc_lid = response.args.get(0).get_uint64();
@@ -102,7 +102,7 @@ namespace Meta
 		 */
 		public SoundPlayer get_sound_player()
 		{
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Meta-Display.get_sound_player", this);
 			var player = new SoundPlayer();
 			player.rpc_lid = response.args.get(0).get_uint64();
@@ -119,18 +119,18 @@ namespace Meta
 			KeyBindingFlags flags,
 			KeyHandlerFunc callback
 		) {
-			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
-				var display = (Display) Gsr.Client.Rpc.Runtime.client.proxies.get(
+			var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
+				var display = (Display) Gsr.Client.Rpc.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
 				Window? window = null;
 				var win_h = (int) call.args.get(1).get_uint64();
 				if (win_h != 0) {
-					window = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(win_h);
+					window = (Window) Gsr.Client.Rpc.client.proxies.get(win_h);
 				}
 				callback(display, window);
 				return null;
 			});
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Display.add_keybinding", this,
 				OLLMrpc.args("ssut", name, settings.schema_id, (uint) flags, callback_id));
 			return response.retval.get_uint();
@@ -148,7 +148,7 @@ namespace Meta
 			} else {
 				device_name = pad.get_device_name();
 			}
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Display.request_pad_osd", this,
 				OLLMrpc.args("osb", wire, device_name, edition_mode));
 		}
@@ -167,7 +167,7 @@ namespace Meta
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Display.get_pad_button_label", this,
 				OLLMrpc.args("osi", wire, device_name, button_number));
 			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
@@ -193,7 +193,7 @@ namespace Meta
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Display.get_pad_feature_label", this,
 				OLLMrpc.args("osiui", wire, device_name,
 					(int) feature, (uint) direction, feature_number));
@@ -218,8 +218,8 @@ namespace Meta
 	{
 		if (display_singleton == null) {
 			display_singleton = new Display();
-			var response = Gsr.call_value(
-				"RPC-Bootstrap.get_display"
+			var response = Gsr.Client.Rpc.call_value(
+				"Server-Bootstrap.get_display"
 			);
 			if (response.args.size > 0) {
 				display_singleton.rpc_lid = response.args.get(0).get_uint64();
@@ -233,18 +233,18 @@ namespace Meta
 	 */
 	public bool keybindings_set_custom_handler(string name, KeyHandlerFunc callback)
 	{
-		var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
-			var display = (Display) Gsr.Client.Rpc.Runtime.client.proxies.get(
+		var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
+			var display = (Display) Gsr.Client.Rpc.client.proxies.get(
 				(int) call.args.get(0).get_uint64());
 			Window? window = null;
 			var win_h = (int) call.args.get(1).get_uint64();
 			if (win_h != 0) {
-				window = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(win_h);
+				window = (Window) Gsr.Client.Rpc.client.proxies.get(win_h);
 			}
 			callback(display, window);
 			return null;
 		});
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Gsr-Mutter-Display.keybindings_set_custom_handler",
 			null,
 			OLLMrpc.args("st", name, callback_id));

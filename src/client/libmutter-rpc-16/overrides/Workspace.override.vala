@@ -7,7 +7,7 @@
 			if (this.cached_display != null) {
 				return this.cached_display;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Meta-Workspace.get_display", this);
 			if (response.retval.type() == GLib.Type.INVALID) {
 				return null;
@@ -26,7 +26,7 @@
 				area = *((Mtk.Rectangle*) blob.get_data());
 				return;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Meta-Workspace.get_work_area_for_monitor", this,
 				OLLMrpc.args("i", (int) which_monitor));
 			var blob0 = (GLib.Bytes) response.args.get(0).get_boxed();
@@ -60,7 +60,7 @@
 			}
 			this.last_struts = struts_aay;
 			this.work_area_bytes = null;
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Meta-Workspace.set_builtin_struts", this,
 				OLLMrpc.args("v", struts_aay));
 			/* OPC subscribe did not deliver Display::workareas-changed. */

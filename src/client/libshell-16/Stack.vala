@@ -16,7 +16,7 @@ namespace Shell
 			if (t != typeof(Stack) && !t.name().has_prefix("Gjs_")) {
 				return;
 			}
-			var response = Gsr.call_value("St-Widget.new");
+			var response = Gsr.Client.Rpc.call_value("St-Widget.new");
 			var stub = response.retval.get_object() as OLLMrpc.Live.Interface;
 			this.rpc_lid = stub.rpc_lid;
 		}

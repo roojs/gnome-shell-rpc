@@ -18,7 +18,7 @@ namespace Gsr.Client.Clutter
 					send.add(entry.value);
 				}
 				actor.prop_batch.clear();
-				Gsr.call_value("Gsr-Clutter-Actor.add_properties", actor, send);
+				Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_properties", actor, send);
 			}
 		}
 
@@ -33,7 +33,7 @@ namespace Gsr.Client.Clutter
 				actor.prop_batch.set(name, args.get(args.size - 1));
 				return new OLLMrpc.Response();
 			}
-			return Gsr.call_value(method, actor, args, buffer);
+			return Gsr.Client.Rpc.call_value(method, actor, args, buffer);
 		}
 	}
 }

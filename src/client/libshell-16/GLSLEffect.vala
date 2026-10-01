@@ -46,9 +46,9 @@ namespace Shell
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = Gsr.call_value("Gsr-Shell-GLSLEffect.create", null);
+			var response = Gsr.Client.Rpc.call_value("Gsr-Shell-GLSLEffect.create", null);
 			this.rpc_lid = response.args.get(0).get_uint64();
-			Gsr.Client.Rpc.Runtime.register_handle(this);
+			Gsr.Client.Rpc.register_handle(this);
 			this.sync_actor_meta_name();
 			this.sync_actor_meta_enabled();
 			this.build_pipeline();
@@ -61,7 +61,7 @@ namespace Shell
 					|| this.priv_name.length == 0) {
 				return;
 			}
-			Gsr.call_value("Clutter-ActorMeta.set_name", this,
+			Gsr.Client.Rpc.call_value("Clutter-ActorMeta.set_name", this,
 				OLLMrpc.args("s", this.priv_name));
 		}
 
@@ -70,7 +70,7 @@ namespace Shell
 			if (this.rpc_lid == 0) {
 				return;
 			}
-			Gsr.call_value("Clutter-ActorMeta.set_enabled", this,
+			Gsr.Client.Rpc.call_value("Clutter-ActorMeta.set_enabled", this,
 				OLLMrpc.args("b", this.priv_enabled));
 		}
 
@@ -87,14 +87,14 @@ namespace Shell
 			string code,
 			bool is_replace
 		) {
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Shell-GLSLEffect.add_glsl_snippet", this,
 				OLLMrpc.args("issb", (int) hook, declarations, code, is_replace));
 		}
 
 		public int get_uniform_location(string uniform_name)
 		{
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Shell-GLSLEffect.get_uniform_location", this,
 				OLLMrpc.args("s", uniform_name));
 			return response.retval.get_int();
@@ -109,7 +109,7 @@ namespace Shell
 			foreach (var f in value) {
 				builder.add("d", (double) f);
 			}
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Shell-GLSLEffect.set_uniform_float", this,
 				OLLMrpc.args("iiv", uniform, n_components, builder.end()));
 		}
@@ -124,7 +124,7 @@ namespace Shell
 			foreach (var f in value) {
 				builder.add("d", (double) f);
 			}
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Shell-GLSLEffect.set_uniform_matrix", this,
 				OLLMrpc.args(
 					"ibiiv", uniform, transpose, dimensions, value.length, builder.end()));

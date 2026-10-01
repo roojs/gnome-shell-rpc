@@ -29,7 +29,7 @@ namespace Gsr.GjsEmbed
 		public Application()
 		{
 			GLib.Object(
-				application_id: APPLICATION_ID,
+				application_id: Gsr.Client.APPLICATION_ID,
 				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
 					| GLib.ApplicationFlags.NON_UNIQUE
 			);
@@ -88,7 +88,7 @@ namespace Gsr.GjsEmbed
 
 			var js_dir = GLib.Environment.get_variable("GNOME_SHELL_JS_DIR");
 			if (js_dir == null || js_dir.length == 0) {
-				js_dir = GNOME_SHELL_JS_DIR;
+				js_dir = Gsr.Client.GNOME_SHELL_JS_DIR;
 			}
 			if (js_dir.length > 0) {
 				search_path += js_dir;

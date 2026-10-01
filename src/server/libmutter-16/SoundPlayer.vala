@@ -35,7 +35,7 @@ namespace Gsr.Server.Meta
 			}
 			var player = (global::Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
 			player.play_from_file(GLib.File.new_for_uri(uri), description,
-				Gsr.Server.CancellableBridge.lookup(cancel_id));
+				Gsr.Server.Cancellable.lookup(cancel_id));
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});
@@ -49,7 +49,7 @@ namespace Gsr.Server.Meta
 		) {
 			var player = (global::Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
 			player.play_from_theme(name, description,
-				Gsr.Server.CancellableBridge.lookup(cancel_id));
+				Gsr.Server.Cancellable.lookup(cancel_id));
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

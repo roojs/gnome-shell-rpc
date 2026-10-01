@@ -39,11 +39,10 @@ namespace Shell
 			float x,
 			float y
 		);
-	}
 
-	[CCode (cname = "shell_graphene_point_override_register")]
-	public void graphene_point_override_register()
-	{
-		OLLMrpc.Bin.TypeOverride.register(new GraphenePointOverride());
+		internal static void register()
+		{
+			OLLMrpc.Bin.TypeOverride.register(new GraphenePointOverride());
+		}
 	}
 }

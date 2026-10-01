@@ -15,14 +15,14 @@
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = Gsr.call_value("Clutter-BrightnessContrastEffect.new");
+			var response = Gsr.Client.Rpc.call_value("Clutter-BrightnessContrastEffect.new");
 			var stub = response.retval.get_object() as OLLMrpc.Live.Interface;
 			this.rpc_lid = stub.rpc_lid;
 			if (this.name != null && this.name.length > 0) {
-				Gsr.call_value("Clutter-ActorMeta.set_name", this,
+				Gsr.Client.Rpc.call_value("Clutter-ActorMeta.set_name", this,
 					OLLMrpc.args("s", this.name));
 			}
-			Gsr.call_value("Clutter-ActorMeta.set_enabled", this,
+			Gsr.Client.Rpc.call_value("Clutter-ActorMeta.set_enabled", this,
 				OLLMrpc.args("b", this.enabled));
 		}
 

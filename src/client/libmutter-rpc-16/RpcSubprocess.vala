@@ -29,7 +29,7 @@ namespace Meta
 		public async bool wait_async(
 			GLib.Cancellable? cancellable = null
 		) throws GLib.Error {
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-WaylandClient.wait", this
 			);
 			return response.retval.get_boolean();
@@ -38,7 +38,7 @@ namespace Meta
 		public bool get_if_exited()
 		{
 			try {
-				var response = Gsr.call_value(
+				var response = Gsr.Client.Rpc.call_value(
 					"Gsr-Mutter-WaylandClient.get_if_exited", this
 				);
 				return response.retval.get_boolean();
@@ -50,7 +50,7 @@ namespace Meta
 		public int get_exit_status()
 		{
 			try {
-				var response = Gsr.call_value(
+				var response = Gsr.Client.Rpc.call_value(
 					"Gsr-Mutter-WaylandClient.get_exit_status", this
 				);
 				return response.retval.get_int();
@@ -62,7 +62,7 @@ namespace Meta
 		public void send_signal(int signal_num)
 		{
 			try {
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Gsr-Mutter-WaylandClient.send_signal", this,
 					OLLMrpc.args("i", signal_num)
 				);
@@ -73,7 +73,7 @@ namespace Meta
 		public void force_exit()
 		{
 			try {
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Gsr-Mutter-WaylandClient.force_exit", this
 				);
 			} catch (GLib.Error e) {

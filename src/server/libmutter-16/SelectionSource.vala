@@ -30,7 +30,7 @@ namespace Gsr.Server.Meta
 		) {
 			var source = (global::Meta.SelectionSource) request.connection.leases.get(
 				(int) request.lease_id);
-			var cancel = Gsr.Server.CancellableBridge.lookup(cancel_id);
+			var cancel = Gsr.Server.Cancellable.lookup(cancel_id);
 			source.read_async.begin(mimetype, cancel, (obj, res) => {
 				GLib.Error? err = null;
 				GLib.InputStream? input = null;

@@ -6,24 +6,24 @@
 		 */
 		public Actor get_actor()
 		{
-			var response = Gsr.call_value("Clutter-ActorMeta.get_actor", this);
+			var response = Gsr.Client.Rpc.call_value("Clutter-ActorMeta.get_actor", this);
 			return (Actor) response.retval.get_object();
 		}
 
 		public bool get_enabled()
 		{
-			var response = Gsr.call_value("Clutter-ActorMeta.get_enabled", this);
+			var response = Gsr.Client.Rpc.call_value("Clutter-ActorMeta.get_enabled", this);
 			return response.retval.get_boolean();
 		}
 
 		public void set_enabled(bool is_enabled)
 		{
-			Gsr.call_value("Clutter-ActorMeta.set_enabled", this, OLLMrpc.args("b", is_enabled));
+			Gsr.Client.Rpc.call_value("Clutter-ActorMeta.set_enabled", this, OLLMrpc.args("b", is_enabled));
 		}
 
 		public owned string get_name()
 		{
-			var response = Gsr.call_value("Clutter-ActorMeta.get_name", this);
+			var response = Gsr.Client.Rpc.call_value("Clutter-ActorMeta.get_name", this);
 			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
 				return "";
 			}
@@ -33,5 +33,5 @@
 
 		public void set_name(string name)
 		{
-			Gsr.call_value("Clutter-ActorMeta.set_name", this, OLLMrpc.args("s", name));
+			Gsr.Client.Rpc.call_value("Clutter-ActorMeta.set_name", this, OLLMrpc.args("s", name));
 		}

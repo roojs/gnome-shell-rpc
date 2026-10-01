@@ -13,7 +13,7 @@
 				GLib.SubprocessFlags.STDOUT_PIPE
 				| GLib.SubprocessFlags.STDERR_MERGE
 			);
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-WaylandClient.create",
 				null,
 				OLLMrpc.args("ou", context, flags)
@@ -59,7 +59,7 @@
 				"WaylandClient.spawnv client argv_len=%d cwd='%s'",
 				wire.length, cwd
 			);
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-WaylandClient.spawnv", this,
 				OLLMrpc.args("osas", display, cwd, wire)
 			);

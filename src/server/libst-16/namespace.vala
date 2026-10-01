@@ -1,0 +1,12 @@
+namespace Gsr.Server.St
+{
+	public void rpc_register()
+	{
+		St.rpc_register();
+		ThemeContext.rpc_register();
+		Icon.rpc_register();
+		IconTheme.rpc_register();
+		ImageContent.rpc_register();
+		FocusManager.rpc_register();
+	}
+}

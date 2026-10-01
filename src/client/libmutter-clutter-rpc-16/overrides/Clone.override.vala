@@ -14,7 +14,7 @@
 			set construct {
 				this.priv_source = value;
 				if (this.mint_done) {
-					Gsr.call_value(
+					Gsr.Client.Rpc.call_value(
 						"Clutter-Clone.set_source", this,
 						OLLMrpc.args("o", this.priv_source));
 				}
@@ -31,12 +31,12 @@
 				this.mint_done = true;
 				return;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Clutter-Clone.new",
 				null,
 				OLLMrpc.args("o", this.priv_source));
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-			Gsr.Client.Rpc.Runtime.register_handle(this);
+			Gsr.Client.Rpc.register_handle(this);
 			this.mint_done = true;
 		}

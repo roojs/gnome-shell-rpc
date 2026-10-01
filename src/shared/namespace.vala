@@ -7,7 +7,7 @@
  * == Example ==
  *
  * {{{
- * Gsr.Shared.Rectangle.rpc_register();
+ * Gsr.Shared.rpc_register();
  * var r = new Gsr.Shared.Rectangle() {
  *     x = 0, y = 0, width = 100, height = 40,
  * };
@@ -15,4 +15,10 @@
  */
 namespace Gsr.Shared
 {
+	public void rpc_register()
+	{
+		Rectangle.rpc_register();
+		Window.rpc_register();
+		Workspace.rpc_register();
+	}
 }

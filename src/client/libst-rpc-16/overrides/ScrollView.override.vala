@@ -5,12 +5,12 @@
 		 */
 		public Scrollable? child {
 			get {
-				var response = Gsr.call_value(
+				var response = Gsr.Client.Rpc.call_value(
 					"St-ScrollView.get_child", this);
 				return response.retval.get_object() as Scrollable;
 			}
 			set {
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"St-ScrollView.set_child", this,
 					OLLMrpc.args("o", value));
 			}

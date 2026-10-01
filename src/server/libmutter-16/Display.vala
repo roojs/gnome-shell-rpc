@@ -84,6 +84,14 @@ namespace Gsr.Server.Meta
 				var handle = (int) request.connection.export(win);
 				list.add(this.snapshot_window(win, handle));
 			}
+			/* An empty list must stay an unset retval. val("o", empty)
+			 * builds GLib.Value(INVALID), and g_value_init(0) aborts. */
+			if (list.size == 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("o", list),

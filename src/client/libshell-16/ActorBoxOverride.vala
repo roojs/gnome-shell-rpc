@@ -34,11 +34,10 @@ namespace Shell
 			v.set_boxed(box.copy());
 			return v;
 		}
-	}
 
-	[CCode (cname = "shell_actor_box_override_register")]
-	public void actor_box_override_register()
-	{
-		OLLMrpc.Bin.TypeOverride.register(new ActorBoxOverride());
+		internal static void register()
+		{
+			OLLMrpc.Bin.TypeOverride.register(new ActorBoxOverride());
+		}
 	}
 }

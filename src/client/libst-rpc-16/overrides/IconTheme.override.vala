@@ -4,7 +4,7 @@
 		 */
 		public int[] get_icon_sizes(string icon_name)
 		{
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-St-IconTheme.get_icon_sizes", this,
 				OLLMrpc.args("s", icon_name));
 			if (response.retval.type() != typeof(GLib.Bytes)) {

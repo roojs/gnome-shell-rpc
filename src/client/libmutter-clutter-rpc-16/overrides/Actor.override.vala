@@ -10,7 +10,7 @@
 			if (this.priv_content != null) {
 				return this.priv_content;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Clutter-Actor.get_content", this);
 			if (response.retval.type() == GLib.Type.INVALID
 					|| response.retval.get_object() == null) {
@@ -21,14 +21,14 @@
 		set {
 			this.priv_content = value;
 			if (value == null) {
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Clutter-Actor.set_content", this,
 					OLLMrpc.args("o", null));
 				return;
 			}
 			var handle = value as OLLMrpc.Live.Interface;
 			if (handle != null && handle.rpc_lid != 0) {
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Clutter-Actor.set_content", this,
 					OLLMrpc.args("o", value));
 			}
@@ -88,10 +88,10 @@
 				default:
 					break;
 			}
-			var response = Gsr.call_value(alias + ".new");
+			var response = Gsr.Client.Rpc.call_value(alias + ".new");
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-			Gsr.Client.Rpc.Runtime.register_handle(this);
+			Gsr.Client.Rpc.register_handle(this);
 			this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
 			this.prop_batch_open = true;
 			return;
@@ -121,8 +121,8 @@
 
 	void create_with_overrides()
 	{
-		Gsr.Client.Rpc.Runtime.hook_rows =
-			new Gee.ArrayList<Gsr.Client.Rpc.Runtime.InvokeRow>();
+		Gsr.Client.Rpc.hook_rows =
+			new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
 		string[] always = {};
 		var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
@@ -137,36 +137,36 @@
 			var called = Gsr.Client.Rpc.VfuncRelay.name_of(
 				"Clutter", "Actor", vfunc_id);
 			if (called == "") {
-				var rows = Gsr.Client.Rpc.Runtime.hook_rows;
+				var rows = Gsr.Client.Rpc.hook_rows;
 				rows.remove_at(rows.size - 1);
 				continue;
 			}
 			names += called;
 			vfunc_ids.add("i", vfunc_id);
 		}
-		var response = Gsr.call_value("Gsr-Clutter-Actor.create", null,
+		var response = Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.create", null,
 			OLLMrpc.args("s", this.get_type().name()));
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
-		Gsr.Client.Rpc.Runtime.register_handle(this);
+		Gsr.Client.Rpc.register_handle(this);
 		if (names.length == 0) {
-			Gsr.Client.Rpc.Runtime.hook_rows = null;
+			Gsr.Client.Rpc.hook_rows = null;
 			return;
 		}
-		var hooks = Gsr.call_value("Gsr-Clutter-Actor.add_hooks", this,
+		var hooks = Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_hooks", this,
 			OLLMrpc.args("Sv", names, vfunc_ids.end()));
 		var ids = hooks.args.get(0).get_variant();
-		if (Gsr.Client.Rpc.Runtime.handlers == null) {
-			Gsr.Client.Rpc.Runtime.handlers = new Gee.HashMap<int,
-				Gsr.Client.Rpc.Runtime.InvokeRow>();
+		if (Gsr.Client.Rpc.handlers == null) {
+			Gsr.Client.Rpc.handlers = new Gee.HashMap<int,
+				Gsr.Client.Rpc.InvokeRow>();
 		}
 		var n = (int) ids.n_children();
 		for (var i = 0; i < n; i++) {
 			var id = ids.get_child_value(i).get_uint64();
-			Gsr.Client.Rpc.Runtime.handlers.set((int) id,
-				Gsr.Client.Rpc.Runtime.hook_rows.get(i));
+			Gsr.Client.Rpc.handlers.set((int) id,
+				Gsr.Client.Rpc.hook_rows.get(i));
 		}
-		Gsr.Client.Rpc.Runtime.hook_rows = null;
+		Gsr.Client.Rpc.hook_rows = null;
 	}
 
 	/**
@@ -178,7 +178,7 @@
 	 * leaf copies ''names'' into
 	 * {@link Shell.Signals.pending_signals} and connects the
 	 * first name. The clutter stub reaches that field through
-	 * {@link Gsr.Client.Rpc.Runtime.pending_signals}.
+	 * {@link Gsr.Client.Rpc.pending_signals}.
 	 *
 	 * @param t parent type to compare against this object
 	 * @param names signal names gathered on the way down
@@ -194,9 +194,9 @@
 				return;
 			}
 			var pending_signals = names.to_array();
-			Gsr.Client.Rpc.Runtime.pending_signals = pending_signals;
-			Gsr.Client.Rpc.Runtime.pending_signals_size = pending_signals.length;
-			Gsr.Client.Rpc.Runtime.ensure_signal_subscribe(
+			Gsr.Client.Rpc.pending_signals = pending_signals;
+			Gsr.Client.Rpc.pending_signals_size = pending_signals.length;
+			Gsr.Client.Rpc.ensure_signal_subscribe(
 				this, pending_signals[0]);
 			return;
 		}
@@ -230,7 +230,7 @@
 
 	uint64 relay_get_preferred_width()
 	{
-		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.callback_bind((call) => {
 			float min = 0.0f, nat = 0.0f;
 			Gsr.Client.Rpc.VfuncRelay.begin(this);
 			Gsr.Client.Rpc.VfuncRelay.size_hook = true;
@@ -246,7 +246,7 @@
 			double out_nat = nat;
 			if (Gsr.Client.Rpc.VfuncRelay.use_base) {
 				var for_height = call.args.get(1).get_double();
-				var response = Gsr.call_value(
+				var response = Gsr.Client.Rpc.call_value(
 					"Gsr-Clutter-Actor.base_preferred_width", this,
 					OLLMrpc.args("d", for_height));
 				out_min = response.args.get(0).get_double();
@@ -275,7 +275,7 @@
 
 	uint64 relay_get_preferred_height()
 	{
-		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.callback_bind((call) => {
 			float min = 0.0f, nat = 0.0f;
 			Gsr.Client.Rpc.VfuncRelay.begin(this);
 			Gsr.Client.Rpc.VfuncRelay.size_hook = true;
@@ -291,7 +291,7 @@
 			double out_nat = nat;
 			if (Gsr.Client.Rpc.VfuncRelay.use_base) {
 				var for_width = call.args.get(1).get_double();
-				var response = Gsr.call_value(
+				var response = Gsr.Client.Rpc.call_value(
 					"Gsr-Clutter-Actor.base_preferred_height", this,
 					OLLMrpc.args("d", for_width));
 				out_min = response.args.get(0).get_double();
@@ -316,7 +316,7 @@
 
 	uint64 relay_allocate()
 	{
-		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.callback_bind((call) => {
 			this.relayout_queued = false;
 			var box = ActorBox();
 			box.x1 = (float) call.args.get(1).get_double();
@@ -344,7 +344,7 @@
 	 */
 	uint64 relay_event()
 	{
-		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.callback_bind((call) => {
 			var type = (EventType) call.args.get(1).get_int();
 			var x = (float) call.args.get(2).get_double();
 			var y = (float) call.args.get(3).get_double();
@@ -395,7 +395,7 @@
 	 */
 	uint64 relay_captured_event()
 	{
-		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.callback_bind((call) => {
 			var type = (EventType) call.args.get(1).get_int();
 			var x = (float) call.args.get(2).get_double();
 			var y = (float) call.args.get(3).get_double();
@@ -502,7 +502,7 @@
 				out min_width_p, out natural_width_p);
 			return;
 		}
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Clutter-Actor.get_preferred_width", this,
 			OLLMrpc.args("f", (double) for_height));
 		min_width_p = (float) response.args.get(0).get_float();
@@ -533,7 +533,7 @@
 				out min_height_p, out natural_height_p);
 			return;
 		}
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Clutter-Actor.get_preferred_height", this,
 			OLLMrpc.args("f", (double) for_width));
 		min_height_p = (float) response.args.get(0).get_float();
@@ -551,7 +551,7 @@
 		if (this.helper_attached) {
 			uint8[] helper_data = new uint8[sizeof(ActorBox)];
 			*((ActorBox*) helper_data) = box;
-			Gsr.call_value("Gsr-Clutter-Actor.allocate_public", this,
+			Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.allocate_public", this,
 				OLLMrpc.args("ay", new GLib.Bytes(helper_data)));
 			return;
 		}
@@ -562,7 +562,7 @@
 		}
 		uint8[] data = new uint8[sizeof(ActorBox)];
 		*((ActorBox*) data) = box;
-		Gsr.call_value(
+		Gsr.Client.Rpc.call_value(
 			"Clutter-Actor.allocate", this,
 			OLLMrpc.args("ay", new GLib.Bytes(data)));
 	}
@@ -577,7 +577,7 @@
 		if (event == null) {
 			return false;
 		}
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Gsr-Clutter-Actor.deliver_event", this,
 			OLLMrpc.args("ibddduu",
 				(int) event.type(),
@@ -655,7 +655,7 @@
 			Gsr.Client.Clutter.Batch.call_value("Clutter-Actor.show", this, "visible",
 				OLLMrpc.args("b", true));
 		}
-		Gsr.call_value("Clutter-Actor.show", this);
+		Gsr.Client.Rpc.call_value("Clutter-Actor.show", this);
 	}
 
 	public void hide()
@@ -665,7 +665,7 @@
 			Gsr.Client.Clutter.Batch.call_value("Clutter-Actor.hide", this, "visible",
 				OLLMrpc.args("b", false));
 		}
-		Gsr.call_value("Clutter-Actor.hide", this);
+		Gsr.Client.Rpc.call_value("Clutter-Actor.hide", this);
 	}
 
 	/**
@@ -675,7 +675,7 @@
 	 */
 	public Graphene.Point pivot_point {
 		get {
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Clutter-Actor.get_pivot_point", this);
 			var x = (float) response.args.get(0).get_float();
 			var y = (float) response.args.get(1).get_float();
@@ -684,7 +684,7 @@
 			return point;
 		}
 		set {
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Clutter-Actor.set_pivot_point", this,
 				OLLMrpc.args("ff", (double) value.x, (double) value.y));
 		}
@@ -734,7 +734,7 @@
 		this.allocation_priv = box;
 		uint8[] data = new uint8[sizeof(ActorBox)];
 		*((ActorBox*) data) = box;
-		Gsr.call_value("Clutter-Actor.set_allocation", this,
+		Gsr.Client.Rpc.call_value("Clutter-Actor.set_allocation", this,
 			OLLMrpc.args("ay", new GLib.Bytes(data)));
 	}
 
@@ -754,7 +754,7 @@
 		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this) {
 			return;
 		}
-		Gsr.call_value("Clutter-Actor.queue_relayout", this);
+		Gsr.Client.Rpc.call_value("Clutter-Actor.queue_relayout", this);
 	}
 
 	/**
@@ -785,7 +785,7 @@
 	public string name {
 		owned get {
 			if (!this.name_known) {
-				var response = Gsr.call_value("Clutter-Actor.get_name", this);
+				var response = Gsr.Client.Rpc.call_value("Clutter-Actor.get_name", this);
 				unowned string? s = response.retval.get_string();
 				this.actor_name = s != null ? s.dup() : "";
 				this.name_known = true;
@@ -795,7 +795,7 @@
 		set {
 			this.actor_name = value ?? "";
 			this.name_known = true;
-			Gsr.call_value("Clutter-Actor.set_name", this,
+			Gsr.Client.Rpc.call_value("Clutter-Actor.set_name", this,
 				OLLMrpc.args("s", this.actor_name));
 		}
 	}
@@ -813,7 +813,7 @@
 		}
 		this.cached_scale_x = scale_x;
 		this.cached_scale_y = scale_y;
-		Gsr.call_value(
+		Gsr.Client.Rpc.call_value(
 			"Clutter-Actor.set_scale", this,
 			OLLMrpc.args("dd", scale_x, scale_y));
 	}
@@ -952,14 +952,14 @@
 				if (previous == null) {
 					return;
 				}
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Clutter-Actor.set_layout_manager",
 					this,
 					OLLMrpc.args("o", null));
 				return;
 			}
 			if (value.rpc_lid != 0) {
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Clutter-Actor.set_layout_manager",
 					this,
 					OLLMrpc.args("o", value));
@@ -968,7 +968,7 @@
 					previous.set_container(null);
 				}
 				value.set_container(this);
-				Gsr.call_value("Clutter-Actor.set_layout_manager",
+				Gsr.Client.Rpc.call_value("Clutter-Actor.set_layout_manager",
 					this, OLLMrpc.args("o", value.create_server_manager()));
 			}
 		}
@@ -980,13 +980,13 @@
 	 * Server returns the live Transition (implicit animation from easing +
 	 * set). {@code ui/environment.js} {@code Actor.ease()} connects
 	 * {@code stopped} for {@code onComplete}; without
-	 * {@link Gsr.Client.Rpc.Runtime.ensure_signal_subscribe}, that
+	 * {@link Gsr.Client.Rpc.ensure_signal_subscribe}, that
 	 * signal never reaches the client and MessageTray never arms
 	 * {@code NOTIFICATION_TIMEOUT}.
 	 */
 	public Transition? get_transition(string name)
 	{
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Clutter-Actor.get_transition", this,
 			OLLMrpc.args("s", name));
 		if (response.retval.type() == GLib.Type.INVALID
@@ -994,7 +994,7 @@
 			return null;
 		}
 		var transition = (Transition) response.retval.get_object();
-		Gsr.Client.Rpc.Runtime.ensure_signal_subscribe(
+		Gsr.Client.Rpc.ensure_signal_subscribe(
 			transition, "stopped");
 		return transition;
 	}
@@ -1008,7 +1008,7 @@
 	 */
 	public Effect? get_effect(string name)
 	{
-		var response = Gsr.call_value("Clutter-Actor.get_effect", this,
+		var response = Gsr.Client.Rpc.call_value("Clutter-Actor.get_effect", this,
 			OLLMrpc.args("s", name));
 		if (response.retval.type() == GLib.Type.INVALID
 				|| response.retval.get_object() == null) {

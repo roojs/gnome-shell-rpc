@@ -17,7 +17,7 @@
 		public void terminate()
 		{
 			try {
-				Gsr.call_value(
+				Gsr.Client.Rpc.call_value(
 					"Meta-Context.terminate", this);
 			} catch (GLib.Error e) {
 				GLib.warning(

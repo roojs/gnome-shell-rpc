@@ -1,17 +1,17 @@
 	public bool keybindings_set_custom_handler(string name, KeyHandlerFunc handler)
 	{
-		var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
-			var display = (Display) Gsr.Client.Rpc.Runtime.client.proxies.get(
+		var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
+			var display = (Display) Gsr.Client.Rpc.client.proxies.get(
 				(int) call.args.get(0).get_uint64());
 			Window? window = null;
 			var win_h = (int) call.args.get(1).get_uint64();
 			if (win_h != 0) {
-				window = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(win_h);
+				window = (Window) Gsr.Client.Rpc.client.proxies.get(win_h);
 			}
 			handler(display, window, null, KeyBinding());
 			return null;
 		});
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Gsr-Mutter-Display.keybindings_set_custom_handler",
 			null,
 			OLLMrpc.args("st", name, callback_id));
@@ -32,8 +32,8 @@
 		if (display_singleton != null) {
 			return display_singleton;
 		}
-		var response = Gsr.call_value(
-			"RPC-Bootstrap.get_display");
+		var response = Gsr.Client.Rpc.call_value(
+			"Server-Bootstrap.get_display");
 		display_singleton = (Display) response.retval.get_object();
 		return display_singleton;
 	}

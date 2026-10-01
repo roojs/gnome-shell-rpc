@@ -7,9 +7,9 @@
 			string mimetype,
 			GLib.Cancellable? cancellable
 		) throws GLib.Error {
-			var cancel_id = Gsr.Client.Rpc.CancellableBridge.register(
+			var cancel_id = Gsr.Client.Cancellable.register(
 				cancellable);
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-SelectionSource.read", this,
 				OLLMrpc.args("st", mimetype, cancel_id));
 			if (response.args.size < 1 || !response.args.get(0).get_boolean()

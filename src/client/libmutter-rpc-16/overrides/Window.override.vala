@@ -1,23 +1,23 @@
 		public void foreach_transient(WindowForeachFunc func)
 		{
-			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
-				var win = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(
+			var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
+				var win = (Window) Gsr.Client.Rpc.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
 				return OLLMrpc.args("b", func(win));
 			});
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Window.foreach_transient", this,
 				OLLMrpc.args("t", callback_id));
 		}
 
 		public void foreach_ancestor(WindowForeachFunc func)
 		{
-			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
-				var win = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(
+			var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
+				var win = (Window) Gsr.Client.Rpc.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
 				return OLLMrpc.args("b", func(win));
 			});
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Window.foreach_ancestor", this,
 				OLLMrpc.args("t", callback_id));
 		}
@@ -48,7 +48,7 @@
 				pos_x = pos_hint.x;
 				pos_y = pos_hint.y;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Window.begin_grab_op", this,
 				OLLMrpc.args("uosiubff", (uint) op, wire, device_name,
 					sequence_slot, timestamp, has_pos, pos_x, pos_y));

@@ -1,13 +1,6 @@
 namespace Gsr.Server.Rpc
 {
 	/**
-	 * {@code G_DEFINE_TYPE} registers this class on the first
-	 * {@code get_type} call. {@code Type.from_name} stays invalid until then.
-	 */
-	[CCode (cname = "meta_window_wayland_get_type")]
-	extern GLib.Type meta_window_wayland_get_type ();
-
-	/**
 	 * RPC server boot — socket, registrations, display/window notifications,
 	 * then spawn {@code gsr-client} (default {@code init.js}; no pid watch).
 	 *
@@ -32,97 +25,29 @@ namespace Gsr.Server.Rpc
 		public void start(global::Meta.Display display)
 		{
 			this.display = display;
-			var frame_gate = new StartupFrameGate(display);
+			var frame_lock = new StartupFrameLock(display);
 			OLLMrpc.rpc_register(true);
-			/* Prefer error codes on Callback.reply → reply_error (throws). */
-			Gsr.Server.LiveCallback.rpc_register();
-			Shared.Rectangle.rpc_register();
-			Gsr.Shared.Window.rpc_register();
-			Gsr.Shared.Workspace.rpc_register();
-			Gsr.Server.Meta.Display.rpc_register();
-			Gsr.Server.Meta.Compositor.rpc_register();
-			Gsr.Server.Daemon.rpc_register();
-			Gsr.Server.Bootstrap.rpc_register();
-
+			/* Actor/LayoutManager rpc_register reads vfunc offsets from the typelib. */
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
 			OLLMrpc.Gi.register("Meta", "16");
 			OLLMrpc.Gi.register("Clutter", "16");
 			OLLMrpc.Gi.register("St", "16");
-			/* Opaque boxed {@code ClutterStage::before-update} arg. */
-			OLLMrpc.Bin.register("Clutter-Frame", typeof(global::Clutter.Frame));
-
-			Gsr.Server.CancellableBridge.register();
-			Gsr.Server.rpc_register(frame_gate);
-			Gsr.Server.Meta.Settings.bind(display);
-			Gsr.Server.Meta.AppLaunch.bind(display);
-			Gsr.Server.Shell.GLSLEffect.bind(display);
-			Gsr.Server.Shell.BlurEffect.bind(display);
-			Gsr.Server.Shell.InvertLightnessEffect.bind(display);
-
-			this.ui_display = new Gsr.Server.Meta.Display(display);
-			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
-			OLLMrpc.Request.register_live("Meta-Display", this.ui_display);
-			OLLMrpc.Request.register_live("Meta-Compositor",
-				new Gsr.Server.Meta.Compositor(display.get_compositor()));
-			OLLMrpc.Bin.register_alias("Meta-Compositor", display.get_compositor().get_type());
-			OLLMrpc.Bin.register_alias("Meta-Context", display.get_context().get_type());
-			OLLMrpc.Bin.register_alias("Meta-Backend", display.get_context().get_backend().get_type());
-			OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Gsr.Server.Clutter.Constraint));
-			/* Layout-relay peer — Gi convert needs gtype_to_alias (add_child…). */
-			OLLMrpc.Bin.register_alias("St-Widget", typeof(Gsr.Server.Clutter.Actor));
-			OLLMrpc.Bin.register_alias(
-				"Clutter-LayoutManager", typeof(Gsr.Server.Clutter.LayoutManager));
-			/* Align/Bind/Snap: real mutter GTypes from Gi.register — do not alias. */
-			var monitor_manager = display.get_context().get_backend().get_monitor_manager();
-			if (monitor_manager != null
-					&& !OLLMrpc.Bin.gtype_to_alias.has_key(monitor_manager.get_type())) {
-				/* Concrete subclass (e.g. Native) — Gi return encode needs
-				 * gtype_to_alias or get_monitor_manager replies -32602. */
-				OLLMrpc.Bin.register_alias("Meta-MonitorManager", monitor_manager.get_type());
-			}
-			var sn = display.get_startup_notification();
-			if (sn != null && !OLLMrpc.Bin.gtype_to_alias.has_key(sn.get_type())) {
-				OLLMrpc.Bin.register_alias("Meta-StartupNotification", sn.get_type());
-			}
-			var player = display.get_sound_player();
-			if (player != null && !OLLMrpc.Bin.gtype_to_alias.has_key(player.get_type())) {
-				OLLMrpc.Bin.register_alias("Meta-SoundPlayer", player.get_type());
-			}
-			var idle = display.get_context().get_backend()
-				.get_core_idle_monitor();
-			if (idle != null && !OLLMrpc.Bin.gtype_to_alias.has_key(idle.get_type())) {
-				OLLMrpc.Bin.register_alias("Meta-IdleMonitor", idle.get_type());
-			}
-			var stage = display.get_context().get_backend().get_stage();
-			var ctx = stage != null ? stage.get_context() : null;
-			var clutter_backend = ctx != null ? ctx.get_backend() : null;
-			var seat = clutter_backend != null ? clutter_backend.get_default_seat() : null;
-			if (stage != null && !OLLMrpc.Bin.gtype_to_alias.has_key(stage.get_type())) {
-				OLLMrpc.Bin.register_alias("Clutter-Stage", stage.get_type());
-			}
-			this.alias_stage_view();
-			if (ctx != null	&& !OLLMrpc.Bin.gtype_to_alias.has_key(ctx.get_type())) {
-				OLLMrpc.Bin.register_alias("Clutter-Context", ctx.get_type());
-			}
-			if (clutter_backend != null	&& !OLLMrpc.Bin.gtype_to_alias.has_key(clutter_backend.get_type())) {
-				OLLMrpc.Bin.register_alias("Clutter-Backend", clutter_backend.get_type());
-			}
-			if (seat != null && !OLLMrpc.Bin.gtype_to_alias.has_key(seat.get_type())) {
-				/* Concrete seat subclass — PadOsd main.js L233. */
-				OLLMrpc.Bin.register_alias("Clutter-Seat", seat.get_type());
-			}
-			/* Gi.register maps MetaWindow only. Nested clients are
-			 * MetaWindowWayland (--no-x11). from_name does not load it. */
-			var wayland_window = meta_window_wayland_get_type();
-			if (!OLLMrpc.Bin.gtype_to_alias.has_key(wayland_window)) {
-				OLLMrpc.Bin.register_alias("Meta-Window", wayland_window);
-			}
 			GLib.debug("Gi.register Meta-16 ok (%u types)",
 				OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0);
+			Gsr.Shared.rpc_register();
+			Gsr.Server.rpc_register(frame_lock);
 
-			var bootstrap = Bootstrap.bind(this.display, frame_gate);
-			OLLMrpc.Request.register("RPC-Bootstrap", bootstrap);
+			this.ui_display = Gsr.Server.Meta.bind(display);
+			Gsr.Server.Clutter.bind(display);
+			Gsr.Server.Shell.bind(display);
+
+			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
+			var stage = display.get_context().get_backend().get_stage();
+			this.alias_stage_view();
+
+			var bootstrap = Bootstrap.bind(this.display, frame_lock);
+			OLLMrpc.Request.register("Server-Bootstrap", bootstrap);
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");
 			if (socket_path == null || socket_path.length == 0) {

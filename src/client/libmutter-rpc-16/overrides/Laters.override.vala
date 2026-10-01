@@ -97,7 +97,7 @@
 			if (stage == null) {
 				return;
 			}
-			Gsr.Client.Rpc.Runtime.ensure_signal_subscribe(
+			Gsr.Client.Rpc.ensure_signal_subscribe(
 				stage, "before-update");
 			stage.signal_before_update.connect((view, frame) => {
 				this.run_before_redraw();

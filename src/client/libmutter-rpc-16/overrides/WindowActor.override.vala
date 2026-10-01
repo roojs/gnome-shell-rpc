@@ -8,7 +8,7 @@
 				clip_width = clip.width;
 				clip_height = clip.height;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-WindowActor.paint_to_content", this,
 				OLLMrpc.args("biiii", has_clip, clip_x, clip_y,
 					clip_width, clip_height));
@@ -52,7 +52,7 @@
 				clip_width = clip.width;
 				clip_height = clip.height;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-WindowActor.get_image", this,
 				OLLMrpc.args("biiii", has_clip, clip_x, clip_y,
 					clip_width, clip_height));

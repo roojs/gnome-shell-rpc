@@ -34,7 +34,7 @@ namespace Gsr.Server.Meta
 			var selection = (global::Meta.Selection) request.connection.leases.get(
 				(int) request.lease_id);
 			var stream = new GLib.MemoryOutputStream.resizable();
-			var cancel = Gsr.Server.CancellableBridge.lookup(cancel_id);
+			var cancel = Gsr.Server.Cancellable.lookup(cancel_id);
 			selection.transfer_async.begin((global::Meta.SelectionType) selection_type,
 				mimetype, (ssize_t) size, stream, cancel, (obj, res) => {
 					GLib.Error? err = null;

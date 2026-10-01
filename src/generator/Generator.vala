@@ -494,7 +494,7 @@ $(minted)				this.rpc_ctor_clear();
 					t = t.parent();
 					continue;
 				}
-				var response = Gsr.call_value(OLLMrpc.Bin.gtype_to_alias.get(t) + ".new");
+				var response = Gsr.Client.Rpc.call_value(OLLMrpc.Bin.gtype_to_alias.get(t) + ".new");
 				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 				return;
 			}
@@ -588,7 +588,7 @@ $(minted)				this.rpc_ctor_clear();
 				}
 				packed += expr;
 			}
-			lines += @"				var response = Gsr.call_value(\"$(wire).new\", null, OLLMrpc.args(\"$(sig)\", $(packed)));\n";
+			lines += @"				var response = Gsr.Client.Rpc.call_value(\"$(wire).new\", null, OLLMrpc.args(\"$(sig)\", $(packed)));\n";
 			lines += "				this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;\n";
 			return lines;
 		}
@@ -1458,7 +1458,7 @@ $(minted)				this.rpc_ctor_clear();
 					} else {
 						stream.puts("			get {\n");
 					}
-					stream.puts(@"				var response = Gsr.call_value(
+					stream.puts(@"				var response = Gsr.Client.Rpc.call_value(
 					\"$(ns)-$(class_name).get_property\", this,
 					OLLMrpc.args(\"s\", \"$(pname)\"));
 ");
@@ -1532,7 +1532,7 @@ $(minted)				this.rpc_ctor_clear();
 						}
 					if (gprop_L == "ay") {
 						this.emit_boxed_bytes(stream, "\t\t\t\t", "value", vt);
-						stream.puts(@"				Gsr.call_value(
+						stream.puts(@"				Gsr.Client.Rpc.call_value(
 					\"$(ns)-$(class_name).set_property\", this,
 					OLLMrpc.args(\"say\", \"$(pname)\", value_bytes));
 ");
@@ -1546,7 +1546,7 @@ $(minted)				this.rpc_ctor_clear();
 					$(gprop_args));
 ");
 						} else {
-							stream.puts(@"				Gsr.call_value(
+							stream.puts(@"				Gsr.Client.Rpc.call_value(
 					\"$(gprop_rpc)\", this,
 					$(gprop_args));
 ");
@@ -2693,14 +2693,14 @@ $(tab){
 				call = @"Gsr.Client.Clutter.Batch.call_value(\"$(rpc)\", this, \"$(batch_name)\", OLLMrpc.args(\"$(sig)\", $(packed)))";
 			} else if (instance == "this") {
 				if (packed != "") {
-					call = @"Gsr.call_value(\"$(rpc)\", this, OLLMrpc.args(\"$(sig)\", $(packed)))";
+					call = @"Gsr.Client.Rpc.call_value(\"$(rpc)\", this, OLLMrpc.args(\"$(sig)\", $(packed)))";
 				} else {
-					call = @"Gsr.call_value(\"$(rpc)\", this)";
+					call = @"Gsr.Client.Rpc.call_value(\"$(rpc)\", this)";
 				}
 			} else if (packed != "") {
-				call = @"Gsr.call_value(\"$(rpc)\", null, OLLMrpc.args(\"$(sig)\", $(packed)))";
+				call = @"Gsr.Client.Rpc.call_value(\"$(rpc)\", null, OLLMrpc.args(\"$(sig)\", $(packed)))";
 			} else {
-				call = @"Gsr.call_value(\"$(rpc)\")";
+				call = @"Gsr.Client.Rpc.call_value(\"$(rpc)\")";
 			}
 
 			var need_response = ret_vala != "void"
@@ -3152,7 +3152,7 @@ return ($(cast)) response.retval.get_object();
 				helper = "lease_ids_at_slist";
 			}
 			stream.puts(
-				indent + @"var $(arg_name)_at = Gsr.Client.Rpc.Runtime.$(helper)(($(list_type)<GLib.Object>) $(arg_name));
+				indent + @"var $(arg_name)_at = Gsr.Client.Rpc.$(helper)(($(list_type)<GLib.Object>) $(arg_name));
 "
 			);
 		}

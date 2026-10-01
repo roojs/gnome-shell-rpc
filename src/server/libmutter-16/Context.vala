@@ -8,14 +8,14 @@ namespace Gsr.Server.Meta
 {
 	public class Context : GLib.Object
 	{
-		private StartupFrameGate gate;
+		private StartupFrameLock gate;
 
-		public Context(StartupFrameGate gate)
+		public Context(StartupFrameLock gate)
 		{
 			this.gate = gate;
 		}
 
-		public static void rpc_register(StartupFrameGate gate)
+		public static void rpc_register(StartupFrameLock gate)
 		{
 			var helper = new Context(gate);
 			OLLMrpc.Request.add_class(
@@ -35,7 +35,7 @@ namespace Gsr.Server.Meta
 		}
 
 		/**
-		 * Release the startup frame gate, then call stock notify_ready.
+		 * Release the startup frame lock, then call stock notify_ready.
 		 *
 		 * @param request notify request from the shell connection
 		 */

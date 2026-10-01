@@ -28,12 +28,12 @@
 		if (this.server_manager == null) {
 			return;
 		}
-		Gsr.call_value("Clutter-LayoutManager.layout_changed", this.server_manager);
+		Gsr.Client.Rpc.call_value("Clutter-LayoutManager.layout_changed", this.server_manager);
 	}
 
 	internal uint64 relay_get_preferred_width()
 	{
-		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.callback_bind((call) => {
 			float min = 0.0f, nat = 0.0f;
 			var container = (Actor) call.args.get(0).get_object();
 			this.get_preferred_width_vfunc(container,
@@ -45,7 +45,7 @@
 
 	internal uint64 relay_get_preferred_height()
 	{
-		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.callback_bind((call) => {
 			float min = 0.0f, nat = 0.0f;
 			var container = (Actor) call.args.get(0).get_object();
 			this.get_preferred_height_vfunc(container,
@@ -57,7 +57,7 @@
 
 	internal uint64 relay_allocate()
 	{
-		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.callback_bind((call) => {
 			var container = (Actor) call.args.get(0).get_object();
 			var box = ActorBox();
 			box.x1 = (float) call.args.get(1).get_double();
@@ -96,12 +96,12 @@
 			vfunc_ids.add("i", vfunc_id);
 			hook_ids.add("t", hook_id);
 		}
-		var minted = Gsr.call_value(
+		var minted = Gsr.Client.Rpc.call_value(
 			"Gsr-Clutter-LayoutManager.create", null,
 			OLLMrpc.args("Svv", names, vfunc_ids.end(), hook_ids.end()));
 		var manager = (LayoutManager) GLib.Object.new(typeof(LayoutManager));
 		manager.rpc_lid = minted.args.get(0).get_uint64();
-		Gsr.Client.Rpc.Runtime.register_handle(manager);
+		Gsr.Client.Rpc.register_handle(manager);
 		this.server_manager = manager;
 		return manager;
 	}
@@ -122,7 +122,7 @@
 				container, for_height, out min_width_p, out nat_width_p);
 			return;
 		}
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Clutter-LayoutManager.get_preferred_width", this,
 			OLLMrpc.args("of", container, (double) for_height));
 		min_width_p = (float) response.args.get(0).get_float();
@@ -140,7 +140,7 @@
 				container, for_width, out min_height_p, out nat_height_p);
 			return;
 		}
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Clutter-LayoutManager.get_preferred_height", this,
 			OLLMrpc.args("of", container, (double) for_width));
 		min_height_p = (float) response.args.get(0).get_float();
@@ -157,7 +157,7 @@
 		uint8[] _allocation_data = new uint8[sizeof(ActorBox)];
 		*((ActorBox*) _allocation_data) = allocation;
 		allocation_bytes = new GLib.Bytes(_allocation_data);
-		Gsr.call_value(
+		Gsr.Client.Rpc.call_value(
 			"Clutter-LayoutManager.allocate", this,
 			OLLMrpc.args("oay", container, allocation_bytes));
 	}
@@ -170,7 +170,7 @@
 			this.set_container_vfunc(container);
 			return;
 		}
-		Gsr.call_value(
+		Gsr.Client.Rpc.call_value(
 			"Clutter-LayoutManager.set_container",
 			this,
 			OLLMrpc.args("o", container));
@@ -179,7 +179,7 @@
 	public LayoutMeta? get_child_meta(Actor container, Actor actor)
 	{
 		if (this.rpc_lid != 0) {
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Clutter-LayoutManager.get_child_meta",
 				this,
 				OLLMrpc.args("oo", container, actor));
@@ -202,7 +202,7 @@
 			uint8[] value_data = new uint8[sizeof(GLib.Value)];
 			*((GLib.Value*) value_data) = value;
 			value_bytes = new GLib.Bytes(value_data);
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Clutter-LayoutManager.child_set_property",
 				this,
 				OLLMrpc.args("oosay", container, actor, property_name, value_bytes));
@@ -236,7 +236,7 @@
 			uint8[] value_data = new uint8[sizeof(GLib.Value)];
 			*((GLib.Value*) value_data) = value;
 			value_bytes = new GLib.Bytes(value_data);
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Clutter-LayoutManager.child_get_property",
 				this,
 				OLLMrpc.args("oosay", container, actor, property_name, value_bytes));
@@ -254,7 +254,7 @@
 	public GLib.ParamSpec? find_child_property(string name)
 	{
 		if (this.rpc_lid != 0) {
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Clutter-LayoutManager.find_child_property",
 				this,
 				OLLMrpc.args("s", name));

@@ -8,7 +8,7 @@
 		public Clutter.Text clutter_text {
 			[CCode (cname = "st_entry_get_clutter_text")]
 			owned get {
-				var response = Gsr.call_value("St-Entry.get_clutter_text", this);
+				var response = Gsr.Client.Rpc.call_value("St-Entry.get_clutter_text", this);
 				return (Clutter.Text) response.retval.get_object();
 			}
 		}

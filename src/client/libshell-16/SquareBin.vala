@@ -16,7 +16,7 @@ namespace Shell
 			if (t != typeof(SquareBin) && !t.name().has_prefix("Gjs_")) {
 				return;
 			}
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"St-Bin.new");
 			var stub = response.retval.get_object() as OLLMrpc.Live.Interface;
 			this.rpc_lid = stub.rpc_lid;
@@ -30,7 +30,7 @@ namespace Shell
 			/* Stock calls get_preferred_height. The public method bails
 			 * with 0 while a preferred-size hook is active, which is
 			 * this call. Ask the server bin for its height instead. */
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Clutter-Actor.base_preferred_height", this,
 				OLLMrpc.args("d", -1.0));
 			min_width_p = (float) response.args.get(0).get_double();

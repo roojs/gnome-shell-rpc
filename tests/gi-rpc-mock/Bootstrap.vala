@@ -1,7 +1,7 @@
 namespace Gsr.GiRpcMock
 {
 	/**
-	 * Ffi {@code RPC-Bootstrap.get_display} — exports a {@code Meta-Display}
+	 * Ffi {@code Server-Bootstrap.get_display} — exports a {@code Meta-Display}
 	 * lease using the GType already registered by {@link OLLMrpc.Gi.register}.
 	 */
 	public class Bootstrap : GLib.Object, OLLMrpc.Bin.Serializable
@@ -12,7 +12,7 @@ namespace Gsr.GiRpcMock
 		{
 			OLLMrpc.Bin.register("Bootstrap", typeof(Bootstrap));
 			OLLMrpc.Request.add_class(
-				"RPC-Bootstrap", typeof(Bootstrap),
+				"Server-Bootstrap", typeof(Bootstrap),
 				"get_display", "",
 				null
 			);

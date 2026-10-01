@@ -6,7 +6,7 @@
 			throws GLib.Error
 		{
 			Object();
-			var response = Gsr.call_value(
+			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-SelectionSourceMemory.create",
 				null,
 				OLLMrpc.args("say", mimetype, content));

@@ -29,11 +29,10 @@ namespace Shell
 			v.set_object(null);
 			return v;
 		}
-	}
 
-	[CCode (cname = "shell_pick_context_override_register")]
-	public void pick_context_override_register()
-	{
-		OLLMrpc.Bin.TypeOverride.register(new PickContextOverride());
+		internal static void register()
+		{
+			OLLMrpc.Bin.TypeOverride.register(new PickContextOverride());
+		}
 	}
 }

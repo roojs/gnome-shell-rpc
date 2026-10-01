@@ -1,9 +1,6 @@
 /**
  * Wire form of a {@link Clutter.Event}: type, x, y, button, key symbol,
  * related actor.
- *
- * Registered from {@link Gsr.Client.Rpc.Runtime.register} with the
- * other client bin types.
  */
 namespace Shell
 {
@@ -114,18 +111,10 @@ namespace Shell
 			v.set_pointer(raw);
 			return v;
 		}
-	}
 
-	/**
-	 * FIXME - this is horrible 
-	 Register the client {@link ClutterEventOverride}.
-	 *
-	 * gi-stub cannot name this internal class. {@link Gsr.Client.Rpc.Runtime.register}
-	 * calls this C trampoline next to the other bin registrations.
-	 */
-	[CCode (cname = "shell_clutter_event_override_register")]
-	public void clutter_event_override_register()
-	{
-		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
+		internal static void register()
+		{
+			OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
+		}
 	}
 }

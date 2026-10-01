@@ -77,7 +77,7 @@ namespace Gsr.GiRpcMock
 			}
 
 			OLLMrpc.Request.register(
-				"RPC-Bootstrap",
+				"Server-Bootstrap",
 				Gsr.GiRpcMock.Bootstrap.bind()
 			);
 			OLLMrpc.Request.register_mock(new HelperMock());

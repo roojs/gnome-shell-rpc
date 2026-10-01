@@ -13,6 +13,6 @@
 		foreach (var f in values) {
 			builder.add("f", f);
 		}
-		Gsr.call_value("Gsr-Clutter-ShaderEffect.set_uniform", effect,
+		Gsr.Client.Rpc.call_value("Gsr-Clutter-ShaderEffect.set_uniform", effect,
 			OLLMrpc.args("ssv", name, type_name, builder.end()));
 	}

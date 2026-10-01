@@ -13,7 +13,7 @@
 	[CCode (cname = "clutter_get_current_event")]
 	public static unowned Event? get_current_event()
 	{
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Gsr-Clutter.get_current_event");
 		current_event_cache = event_from_values(response.args);
 		return current_event_cache;
@@ -76,7 +76,7 @@
 		GLib.DestroyNotify? notify,
 		void* user_data
 	) {
-		var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
 			var event = event_from_values(call.args);
 			if (event == null) {
 				return OLLMrpc.args("b", false);
@@ -89,7 +89,7 @@
 				"b", func(event, event_actor, user_data));
 		});
 		var stage_lid = stage == null ? 0 : stage.rpc_lid;
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Gsr-Clutter.event_add_filter", null,
 			OLLMrpc.args("tt", stage_lid, callback_id));
 		var row = new EventFilterRegistration() {
@@ -114,10 +114,10 @@
 				kept += row;
 				continue;
 			}
-			Gsr.call_value(
+			Gsr.Client.Rpc.call_value(
 				"Gsr-Clutter.event_remove_filter", null,
 				OLLMrpc.args("u", id));
-			Gsr.Client.Rpc.Runtime.callback_unbind(row.callback_id);
+			Gsr.Client.Rpc.callback_unbind(row.callback_id);
 			if (row.destroy_notify != null) {
 				row.destroy_notify(row.user_data);
 			}
@@ -131,7 +131,7 @@
 	 */
 	public static Event? event_get()
 	{
-		return event_from_values(Gsr.call_value(
+		return event_from_values(Gsr.Client.Rpc.call_value(
 			"Gsr-Clutter.event_get").args);
 	}
 
@@ -230,10 +230,10 @@
 		{
 			if (src.holds(typeof(uint64))) {
 				var lid = (int) src.get_uint64();
-				if (lid == 0 || Gsr.Client.Rpc.Runtime.client == null) {
+				if (lid == 0 || Gsr.Client.Rpc.client == null) {
 					return null;
 				}
-				return Gsr.Client.Rpc.Runtime.client.proxies.get(lid) as Actor;
+				return Gsr.Client.Rpc.client.proxies.get(lid) as Actor;
 			}
 			if (src.type().is_a(typeof(GLib.Object))) {
 				return src.get_object() as Actor;
@@ -344,10 +344,10 @@
 		void* data,
 		GLib.DestroyNotify? notify
 	) {
-		var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+		var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
 			return OLLMrpc.args("b", func(data));
 		});
-		var response = Gsr.call_value(
+		var response = Gsr.Client.Rpc.call_value(
 			"Gsr-Clutter-Threads.threads_add_repaint_func",
 			null,
 			OLLMrpc.args("ut", (uint) flags, callback_id));

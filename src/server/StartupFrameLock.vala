@@ -3,19 +3,19 @@ namespace Gsr.Server
 	/**
 	 * Inhibits compositor frames during split-process shell startup.
 	 *
-	 * The shell client opens the gate before evaluating stock init.js.
-	 * The owning connection closes it through global::Meta.Context.notify_ready.
+	 * The shell client takes the lock before evaluating stock init.js.
+	 * The owning connection releases it through global::Meta.Context.notify_ready.
 	 * Frame clocks retain pending updates while inhibited.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * var gate = new StartupFrameGate(display);
-	 * gate.begin(connection);
-	 * gate.release(connection);
+	 * var lock = new StartupFrameLock(display);
+	 * lock.begin(connection);
+	 * lock.release(connection);
 	 * }}}
 	 */
-	public class StartupFrameGate : GLib.Object
+	public class StartupFrameLock : GLib.Object
 	{
 		private global::Clutter.Actor stage;
 		private Gee.HashSet<global::Clutter.FrameClock> clocks = new Gee.HashSet<global::Clutter.FrameClock>();
@@ -27,16 +27,16 @@ namespace Gsr.Server
 		private static extern global::Clutter.FrameClock frame_clock(global::Clutter.StageView view);
 
 		/**
-		 * Connection that currently owns the gate.
+		 * Connection that currently owns the lock.
 		 */
 		public Gsr.Server.Rpc.Connection? connection { get; private set; }
 
 		/**
-		 * Create a frame gate for the display's stage.
+		 * Create a frame lock for the display's stage.
 		 *
-		 * @param display compositor display whose stage clocks are gated
+		 * @param display compositor display whose stage clocks are locked
 		 */
-		public StartupFrameGate(global::Meta.Display display)
+		public StartupFrameLock(global::Meta.Display display)
 		{
 			this.stage = display.get_context().get_backend().get_stage();
 		}
@@ -44,8 +44,8 @@ namespace Gsr.Server
 		/**
 		 * Inhibit every current stage-view frame clock.
 		 *
-		 * @param connection startup connection that owns the gate
-		 * @return true when the gate was opened
+		 * @param connection startup connection that owns the lock
+		 * @return true when the lock was taken
 		 */
 		public bool begin(Gsr.Server.Rpc.Connection connection)
 		{
@@ -92,7 +92,7 @@ namespace Gsr.Server
 		{
 			var current = new Gee.HashSet<global::Clutter.FrameClock>();
 			foreach (var view in this.stage.peek_stage_views()) {
-				var clock = StartupFrameGate.frame_clock(view);
+				var clock = StartupFrameLock.frame_clock(view);
 				current.add(clock);
 				if (!this.clocks.contains(clock)) {
 					clock.inhibit();

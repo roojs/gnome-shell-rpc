@@ -13,5 +13,14 @@ xwayland=true
 panel-position=top
 locking=false
 
+# Top-left: start the nested shell (demo). Next: Weston terminal.
+[launcher]
+icon=/usr/share/weston/wayland.png
+path=@ROOT@/scripts/weston-gsr-launch.sh
+
+[launcher]
+icon=/usr/share/weston/icon_terminal.png
+path=/usr/bin/weston-terminal
+
 [autolaunch]
 path=@AUTOLAUNCH@

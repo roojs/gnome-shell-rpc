@@ -15,7 +15,7 @@
  *
  * GJS wrap: {@code connect(obj, name, gjs_handler_id)} then
  * {@code disconnect_id(obj, gjs_handler_id)}. Vala stubs still call
- * {@link Gsr.Client.Rpc.Runtime.ensure_signal_subscribe}
+ * {@link Gsr.Client.Rpc.ensure_signal_subscribe}
  * (C trampoline — mutter-rpc / st-rpc cannot link shell-gi).
  */
 namespace Shell
@@ -154,7 +154,7 @@ namespace Shell
 			if (signal_name == "init-xserver") {
 				return 0;
 			}
-			Gsr.Client.Rpc.Runtime.register();
+			Gsr.Client.Rpc.register();
 			var handle = obj as OLLMrpc.Live.Interface;
 			if (handle == null || handle.rpc_lid == 0) {
 				return 0;
@@ -187,25 +187,25 @@ namespace Shell
 				signal_names = Signals.pending_signals;
 				Signals.pending_signals = {};
 			}
-			Gsr.Client.Rpc.Runtime.client.proxies.set(lid, obj);
+			Gsr.Client.Rpc.client.proxies.set(lid, obj);
 			if (signal_names.length > 1) {
-				Gsr.call_value("Gsr-Clutter-Actor.add_signals", obj,
+				Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_signals", obj,
 					OLLMrpc.args("S", signal_names));
 			} else {
-				Gsr.call_value("RPC-Live-Subscribe.rpc_signal", obj,
+				Gsr.Client.Rpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
 					OLLMrpc.args("s", signal_names[0]));
 			}
 			if (!Signals.notification_hooked) {
 				Signals.notification_hooked = true;
-				Gsr.Client.Rpc.Runtime.client.notification.connect((notif) => {
+				Gsr.Client.Rpc.client.notification.connect((notif) => {
 					if (!Signals.subs.has_key(notif.id)
 							|| !Signals.subs.get(notif.id).has_key(notif.method)) {
 						return;
 					}
-					if (!Gsr.Client.Rpc.Runtime.client.proxies.has_key(notif.id)) {
+					if (!Gsr.Client.Rpc.client.proxies.has_key(notif.id)) {
 						return;
 					}
-					var target = Gsr.Client.Rpc.Runtime.client.proxies.get(notif.id);
+					var target = Gsr.Client.Rpc.client.proxies.get(notif.id);
 					Signals.emit(target, notif.method, notif.args);
 				});
 			}
@@ -248,7 +248,7 @@ namespace Shell
 				Signals.refs.set(hid, n);
 				return;
 			}
-			Gsr.call_value("RPC-Live-Subscribe.unsubscribe", obj,
+			Gsr.Client.Rpc.call_value("RPC-Live-Subscribe.unsubscribe", obj,
 				OLLMrpc.args("s", signal_name));
 			Signals.refs.unset(hid);
 			Signals.subs.get(lid).unset(signal_name);
@@ -280,7 +280,7 @@ namespace Shell
 					break;
 				}
 			}
-			Gsr.call_value("RPC-Live-Subscribe.unsubscribe", obj,
+			Gsr.Client.Rpc.call_value("RPC-Live-Subscribe.unsubscribe", obj,
 				OLLMrpc.args("s", signal_name));
 			Signals.refs.unset(hid);
 			table.unset(signal_name);

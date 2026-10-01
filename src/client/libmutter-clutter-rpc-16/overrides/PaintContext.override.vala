@@ -22,7 +22,7 @@
 		public StageView? get_stage_view()
 		{
 			try {
-				var response = Gsr.call_value("Clutter-PaintContext.get_stage_view", this);
+				var response = Gsr.Client.Rpc.call_value("Clutter-PaintContext.get_stage_view", this);
 				if (response.args.size == 0) {
 					return null;
 				}

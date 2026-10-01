@@ -52,11 +52,10 @@ namespace Shell
 			}
 			return v;
 		}
-	}
 
-	[CCode (cname = "shell_input_device_override_register")]
-	public void input_device_override_register()
-	{
-		OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());
+		internal static void register()
+		{
+			OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());
+		}
 	}
 }
