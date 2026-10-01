@@ -1,6 +1,13 @@
 namespace Gsr.Server.Rpc
 {
 	/**
+	 * {@code G_DEFINE_TYPE} registers this class on the first
+	 * {@code get_type} call. {@code Type.from_name} stays invalid until then.
+	 */
+	[CCode (cname = "meta_window_wayland_get_type")]
+	extern GLib.Type meta_window_wayland_get_type();
+
+	/**
 	 * RPC server boot — socket, registrations, display/window notifications,
 	 * then spawn {@code gsr-client} (default {@code init.js}; no pid watch).
 	 *
@@ -27,24 +34,132 @@ namespace Gsr.Server.Rpc
 			this.display = display;
 			var frame_lock = new StartupFrameLock(display);
 			OLLMrpc.rpc_register(true);
-			/* Actor/LayoutManager rpc_register reads vfunc offsets from the typelib. */
+			/* Prefer error codes on Callback.reply → reply_error (throws). */
+			LiveCallback.rpc_register();
+			Gsr.Shared.Rectangle.rpc_register();
+			Gsr.Shared.Window.rpc_register();
+			Gsr.Shared.Workspace.rpc_register();
+			Gsr.Server.Meta.Display.rpc_register();
+			Gsr.Server.Meta.Compositor.rpc_register();
+			Daemon.rpc_register();
+			Bootstrap.rpc_register();
+
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
 			OLLMrpc.Gi.register("Meta", "16");
 			OLLMrpc.Gi.register("Clutter", "16");
 			OLLMrpc.Gi.register("St", "16");
+			/* Opaque boxed ClutterStage::before-update arg. */
+			OLLMrpc.Bin.register("Clutter-Frame", typeof(global::Clutter.Frame));
+
+			Cancellable.rpc_register();
+			Gsr.Server.Meta.SoundPlayer.rpc_register();
+			Gsr.Server.Meta.Background.rpc_register();
+			Gsr.Server.Meta.BackgroundImageCache.rpc_register();
+			Gsr.Server.Meta.BackgroundActor.rpc_register();
+			Gsr.Server.Meta.Context.rpc_register(frame_lock);
+			Gsr.Server.Meta.Settings.rpc_register();
+			Gsr.Server.Meta.IdleMonitor.rpc_register();
+			Gsr.Server.Meta.Keybinding.rpc_register();
+			Gsr.Server.Meta.Window.rpc_register();
+			Gsr.Server.Meta.WindowActor.rpc_register();
+			Gsr.Server.Meta.Selection.rpc_register();
+			Gsr.Server.Meta.SelectionSource.rpc_register();
+			Gsr.Server.Meta.SelectionSourceMemory.rpc_register();
+			Gsr.Server.Meta.ShapedTexture.rpc_register();
+			Gsr.Server.Meta.Barrier.rpc_register();
+			Gsr.Server.Meta.WaylandClient.rpc_register();
+			Gsr.Server.Meta.AppLaunch.rpc_register();
+
+			Gsr.Server.Clutter.Text.rpc_register();
+			Gsr.Server.Clutter.ShaderEffect.rpc_register();
+			Gsr.Server.Clutter.ClutterThreads.rpc_register();
+			Gsr.Server.Clutter.Clutter.rpc_register();
+			Gsr.Server.Clutter.Interval.rpc_register();
+			Gsr.Server.Clutter.Constraint.rpc_register();
+			Gsr.Server.Clutter.Actor.rpc_register();
+			Gsr.Server.Clutter.LayoutManager.rpc_register();
+			Gsr.Server.Clutter.ClutterPaintContext.rpc_register();
+			Gsr.Server.Clutter.ClutterStage.rpc_register();
+			OLLMrpc.Bin.TypeOverride.register(new Gsr.Server.Clutter.ClutterEventOverride());
+			OLLMrpc.Bin.TypeOverride.register(new Gsr.Server.Clutter.ActorBoxOverride());
+			OLLMrpc.Bin.TypeOverride.register(new Gsr.Server.Clutter.GraphenePointOverride());
+			OLLMrpc.Bin.TypeOverride.register(new Gsr.Server.Clutter.InputDeviceOverride());
+			OLLMrpc.Bin.TypeOverride.register(new Gsr.Server.Clutter.PickContextOverride());
+
+			Gsr.Server.St.St.rpc_register();
+			Gsr.Server.St.ThemeContext.rpc_register();
+			Gsr.Server.St.Icon.rpc_register();
+			Gsr.Server.St.IconTheme.rpc_register();
+			Gsr.Server.St.ImageContent.rpc_register();
+			Gsr.Server.St.FocusManager.rpc_register();
+
+			Gsr.Server.Shell.GLSLEffect.rpc_register();
+			Gsr.Server.Shell.BlurEffect.rpc_register();
+			Gsr.Server.Shell.InvertLightnessEffect.rpc_register();
+
+			Gsr.Server.Meta.Settings.bind(display);
+			Gsr.Server.Meta.AppLaunch.bind(display);
+			Gsr.Server.Shell.GLSLEffect.bind(display);
+			Gsr.Server.Shell.BlurEffect.bind(display);
+			Gsr.Server.Shell.InvertLightnessEffect.bind(display);
+
+			this.ui_display = new Gsr.Server.Meta.Display(display);
+			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
+			OLLMrpc.Request.register_live("Meta-Display", this.ui_display);
+			OLLMrpc.Request.register_live("Meta-Compositor",
+				new Gsr.Server.Meta.Compositor(display.get_compositor()));
+			OLLMrpc.Bin.register_alias("Meta-Compositor", display.get_compositor().get_type());
+			OLLMrpc.Bin.register_alias("Meta-Context", display.get_context().get_type());
+			OLLMrpc.Bin.register_alias("Meta-Backend", display.get_context().get_backend().get_type());
+			OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Gsr.Server.Clutter.Constraint));
+			OLLMrpc.Bin.register_alias("St-Widget", typeof(Gsr.Server.Clutter.Actor));
+			OLLMrpc.Bin.register_alias(
+				"Clutter-LayoutManager", typeof(Gsr.Server.Clutter.LayoutManager));
+			var monitor_manager = display.get_context().get_backend().get_monitor_manager();
+			if (monitor_manager != null
+					&& !OLLMrpc.Bin.gtype_to_alias.has_key(monitor_manager.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-MonitorManager", monitor_manager.get_type());
+			}
+			var sn = display.get_startup_notification();
+			if (sn != null && !OLLMrpc.Bin.gtype_to_alias.has_key(sn.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-StartupNotification", sn.get_type());
+			}
+			var player = display.get_sound_player();
+			if (player != null && !OLLMrpc.Bin.gtype_to_alias.has_key(player.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-SoundPlayer", player.get_type());
+			}
+			var idle = display.get_context().get_backend()
+				.get_core_idle_monitor();
+			if (idle != null && !OLLMrpc.Bin.gtype_to_alias.has_key(idle.get_type())) {
+				OLLMrpc.Bin.register_alias("Meta-IdleMonitor", idle.get_type());
+			}
+			var stage = display.get_context().get_backend().get_stage();
+			var ctx = stage != null ? stage.get_context() : null;
+			var clutter_backend = ctx != null ? ctx.get_backend() : null;
+			var seat = clutter_backend != null ? clutter_backend.get_default_seat() : null;
+			if (stage != null && !OLLMrpc.Bin.gtype_to_alias.has_key(stage.get_type())) {
+				OLLMrpc.Bin.register_alias("Clutter-Stage", stage.get_type());
+			}
+			this.alias_stage_view();
+			if (ctx != null && !OLLMrpc.Bin.gtype_to_alias.has_key(ctx.get_type())) {
+				OLLMrpc.Bin.register_alias("Clutter-Context", ctx.get_type());
+			}
+			if (clutter_backend != null
+					&& !OLLMrpc.Bin.gtype_to_alias.has_key(clutter_backend.get_type())) {
+				OLLMrpc.Bin.register_alias("Clutter-Backend", clutter_backend.get_type());
+			}
+			if (seat != null && !OLLMrpc.Bin.gtype_to_alias.has_key(seat.get_type())) {
+				OLLMrpc.Bin.register_alias("Clutter-Seat", seat.get_type());
+			}
+			/* Gi.register maps MetaWindow only. Nested clients are
+			 * MetaWindowWayland (--no-x11). from_name does not load it. */
+			var wayland_window = meta_window_wayland_get_type();
+			if (!OLLMrpc.Bin.gtype_to_alias.has_key(wayland_window)) {
+				OLLMrpc.Bin.register_alias("Meta-Window", wayland_window);
+			}
 			GLib.debug("Gi.register Meta-16 ok (%u types)",
 				OLLMrpc.Gi.types != null ? OLLMrpc.Gi.types.size : 0);
-			Gsr.Shared.rpc_register();
-			Gsr.Server.rpc_register(frame_lock);
-
-			this.ui_display = Gsr.Server.Meta.bind(display);
-			Gsr.Server.Clutter.bind(display);
-			Gsr.Server.Shell.bind(display);
-
-			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
-			var stage = display.get_context().get_backend().get_stage();
-			this.alias_stage_view();
 
 			var bootstrap = Bootstrap.bind(this.display, frame_lock);
 			OLLMrpc.Request.register("Server-Bootstrap", bootstrap);
