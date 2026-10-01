@@ -85,7 +85,7 @@ Actor.allocation
 # type locally. A leased device still asks the server.
 InputDevice.device_type
 
-# Pango.Layout is not a wire type. Helper-Text returns the fields.
+# Pango.Layout is not a wire type. Gsr-Clutter-Text returns the fields.
 # Text.override rebuilds a client Pango.Layout from those arguments.
 Text.get_layout
 
@@ -146,7 +146,7 @@ ActorBox.union
 # touched (layout allocate). Body in ActorBox.override.
 actor_box_clamp_to_pixel
 
-# Actor.override — lease walk (St-Widget → Helper-Actor.create); layout relay.
+# Actor.override — lease walk (St-Widget → Gsr-Clutter-Actor.create); layout relay.
 Actor.new
 Actor.get_preferred_width
 Actor.get_preferred_height
@@ -203,13 +203,16 @@ Actor.get_transition
 
 # Actor.override — Compact Event has no dbus letter, so the generated
 # method was GLib.error. Overview search calls clutter_text.event() on
-# the first key (searchController.startSearch). Helper-Actor.deliver_event
+# the first key (searchController.startSearch). Gsr-Clutter-Actor.deliver_event
 # runs clutter_actor_event.
 Actor.event
 
 # Stage.override — Event is Compact / not wireable; pick at event coords
 # (captured-event-smoke / PopupMenuManager close).
 Stage.get_event_actor
+
+# Caller buffer has no length. Body is Stage.override paint_to_buffer.
+Stage.paint_to_buffer
 
 # Transition.override — capital-V on stock set_*_value (Gi pin).
 # varargs set_to/set_from stay denied (GIR skip → set_*_value).
@@ -218,7 +221,7 @@ Transition.set_from
 Transition.set_to_value
 Transition.set_from_value
 
-# Interval.override — Helper-Interval.create; set_* via capital-V on stock
+# Interval.override — Gsr-Clutter-Interval.create; set_* via capital-V on stock
 # Gi. peek/get local mirror for GValue* ABI.
 Interval.with_values
 Interval.value_type
@@ -270,11 +273,22 @@ Backend.set_input_method
 # Stock C symbol in header-overrides/clutter-main.h — Clutter.override.vala.
 get_default_text_direction
 
-# Header-sized GTypes (Vala priv* vs stock 24B OffscreenEffect).
-ActorMeta
-Effect
-OffscreenEffect
+# name/enabled stay off the stub. Effect subclasses own those properties
+# and must not RPC them until the lease exists.
+ActorMeta.actor
+ActorMeta.name
+ActorMeta.enabled
+ActorMeta.set_enabled
 ActorMetaPrivate
+# Class vfuncs the generator cannot wire. The stub class still emits.
+Effect.modify_paint_volume
+Effect.paint
+Effect.paint_node
+Effect.pick
+Effect.post_paint
+Effect.pre_paint
+OffscreenEffect.create_texture
+OffscreenEffect.paint_target
 
 # Opaque GIR privates — clash with Vala GObject instance private + rpc_lid.
 ActorPrivate
@@ -315,7 +329,7 @@ Frame
 # GSourceFunc not DBus-marshallable; Helper / Live.Callback instead.
 threads_add_repaint_func
 
-# Compact Event — pack type/x/y/button/state via Helper-Clutter.
+# Compact Event — pack type/x/y/button/state via Gsr-Clutter.
 get_current_event
 
 # Nested Event <function>s share ns clutter_event_* cnames.

@@ -4,9 +4,9 @@
  * {@code Runtime.register()} → {@link Shell.Global.bind_display} → own
  * {@link Gjs.Context} → eval {@code init.js} (default) or SCRIPT.js.
  */
-namespace GnomeShellRpc.ShellClient
+namespace Gsr.Client
 {
-	public class Application : GLib.Application, GnomeShellRpc.ApplicationInterface
+	public class Application : GLib.Application, Gsr.ApplicationInterface
 	{
 		private const string APPLICATION_ID = "org.gnome.ShellRpc";
 		private const string INIT_MODULE = "resource:///org/gnome/shell/ui/init.js";
@@ -31,7 +31,7 @@ namespace GnomeShellRpc.ShellClient
 			);
 
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				GnomeShellRpc.ApplicationInterface.debug_log(
+				Gsr.ApplicationInterface.debug_log(
 					this.get_application_id(), dom, lvl, msg
 				);
 			});
@@ -55,8 +55,8 @@ namespace GnomeShellRpc.ShellClient
 				return 1;
 			}
 
-			GnomeShellRpc.debug_on = Application.opt_debug;
-			GnomeShellRpc.debug_critical_enabled =
+			Gsr.debug_on = Application.opt_debug;
+			Gsr.debug_critical_enabled =
 				Application.opt_debug_critical;
 
 			prepend_typelib_paths();
@@ -64,7 +64,7 @@ namespace GnomeShellRpc.ShellClient
 			 * Meta.RpcSubprocess peer (DING stdout / wait). Stock Meta GIR
 			 * still returns Gio.Subprocess; GJS finds our methods by GType.
 			 */
-			GI.Repository.get_default().require("GnomeShellRpc", "1.0", 0);
+			GI.Repository.get_default().require("Gsr", "1.0", 0);
 			GI.Repository.get_default().require("Clutter", "16", 0);
 			GI.Repository.get_default().require("Shell", "16", 0);
 
@@ -74,7 +74,7 @@ namespace GnomeShellRpc.ShellClient
 				this.install_js_override_overlay(override_dir);
 			}
 
-			GnomeShellRpc.GiStub.Runtime.register();
+			Gsr.Client.Rpc.Runtime.register();
 			Shell.Global.bind_display(Meta.get_display());
 			Application.apply_extension_policy();
 
@@ -145,7 +145,7 @@ namespace GnomeShellRpc.ShellClient
 					}
 				}
 				if (script == INIT_MODULE || script.has_suffix("/ui/init.js")) {
-					GnomeShellRpc.call_value("RPC-Bootstrap.begin_shell_startup");
+					Gsr.call_value("RPC-Bootstrap.begin_shell_startup");
 				}
 				if (script.has_prefix("resource://")
 					|| script.contains("/ui/init.js")

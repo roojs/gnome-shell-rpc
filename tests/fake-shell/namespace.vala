@@ -10,6 +10,6 @@
  * ./build/src/fake-shell --debug
  * }}}
  */
-namespace GnomeShellRpc.FakeShell
+namespace Gsr.FakeShell
 {
 }

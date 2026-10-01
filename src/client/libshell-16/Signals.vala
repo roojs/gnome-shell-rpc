@@ -15,7 +15,7 @@
  *
  * GJS wrap: {@code connect(obj, name, gjs_handler_id)} then
  * {@code disconnect_id(obj, gjs_handler_id)}. Vala stubs still call
- * {@link GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe}
+ * {@link Gsr.Client.Rpc.Runtime.ensure_signal_subscribe}
  * (C trampoline — mutter-rpc / st-rpc cannot link shell-gi).
  */
 namespace Shell
@@ -52,7 +52,7 @@ namespace Shell
 		 * Signal names an actor has collected and not sent yet.
 		 *
 		 * Empty on a later {@link connect}. That connect clears the
-		 * list. More than one name is one ''Helper-Actor.add_signals''.
+		 * list. More than one name is one ''Gsr-Clutter-Actor.add_signals''.
 		 * One name is ''RPC-Live-Subscribe.rpc_signal''.
 		 */
 		[CCode (cname = "shell_signals_pending_signals")]
@@ -138,7 +138,7 @@ namespace Shell
 		 * {@link pending_signals} when that list is not empty.
 		 *
 		 * The list is cleared first. More than one name is one
-		 * ''Helper-Actor.add_signals''. One name is
+		 * ''Gsr-Clutter-Actor.add_signals''. One name is
 		 * ''RPC-Live-Subscribe.rpc_signal''. A name already in
 		 * {@link subs} only bumps {@link refs}.
 		 *
@@ -154,7 +154,7 @@ namespace Shell
 			if (signal_name == "init-xserver") {
 				return 0;
 			}
-			GnomeShellRpc.GiStub.Runtime.register();
+			Gsr.Client.Rpc.Runtime.register();
 			var handle = obj as OLLMrpc.Live.Interface;
 			if (handle == null || handle.rpc_lid == 0) {
 				return 0;
@@ -187,25 +187,25 @@ namespace Shell
 				signal_names = Signals.pending_signals;
 				Signals.pending_signals = {};
 			}
-			GnomeShellRpc.GiStub.Runtime.client.proxies.set(lid, obj);
+			Gsr.Client.Rpc.Runtime.client.proxies.set(lid, obj);
 			if (signal_names.length > 1) {
-				GnomeShellRpc.call_value("Helper-Actor.add_signals", obj,
+				Gsr.call_value("Gsr-Clutter-Actor.add_signals", obj,
 					OLLMrpc.args("S", signal_names));
 			} else {
-				GnomeShellRpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
+				Gsr.call_value("RPC-Live-Subscribe.rpc_signal", obj,
 					OLLMrpc.args("s", signal_names[0]));
 			}
 			if (!Signals.notification_hooked) {
 				Signals.notification_hooked = true;
-				GnomeShellRpc.GiStub.Runtime.client.notification.connect((notif) => {
+				Gsr.Client.Rpc.Runtime.client.notification.connect((notif) => {
 					if (!Signals.subs.has_key(notif.id)
 							|| !Signals.subs.get(notif.id).has_key(notif.method)) {
 						return;
 					}
-					if (!GnomeShellRpc.GiStub.Runtime.client.proxies.has_key(notif.id)) {
+					if (!Gsr.Client.Rpc.Runtime.client.proxies.has_key(notif.id)) {
 						return;
 					}
-					var target = GnomeShellRpc.GiStub.Runtime.client.proxies.get(notif.id);
+					var target = Gsr.Client.Rpc.Runtime.client.proxies.get(notif.id);
 					Signals.emit(target, notif.method, notif.args);
 				});
 			}
@@ -248,7 +248,7 @@ namespace Shell
 				Signals.refs.set(hid, n);
 				return;
 			}
-			GnomeShellRpc.call_value("RPC-Live-Subscribe.unsubscribe", obj,
+			Gsr.call_value("RPC-Live-Subscribe.unsubscribe", obj,
 				OLLMrpc.args("s", signal_name));
 			Signals.refs.unset(hid);
 			Signals.subs.get(lid).unset(signal_name);
@@ -280,7 +280,7 @@ namespace Shell
 					break;
 				}
 			}
-			GnomeShellRpc.call_value("RPC-Live-Subscribe.unsubscribe", obj,
+			Gsr.call_value("RPC-Live-Subscribe.unsubscribe", obj,
 				OLLMrpc.args("s", signal_name));
 			Signals.refs.unset(hid);
 			table.unset(signal_name);

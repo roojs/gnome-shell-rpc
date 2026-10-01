@@ -28,8 +28,8 @@ namespace Shell
 			stride = width * 4;
 			pixels = new uint8[stride * height];
 			Mtk.Rectangle rect = { 0, 0, width, height };
-			GnomeShellRpc.GiStub.ClutterStageAbi.paint_to_buffer(
-				stage, rect, 1f, pixels, stride,
+			stage.paint_to_buffer(
+				rect, 1f, pixels, stride,
 				Cogl.PixelFormat.RGBA_8888, Clutter.PaintFlag.none);
 		}
 
@@ -129,7 +129,7 @@ namespace Shell
 			cursor_point = Graphene.Point();
 			cursor_point.init(0f, 0f);
 			cursor_scale = 1f;
-			return new GnomeShellRpc.GiStub.PaintedContent(
+			return new Gsr.Client.Rpc.PaintedContent(
 				width, height, stride, (owned) pixels);
 		}
 

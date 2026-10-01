@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiRpcEcho
+namespace Gsr.GiRpcEcho
 {
 	/**
 	 * Server handler for {@code GiRpcSmoke.ping}.
@@ -6,10 +6,10 @@ namespace GnomeShellRpc.GiRpcEcho
 	 * == Example ==
 	 *
 	 * {{{
-	 * GnomeShellRpc.GiRpcEcho.Echo.rpc_register();
+	 * Gsr.GiRpcEcho.Echo.rpc_register();
 	 * OLLMrpc.Request.register(
 	 *     "GiRpcSmoke",
-	 *     new GnomeShellRpc.GiRpcEcho.Echo());
+	 *     new Gsr.GiRpcEcho.Echo());
 	 * }}}
 	 */
 	public class Echo : GLib.Object

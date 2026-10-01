@@ -19,7 +19,7 @@
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = GnomeShellRpc.call_value(
+			var response = Gsr.call_value(
 				"St-Adjustment.new",
 				null,
 				OLLMrpc.args("odddddd",

@@ -1,16 +1,16 @@
-namespace GnomeShellRpc.Shared
+namespace Gsr.Shared
 {
 	/**
 	 * Serializable frame rectangle ({@link Mtk.Rectangle} shape on the RPC).
 	 *
-	 * Used by both {@link GnomeShellRpc.Ui.Window} snapshots and
-	 * {@link GnomeShellRpc.FakeShell.Window} proxies.
+	 * Used by both {@link Gsr.Shared.Window} snapshots and
+	 * {@link Gsr.FakeShell.Window} proxies.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.Bin.register("Rectangle", typeof(GnomeShellRpc.Shared.Rectangle));
-	 * var r = new GnomeShellRpc.Shared.Rectangle() {
+	 * OLLMrpc.Bin.register("Rectangle", typeof(Gsr.Shared.Rectangle));
+	 * var r = new Gsr.Shared.Rectangle() {
 	 *     x = 10, y = 20, width = 800, height = 600,
 	 * };
 	 * }}}

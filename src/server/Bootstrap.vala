@@ -1,14 +1,14 @@
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server
 {
 	/**
-	 * Bootstrap RPC — export compositor {@link Meta.Display} lease to client.
+	 * Bootstrap RPC — export compositor {@link global::Meta.Display} lease to client.
 	 *
-	 * Out-of-process stand-in until {@code Meta.get_display()} is a real
+	 * Out-of-process stand-in until {@code global::Meta.get_display()} is a real
 	 * constructor RPC. POC for 0.5.3 partial Clutter relay.
 	 */
 	public class Bootstrap : GLib.Object, OLLMrpc.Bin.Serializable
 	{
-		public Meta.Display meta_display { get; private set; }
+		public global::Meta.Display meta_display { get; private set; }
 		public StartupFrameGate gate { get; private set; }
 
 		public static void rpc_register()
@@ -22,7 +22,7 @@ namespace GnomeShellRpc.Rpc
 			);
 		}
 
-		public static Bootstrap bind(Meta.Display display, StartupFrameGate gate)
+		public static Bootstrap bind(global::Meta.Display display, StartupFrameGate gate)
 		{
 			var bootstrap = new Bootstrap();
 			bootstrap.meta_display = display;
@@ -37,7 +37,7 @@ namespace GnomeShellRpc.Rpc
 		 */
 		public void begin_shell_startup(OLLMrpc.Request request)
 		{
-			if (!this.gate.begin((Connection) request.connection)) {
+			if (!this.gate.begin((Gsr.Server.Rpc.Connection) request.connection)) {
 				request.connection.reply_error(
 					request, (int) OLLMrpc.RpcErrorCode.INVALID_REQUEST);
 				return;

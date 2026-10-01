@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiRpcMock
+namespace Gsr.GiRpcMock
 {
 	/**
 	 * Listen on {@code MUTTER_RPC_SOCKET}; Ffi + {@link HelperMock} + {@link GiMock}.
@@ -11,7 +11,7 @@ namespace GnomeShellRpc.GiRpcMock
 	 *   ./build/src/gnome-shell-rpc --debug src/gjs-embed/register-class-trace-smoke.js
 	 * }}}
 	 */
-	public class Application : GLib.Object, GnomeShellRpc.ApplicationInterface
+	public class Application : GLib.Object, Gsr.ApplicationInterface
 	{
 		private const string APP_ID = "org.gnome.ShellRpc.GiRpcMock";
 
@@ -26,12 +26,12 @@ namespace GnomeShellRpc.GiRpcMock
 			{ null }
 		};
 
-		private GnomeShellRpc.Rpc.Listen? listen = null;
+		private Gsr.Server.Rpc.Listen? listen = null;
 
 		public Application()
 		{
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				GnomeShellRpc.ApplicationInterface.debug_log(
+				Gsr.ApplicationInterface.debug_log(
 					Application.APP_ID, dom, lvl, msg
 				);
 			});
@@ -54,16 +54,16 @@ namespace GnomeShellRpc.GiRpcMock
 				return 1;
 			}
 
-			GnomeShellRpc.debug_on = Application.opt_debug;
-			GnomeShellRpc.debug_critical_enabled =
+			Gsr.debug_on = Application.opt_debug;
+			Gsr.debug_critical_enabled =
 				Application.opt_debug_critical;
 
 			this.prepend_typelib_paths();
 
 			OLLMrpc.rpc_register(true);
-			GnomeShellRpc.Rpc.Daemon.rpc_register();
-			GnomeShellRpc.GiRpcMock.Bootstrap.rpc_register();
-			var daemon = new GnomeShellRpc.Rpc.Daemon() {
+			Gsr.Server.Daemon.rpc_register();
+			Gsr.GiRpcMock.Bootstrap.rpc_register();
+			var daemon = new Gsr.Server.Daemon() {
 				server = "gi-rpc-mock",
 			};
 			OLLMrpc.Request.register("RPC-Daemon", daemon);
@@ -78,7 +78,7 @@ namespace GnomeShellRpc.GiRpcMock
 
 			OLLMrpc.Request.register(
 				"RPC-Bootstrap",
-				GnomeShellRpc.GiRpcMock.Bootstrap.bind()
+				Gsr.GiRpcMock.Bootstrap.bind()
 			);
 			OLLMrpc.Request.register_mock(new HelperMock());
 
@@ -94,7 +94,7 @@ namespace GnomeShellRpc.GiRpcMock
 				}
 			}
 
-			this.listen = new GnomeShellRpc.Rpc.Listen(socket_path) {
+			this.listen = new Gsr.Server.Rpc.Listen(socket_path) {
 				live_handles = true,
 			};
 			if (!this.listen.start()) {
@@ -108,14 +108,14 @@ namespace GnomeShellRpc.GiRpcMock
 
 		private void prepend_typelib_paths()
 		{
-			if (GnomeShellRpc.Rpc.MUTTER_TYPELIB_DIR.length > 0) {
+			if (Gsr.Server.MUTTER_TYPELIB_DIR.length > 0) {
 				GI.Repository.prepend_search_path(
-					GnomeShellRpc.Rpc.MUTTER_TYPELIB_DIR
+					Gsr.Server.MUTTER_TYPELIB_DIR
 				);
 			}
-			if (GnomeShellRpc.Rpc.GNOME_SHELL_PKGLIBDIR.length > 0) {
+			if (Gsr.Server.GNOME_SHELL_PKGLIBDIR.length > 0) {
 				GI.Repository.prepend_search_path(
-					GnomeShellRpc.Rpc.GNOME_SHELL_PKGLIBDIR
+					Gsr.Server.GNOME_SHELL_PKGLIBDIR
 				);
 			}
 		}

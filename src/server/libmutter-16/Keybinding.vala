@@ -1,20 +1,20 @@
 /**
- * Delivers {@link Meta.Display} Override RPC (plan 0.5.6 B1).
+ * Delivers {@link global::Meta.Display} Override RPC (plan 0.5.6 B1).
  *
- * Wire prefix ''Helper-Display''. Lease is the display for
+ * Wire prefix ''Gsr-Mutter-Display''. Lease is the display for
  * {@link add_keybinding}. {@link keybindings_set_custom_handler} is a
  * namespace function — no lease. {@link GLib.Settings} crosses as schema id
- * (same packing as C1 file URI). {@link Clutter.Event} / {@link Meta.KeyBinding}
+ * (same packing as C1 file URI). {@link global::Clutter.Event} / {@link global::Meta.KeyBinding}
  * on notify are not packed yet; the trampoline still fires.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
-	public class Display : GLib.Object
+	public class Keybinding : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-Display", typeof(Display),
+				"Gsr-Mutter-Display", typeof(Keybinding),
 				"add_keybinding", "ssut",
 				"keybindings_set_custom_handler", "st",
 				"request_pad_osd", "osb",
@@ -22,8 +22,8 @@ namespace GnomeShellRpc.Rpc.Helper
 				"get_pad_feature_label", "osiui",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-Display",
-				 new Display());
+			OLLMrpc.Request.register_live("Gsr-Mutter-Display",
+				 new Keybinding());
 		}
 
 		public void add_keybinding(
@@ -33,7 +33,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			uint flags,
 			uint64 callback_id
 		) {
-			var display = (Meta.Display) request.connection.leases.get(
+			var display = (global::Meta.Display) request.connection.leases.get(
 				(int) request.lease_id);
 			if (!request.connection.callbacks.has_key((int) callback_id)) {
 				GLib.warning("unknown callback id");
@@ -48,7 +48,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			var schema = source.lookup(schema_id, true);
 			if (schema == null) {
 				GLib.warning(
-					"Helper-Display.add_keybinding: schema '%s' is not installed",
+					"Gsr-Mutter-Display.add_keybinding: schema '%s' is not installed",
 					schema_id
 				);
 				request.reply(new OLLMrpc.Response() {
@@ -59,7 +59,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			var settings = new GLib.Settings.full(schema, null, null);
 			var action = display.add_keybinding(
-				name, settings, (Meta.KeyBindingFlags) flags,
+				name, settings, (global::Meta.KeyBindingFlags) flags,
 				(d, w, event, binding) => {
 					uint64 win_h = 0;
 					if (w != null) {
@@ -88,7 +88,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var row = request.connection.callbacks.get((int) callback_id);
-			var ok = Meta.KeyBinding.set_custom_handler(name,
+			var ok = global::Meta.KeyBinding.set_custom_handler(name,
 				(d, w, event, binding) => {
 					uint64 win_h = 0;
 					if (w != null) {
@@ -105,13 +105,13 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void request_pad_osd(
 			OLLMrpc.Request request,
-			Clutter.InputDevice? pad,
+			global::Clutter.InputDevice? pad,
 			string device_name,
 			bool edition_mode
 		) {
-			var display = (Meta.Display) request.connection.leases.get(
+			var display = (global::Meta.Display) request.connection.leases.get(
 				(int) request.lease_id);
-			var device = Devices.resolve(pad, device_name, true);
+			var device = Gsr.Server.Clutter.Devices.resolve(pad, device_name, true);
 			if (device != null) {
 				display.request_pad_osd(device, edition_mode);
 			}
@@ -122,13 +122,13 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void get_pad_button_label(
 			OLLMrpc.Request request,
-			Clutter.InputDevice? pad,
+			global::Clutter.InputDevice? pad,
 			string device_name,
 			int button_number
 		) {
-			var display = (Meta.Display) request.connection.leases.get(
+			var display = (global::Meta.Display) request.connection.leases.get(
 				(int) request.lease_id);
-			var device = Devices.resolve(pad, device_name, true);
+			var device = Gsr.Server.Clutter.Devices.resolve(pad, device_name, true);
 			var label = "";
 			if (device != null) {
 				label = display.get_pad_button_label(device, button_number);
@@ -141,20 +141,20 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void get_pad_feature_label(
 			OLLMrpc.Request request,
-			Clutter.InputDevice? pad,
+			global::Clutter.InputDevice? pad,
 			string device_name,
 			int feature,
 			uint direction,
 			int feature_number
 		) {
-			var display = (Meta.Display) request.connection.leases.get(
+			var display = (global::Meta.Display) request.connection.leases.get(
 				(int) request.lease_id);
-			var device = Devices.resolve(pad, device_name, true);
+			var device = Gsr.Server.Clutter.Devices.resolve(pad, device_name, true);
 			var label = "";
 			if (device != null) {
 				label = display.get_pad_feature_label(device,
-					(Meta.PadFeatureType) feature,
-					(Meta.PadDirection) direction, feature_number);
+					(global::Meta.PadFeatureType) feature,
+					(global::Meta.PadDirection) direction, feature_number);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

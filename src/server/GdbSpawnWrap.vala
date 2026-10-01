@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server
 {
 	/**
 	 * Optional gdb/gdbserver wrapper for nested {@code gnome-shell-rpc} spawn.

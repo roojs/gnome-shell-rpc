@@ -157,7 +157,7 @@ if get_option('gi_rpc_mock')
       'tests/gi-rpc-mock/Application.vala',
     ),
     dependencies: [ocrpc_dep, dependency('gobject-introspection-1.0')],
-    vala_args: ocrpc_vala_args + gi_stub_vala_args + [
+    vala_args: ocrpc_vala_args + [
       '--pkg=gobject-introspection-1.0',
     ],
     build_rpath: ocrpc_rpath,
@@ -181,7 +181,7 @@ fake_shell = executable('fake-shell',
     'tests/fake-shell/TopBar.vala',
   ),
   dependencies: [ocrpc_dep, gtk4_dep],
-  vala_args: ocrpc_vala_args + gi_stub_vala_args + [
+  vala_args: ocrpc_vala_args + [
     '--pkg=gtk4',
   ],
   build_rpath: ocrpc_rpath,

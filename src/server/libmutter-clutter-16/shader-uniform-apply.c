@@ -1,5 +1,5 @@
 /*
- * Compositor-side apply for Helper-ShaderEffect.set_uniform (plan 0.7.2 D).
+ * Compositor-side apply for Gsr-Clutter-ShaderEffect.set_uniform (plan 0.7.2 D).
  * Rebuilds a GValue and calls stock clutter_shader_effect_set_uniform_value.
  */
 

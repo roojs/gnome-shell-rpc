@@ -54,7 +54,7 @@ WidgetPrivate
 ThemeNodePrivate
 ThemeContextPrivate
 
-# No GIR ctor — Actor parent-walk mints Helper-Actor.create / St-*.new.
+# No GIR ctor — Actor parent-walk mints Gsr-Clutter-Actor.create / St-*.new.
 Widget.new
 
 # Adjustment.override — GIR ctor needs actor + six doubles; mint with zeros.
@@ -64,7 +64,7 @@ Adjustment.add_transition
 Adjustment.remove_transition
 Adjustment.get_transition
 
-# GLib.Icon not on object wire — Icon.override via Helper-Icon string form.
+# GLib.Icon not on object wire — Icon.override via Gsr-St-Icon string form.
 Icon.gicon
 Icon.get_gicon
 Icon.set_gicon
@@ -82,7 +82,7 @@ Theme.get_default_stylesheet
 Theme.get_theme_stylesheet
 Theme.load_stylesheet
 Theme.unload_stylesheet
-# Client-owned Gio.File list; URIs already on Helper-ThemeContext.set_theme.
+# Client-owned Gio.File list; URIs already on Gsr-St-ThemeContext.set_theme.
 Theme.get_custom_stylesheets
 
 # IconTheme.override — int[] via Bytes/ay int32 slab (StreamValue BOXED).

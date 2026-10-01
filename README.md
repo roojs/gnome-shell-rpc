@@ -13,7 +13,7 @@ The goal is a shell client you can restart without tearing down the desktop.
 **Status (2026-09-14):** nested stack **builds and boots** on **gnome-shell 48**
 / **libmutter-16**. Thin host + `init.js` corridor through **READY** / prepare
 is green. Nest still **dies after READY** while extensions load (current:
-second `Helper-ThemeContext.set_theme`). Active work:
+second `Gsr-St-ThemeContext.set_theme`). Active work:
 [`docs/plans/0.8-init-complete-and-interaction.md`](docs/plans/0.8-init-complete-and-interaction.md).
 
 ---

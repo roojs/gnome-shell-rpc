@@ -1,3 +1,3 @@
-namespace GnomeShellRpc.ShellClient
+namespace Gsr.Client
 {
 }

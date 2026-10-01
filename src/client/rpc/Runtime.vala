@@ -2,7 +2,7 @@
  * Sync RPC client for GI stubs (plan 0.5 Meta mini).
  *
  * {@link register} is idempotent (wire types + {@code MUTTER_RPC_SOCKET}).
- * {@link GnomeShellRpc.call_value}, {@link call_object}, and {@link call_list}
+ * {@link Gsr.call_value}, {@link call_object}, and {@link call_list}
  * always start with {@link register}.
  *
  * Positional args use {@link OLLMrpc.Request.args} (GIR order, no direction
@@ -14,20 +14,20 @@
  * == Example ==
  *
  * {{{
- * GnomeShellRpc.GiStub.Runtime.register();
- * var rows = GnomeShellRpc.GiStub.Runtime.call_list("Meta-Display.list_windows",
- *     typeof(GnomeShellRpc.Ui.Window));
- * GnomeShellRpc.call_value("Meta-Window.minimize", win);
+ * Gsr.Client.Rpc.Runtime.register();
+ * var rows = Gsr.Client.Rpc.Runtime.call_list("Meta-Display.list_windows",
+ *     typeof(Gsr.Shared.Window));
+ * Gsr.call_value("Meta-Window.minimize", win);
  * }}}
  */
-namespace GnomeShellRpc.GiStub
+namespace Gsr.Client.Rpc
 {
 	public class Runtime : GLib.Object
 	{
 		public static OLLMrpc.Client client;
 		private static bool connected = false;
 
-		[CCode (cname = "gsr_clutter_client_register")]
+		[CCode (cname = "gsr_client_clutter_register")]
 		private static extern void clutter_client_register();
 
 		[CCode (cname = "meta_register", cheader_filename = "meta-register.h")]
@@ -142,8 +142,8 @@ namespace GnomeShellRpc.GiStub
 				return;
 			}
 
-			GnomeShellRpc.Shared.Rectangle.rpc_register();
-			GnomeShellRpc.Ui.Window.rpc_register();
+			Gsr.Shared.Rectangle.rpc_register();
+			Gsr.Shared.Window.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
 			clutter_client_register();
 			meta_register_bins();
@@ -192,7 +192,7 @@ namespace GnomeShellRpc.GiStub
 					extra == null ? "null" : extra.size.to_string());
 				try {
 					if (extra == null) {
-						GnomeShellRpc.call_value("RPC-Live-Callback.reply",
+						Gsr.call_value("RPC-Live-Callback.reply",
 							null,
 							OLLMrpc.args("t", reply_id));
 					} else {
@@ -200,7 +200,7 @@ namespace GnomeShellRpc.GiStub
 						foreach (var v in extra) {
 							reply.add(v);
 						}
-						GnomeShellRpc.call_value("RPC-Live-Callback.reply", null, reply);
+						Gsr.call_value("RPC-Live-Callback.reply", null, reply);
 					}
 					GLib.debug("invoke REPLY done id=%d reply_id=%llu",
 						call.id, reply_id);
@@ -264,7 +264,7 @@ namespace GnomeShellRpc.GiStub
 			if (Runtime.handlers == null) {
 				Runtime.handlers = new Gee.HashMap<int, InvokeRow>();
 			}
-			var response = GnomeShellRpc.call_value("RPC-Live-Callback.register");
+			var response = Gsr.call_value("RPC-Live-Callback.register");
 			var id = response.args.get(0).get_uint64();
 			var row = new InvokeRow();
 			row.handler = (owned) handler;
@@ -281,7 +281,7 @@ namespace GnomeShellRpc.GiStub
 				|| !Runtime.handlers.has_key((int) callback_id)) {
 				return;
 			}
-			GnomeShellRpc.call_value("RPC-Live-Callback.unregister", null,
+			Gsr.call_value("RPC-Live-Callback.unregister", null,
 				OLLMrpc.args("t", callback_id));
 			Runtime.handlers.unset((int) callback_id);
 		}
@@ -343,7 +343,7 @@ namespace GnomeShellRpc.GiStub
 			GLib.Type expected,
 			Gee.ArrayList<GLib.Value?>? args = null
 		) throws GLib.Error {
-			var response = GnomeShellRpc.call_value(method, null, args);
+			var response = Gsr.call_value(method, null, args);
 			if (response.retval.type() == GLib.Type.INVALID) {
 				return null;
 			}
@@ -369,7 +369,7 @@ namespace GnomeShellRpc.GiStub
 			GLib.Type elem,
 			Gee.ArrayList<GLib.Value?>? args = null
 		) throws GLib.Error {
-			var response = GnomeShellRpc.call_value(method, null, args);
+			var response = Gsr.call_value(method, null, args);
 			var list = new GLib.List<GLib.Object>();
 			if (response.retval.type() == GLib.Type.INVALID) {
 				return list;

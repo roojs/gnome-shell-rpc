@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.RpcClient
+namespace Gsr.RpcClient
 {
 	/**
 	 * CLI that lists windows and listens for notifications.
@@ -9,7 +9,7 @@ namespace GnomeShellRpc.RpcClient
 	 * ./build/src/rpc-client --debug
 	 * }}}
 	 */
-	public class Application : GLib.Application, GnomeShellRpc.ApplicationInterface
+	public class Application : GLib.Application, Gsr.ApplicationInterface
 	{
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
@@ -32,7 +32,7 @@ namespace GnomeShellRpc.RpcClient
 			);
 
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				GnomeShellRpc.ApplicationInterface.debug_log(
+				Gsr.ApplicationInterface.debug_log(
 					this.get_application_id(), dom, lvl, msg
 				);
 			});
@@ -62,12 +62,12 @@ namespace GnomeShellRpc.RpcClient
 				return 1;
 			}
 
-			GnomeShellRpc.debug_on = Application.opt_debug;
-			GnomeShellRpc.debug_critical_enabled =
+			Gsr.debug_on = Application.opt_debug;
+			Gsr.debug_critical_enabled =
 				Application.opt_debug_critical;
 
-			GnomeShellRpc.Shared.Rectangle.rpc_register();
-			GnomeShellRpc.Ui.Window.rpc_register();
+			Gsr.Shared.Rectangle.rpc_register();
+			Gsr.Shared.Window.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
 
 			this.hold();
@@ -113,7 +113,7 @@ namespace GnomeShellRpc.RpcClient
 						}
 						Application.rpc_client.proxies.set(
 							notif.id,
-							new GnomeShellRpc.Ui.Window()
+							new Gsr.Shared.Window()
 							{
 								id = notif.id,
 							}
@@ -157,7 +157,7 @@ namespace GnomeShellRpc.RpcClient
 			}
 			GLib.print("list_windows: %d window(s)\n", windows.size);
 			foreach (var obj in windows) {
-				var win = (GnomeShellRpc.Ui.Window)obj;
+				var win = (Gsr.Shared.Window)obj;
 				GLib.print("  [%d] title=%s wm_class=%s\n",
 					win.id, win.title, win.wm_class);
 				Application.rpc_client.proxies.set(win.id, win);

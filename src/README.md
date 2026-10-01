@@ -19,11 +19,11 @@ Builds **`mutter-rpc`** (compositor + OLLMrpc **server** + **Helper** relays) an
 | **`shared/`** (`Rectangle`, …) | Yes — already there |
 | **`ui/`** (`Window`, `Display`, `Workspace`, `Compositor`) | **Yes** — merge into **`shared/`** in [0.7.10](../docs/plans/0.7.10-src-directory-layout.md). Separate **`ui/`** is legacy from plan 0.3 (only **`Rectangle`** moved first), not a different ownership model. |
 
-Namespace today: **`GnomeShellRpc.Shared`** vs **`GnomeShellRpc.Ui`**; after **Gsr**, likely one **`Gsr.Shared`** (TBD in the plan). Wire names stay **`Window`**, **`Rectangle`**, etc.
+Namespace today: **`Gsr.Shared`** vs **`Gsr.Ui`**; after **Gsr**, likely one **`Gsr.Shared`** (TBD in the plan). Wire names stay **`Window`**, **`Rectangle`**, etc.
 
-**Not in `shared/`:** **`Meta.Window`**, **`Rpc.Helper.Window`** — live GI / server helpers, not the shared DTOs.
+**Not in `shared/`:** **`Meta.Window`**, **`Gsr.Server.Meta.Window`** — live GI / server helpers, not the shared DTOs.
 
-**Examples:** **`Rpc.Server`** registers **`Ui.Window`**; **`gi-stub/Runtime`** registers the same type so RPC decode matches.
+**Examples:** **`Gsr.Server.Rpc.Server`** registers **`Gsr.Shared.Window`**; **`gi-stub/Runtime`** registers the same type so RPC decode matches.
 
 ---
 

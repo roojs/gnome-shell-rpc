@@ -1,28 +1,28 @@
 /**
- * Delivers {@link Meta.BackgroundImageCache} Override RPC.
+ * Delivers {@link global::Meta.BackgroundImageCache} Override RPC.
  *
- * Wire prefix ''Helper-BackgroundImageCache''. {@code GLib.File} is not
+ * Wire prefix ''Gsr-Mutter-BackgroundImageCache''. {@code GLib.File} is not
  * on the wire — client sends URI string (same pattern as
  * {@link Background.set_file}).
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class BackgroundImageCache : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-BackgroundImageCache", typeof(BackgroundImageCache),
+				"Gsr-Mutter-BackgroundImageCache", typeof(BackgroundImageCache),
 				"load", "s",
 				null
 			);
 			OLLMrpc.Request.register_live(
-				"Helper-BackgroundImageCache", new BackgroundImageCache());
+				"Gsr-Mutter-BackgroundImageCache", new BackgroundImageCache());
 		}
 
 		/**
-		 * ''Helper-BackgroundImageCache.load'' — URI → compositor
-		 * {@link Meta.BackgroundImageCache.load}.
+		 * ''Gsr-Mutter-BackgroundImageCache.load'' — URI → compositor
+		 * {@link global::Meta.BackgroundImageCache.load}.
 		 *
 		 * Replies when {@code loaded} has fired (or on timeout). Does not
 		 * nest a {@link GLib.MainLoop} — safe mid-{@link OLLMrpc.Live.Hook.emit}.
@@ -32,7 +32,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public void load(OLLMrpc.Request request, string uri)
 		{
-			var cache = (Meta.BackgroundImageCache) request.connection.leases.get(
+			var cache = (global::Meta.BackgroundImageCache) request.connection.leases.get(
 				(int) request.lease_id
 			);
 			/* Do not trust the JS caller — wire can send anything. */

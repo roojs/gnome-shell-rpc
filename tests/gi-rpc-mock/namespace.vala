@@ -1,3 +1,3 @@
-namespace GnomeShellRpc.GiRpcMock
+namespace Gsr.GiRpcMock
 {
 }

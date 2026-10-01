@@ -3,6 +3,6 @@
  *
  * Uses {@link OLLMrpc.Client} with connect-only (no {@link OLLMrpc.ClientBoot}).
  */
-namespace GnomeShellRpc.RpcClient
+namespace Gsr.RpcClient
 {
 }

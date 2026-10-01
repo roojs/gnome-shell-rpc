@@ -131,15 +131,15 @@ static void boot_rpc()
 {
 	OLLMrpc.rpc_register(true);
 	OLLMrpc.Bin.TypeOverride.register(new StampOverride());
-	GnomeShellRpc.Rpc.Daemon.rpc_register();
-	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
+	Gsr.Server.Daemon.rpc_register();
+	OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
 	Gate.rpc_register();
 }
 
 static int run_server(string sock)
 {
 	boot_rpc();
-	var listen = new GnomeShellRpc.Rpc.Listen(sock) {
+	var listen = new Gsr.Server.Rpc.Listen(sock) {
 		live_handles = true,
 	};
 	if (!listen.start()) {

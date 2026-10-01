@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiRpcEcho
+namespace Gsr.GiRpcEcho
 {
 	/**
 	 * Listen on {@code GI_RPC_SMOKE_SOCKET} and echo {@link Echo} pings.
@@ -9,7 +9,7 @@ namespace GnomeShellRpc.GiRpcEcho
 	 * ./build/src/gi-rpc-echo --debug
 	 * }}}
 	 */
-	public class Application : GLib.Application, GnomeShellRpc.ApplicationInterface
+	public class Application : GLib.Application, Gsr.ApplicationInterface
 	{
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
@@ -31,7 +31,7 @@ namespace GnomeShellRpc.GiRpcEcho
 			);
 
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				GnomeShellRpc.ApplicationInterface.debug_log(
+				Gsr.ApplicationInterface.debug_log(
 					this.get_application_id(), dom, lvl, msg
 				);
 			});
@@ -61,13 +61,13 @@ namespace GnomeShellRpc.GiRpcEcho
 				return 1;
 			}
 
-			GnomeShellRpc.debug_on = Application.opt_debug;
-			GnomeShellRpc.debug_critical_enabled =
+			Gsr.debug_on = Application.opt_debug;
+			Gsr.debug_critical_enabled =
 				Application.opt_debug_critical;
 
 			GiRpcSmoke.PingResult.rpc_register();
-			GnomeShellRpc.GiRpcEcho.Echo.rpc_register();
-			GnomeShellRpc.Rpc.Daemon.rpc_register();
+			Gsr.GiRpcEcho.Echo.rpc_register();
+			Gsr.Server.Daemon.rpc_register();
 			OLLMrpc.Request.rpc_register();
 			OLLMrpc.Response.rpc_register();
 			OLLMrpc.Notification.rpc_register();
@@ -75,7 +75,7 @@ namespace GnomeShellRpc.GiRpcEcho
 
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new GnomeShellRpc.Rpc.Daemon()
+				new Gsr.Server.Daemon()
 			);
 			OLLMrpc.Request.register(
 				"GiRpcSmoke",
@@ -94,7 +94,7 @@ namespace GnomeShellRpc.GiRpcEcho
 				}
 			}
 
-			var listen = new GnomeShellRpc.Rpc.Listen(socket_path) {
+			var listen = new Gsr.Server.Rpc.Listen(socket_path) {
 				live_handles = false,
 			};
 			if (!listen.start()) {

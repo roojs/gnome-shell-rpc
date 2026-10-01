@@ -5,12 +5,12 @@
 		 */
 		public Scrollable? child {
 			get {
-				var response = GnomeShellRpc.call_value(
+				var response = Gsr.call_value(
 					"St-ScrollView.get_child", this);
 				return response.retval.get_object() as Scrollable;
 			}
 			set {
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"St-ScrollView.set_child", this,
 					OLLMrpc.args("o", value));
 			}

@@ -1,11 +1,11 @@
 /**
- * Server pack of a {@link Clutter.Event}: type, x, y, button, key symbol,
+ * Server pack of a {@link global::Clutter.Event}: type, x, y, button, key symbol,
  * related actor.
  *
  * The client rebuilds the event. A crossing event's related actor is the
  * last field. Uint64 0 means there is none.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class ClutterEventOverride : OLLMrpc.Bin.TypeOverride
 	{
@@ -14,7 +14,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public override GLib.Type override_type {
 			get {
-				return typeof(Clutter.Event);
+				return typeof(global::Clutter.Event);
 			}
 		}
 
@@ -26,26 +26,26 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public override Gee.ArrayList<GLib.Value?> pack(GLib.Value src)
 		{
-			var ev = (Clutter.Event) src.get_boxed();
+			var ev = (global::Clutter.Event) src.get_boxed();
 			var x = 0f;
 			var y = 0f;
 			ev.get_coords(out x, out y);
 			var button = 0u;
 			var key = 0u;
-			Clutter.Actor? related = null;
+			global::Clutter.Actor? related = null;
 			switch (ev.get_type()) {
-				case Clutter.EventType.BUTTON_PRESS:
-				case Clutter.EventType.BUTTON_RELEASE:
-				case Clutter.EventType.PAD_BUTTON_PRESS:
-				case Clutter.EventType.PAD_BUTTON_RELEASE:
+				case global::Clutter.EventType.BUTTON_PRESS:
+				case global::Clutter.EventType.BUTTON_RELEASE:
+				case global::Clutter.EventType.PAD_BUTTON_PRESS:
+				case global::Clutter.EventType.PAD_BUTTON_RELEASE:
 					button = ev.get_button();
 					break;
-				case Clutter.EventType.KEY_PRESS:
-				case Clutter.EventType.KEY_RELEASE:
+				case global::Clutter.EventType.KEY_PRESS:
+				case global::Clutter.EventType.KEY_RELEASE:
 					key = ev.get_key_symbol();
 					break;
-				case Clutter.EventType.ENTER:
-				case Clutter.EventType.LEAVE:
+				case global::Clutter.EventType.ENTER:
+				case global::Clutter.EventType.LEAVE:
 					related = ev.get_related();
 					break;
 				default:
@@ -78,7 +78,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			out int consumed
 		) {
 			consumed = 6;
-			return GLib.Value(typeof(Clutter.Event));
+			return GLib.Value(typeof(global::Clutter.Event));
 		}
 	}
 }

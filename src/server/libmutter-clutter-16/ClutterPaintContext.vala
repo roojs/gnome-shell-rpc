@@ -6,13 +6,13 @@
  * {@code get_stage_view} is not in the mutter VAPI
  * ({@code introspectable=0}) — call stock C directly via {@code extern}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class ClutterPaintContext : GLib.Object
 	{
 		[CCode (cname = "clutter_paint_context_get_stage_view",
 			cheader_filename = "clutter/clutter.h")]
-		private static extern Clutter.StageView? clutter_paint_context_get_stage_view(
+		private static extern global::Clutter.StageView? clutter_paint_context_get_stage_view(
 			void* paint_context
 		);
 

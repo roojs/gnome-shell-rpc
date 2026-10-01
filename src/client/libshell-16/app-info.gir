@@ -1,6 +1,11 @@
 <snippet xmlns="http://www.gtk.org/introspection/core/1.0"
          xmlns:c="http://www.gtk.org/introspection/c/1.0"
          xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+		<!--
+			Vala 0.56 GirWriter emits GLib.DesktopAppInfo. Stock Shell.App
+			uses Gio.DesktopAppInfo. scripts/gir-inject.xsl replaces
+			get_app_info and the app-info property with these elements.
+		-->
 		<method name="get_app_info" c:identifier="shell_app_get_app_info" glib:get-property="app-info">
 			<return-value transfer-ownership="none" nullable="1">
 				<type name="Gio.DesktopAppInfo" c:type="GDesktopAppInfo*"/>

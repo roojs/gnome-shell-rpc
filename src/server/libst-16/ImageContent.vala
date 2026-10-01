@@ -1,14 +1,14 @@
 /**
- * Delivers {@code St.ImageContent.set_data} — pixmap bytes on
+ * Delivers {@code global::St.ImageContent.set_data} — pixmap bytes on
  * {@link OLLMrpc.Request.buffer} (memfd / SCM_RIGHTS).
  *
- * Wire prefix {@code Helper-ImageContent}. Distro has no St-16.vapi for
+ * Wire prefix {@code Gsr-St-ImageContent}. Distro has no St-16.vapi for
  * mutter-rpc — same CCode pattern as {@link IconTheme}.
  *
- * Compositor Cogl context from {@link Clutter.get_default_backend};
+ * Compositor Cogl context from {@link global::Clutter.get_default_backend};
  * client does not ship {@code Cogl.Context}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.St
 {
 	public class ImageContent : GLib.Object
 	{
@@ -32,17 +32,17 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-ImageContent", typeof(ImageContent),
+				"Gsr-St-ImageContent", typeof(ImageContent),
 				"create", "ii",
 				"set_data", "uuuux",
 				null
 			);
 			OLLMrpc.Request.register_live(
-				"Helper-ImageContent", new ImageContent());
+				"Gsr-St-ImageContent", new ImageContent());
 		}
 
 		/**
-		 * {@code Helper-ImageContent.create} — stock
+		 * {@code Gsr-St-ImageContent.create} — stock
 		 * {@code st_image_content_new_with_preferred_size}.
 		 */
 		public void create(OLLMrpc.Request request, int width, int height)
@@ -56,7 +56,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * {@code Helper-ImageContent.set_data} — read pixels from
+		 * {@code Gsr-St-ImageContent.set_data} — read pixels from
 		 * {@link OLLMrpc.Request.buffer}, stock libst upload.
 		 *
 		 * @param request inbound RPC (lease = ImageContent)
@@ -81,7 +81,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				request.connection.reply_error(request,				(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			var backend = Clutter.get_default_backend();
+			var backend = global::Clutter.get_default_backend();
 			var cogl = backend.get_cogl_context();
 			var buf = new uint8[nbytes];
 			Posix.lseek(got, 0, Posix.SEEK_SET);

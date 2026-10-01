@@ -1,13 +1,19 @@
 /**
- * Helper-InvertLightnessEffect — compositor OffscreenEffect for client
- * {@link Shell.InvertLightnessEffect}.
+ * Gsr-Shell-InvertLightnessEffect — the invert the stage actually paints.
+ *
+ * This class runs inside gsr-server, the compositor process. Shell JS
+ * constructs {@link global::Shell.InvertLightnessEffect} in gsr-client. That
+ * process has no Clutter stage and no Cogl context, so it cannot run the
+ * snippet. The client object is a lease. The lightness-invert GLSL runs
+ * here, on the actor that is on the stage. This is not a cache and not a
+ * faster copy of the client class.
  *
  * Stock {@code shell-invert-lightness-effect}: lightness invert GLSL on
  * texture lookup. Stage / Cogl context from {@link bind}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Shell
 {
-	public class InvertLightnessEffect : Clutter.OffscreenEffect
+	public class InvertLightnessEffect : global::Clutter.OffscreenEffect
 	{
 		private static Cogl.Context? cogl_context;
 		private static Cogl.Pipeline? base_pipeline;
@@ -18,18 +24,18 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Bin.register("Shell-InvertLightnessEffect",
 				typeof(InvertLightnessEffect));
 			OLLMrpc.Request.add_class(
-				"Helper-InvertLightnessEffect", typeof(InvertLightnessEffect),
+				"Gsr-Shell-InvertLightnessEffect", typeof(InvertLightnessEffect),
 				"create", "",
 				null
 			);
 		}
 
-		public static void bind(Meta.Display display)
+		public static void bind(global::Meta.Display display)
 		{
 			var stage = display.get_context().get_backend().get_stage();
-			var clutter_ctx = ((Clutter.Actor) stage).get_context();
+			var clutter_ctx = ((global::Clutter.Actor) stage).get_context();
 			cogl_context = clutter_ctx.get_backend().get_cogl_context();
-			OLLMrpc.Request.register_live("Helper-InvertLightnessEffect",
+			OLLMrpc.Request.register_live("Gsr-Shell-InvertLightnessEffect",
 				new InvertLightnessEffect());
 		}
 

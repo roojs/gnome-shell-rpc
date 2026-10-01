@@ -10,7 +10,7 @@
 			if (this.priv_content != null) {
 				return this.priv_content;
 			}
-			var response = GnomeShellRpc.call_value(
+			var response = Gsr.call_value(
 				"Clutter-Actor.get_content", this);
 			if (response.retval.type() == GLib.Type.INVALID
 					|| response.retval.get_object() == null) {
@@ -21,14 +21,14 @@
 		set {
 			this.priv_content = value;
 			if (value == null) {
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Clutter-Actor.set_content", this,
 					OLLMrpc.args("o", null));
 				return;
 			}
 			var handle = value as OLLMrpc.Live.Interface;
 			if (handle != null && handle.rpc_lid != 0) {
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Clutter-Actor.set_content", this,
 					OLLMrpc.args("o", value));
 			}
@@ -51,7 +51,7 @@
 			if (baseline != GLib.Type.INVALID
 					&& OLLMrpc.Gi.vfunc_slot(this.get_type(), "Clutter", "Actor", "queue_relayout")
 					!= OLLMrpc.Gi.vfunc_slot(baseline, "Clutter", "Actor", "queue_relayout")) {
-				GnomeShellRpc.GiStub.vfunc_call_void(
+				Gsr.Client.Rpc.vfunc_call_void(
 					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "queue_relayout"));
 			}
 		});
@@ -88,10 +88,10 @@
 				default:
 					break;
 			}
-			var response = GnomeShellRpc.call_value(alias + ".new");
+			var response = Gsr.call_value(alias + ".new");
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-			GnomeShellRpc.GiStub.Runtime.register_handle(this);
+			Gsr.Client.Rpc.Runtime.register_handle(this);
 			this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
 			this.prop_batch_open = true;
 			return;
@@ -121,10 +121,10 @@
 
 	void create_with_overrides()
 	{
-		GnomeShellRpc.GiStub.Runtime.hook_rows =
-			new Gee.ArrayList<GnomeShellRpc.GiStub.Runtime.InvokeRow>();
+		Gsr.Client.Rpc.Runtime.hook_rows =
+			new Gee.ArrayList<Gsr.Client.Rpc.Runtime.InvokeRow>();
 		string[] always = {};
-		var overridden = GnomeShellRpc.GiStub.VfuncRelay.overridden(
+		var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", always);
 		string[] names = {};
 		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
@@ -134,39 +134,39 @@
 			if (hook_id == 0) {
 				continue;
 			}
-			var called = GnomeShellRpc.GiStub.VfuncRelay.name_of(
+			var called = Gsr.Client.Rpc.VfuncRelay.name_of(
 				"Clutter", "Actor", vfunc_id);
 			if (called == "") {
-				var rows = GnomeShellRpc.GiStub.Runtime.hook_rows;
+				var rows = Gsr.Client.Rpc.Runtime.hook_rows;
 				rows.remove_at(rows.size - 1);
 				continue;
 			}
 			names += called;
 			vfunc_ids.add("i", vfunc_id);
 		}
-		var response = GnomeShellRpc.call_value("Helper-Actor.create", null,
+		var response = Gsr.call_value("Gsr-Clutter-Actor.create", null,
 			OLLMrpc.args("s", this.get_type().name()));
 		this.rpc_lid = response.args.get(0).get_uint64();
 		this.helper_attached = true;
-		GnomeShellRpc.GiStub.Runtime.register_handle(this);
+		Gsr.Client.Rpc.Runtime.register_handle(this);
 		if (names.length == 0) {
-			GnomeShellRpc.GiStub.Runtime.hook_rows = null;
+			Gsr.Client.Rpc.Runtime.hook_rows = null;
 			return;
 		}
-		var hooks = GnomeShellRpc.call_value("Helper-Actor.add_hooks", this,
+		var hooks = Gsr.call_value("Gsr-Clutter-Actor.add_hooks", this,
 			OLLMrpc.args("Sv", names, vfunc_ids.end()));
 		var ids = hooks.args.get(0).get_variant();
-		if (GnomeShellRpc.GiStub.Runtime.handlers == null) {
-			GnomeShellRpc.GiStub.Runtime.handlers = new Gee.HashMap<int,
-				GnomeShellRpc.GiStub.Runtime.InvokeRow>();
+		if (Gsr.Client.Rpc.Runtime.handlers == null) {
+			Gsr.Client.Rpc.Runtime.handlers = new Gee.HashMap<int,
+				Gsr.Client.Rpc.Runtime.InvokeRow>();
 		}
 		var n = (int) ids.n_children();
 		for (var i = 0; i < n; i++) {
 			var id = ids.get_child_value(i).get_uint64();
-			GnomeShellRpc.GiStub.Runtime.handlers.set((int) id,
-				GnomeShellRpc.GiStub.Runtime.hook_rows.get(i));
+			Gsr.Client.Rpc.Runtime.handlers.set((int) id,
+				Gsr.Client.Rpc.Runtime.hook_rows.get(i));
 		}
-		GnomeShellRpc.GiStub.Runtime.hook_rows = null;
+		Gsr.Client.Rpc.Runtime.hook_rows = null;
 	}
 
 	/**
@@ -178,7 +178,7 @@
 	 * leaf copies ''names'' into
 	 * {@link Shell.Signals.pending_signals} and connects the
 	 * first name. The clutter stub reaches that field through
-	 * {@link GnomeShellRpc.GiStub.Runtime.pending_signals}.
+	 * {@link Gsr.Client.Rpc.Runtime.pending_signals}.
 	 *
 	 * @param t parent type to compare against this object
 	 * @param names signal names gathered on the way down
@@ -194,9 +194,9 @@
 				return;
 			}
 			var pending_signals = names.to_array();
-			GnomeShellRpc.GiStub.Runtime.pending_signals = pending_signals;
-			GnomeShellRpc.GiStub.Runtime.pending_signals_size = pending_signals.length;
-			GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+			Gsr.Client.Rpc.Runtime.pending_signals = pending_signals;
+			Gsr.Client.Rpc.Runtime.pending_signals_size = pending_signals.length;
+			Gsr.Client.Rpc.Runtime.ensure_signal_subscribe(
 				this, pending_signals[0]);
 			return;
 		}
@@ -230,24 +230,24 @@
 
 	uint64 relay_get_preferred_width()
 	{
-		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
 			float min = 0.0f, nat = 0.0f;
-			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
-			GnomeShellRpc.GiStub.VfuncRelay.size_hook = true;
+			Gsr.Client.Rpc.VfuncRelay.begin(this);
+			Gsr.Client.Rpc.VfuncRelay.size_hook = true;
 			try {
-				GnomeShellRpc.GiStub.vfunc_call_preferred_size(
+				Gsr.Client.Rpc.vfunc_call_preferred_size(
 					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "get_preferred_width"),
 					(float) call.args.get(1).get_double(),
 					out min, out nat);
 			} finally {
-				GnomeShellRpc.GiStub.VfuncRelay.end();
+				Gsr.Client.Rpc.VfuncRelay.end();
 			}
 			double out_min = min;
 			double out_nat = nat;
-			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+			if (Gsr.Client.Rpc.VfuncRelay.use_base) {
 				var for_height = call.args.get(1).get_double();
-				var response = GnomeShellRpc.call_value(
-					"Helper-Actor.base_preferred_width", this,
+				var response = Gsr.call_value(
+					"Gsr-Clutter-Actor.base_preferred_width", this,
 					OLLMrpc.args("d", for_height));
 				out_min = response.args.get(0).get_double();
 				out_nat = response.args.get(1).get_double();
@@ -275,24 +275,24 @@
 
 	uint64 relay_get_preferred_height()
 	{
-		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
 			float min = 0.0f, nat = 0.0f;
-			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
-			GnomeShellRpc.GiStub.VfuncRelay.size_hook = true;
+			Gsr.Client.Rpc.VfuncRelay.begin(this);
+			Gsr.Client.Rpc.VfuncRelay.size_hook = true;
 			try {
-				GnomeShellRpc.GiStub.vfunc_call_preferred_size(
+				Gsr.Client.Rpc.vfunc_call_preferred_size(
 					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "get_preferred_height"),
 					(float) call.args.get(1).get_double(),
 					out min, out nat);
 			} finally {
-				GnomeShellRpc.GiStub.VfuncRelay.end();
+				Gsr.Client.Rpc.VfuncRelay.end();
 			}
 			double out_min = min;
 			double out_nat = nat;
-			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+			if (Gsr.Client.Rpc.VfuncRelay.use_base) {
 				var for_width = call.args.get(1).get_double();
-				var response = GnomeShellRpc.call_value(
-					"Helper-Actor.base_preferred_height", this,
+				var response = Gsr.call_value(
+					"Gsr-Clutter-Actor.base_preferred_height", this,
 					OLLMrpc.args("d", for_width));
 				out_min = response.args.get(0).get_double();
 				out_nat = response.args.get(1).get_double();
@@ -316,22 +316,22 @@
 
 	uint64 relay_allocate()
 	{
-		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
 			this.relayout_queued = false;
 			var box = ActorBox();
 			box.x1 = (float) call.args.get(1).get_double();
 			box.y1 = (float) call.args.get(2).get_double();
 			box.x2 = (float) call.args.get(3).get_double();
 			box.y2 = (float) call.args.get(4).get_double();
-			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			Gsr.Client.Rpc.VfuncRelay.begin(this);
 			try {
-				GnomeShellRpc.GiStub.vfunc_call_void_pointer(
+				Gsr.Client.Rpc.vfunc_call_void_pointer(
 					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "allocate"),
 					(void*) &box);
 			} finally {
-				GnomeShellRpc.GiStub.VfuncRelay.end();
+				Gsr.Client.Rpc.VfuncRelay.end();
 			}
-			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+			if (Gsr.Client.Rpc.VfuncRelay.use_base) {
 				return OLLMrpc.args("b", true);
 			}
 			return OLLMrpc.args("b", false);
@@ -344,7 +344,7 @@
 	 */
 	uint64 relay_event()
 	{
-		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
 			var type = (EventType) call.args.get(1).get_int();
 			var x = (float) call.args.get(2).get_double();
 			var y = (float) call.args.get(3).get_double();
@@ -354,7 +354,7 @@
 				keyval = call.args.get(5).get_uint();
 			}
 			var ev = Event.from_local(type, x, y, button, 0, keyval);
-			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			Gsr.Client.Rpc.VfuncRelay.begin(this);
 			var baseline = GLib.Type.from_name("StWidget");
 			var has_override = baseline != GLib.Type.INVALID
 				&& OLLMrpc.Gi.vfunc_slot(this.get_type(), "Clutter", "Actor", "event")
@@ -362,14 +362,14 @@
 			bool stop = false;
 			try {
 				if (has_override) {
-					stop = GnomeShellRpc.GiStub.vfunc_call_bool_pointer(
+					stop = Gsr.Client.Rpc.vfunc_call_bool_pointer(
 						this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "event"),
 						(void*) ev);
 				} else {
-					GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+					Gsr.Client.Rpc.VfuncRelay.use_base = true;
 				}
 			} finally {
-				GnomeShellRpc.GiStub.VfuncRelay.end();
+				Gsr.Client.Rpc.VfuncRelay.end();
 			}
 			switch (type) {
 				case EventType.key_press:
@@ -381,7 +381,7 @@
 				default:
 					break;
 			}
-			if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
+			if (Gsr.Client.Rpc.VfuncRelay.use_base) {
 				return OLLMrpc.args("b", false);
 			}
 			return OLLMrpc.args("b", stop);
@@ -395,7 +395,7 @@
 	 */
 	uint64 relay_captured_event()
 	{
-		return GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+		return Gsr.Client.Rpc.Runtime.callback_bind((call) => {
 			var type = (EventType) call.args.get(1).get_int();
 			var x = (float) call.args.get(2).get_double();
 			var y = (float) call.args.get(3).get_double();
@@ -410,18 +410,18 @@
 			var has_override = baseline != GLib.Type.INVALID
 				&& OLLMrpc.Gi.vfunc_slot(this.get_type(), "Clutter", "Actor", "captured_event")
 				!= OLLMrpc.Gi.vfunc_slot(baseline, "Clutter", "Actor", "captured_event");
-			GnomeShellRpc.GiStub.VfuncRelay.begin(this);
+			Gsr.Client.Rpc.VfuncRelay.begin(this);
 			try {
 				if (has_override
-						&& GnomeShellRpc.GiStub.vfunc_call_bool_pointer(
+						&& Gsr.Client.Rpc.vfunc_call_bool_pointer(
 							this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "captured_event"),
 							(void*) ev)) {
 					stop = true;
 				} else if (!has_override) {
-					GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+					Gsr.Client.Rpc.VfuncRelay.use_base = true;
 				}
 			} finally {
-				GnomeShellRpc.GiStub.VfuncRelay.end();
+				Gsr.Client.Rpc.VfuncRelay.end();
 			}
 			return OLLMrpc.args("b", stop);
 		});
@@ -458,21 +458,21 @@
 			}
 			return;
 		}
-		var caps = GnomeShellRpc.GiStub.VfuncRelay.overridden(
+		var caps = Gsr.Client.Rpc.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
 		if (!caps.contains(vfunc)) {
 			return;
 		}
-		GnomeShellRpc.GiStub.VfuncRelay.size_hook = true;
+		Gsr.Client.Rpc.VfuncRelay.size_hook = true;
 		try {
-			GnomeShellRpc.GiStub.vfunc_call_preferred_size(
+			Gsr.Client.Rpc.vfunc_call_preferred_size(
 				this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", vfunc),
 				for_size, out min_p, out natural_p);
 		} finally {
-			GnomeShellRpc.GiStub.VfuncRelay.size_hook = false;
+			Gsr.Client.Rpc.VfuncRelay.size_hook = false;
 		}
-		if (GnomeShellRpc.GiStub.VfuncRelay.use_base) {
-			GnomeShellRpc.GiStub.VfuncRelay.use_base = false;
+		if (Gsr.Client.Rpc.VfuncRelay.use_base) {
+			Gsr.Client.Rpc.VfuncRelay.use_base = false;
 			min_p = 0.0f;
 			natural_p = 0.0f;
 		}
@@ -483,14 +483,14 @@
 		out float min_width_p,
 		out float natural_width_p
 	) {
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this
-				&& GnomeShellRpc.GiStub.VfuncRelay.size_hook) {
-			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this
+				&& Gsr.Client.Rpc.VfuncRelay.size_hook) {
+			Gsr.Client.Rpc.VfuncRelay.use_base = true;
 			min_width_p = 0.0f;
 			natural_width_p = 0.0f;
 			return;
 		}
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this) {
 			this.preferred_size_during_allocate(
 				true, for_height, out min_width_p, out natural_width_p);
 			return;
@@ -502,7 +502,7 @@
 				out min_width_p, out natural_width_p);
 			return;
 		}
-		var response = GnomeShellRpc.call_value(
+		var response = Gsr.call_value(
 			"Clutter-Actor.get_preferred_width", this,
 			OLLMrpc.args("f", (double) for_height));
 		min_width_p = (float) response.args.get(0).get_float();
@@ -514,14 +514,14 @@
 		out float min_height_p,
 		out float natural_height_p
 	) {
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this
-				&& GnomeShellRpc.GiStub.VfuncRelay.size_hook) {
-			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this
+				&& Gsr.Client.Rpc.VfuncRelay.size_hook) {
+			Gsr.Client.Rpc.VfuncRelay.use_base = true;
 			min_height_p = 0.0f;
 			natural_height_p = 0.0f;
 			return;
 		}
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this) {
 			this.preferred_size_during_allocate(
 				false, for_width, out min_height_p, out natural_height_p);
 			return;
@@ -533,7 +533,7 @@
 				out min_height_p, out natural_height_p);
 			return;
 		}
-		var response = GnomeShellRpc.call_value(
+		var response = Gsr.call_value(
 			"Clutter-Actor.get_preferred_height", this,
 			OLLMrpc.args("f", (double) for_width));
 		min_height_p = (float) response.args.get(0).get_float();
@@ -543,15 +543,15 @@
 	/* Not virtual — Vala would put allocate on a Class slot GJS never uses. */
 	public void allocate(ActorBox box)
 	{
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this) {
+			Gsr.Client.Rpc.VfuncRelay.use_base = true;
 			return;
 		}
 		this.allocation_priv = box;
 		if (this.helper_attached) {
 			uint8[] helper_data = new uint8[sizeof(ActorBox)];
 			*((ActorBox*) helper_data) = box;
-			GnomeShellRpc.call_value("Helper-Actor.allocate_public", this,
+			Gsr.call_value("Gsr-Clutter-Actor.allocate_public", this,
 				OLLMrpc.args("ay", new GLib.Bytes(helper_data)));
 			return;
 		}
@@ -562,7 +562,7 @@
 		}
 		uint8[] data = new uint8[sizeof(ActorBox)];
 		*((ActorBox*) data) = box;
-		GnomeShellRpc.call_value(
+		Gsr.call_value(
 			"Clutter-Actor.allocate", this,
 			OLLMrpc.args("ay", new GLib.Bytes(data)));
 	}
@@ -570,15 +570,15 @@
 	/**
 	 * Stock {@code clutter_actor_event}. Compact {@link Event} is not a
 	 * wire type. Pack type / capture / coords / button / keyval / state.
-	 * {@code Helper-Actor.deliver_event} calls {@code clutter_actor_event}.
+	 * {@code Gsr-Clutter-Actor.deliver_event} calls {@code clutter_actor_event}.
 	 */
 	public bool event(Event? event, bool capture)
 	{
 		if (event == null) {
 			return false;
 		}
-		var response = GnomeShellRpc.call_value(
-			"Helper-Actor.deliver_event", this,
+		var response = Gsr.call_value(
+			"Gsr-Clutter-Actor.deliver_event", this,
 			OLLMrpc.args("ibddduu",
 				(int) event.type(),
 				capture,
@@ -599,8 +599,8 @@
 		out float min_width_p,
 		out float natural_width_p
 	) {
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this) {
+			Gsr.Client.Rpc.VfuncRelay.use_base = true;
 		}
 		min_width_p = 0.0f;
 		natural_width_p = 0.0f;
@@ -611,8 +611,8 @@
 		out float min_height_p,
 		out float natural_height_p
 	) {
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this) {
+			Gsr.Client.Rpc.VfuncRelay.use_base = true;
 		}
 		min_height_p = 0.0f;
 		natural_height_p = 0.0f;
@@ -620,8 +620,8 @@
 
 	protected void allocate_vfunc_fallback(ActorBox box)
 	{
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
-			GnomeShellRpc.GiStub.VfuncRelay.use_base = true;
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this) {
+			Gsr.Client.Rpc.VfuncRelay.use_base = true;
 		}
 	}
 
@@ -652,20 +652,20 @@
 	{
 		this.actor_visible = true;
 		if (this.prop_batch_open) {
-			GnomeShellRpc.batch_call_value("Clutter-Actor.show", this, "visible",
+			Gsr.Client.Clutter.Batch.call_value("Clutter-Actor.show", this, "visible",
 				OLLMrpc.args("b", true));
 		}
-		GnomeShellRpc.call_value("Clutter-Actor.show", this);
+		Gsr.call_value("Clutter-Actor.show", this);
 	}
 
 	public void hide()
 	{
 		this.actor_visible = false;
 		if (this.prop_batch_open) {
-			GnomeShellRpc.batch_call_value("Clutter-Actor.hide", this, "visible",
+			Gsr.Client.Clutter.Batch.call_value("Clutter-Actor.hide", this, "visible",
 				OLLMrpc.args("b", false));
 		}
-		GnomeShellRpc.call_value("Clutter-Actor.hide", this);
+		Gsr.call_value("Clutter-Actor.hide", this);
 	}
 
 	/**
@@ -675,7 +675,7 @@
 	 */
 	public Graphene.Point pivot_point {
 		get {
-			var response = GnomeShellRpc.call_value(
+			var response = Gsr.call_value(
 				"Clutter-Actor.get_pivot_point", this);
 			var x = (float) response.args.get(0).get_float();
 			var y = (float) response.args.get(1).get_float();
@@ -684,7 +684,7 @@
 			return point;
 		}
 		set {
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Clutter-Actor.set_pivot_point", this,
 				OLLMrpc.args("ff", (double) value.x, (double) value.y));
 		}
@@ -734,14 +734,14 @@
 		this.allocation_priv = box;
 		uint8[] data = new uint8[sizeof(ActorBox)];
 		*((ActorBox*) data) = box;
-		GnomeShellRpc.call_value("Clutter-Actor.set_allocation", this,
+		Gsr.call_value("Clutter-Actor.set_allocation", this,
 			OLLMrpc.args("ay", new GLib.Bytes(data)));
 	}
 
 	/**
 	 * Stock {@code clutter_actor_queue_relayout} — generator body denied so
 	 * we can coalesce. Dash {@code notify::scale-x} calls this every set;
-	 * a sync RPC each time re-enters Helper-Actor allocate. One RPC until
+	 * a sync RPC each time re-enters Gsr-Clutter-Actor allocate. One RPC until
 	 * allocate, like stock {@code needs_relayout}. No extra GObject signal.
 	 * Not virtual — see {@link get_preferred_width}.
 	 */
@@ -751,10 +751,10 @@
 			return;
 		}
 		this.relayout_queued = true;
-		if (GnomeShellRpc.GiStub.VfuncRelay.hook_actor == this) {
+		if (Gsr.Client.Rpc.VfuncRelay.hook_actor == this) {
 			return;
 		}
-		GnomeShellRpc.call_value("Clutter-Actor.queue_relayout", this);
+		Gsr.call_value("Clutter-Actor.queue_relayout", this);
 	}
 
 	/**
@@ -785,7 +785,7 @@
 	public string name {
 		owned get {
 			if (!this.name_known) {
-				var response = GnomeShellRpc.call_value("Clutter-Actor.get_name", this);
+				var response = Gsr.call_value("Clutter-Actor.get_name", this);
 				unowned string? s = response.retval.get_string();
 				this.actor_name = s != null ? s.dup() : "";
 				this.name_known = true;
@@ -795,7 +795,7 @@
 		set {
 			this.actor_name = value ?? "";
 			this.name_known = true;
-			GnomeShellRpc.call_value("Clutter-Actor.set_name", this,
+			Gsr.call_value("Clutter-Actor.set_name", this,
 				OLLMrpc.args("s", this.actor_name));
 		}
 	}
@@ -813,7 +813,7 @@
 		}
 		this.cached_scale_x = scale_x;
 		this.cached_scale_y = scale_y;
-		GnomeShellRpc.call_value(
+		Gsr.call_value(
 			"Clutter-Actor.set_scale", this,
 			OLLMrpc.args("dd", scale_x, scale_y));
 	}
@@ -952,14 +952,14 @@
 				if (previous == null) {
 					return;
 				}
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Clutter-Actor.set_layout_manager",
 					this,
 					OLLMrpc.args("o", null));
 				return;
 			}
 			if (value.rpc_lid != 0) {
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Clutter-Actor.set_layout_manager",
 					this,
 					OLLMrpc.args("o", value));
@@ -968,7 +968,7 @@
 					previous.set_container(null);
 				}
 				value.set_container(this);
-				GnomeShellRpc.call_value("Clutter-Actor.set_layout_manager",
+				Gsr.call_value("Clutter-Actor.set_layout_manager",
 					this, OLLMrpc.args("o", value.create_server_manager()));
 			}
 		}
@@ -980,13 +980,13 @@
 	 * Server returns the live Transition (implicit animation from easing +
 	 * set). {@code ui/environment.js} {@code Actor.ease()} connects
 	 * {@code stopped} for {@code onComplete}; without
-	 * {@link GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe}, that
+	 * {@link Gsr.Client.Rpc.Runtime.ensure_signal_subscribe}, that
 	 * signal never reaches the client and MessageTray never arms
 	 * {@code NOTIFICATION_TIMEOUT}.
 	 */
 	public Transition? get_transition(string name)
 	{
-		var response = GnomeShellRpc.call_value(
+		var response = Gsr.call_value(
 			"Clutter-Actor.get_transition", this,
 			OLLMrpc.args("s", name));
 		if (response.retval.type() == GLib.Type.INVALID
@@ -994,7 +994,7 @@
 			return null;
 		}
 		var transition = (Transition) response.retval.get_object();
-		GnomeShellRpc.GiStub.Runtime.ensure_signal_subscribe(
+		Gsr.Client.Rpc.Runtime.ensure_signal_subscribe(
 			transition, "stopped");
 		return transition;
 	}
@@ -1008,7 +1008,7 @@
 	 */
 	public Effect? get_effect(string name)
 	{
-		var response = GnomeShellRpc.call_value("Clutter-Actor.get_effect", this,
+		var response = Gsr.call_value("Clutter-Actor.get_effect", this,
 			OLLMrpc.args("s", name));
 		if (response.retval.type() == GLib.Type.INVALID
 				|| response.retval.get_object() == null) {

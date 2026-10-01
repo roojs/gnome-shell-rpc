@@ -22,7 +22,7 @@
  * release the emit, and any Response behind it — is stranded in the client's
  * bin buffer with nothing left to wake the poll.
  *
- * Our OWN server {@link GnomeShellRpc.Rpc.Connection.emit_wait_poll} already
+ * Our OWN server {@link Gsr.Server.Rpc.Connection.emit_wait_poll} already
  * fixes this class for the SERVER: {@code input_pending()} consults
  * {@code bin.in_stream.get_available()} and {@code drain_readable()} loops on
  * it. The libocrpc CLIENT has no equivalent.
@@ -118,15 +118,15 @@ class Gate : GLib.Object
 static void boot_rpc()
 {
 	OLLMrpc.rpc_register(true);
-	GnomeShellRpc.Rpc.Daemon.rpc_register();
-	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
+	Gsr.Server.Daemon.rpc_register();
+	OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
 	Gate.rpc_register();
 }
 
 static int run_server(string sock)
 {
 	boot_rpc();
-	var listen = new GnomeShellRpc.Rpc.Listen(sock) {
+	var listen = new Gsr.Server.Rpc.Listen(sock) {
 		live_handles = true,
 	};
 	if (!listen.start()) {

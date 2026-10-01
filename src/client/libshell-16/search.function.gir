@@ -1,6 +1,12 @@
 <function name="search" c:identifier="shell_app_system_search"
           xmlns="http://www.gtk.org/introspection/core/1.0"
           xmlns:c="http://www.gtk.org/introspection/c/1.0">
+			<!--
+				Vala 0.56 GirWriter cannot emit a nested GStrv (char***).
+				Stock Shell.AppSystem.search returns one. scripts/gir-inject.xsl
+				copies this element onto class AppSystem in Shell-16.gir
+				before g-ir-compiler runs.
+			-->
 			<return-value transfer-ownership="full">
 				<array zero-terminated="1" c:type="char***">
 					<array zero-terminated="1">

@@ -1,0 +1,11 @@
+# Clutter setters that stay in the property batch (Gsr.Client.Clutter.Batch.call_value).
+# A setter not listed here is call_value and flushes the batch.
+# Clutter.BoxLayout is not an actor, so it is not listed.
+# St setters live in libst-rpc-16/batch.whitelist.
+
+Clutter.Actor.set_x_expand
+Clutter.Actor.set_y_expand
+Clutter.Actor.set_x_align
+Clutter.Actor.set_y_align
+Clutter.Actor.set_reactive
+Clutter.Actor.set_opacity

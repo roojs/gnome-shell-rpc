@@ -1,13 +1,13 @@
 /**
  * Delivers theme apply for the leased {@code StThemeContext}.
  *
- * Client {@code St.Theme} is local (Gio.File not on wire). Wire sends
+ * Client {@code global::St.Theme} is local (Gio.File not on wire). Wire sends
  * stylesheet URIs; compositor builds a real StTheme via libst C and
  * applies it so server-side St chrome can paint CSS.
  *
- * Wire prefix ''Helper-ThemeContext''.
+ * Wire prefix ''Gsr-St-ThemeContext''.
  *
- * ℹ️ Why {@code [CCode]} {@code st_theme_*} and not {@code new St.Theme}:
+ * ℹ️ Why {@code [CCode]} {@code st_theme_*} and not {@code new global::St.Theme}:
  * mutter-rpc already links distro {@code libst-16.so} (for
  * {@code Gi.register("St")}), and distro ships {@code St-16.gir} /
  * typelib, but **no** installable {@code St-16.vapi}. Vala therefore
@@ -16,13 +16,13 @@
  * Keep these externs (or a future server-only VAPI we own); do not pull
  * st-rpc into mutter-rpc for Theme.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.St
 {
 	public class ThemeContext : GLib.Object
 	{
 		private static bool theme_gresource_tried = false;
 
-		/* Distro libst C — see file comment (no St.vapi on server). */
+		/* Distro libst C — see file comment (no global::St.vapi on server). */
 		[CCode (cname = "st_theme_new")]
 		private static extern GLib.Object st_theme_new(
 			GLib.File? application_stylesheet,
@@ -45,16 +45,16 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-ThemeContext", typeof(ThemeContext),
+				"Gsr-St-ThemeContext", typeof(ThemeContext),
 				"set_theme", "sssS",
 				null
 			);
 			OLLMrpc.Request.register_live(
-				"Helper-ThemeContext", new ThemeContext());
+				"Gsr-St-ThemeContext", new ThemeContext());
 		}
 
 		/**
-		 * ''Helper-ThemeContext.set_theme'' — URI list → real StTheme on
+		 * ''Gsr-St-ThemeContext.set_theme'' — URI list → real StTheme on
 		 * the leased StThemeContext.
 		 *
 		 * @param request inbound RPC (lease = ThemeContext)
@@ -72,7 +72,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		) {
 			string[] customs = custom_uris ?? new string[0];
 			GLib.debug(
-				"Helper-ThemeContext.set_theme enter customs=%d "
+				"Gsr-St-ThemeContext.set_theme enter customs=%d "
 				+ "app='%s' theme='%s' default='%s'",
 				customs.length,
 				application_uri ?? "",
@@ -86,7 +86,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					var resource = GLib.Resource.load(gresource_path);
 					GLib.resources_register(resource);
 				} catch (GLib.Error e) {
-					GLib.warning("Helper-ThemeContext: register %s: %s",
+					GLib.warning("Gsr-St-ThemeContext: register %s: %s",
 						gresource_path, e.message);
 				}
 			}
@@ -100,7 +100,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
 					new GLib.IOError.INVALID_ARGUMENT(
-						"Helper-ThemeContext.set_theme: no stylesheet uris"));
+						"Gsr-St-ThemeContext.set_theme: no stylesheet uris"));
 				return;
 			}
 			var theme = st_theme_new(application, theme_file, default_file);
@@ -112,12 +112,12 @@ namespace GnomeShellRpc.Rpc.Helper
 				try {
 					st_theme_load_stylesheet(theme, custom);
 				} catch (GLib.Error e) {
-					GLib.warning("Helper-ThemeContext.load_stylesheet %s: %s",
+					GLib.warning("Gsr-St-ThemeContext.load_stylesheet %s: %s",
 						uri, e.message);
 				}
 			}
 			st_theme_context_set_theme(ctx, theme);
-			GLib.message("Helper-ThemeContext.set_theme ok default=%s app=%s customs=%d",
+			GLib.message("Gsr-St-ThemeContext.set_theme ok default=%s app=%s customs=%d",
 				default_uri, application_uri, customs.length);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
@@ -150,7 +150,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					return disk;
 				}
 			}
-			GLib.warning("Helper-ThemeContext: stylesheet missing uri=%s", uri);
+			GLib.warning("Gsr-St-ThemeContext: stylesheet missing uri=%s", uri);
 			return null;
 		}
 	}

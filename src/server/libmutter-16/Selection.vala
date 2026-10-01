@@ -1,12 +1,12 @@
 /**
- * Delivers {@link Meta.Selection} Override RPC (plan 0.5.5 F).
+ * Delivers {@link global::Meta.Selection} Override RPC (plan 0.5.5 F).
  *
- * Wire prefix ''Helper-Selection''. Lease is the selection.
+ * Wire prefix ''Gsr-Mutter-Selection''. Lease is the selection.
  * {@link transfer} runs mutter's async transfer into a memory stream on the
  * compositor, then replies with the bytes on {@link OLLMrpc.Request.reply}'s
  * buffer (same memfd pattern as paint).
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class Selection : GLib.Object
 	{
@@ -16,11 +16,11 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-Selection", typeof(Selection),
+				"Gsr-Mutter-Selection", typeof(Selection),
 				"transfer", "isxt",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-Selection",
+			OLLMrpc.Request.register_live("Gsr-Mutter-Selection",
 				new Selection());
 		}
 
@@ -31,11 +31,11 @@ namespace GnomeShellRpc.Rpc.Helper
 			int64 size,
 			uint64 cancel_id
 		) {
-			var selection = (Meta.Selection) request.connection.leases.get(
+			var selection = (global::Meta.Selection) request.connection.leases.get(
 				(int) request.lease_id);
 			var stream = new GLib.MemoryOutputStream.resizable();
-			var cancel = GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id);
-			selection.transfer_async.begin((Meta.SelectionType) selection_type,
+			var cancel = Gsr.Server.CancellableBridge.lookup(cancel_id);
+			selection.transfer_async.begin((global::Meta.SelectionType) selection_type,
 				mimetype, (ssize_t) size, stream, cancel, (obj, res) => {
 					GLib.Error? err = null;
 					var ok = false;

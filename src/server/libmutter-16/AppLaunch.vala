@@ -1,20 +1,20 @@
 /**
  * Compositor-side {@link Gio.AppInfo.launch} for out-of-process shell.
  *
- * Wire prefix ''Helper-AppLaunch''. Stock gnome-shell launches from the
+ * Wire prefix ''Gsr-Mutter-AppLaunch''. Stock gnome-shell launches from the
  * compositor process; {@code gnome-shell-rpc} must not {@code Gio.spawn}
- * as a {@code Meta.WaylandClient} child (see search launch bug D″).
+ * as a {@code global::Meta.WaylandClient} child (see search launch bug D″).
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class AppLaunch : GLib.Object
 	{
-		public Meta.Display meta_display { get; construct; }
+		public global::Meta.Display meta_display { get; construct; }
 
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-AppLaunch", typeof(AppLaunch),
+				"Gsr-Mutter-AppLaunch", typeof(AppLaunch),
 				"launch_commandline", "sui",
 				"launch_desktop_file", "sui",
 				"launch_action", "ssui",
@@ -22,12 +22,12 @@ namespace GnomeShellRpc.Rpc.Helper
 			);
 		}
 
-		public static void bind(Meta.Display display)
+		public static void bind(global::Meta.Display display)
 		{
-			OLLMrpc.Request.register_live("Helper-AppLaunch", new AppLaunch(display));
+			OLLMrpc.Request.register_live("Gsr-Mutter-AppLaunch", new AppLaunch(display));
 		}
 
-		public AppLaunch(Meta.Display meta_display)
+		public AppLaunch(global::Meta.Display meta_display)
 		{
 			GLib.Object(
 				meta_display: meta_display
@@ -38,7 +38,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 * Same shape as stock {@code shell_global_create_app_launch_context}:
 		 * mutter {@code create_launcher()}, with the private compositor-client
 		 * fd removed. {@code WAYLAND_SOCKET} belongs to gnome-shell-rpc's
-		 * {@link Meta.WaylandClient} connection and must not be inherited by
+		 * {@link global::Meta.WaylandClient} connection and must not be inherited by
 		 * separately launched applications. Keep Mutter's stock DISPLAY /
 		 * WAYLAND_DISPLAY launch-context behavior; do not unset DISPLAY or
 		 * force a toolkit backend here (see
@@ -55,7 +55,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			if (timestamp == 0) {
 				timestamp = (uint) (GLib.get_monotonic_time() / 1000);
 			}
-			var meta_ctx = context as Meta.LaunchContext;
+			var meta_ctx = context as global::Meta.LaunchContext;
 			if (meta_ctx != null) {
 				meta_ctx.set_timestamp(timestamp);
 				if (workspace > -1) {
@@ -85,7 +85,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				}
 				ok = app.launch(null, ctx);
 			} catch (GLib.Error e) {
-				GLib.warning("Helper-AppLaunch.launch_commandline: %s", e.message);
+				GLib.warning("Gsr-Mutter-AppLaunch.launch_commandline: %s", e.message);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
@@ -108,7 +108,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				}
 				ok = app.launch(null, ctx);
 			} catch (GLib.Error e) {
-				GLib.warning("Helper-AppLaunch.launch_desktop_file: %s", e.message);
+				GLib.warning("Gsr-Mutter-AppLaunch.launch_desktop_file: %s", e.message);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
@@ -133,7 +133,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				app.launch_action(action_name, ctx);
 				ok = true;
 			} catch (GLib.Error e) {
-				GLib.warning("Helper-AppLaunch.launch_action: %s", e.message);
+				GLib.warning("Gsr-Mutter-AppLaunch.launch_action: %s", e.message);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

@@ -1,9 +1,9 @@
 /**
- * Concrete {@link Clutter.Constraint} base for JS subclasses, plus Ffi
+ * Concrete {@link global::Clutter.Constraint} base for JS subclasses, plus Ffi
  * {@code Clutter-AlignConstraint.new} / Bind / Snap (real mutter types).
  *
  * Hierarchy (no type switch in {@code create}):
- * - {@code Helper-Constraint.create} → this class + client {@code update_allocation}
+ * - {@code Gsr-Clutter-Constraint.create} → this class + client {@code update_allocation}
  * - {@code Clutter-AlignConstraint.new} etc. → {@code g_object_new} of that type
  *
  * Leaf {@code *.new} cannot use stock GObject ctor symbols on Ffi — same
@@ -11,9 +11,9 @@
  *
  * @see docs/bugs/2026-09-07-align-constraint-relay-mint.md
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
-	public class Constraint : Clutter.Constraint
+	public class Constraint : global::Clutter.Constraint
 	{
 		public OLLMrpc.Live.Hook update_hook;
 
@@ -21,12 +21,12 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			var helper = new Constraint();
 			OLLMrpc.Request.add_class(
-				"Helper-Constraint", typeof(Constraint),
+				"Gsr-Clutter-Constraint", typeof(Constraint),
 				"create", "t",
 				"set_update_callback", "t",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-Constraint", helper);
+			OLLMrpc.Request.register_live("Gsr-Clutter-Constraint", helper);
 			OLLMrpc.Request.add_class("Clutter-AlignConstraint", typeof(Constraint), "new", "", null);
 			OLLMrpc.Request.register_live("Clutter-AlignConstraint", helper);
 			OLLMrpc.Request.add_class("Clutter-BindConstraint", typeof(Constraint), "new", "", null);
@@ -42,8 +42,8 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		public override void update_allocation(
-			Clutter.Actor actor,
-			Clutter.ActorBox allocation
+			global::Clutter.Actor actor,
+			global::Clutter.ActorBox allocation
 		) {
 			if (this.update_hook == null) {
 				return;
@@ -62,7 +62,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Constraint.create'' — JS / abstract Constraint peer.
+		 * ''Gsr-Clutter-Constraint.create'' — JS / abstract Constraint peer.
 		 *
 		 * @param request live create
 		 * @param callback_id {@code RPC-Live-Callback.register} id

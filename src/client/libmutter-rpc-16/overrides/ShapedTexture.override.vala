@@ -13,8 +13,8 @@
 				clip_width = clip.width;
 				clip_height = clip.height;
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-ShapedTexture.get_image", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-ShapedTexture.get_image", this,
 				OLLMrpc.args("biiii", has_clip, clip_x, clip_y,
 					clip_width, clip_height));
 			if (response.args.size < 3 || response.buffer == null

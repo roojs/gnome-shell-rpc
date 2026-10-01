@@ -1,23 +1,23 @@
 /**
- * Delivers {@link Meta.IdleMonitor} Override RPC (plan 0.5.6 B2).
+ * Delivers {@link global::Meta.IdleMonitor} Override RPC (plan 0.5.6 B2).
  *
- * Wire prefix ''Helper-IdleMonitor''. Lease is the monitor.
+ * Wire prefix ''Gsr-Mutter-IdleMonitor''. Lease is the monitor.
  * Mutter Vala hides GIR user_data / notify; the trampoline is an
- * {@link Meta.IdleMonitorWatchFunc} that captures the {@link OLLMrpc.Live.Hook}.
+ * {@link global::Meta.IdleMonitorWatchFunc} that captures the {@link OLLMrpc.Live.Hook}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class IdleMonitor : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-IdleMonitor", typeof(IdleMonitor),
+				"Gsr-Mutter-IdleMonitor", typeof(IdleMonitor),
 				"add_idle_watch", "tt",
 				"add_user_active_watch", "t",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-IdleMonitor",
+			OLLMrpc.Request.register_live("Gsr-Mutter-IdleMonitor",
 				 new IdleMonitor());
 		}
 
@@ -26,7 +26,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			uint64 interval_msec,
 			uint64 callback_id
 		) {
-			var monitor = (Meta.IdleMonitor) request.connection.leases.get(
+			var monitor = (global::Meta.IdleMonitor) request.connection.leases.get(
 				(int) request.lease_id);
 			if (!request.connection.callbacks.has_key((int) callback_id)) {
 				request.reply(new OLLMrpc.Response() {
@@ -52,7 +52,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Request request,
 			uint64 callback_id
 		) {
-			var monitor = (Meta.IdleMonitor) request.connection.leases.get(
+			var monitor = (global::Meta.IdleMonitor) request.connection.leases.get(
 				(int) request.lease_id);
 			if (!request.connection.callbacks.has_key((int) callback_id)) {
 				request.reply(new OLLMrpc.Response() {

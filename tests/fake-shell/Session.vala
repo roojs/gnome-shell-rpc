@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.FakeShell
+namespace Gsr.FakeShell
 {
 	/**
 	 * Owns the RPC {@link OLLMrpc.Client} for a compositor connection.
@@ -9,7 +9,7 @@ namespace GnomeShellRpc.FakeShell
 	 * == Example ==
 	 *
 	 * {{{
-	 * var session = new GnomeShellRpc.FakeShell.Session();
+	 * var session = new Gsr.FakeShell.Session();
 	 * yield session.connect();
 	 * }}}
 	 */
@@ -30,7 +30,7 @@ namespace GnomeShellRpc.FakeShell
 		public new async void connect() throws GLib.Error
 		{
 			Shared.Rectangle.rpc_register();
-			Ui.Window.rpc_register();
+			Gsr.Shared.Window.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
 
 			var socket_path = GLib.Environment.get_variable("MUTTER_RPC_SOCKET");

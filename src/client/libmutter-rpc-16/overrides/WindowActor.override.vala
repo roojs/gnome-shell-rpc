@@ -8,8 +8,8 @@
 				clip_width = clip.width;
 				clip_height = clip.height;
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-WindowActor.paint_to_content", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-WindowActor.paint_to_content", this,
 				OLLMrpc.args("biiii", has_clip, clip_x, clip_y,
 					clip_width, clip_height));
 			if (response.args.size < 3 || response.buffer == null
@@ -34,7 +34,7 @@
 			if (got < nbytes) {
 				return null;
 			}
-			return new GnomeShellRpc.GiStub.PaintedContent(
+			return new Gsr.Client.Rpc.PaintedContent(
 				width, height, stride, (owned) pixels);
 		}
 
@@ -52,8 +52,8 @@
 				clip_width = clip.width;
 				clip_height = clip.height;
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-WindowActor.get_image", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-WindowActor.get_image", this,
 				OLLMrpc.args("biiii", has_clip, clip_x, clip_y,
 					clip_width, clip_height));
 			if (response.args.size < 3 || response.buffer == null

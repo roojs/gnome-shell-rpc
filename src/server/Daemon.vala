@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server
 {
 	/**
 	 * Server {@code RPC-Daemon.hello}.
@@ -6,7 +6,7 @@ namespace GnomeShellRpc.Rpc
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
+	 * OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
 	 * }}}
 	 */
 	public class Daemon : GLib.Object, OLLMrpc.Bin.Serializable

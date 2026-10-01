@@ -1,36 +1,15 @@
-/**
- * Nested mutter compositor exposing desktop state over GObject RPC.
- *
- * {@link Plugin} is the in-process {@link Meta.Plugin}. The process starts
- * a {@link Meta.Context} the same way Gala does: the Vala binary links
- * libmutter and calls {@link Meta.Context.set_plugin_gtype}. Stock mutter
- * is not loaded with `--mutter-plugin` yet.
- *
- * {@link GnomeShellRpc.Ui} types are the remote representation of what the
- * user sees. {@link GnomeShellRpc.Rpc.Server} listens on a Unix socket.
- *
- * == Example ==
- *
- * {{{
- * dbus-run-session ./build/src/mutter-rpc --wayland --nested
- * }}}
- */
-namespace GnomeShellRpc
+namespace Gsr
 {
-
-	//FIXME << what on earth is this doing here?
-	// probably sovled by the big rename project...
-#if GSR_GI_STUB
-	[CCode (cname = "gsr_flush_prop_batch")]
-	private extern void flush_prop_batch(GLib.Object? instance) throws GLib.Error;
+	[CCode (cname = "gsr_client_clutter_batch_flush_prop")]
+	private extern void flush_prop(GLib.Object? instance) throws GLib.Error;
 
 	/**
 	 * Sync RPC call with positional {@link GLib.Value}s and optional instance.
 	 *
 	 * An open {@link Clutter.Actor.prop_batch} with nothing in it is
 	 * closed. A non-empty map is sent as
-	 * ''Helper-Actor.add_properties'' and closed. Entries are added
-	 * only by {@link batch_call_value} while the batch is open, so
+	 * ''Gsr-Clutter-Actor.add_properties'' and closed. Entries are added
+	 * only by {@link Client.Clutter.Batch.call_value} while the batch is open, so
 	 * the flush looks at the map size.
 	 *
 	 * @param method wire method (e.g. ''Meta-Window.minimize'')
@@ -47,10 +26,10 @@ namespace GnomeShellRpc
 		Gee.ArrayList<GLib.Value?>? args = null,
 		OLLMrpc.Live.Buffer? buffer = null
 	) throws GLib.Error {
-		flush_prop_batch(instance);
+		flush_prop(instance);
 		uint64 lease_id = 0;
 		if (instance != null) {
-			lease_id = GiStub.Runtime.lease_id_of(instance, method);
+			lease_id = Gsr.Client.Rpc.Runtime.lease_id_of(instance, method);
 		}
 		var req = new OLLMrpc.Request() {
 			method = method,
@@ -58,7 +37,7 @@ namespace GnomeShellRpc
 			buffer = buffer,
 		};
 		if (args == null) {
-			return GiStub.Runtime.do_call(req);
+			return Gsr.Client.Rpc.Runtime.do_call(req);
 		}
 		foreach (var val in args) {
 			if (!val.type().is_a(GLib.Type.OBJECT)) {
@@ -72,12 +51,11 @@ namespace GnomeShellRpc
 				req.args.add(zero);
 				continue;
 			}
-			var lease = GiStub.Runtime.lease_id_of(obj, method);
+			var lease = Gsr.Client.Rpc.Runtime.lease_id_of(obj, method);
 			var wire = GLib.Value(GLib.Type.UINT64);
 			wire.set_uint64(lease);
 			req.args.add(wire);
 		}
-		return GiStub.Runtime.do_call(req);
+		return Gsr.Client.Rpc.Runtime.do_call(req);
 	}
-#endif
 }

@@ -1,16 +1,22 @@
 /**
- * Helper-GLSLEffect — compositor {@link Clutter.OffscreenEffect} for client
- * {@link Shell.GLSLEffect}.
+ * Gsr-Shell-GLSLEffect — the offscreen effect the stage actually paints.
+ *
+ * This class runs inside gsr-server, the compositor process. Shell JS
+ * constructs {@link global::Shell.GLSLEffect} in gsr-client. That process has no
+ * Clutter stage and no Cogl context, so it cannot compile or draw snippets.
+ * The client object is a lease. Snippets and uniforms are applied here,
+ * on the actor that is on the stage. This is not a cache and not a faster
+ * copy of the client class.
  *
  * Not a Shell type on the wire. {@link rpc_register} maps this GType onto the
  * stock Clutter alias (same pattern as Stage / Constraint). Client
- * {@code Shell.GLSLEffect} extends the stub OffscreenEffect and
+ * {@code global::Shell.GLSLEffect} extends the stub OffscreenEffect and
  * {@code register_handle}s the lease so {@code get_effect} reuses the GJS
  * object.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Shell
 {
-	public class GLSLEffect : Clutter.OffscreenEffect
+	public class GLSLEffect : global::Clutter.OffscreenEffect
 	{
 		private static Cogl.Context? cogl_context;
 		private Cogl.Pipeline pipeline;
@@ -20,7 +26,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			OLLMrpc.Bin.register_alias(
 				"Clutter-OffscreenEffect", typeof(GLSLEffect));
 			OLLMrpc.Request.add_class(
-				"Helper-GLSLEffect", typeof(GLSLEffect),
+				"Gsr-Shell-GLSLEffect", typeof(GLSLEffect),
 				"create", "",
 				"add_glsl_snippet", "issb",
 				"get_uniform_location", "s",
@@ -30,12 +36,12 @@ namespace GnomeShellRpc.Rpc.Helper
 			);
 		}
 
-		public static void bind(Meta.Display display)
+		public static void bind(global::Meta.Display display)
 		{
 			var stage = display.get_context().get_backend().get_stage();
-			var clutter_ctx = ((Clutter.Actor) stage).get_context();
+			var clutter_ctx = ((global::Clutter.Actor) stage).get_context();
 			cogl_context = clutter_ctx.get_backend().get_cogl_context();
-			OLLMrpc.Request.register_live("Helper-GLSLEffect", new GLSLEffect());
+			OLLMrpc.Request.register_live("Gsr-Shell-GLSLEffect", new GLSLEffect());
 		}
 
 		construct {

@@ -9,6 +9,6 @@
  * ./build/src/gi-rpc-echo --debug
  * }}}
  */
-namespace GnomeShellRpc.GiRpcEcho
+namespace Gsr.GiRpcEcho
 {
 }

@@ -8,7 +8,7 @@
  *
  * @see docs/bugs/done/2026-09-07-st-ctor-parent-walks-to-actor.md
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.St
 {
 	public class St : GLib.Object
 	{
@@ -30,8 +30,8 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * ''St-*.new'' — {@code g_object_new} of the glib type for the wire
-		 * prefix. GJS {@code St.Widget} subclasses mint
-		 * {@code Helper-Actor.create} from the client Actor parent-walk.
+		 * prefix. GJS {@code global::St.Widget} subclasses mint
+		 * {@code Gsr-Clutter-Actor.create} from the client Actor parent-walk.
 		 *
 		 * @param request inbound construct (no lease)
 		 */

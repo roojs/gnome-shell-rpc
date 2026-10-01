@@ -13,8 +13,8 @@
 				GLib.SubprocessFlags.STDOUT_PIPE
 				| GLib.SubprocessFlags.STDERR_MERGE
 			);
-			var response = GnomeShellRpc.call_value(
-				"Helper-WaylandClient.create",
+			var response = Gsr.call_value(
+				"Gsr-Mutter-WaylandClient.create",
 				null,
 				OLLMrpc.args("ou", context, flags)
 			);
@@ -59,8 +59,8 @@
 				"WaylandClient.spawnv client argv_len=%d cwd='%s'",
 				wire.length, cwd
 			);
-			var response = GnomeShellRpc.call_value(
-				"Helper-WaylandClient.spawnv", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-WaylandClient.spawnv", this,
 				OLLMrpc.args("osas", display, cwd, wire)
 			);
 			int stdout_fd = -1;

@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiStubGen
+namespace Gsr.Generator
 {
 	/**
 	 * CLI for Vala stub emit and Clutter C header emit ({@link GLib.Application}).
@@ -8,10 +8,10 @@ namespace GnomeShellRpc.GiStubGen
 	 * == Example ==
 	 *
 	 * {{{
-	 * return new GnomeShellRpc.GiStubGen.Application().run(args);
+	 * return new Gsr.Generator.Application().run(args);
 	 * }}}
 	 */
-	public class Application : GLib.Application, GnomeShellRpc.ApplicationInterface
+	public class Application : GLib.Application, Gsr.ApplicationInterface
 	{
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
@@ -54,7 +54,7 @@ Examples:
 			{ "deny-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_deny_file,
 				"Deny list (one symbol per line; optional noop flag)", "FILE" },
 			{ "batch-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_batch_file,
-				"Setter whitelist (Class.method); emit batch_call_value", "FILE" },
+				"Setter whitelist (Class.method); emit Gsr.Client.Clutter.Batch.call_value", "FILE" },
 			{ "overrides-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_overrides_file,
 				"Overrides file (Type[.method] key=value; type emit=… policies)", "FILE" },
 			{ "override-path", 0, 0, GLib.OptionArg.FILENAME, ref opt_override_path,
@@ -81,7 +81,7 @@ Examples:
 			);
 
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				GnomeShellRpc.ApplicationInterface.debug_log(
+				Gsr.ApplicationInterface.debug_log(
 					this.get_application_id(), dom, lvl, msg
 				);
 			});
@@ -128,8 +128,8 @@ Examples:
 				return 1;
 			}
 
-			GnomeShellRpc.debug_on = Application.opt_debug;
-			GnomeShellRpc.debug_critical_enabled = Application.opt_debug_critical;
+			Gsr.debug_on = Application.opt_debug;
+			Gsr.debug_critical_enabled = Application.opt_debug_critical;
 
 			if (remaining_args.length < 4) {
 				var custom_help = this.get_help_text(

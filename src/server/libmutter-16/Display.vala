@@ -1,20 +1,20 @@
-namespace GnomeShellRpc.Ui
+namespace Gsr.Server.Meta
 {
 	/**
 	 * Display RPC handler — queries and window mutations backed by
-	 * {@link Meta.Display}.
+	 * {@link global::Meta.Display}.
 	 *
 	 * Wire prefix {@code Meta-Display}. {@link OLLMrpc.Request.register_live}
 	 * keeps this singleton as {@code this}; {@code lease_id} is not the
 	 * handler. Live GObject getters ({@code get_compositor}, …) fall through
-	 * to typelib {@link OLLMrpc.Gi} on the leased {@link Meta.Display}.
+	 * to typelib {@link OLLMrpc.Gi} on the leased {@link global::Meta.Display}.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * GnomeShellRpc.Ui.Display.rpc_register();
+	 * Gsr.Server.Meta.Display.rpc_register();
 	 * OLLMrpc.Request.register_live("Meta-Display",
-	 *     new GnomeShellRpc.Ui.Display(meta_display));
+	 *     new Gsr.Server.Meta.Display(meta_display));
 	 * }}}
 	 */
 	public class Display : GLib.Object, OLLMrpc.Bin.Serializable
@@ -36,12 +36,12 @@ namespace GnomeShellRpc.Ui
 			);
 		}
 
-		public Meta.Display meta_display { get; construct; }
+		public global::Meta.Display meta_display { get; construct; }
 
 		public int focused_window_id { get; set; default = 0; }
 		public int workspace_count { get; set; default = 0; }
 
-		public Display(Meta.Display meta_display)
+		public Display(global::Meta.Display meta_display)
 		{
 			GLib.Object(meta_display: meta_display);
 		}
@@ -77,7 +77,7 @@ namespace GnomeShellRpc.Ui
 		public void list_windows(OLLMrpc.Request request)
 		{
 			var list = new Gee.ArrayList<GLib.Object>();
-			foreach (unowned Meta.Window win in this.meta_display.list_all_windows()) {
+			foreach (unowned global::Meta.Window win in this.meta_display.list_all_windows()) {
 				if (win == null) {
 					continue;
 				}
@@ -220,11 +220,11 @@ namespace GnomeShellRpc.Ui
 		}
 
 		/** Fill one list row with what the remote shell reads when it loops windows. */
-		private Window snapshot_window(Meta.Window meta, int handle)
+		private Gsr.Shared.Window snapshot_window(global::Meta.Window meta, int handle)
 		{
 			var frame = meta.get_frame_rect();
 			var wm = meta.get_wm_class();
-			return new Window() {
+			return new Gsr.Shared.Window() {
 				id = handle,
 				title = meta.get_title(),
 				wm_class = wm != null ? wm : "",
@@ -245,7 +245,7 @@ namespace GnomeShellRpc.Ui
 		 *
 		 * @return window, or {@code null} when this method already replied
 		 */
-		private Meta.Window? window_from_id(OLLMrpc.Request request, int object_id)
+		private global::Meta.Window? window_from_id(OLLMrpc.Request request, int object_id)
 		{
 			if (!request.connection.leases.has_key(object_id)) {
 				request.reply(new OLLMrpc.Response() {
@@ -257,7 +257,7 @@ namespace GnomeShellRpc.Ui
 				});
 				return null;
 			}
-			return (Meta.Window) request.connection.leases.get(object_id);
+			return (global::Meta.Window) request.connection.leases.get(object_id);
 		}
 	}
 }

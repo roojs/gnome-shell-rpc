@@ -2,7 +2,7 @@
  * Wire form of a {@link Clutter.Event}: type, x, y, button, key symbol,
  * related actor.
  *
- * Registered from {@link GnomeShellRpc.GiStub.Runtime.register} with the
+ * Registered from {@link Gsr.Client.Rpc.Runtime.register} with the
  * other client bin types.
  */
 namespace Shell
@@ -120,7 +120,7 @@ namespace Shell
 	 * FIXME - this is horrible 
 	 Register the client {@link ClutterEventOverride}.
 	 *
-	 * gi-stub cannot name this internal class. {@link GnomeShellRpc.GiStub.Runtime.register}
+	 * gi-stub cannot name this internal class. {@link Gsr.Client.Rpc.Runtime.register}
 	 * calls this C trampoline next to the other bin registrations.
 	 */
 	[CCode (cname = "shell_clutter_event_override_register")]

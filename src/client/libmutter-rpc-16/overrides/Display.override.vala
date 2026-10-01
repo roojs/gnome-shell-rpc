@@ -4,19 +4,19 @@
 			KeyBindingFlags flags,
 			KeyHandlerFunc handler
 		) {
-			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
-				var display = (Display) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
+			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+				var display = (Display) Gsr.Client.Rpc.Runtime.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
 				Window? window = null;
 				var win_h = (int) call.args.get(1).get_uint64();
 				if (win_h != 0) {
-					window = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(win_h);
+					window = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(win_h);
 				}
 				handler(display, window, null, KeyBinding());
 				return null;
 			});
-			var response = GnomeShellRpc.call_value(
-				"Helper-Display.add_keybinding", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-Display.add_keybinding", this,
 				OLLMrpc.args("ssut", name, settings.schema_id, (uint) flags, callback_id));
 			return response.retval.get_uint();
 		}
@@ -30,8 +30,8 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			GnomeShellRpc.call_value(
-				"Helper-Display.request_pad_osd", this,
+			Gsr.call_value(
+				"Gsr-Mutter-Display.request_pad_osd", this,
 				OLLMrpc.args("osb", wire, device_name, edition_mode));
 		}
 
@@ -46,8 +46,8 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-Display.get_pad_button_label", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-Display.get_pad_button_label", this,
 				OLLMrpc.args("osi", wire, device_name, button_number));
 			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
 				return "";
@@ -69,8 +69,8 @@
 			} else {
 				device_name = pad.get_device_name();
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-Display.get_pad_feature_label", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-Display.get_pad_feature_label", this,
 				OLLMrpc.args("osiui", wire, device_name,
 					(int) feature, (uint) direction, feature_number));
 			if (response.retval.type() == typeof(int) && response.retval.get_int() == 0) {
@@ -96,16 +96,16 @@
 		 */
 		public GLib.List<Window> list_all_windows()
 		{
-			var rows = GnomeShellRpc.GiStub.Runtime.call_list(
+			var rows = Gsr.Client.Rpc.Runtime.call_list(
 				"Meta-Display.list_windows",
-				typeof(GnomeShellRpc.Ui.Window)
+				typeof(Gsr.Shared.Window)
 			);
 			var list = new GLib.List<Window>();
 			foreach (unowned GLib.Object row in rows) {
-				var snap = (GnomeShellRpc.Ui.Window) row;
+				var snap = (Gsr.Shared.Window) row;
 				var win = new Window();
 				win.rpc_lid = (uint64) snap.id;
-				GnomeShellRpc.GiStub.Runtime.register_handle(win);
+				Gsr.Client.Rpc.Runtime.register_handle(win);
 				list.append(win);
 			}
 			return list;
@@ -113,7 +113,7 @@
 
 		public StartupNotification get_startup_notification()
 		{
-			var response = GnomeShellRpc.call_value(
+			var response = Gsr.call_value(
 				"Meta-Display.get_startup_notification", this);
 			return (StartupNotification) response.retval.get_object();
 		}

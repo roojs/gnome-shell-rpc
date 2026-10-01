@@ -10,6 +10,6 @@
  * ./build/src/gjs-embed --debug src/gjs-embed/smoke.js
  * }}}
  */
-namespace GnomeShellRpc.GjsEmbed
+namespace Gsr.GjsEmbed
 {
 }

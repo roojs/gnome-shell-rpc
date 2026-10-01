@@ -1,14 +1,14 @@
 /**
- * Delivers {@code St.IconTheme.get_icon_sizes} — zero-terminated {@code int*}
+ * Delivers {@code global::St.IconTheme.get_icon_sizes} — zero-terminated {@code int*}
  * from stock libst, packed as a raw int32 slab ({@link GLib.Bytes} / {@code ay}).
  *
- * Wire prefix {@code Helper-IconTheme}. Distro has no St-16.vapi for
+ * Wire prefix {@code Gsr-St-IconTheme}. Distro has no St-16.vapi for
  * mutter-rpc — same CCode pattern as {@link ThemeContext}.
  *
  * Prefer Bytes over Variant {@code ai}: StreamValue's Variant numeric-array
  * path double-unrefs under Vala ownership.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.St
 {
 	public class IconTheme : GLib.Object
 	{
@@ -21,16 +21,16 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-IconTheme", typeof(IconTheme),
+				"Gsr-St-IconTheme", typeof(IconTheme),
 				"get_icon_sizes", "s",
 				null
 			);
 			OLLMrpc.Request.register_live(
-				"Helper-IconTheme", new IconTheme());
+				"Gsr-St-IconTheme", new IconTheme());
 		}
 
 		/**
-		 * {@code Helper-IconTheme.get_icon_sizes} — stock sizes → Bytes slab.
+		 * {@code Gsr-St-IconTheme.get_icon_sizes} — stock sizes → Bytes slab.
 		 *
 		 * @param request inbound RPC (lease = IconTheme)
 		 * @param icon_name icon name to look up

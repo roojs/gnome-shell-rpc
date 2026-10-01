@@ -1,11 +1,11 @@
 /**
- * Server pack of a {@link Clutter.InputDevice}.
+ * Server pack of a {@link global::Clutter.InputDevice}.
  *
  * {@code MetaInputDeviceX11} has no wire schema. Pack its
  * {@code device_type} instead. The client rebuilds a device from that.
  * Any other device is written unchanged.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class InputDeviceOverride : OLLMrpc.Bin.TypeOverride
 	{
@@ -14,7 +14,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public override GLib.Type override_type {
 			get {
-				return typeof(Clutter.InputDevice);
+				return typeof(global::Clutter.InputDevice);
 			}
 		}
 
@@ -26,7 +26,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public override Gee.ArrayList<GLib.Value?> pack(GLib.Value src)
 		{
-			var device = src.get_object() as Clutter.InputDevice;
+			var device = src.get_object() as global::Clutter.InputDevice;
 			if (device != null
 					&& device.get_type().name() == "MetaInputDeviceX11") {
 				return OLLMrpc.args("u", (uint) device.get_device_type());
@@ -50,7 +50,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			out int consumed
 		) {
 			consumed = 0;
-			return GLib.Value(typeof(Clutter.InputDevice));
+			return GLib.Value(typeof(global::Clutter.InputDevice));
 		}
 	}
 }

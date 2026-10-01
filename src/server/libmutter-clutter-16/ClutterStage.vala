@@ -6,14 +6,14 @@
  * {@code get_view_at} is not in the mutter VAPI
  * ({@code introspectable=0}) — call stock C directly via {@code extern}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class ClutterStage : GLib.Object
 	{
 		[CCode (cname = "clutter_stage_get_view_at",
 			cheader_filename = "clutter/clutter.h")]
-		private static extern Clutter.StageView? clutter_stage_get_view_at(
-			Clutter.Stage stage,
+		private static extern global::Clutter.StageView? clutter_stage_get_view_at(
+			global::Clutter.Stage stage,
 			float x,
 			float y
 		);

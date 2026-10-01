@@ -1,11 +1,11 @@
 		/**
-		 * Stock {@code clutter_text_get_layout}. Helper-Text returns the
+		 * Stock {@code clutter_text_get_layout}. Gsr-Clutter-Text returns the
 		 * fields; this builds a client {@link Pango.Layout}. Writes here
 		 * do not go back to the server layout.
 		 */
 		public Pango.Layout? get_layout()
 		{
-			var response = GnomeShellRpc.call_value("Helper-Text.get_layout", this);
+			var response = Gsr.call_value("Gsr-Clutter-Text.get_layout", this);
 			if (response.args.size < 10) {
 				return null;
 			}

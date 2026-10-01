@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiStubGen
+namespace Gsr.Generator
 {
 	/**
 	 * Layout options for {@link HeaderGenerator} (not library-specific).

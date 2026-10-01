@@ -4,8 +4,8 @@
 		 */
 		public int[] get_icon_sizes(string icon_name)
 		{
-			var response = GnomeShellRpc.call_value(
-				"Helper-IconTheme.get_icon_sizes", this,
+			var response = Gsr.call_value(
+				"Gsr-St-IconTheme.get_icon_sizes", this,
 				OLLMrpc.args("s", icon_name));
 			if (response.retval.type() != typeof(GLib.Bytes)) {
 				return new int[0];

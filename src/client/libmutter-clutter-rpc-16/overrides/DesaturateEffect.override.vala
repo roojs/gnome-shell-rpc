@@ -35,7 +35,7 @@
 			set construct {
 				this.priv_factor = value;
 				if (this.mint_done) {
-					GnomeShellRpc.call_value(
+					Gsr.call_value(
 						"Clutter-DesaturateEffect.set_factor", this,
 						OLLMrpc.args("d", this.priv_factor));
 				}
@@ -47,17 +47,17 @@
 				this.mint_done = true;
 				return;
 			}
-			var response = GnomeShellRpc.call_value(
+			var response = Gsr.call_value(
 				"Clutter-DesaturateEffect.new",
 				null,
 				OLLMrpc.args("d", this.priv_factor));
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			if (this.name != null && this.name.length > 0) {
-				GnomeShellRpc.call_value("Clutter-ActorMeta.set_name", this,
+				Gsr.call_value("Clutter-ActorMeta.set_name", this,
 					OLLMrpc.args("s", this.name));
 			}
-			GnomeShellRpc.call_value("Clutter-ActorMeta.set_enabled", this,
+			Gsr.call_value("Clutter-ActorMeta.set_enabled", this,
 				OLLMrpc.args("b", this.enabled));
 			this.mint_done = true;
 		}

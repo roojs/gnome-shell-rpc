@@ -5,5 +5,5 @@
 		[CCode (cname = "gsr_meta_backend_get_settings_method")]
 		public GLib.Object get_settings()
 		{
-			return GnomeShellRpc.GiStub.meta_backend_get_settings(this);
+			return Gsr.Client.Rpc.meta_backend_get_settings(this);
 		}

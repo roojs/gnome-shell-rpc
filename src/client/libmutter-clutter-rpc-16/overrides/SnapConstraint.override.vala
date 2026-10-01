@@ -50,7 +50,7 @@
 		if (this.rpc_lid == 0) {
 			return;
 		}
-		GnomeShellRpc.call_value(
+		Gsr.call_value(
 			"Clutter-SnapConstraint.set_edges", this,
 			OLLMrpc.args("ii",
 				(int) this.priv_from_edge, (int) this.priv_to_edge));

@@ -3,7 +3,7 @@
  * Override-defined relay_* own Live.Hook bind bodies; generated
  * bind_vfunc calls those methods.
  */
-namespace GnomeShellRpc.GiStub
+namespace Gsr.Client.Rpc
 {
 	[CCode (cname = "gsr_vfunc_call_bool_pointer")]
 	public extern bool vfunc_call_bool_pointer(

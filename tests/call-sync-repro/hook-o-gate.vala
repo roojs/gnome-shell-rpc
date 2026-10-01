@@ -9,7 +9,7 @@
  * must appear as {@code "o"} on the Invoke.
  *
  * Shape: {@code Gate.make} returns a lease {@code "t"} only (no
- * Response.retval object — Helper-Actor.create shape, so Gate-Peer is
+ * Response.retval object — Gsr-Clutter-Actor.create shape, so Gate-Peer is
  * not TOKEN_REG_TYPE'd on a property stream). {@code Gate.emit_od}
  * does {@code hook.emit(args("od", peer, 1.5))}. Client Invoke must
  * {@code get_object()} a non-null Peer.
@@ -87,15 +87,15 @@ class Gate : GLib.Object
 static void boot_rpc()
 {
 	OLLMrpc.rpc_register(true);
-	GnomeShellRpc.Rpc.Daemon.rpc_register();
-	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
+	Gsr.Server.Daemon.rpc_register();
+	OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
 	Gate.rpc_register();
 }
 
 static int run_server(string sock)
 {
 	boot_rpc();
-	var listen = new GnomeShellRpc.Rpc.Listen(sock) {
+	var listen = new Gsr.Server.Rpc.Listen(sock) {
 		live_handles = true,
 	};
 	if (!listen.start()) {

@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GjsEmbed
+namespace Gsr.GjsEmbed
 {
 	/** Optional disk JS directory (meson). Empty: client runs the compiled gresource. Overridden by {@code GNOME_SHELL_JS_DIR} env. */
 	public const string GNOME_SHELL_JS_DIR = "@GNOME_SHELL_JS_DIR@";

@@ -1,12 +1,12 @@
 /**
- * Helper-LayoutManager — mutter peer for a client GJS LayoutManager.
+ * Gsr-Clutter-LayoutManager — mutter peer for a client GJS LayoutManager.
  * Class slots hook back to GJS {@code vfunc_*} (same split as Helper.Actor).
  *
  * @see docs/bugs/done/2026-09-16-allocate-follow-reference.md
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
-	public class LayoutManager : Clutter.LayoutManager
+	public class LayoutManager : global::Clutter.LayoutManager
 	{
 		public Gee.HashMap<int, OLLMrpc.Live.Hook> vfuncs {
 			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
@@ -20,11 +20,11 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			var helper = new LayoutManager();
 			OLLMrpc.Request.add_class(
-				"Helper-LayoutManager", typeof(LayoutManager),
+				"Gsr-Clutter-LayoutManager", typeof(LayoutManager),
 				"create", "Svv",
 				"add_hook", "it",
 				null);
-			OLLMrpc.Request.register_live("Helper-LayoutManager", helper);
+			OLLMrpc.Request.register_live("Gsr-Clutter-LayoutManager", helper);
 			LayoutManagerVfuncIds.register_vfunc_ids();
 		}
 
@@ -72,7 +72,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		public override void get_preferred_width(
-			Clutter.Actor container,
+			global::Clutter.Actor container,
 			float for_height,
 			out float min_width_p,
 			out float nat_width_p
@@ -96,7 +96,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		public override void get_preferred_height(
-			Clutter.Actor container,
+			global::Clutter.Actor container,
 			float for_width,
 			out float min_height_p,
 			out float nat_height_p
@@ -120,8 +120,8 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		public override void allocate(
-			Clutter.Actor container,
-			Clutter.ActorBox allocation
+			global::Clutter.Actor container,
+			global::Clutter.ActorBox allocation
 		) {
 			var hook = this.vfuncs.get(LayoutManagerVfuncIds.allocate_id);
 			if (hook == null) {

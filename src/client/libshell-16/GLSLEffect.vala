@@ -1,5 +1,5 @@
 /**
- * Owned {@code Shell.GLSLEffect} — leased compositor Helper-GLSLEffect (0.7.7 T-032).
+ * Owned {@code Shell.GLSLEffect} — leased compositor Gsr-Shell-GLSLEffect (0.7.7 T-032).
  *
  * GJS subclasses implement {@link build_pipeline}; construct leases then calls it
  * so {@link add_glsl_snippet} RPCs land on the server pipeline. Wire identity is
@@ -46,9 +46,9 @@ namespace Shell
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = GnomeShellRpc.call_value("Helper-GLSLEffect.create", null);
+			var response = Gsr.call_value("Gsr-Shell-GLSLEffect.create", null);
 			this.rpc_lid = response.args.get(0).get_uint64();
-			GnomeShellRpc.GiStub.Runtime.register_handle(this);
+			Gsr.Client.Rpc.Runtime.register_handle(this);
 			this.sync_actor_meta_name();
 			this.sync_actor_meta_enabled();
 			this.build_pipeline();
@@ -61,7 +61,7 @@ namespace Shell
 					|| this.priv_name.length == 0) {
 				return;
 			}
-			GnomeShellRpc.call_value("Clutter-ActorMeta.set_name", this,
+			Gsr.call_value("Clutter-ActorMeta.set_name", this,
 				OLLMrpc.args("s", this.priv_name));
 		}
 
@@ -70,7 +70,7 @@ namespace Shell
 			if (this.rpc_lid == 0) {
 				return;
 			}
-			GnomeShellRpc.call_value("Clutter-ActorMeta.set_enabled", this,
+			Gsr.call_value("Clutter-ActorMeta.set_enabled", this,
 				OLLMrpc.args("b", this.priv_enabled));
 		}
 
@@ -87,15 +87,15 @@ namespace Shell
 			string code,
 			bool is_replace
 		) {
-			GnomeShellRpc.call_value(
-				"Helper-GLSLEffect.add_glsl_snippet", this,
+			Gsr.call_value(
+				"Gsr-Shell-GLSLEffect.add_glsl_snippet", this,
 				OLLMrpc.args("issb", (int) hook, declarations, code, is_replace));
 		}
 
 		public int get_uniform_location(string uniform_name)
 		{
-			var response = GnomeShellRpc.call_value(
-				"Helper-GLSLEffect.get_uniform_location", this,
+			var response = Gsr.call_value(
+				"Gsr-Shell-GLSLEffect.get_uniform_location", this,
 				OLLMrpc.args("s", uniform_name));
 			return response.retval.get_int();
 		}
@@ -109,8 +109,8 @@ namespace Shell
 			foreach (var f in value) {
 				builder.add("d", (double) f);
 			}
-			GnomeShellRpc.call_value(
-				"Helper-GLSLEffect.set_uniform_float", this,
+			Gsr.call_value(
+				"Gsr-Shell-GLSLEffect.set_uniform_float", this,
 				OLLMrpc.args("iiv", uniform, n_components, builder.end()));
 		}
 
@@ -124,8 +124,8 @@ namespace Shell
 			foreach (var f in value) {
 				builder.add("d", (double) f);
 			}
-			GnomeShellRpc.call_value(
-				"Helper-GLSLEffect.set_uniform_matrix", this,
+			Gsr.call_value(
+				"Gsr-Shell-GLSLEffect.set_uniform_matrix", this,
 				OLLMrpc.args(
 					"ibiiv", uniform, transpose, dimensions, value.length, builder.end()));
 		}

@@ -78,8 +78,8 @@ static void boot_rpc()
 {
 	clutter_env();
 	OLLMrpc.rpc_register(true);
-	GnomeShellRpc.Rpc.Daemon.rpc_register();
-	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
+	Gsr.Server.Daemon.rpc_register();
+	OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
 	Gate.rpc_register();
 	try {
 		OLLMrpc.Gi.register("Clutter", "16");
@@ -94,7 +94,7 @@ static void boot_rpc()
 static int run_server(string sock)
 {
 	boot_rpc();
-	var listen = new GnomeShellRpc.Rpc.Listen(sock) {
+	var listen = new Gsr.Server.Rpc.Listen(sock) {
 		live_handles = true,
 	};
 	if (!listen.start()) {

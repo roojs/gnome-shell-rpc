@@ -1,32 +1,32 @@
 /**
- * Helper-Text — {@code Clutter.Text.get_layout} snapshot.
+ * Gsr-Clutter-Text — {@code global::Clutter.Text.get_layout} snapshot.
  *
  * {@code Pango.Layout} is not a wire type. The caller only reads the
  * layout the text already owns, so this returns the fields and the
  * client builds its own {@link Pango.Layout}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class Text : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-Text", typeof(Text),
+				"Gsr-Clutter-Text", typeof(Text),
 				"get_layout", "",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-Text", new Text());
+			OLLMrpc.Request.register_live("Gsr-Clutter-Text", new Text());
 		}
 
 		/**
-		 * ''Helper-Text.get_layout'' — text, font, width, height, wrap,
+		 * ''Gsr-Clutter-Text.get_layout'' — text, font, width, height, wrap,
 		 * ellipsize, alignment, indent, spacing, attributes.
 		 * Empty args means the server layout is null.
 		 */
 		public void get_layout(OLLMrpc.Request request)
 		{
-			var text = (Clutter.Text) request.connection.leases.get(
+			var text = (global::Clutter.Text) request.connection.leases.get(
 				(int) request.lease_id);
 			var layout = text.get_layout();
 			if (layout == null) {

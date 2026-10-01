@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server.Rpc
 {
 	/**
 	 * Unix socket listener with a public connection list (per-client handle ids).
@@ -66,7 +66,7 @@ namespace GnomeShellRpc.Rpc
 			this.service.incoming.connect((conn) => {
 				GLib.debug("client connected on %s", this.socket_path);
 				/* Polling Connection: Hook.emit can read mid-on_input_ready. */
-				var connection = new GnomeShellRpc.Rpc.Connection(conn) {
+				var connection = new Gsr.Server.Rpc.Connection(conn) {
 					live_handles = this.live_handles,
 				};
 				if (this.buffer_listen != null) {

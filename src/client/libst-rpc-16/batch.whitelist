@@ -1,0 +1,11 @@
+# St setters that stay in the property batch (Gsr.Client.Clutter.Batch.call_value).
+# A setter not listed here is call_value and flushes the batch.
+# St.BoxLayout is an actor. Clutter.BoxLayout is not, and is not listed
+# in the Clutter whitelist.
+
+St.Widget.set_style_class_name
+St.Widget.set_can_focus
+St.Widget.set_track_hover
+St.Widget.set_label_actor
+St.Label.set_text
+St.BoxLayout.set_orientation

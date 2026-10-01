@@ -1,22 +1,22 @@
 /**
- * Delivers {@code Clutter.threads_add_repaint_func} Override RPC.
+ * Delivers {@code global::Clutter.threads_add_repaint_func} Override RPC.
  *
- * Wire prefix ''Helper-ClutterThreads''. No lease — namespace function. Stock
- * registration is {@link Clutter.Threads.add_repaint_func}; continue bool is
+ * Wire prefix ''Gsr-Clutter-Threads''. No lease — namespace function. Stock
+ * registration is {@link global::Clutter.Threads.add_repaint_func}; continue bool is
  * on {@link OLLMrpc.Live.Hook.reply_args} after {@code RPC-Live-Callback.reply}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class ClutterThreads : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-ClutterThreads", typeof(ClutterThreads),
+				"Gsr-Clutter-Threads", typeof(ClutterThreads),
 				"threads_add_repaint_func", "ut",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-ClutterThreads",
+			OLLMrpc.Request.register_live("Gsr-Clutter-Threads",
 				new ClutterThreads());
 		}
 
@@ -34,8 +34,8 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var row = request.connection.callbacks.get((int) callback_id);
-			var handle = Clutter.Threads.add_repaint_func(
-				(Clutter.RepaintFlags) flags,
+			var handle = global::Clutter.Threads.add_repaint_func(
+				(global::Clutter.RepaintFlags) flags,
 				() => {
 					row.emit(OLLMrpc.args(""));
 					if (row.reply_args.size < 1) {

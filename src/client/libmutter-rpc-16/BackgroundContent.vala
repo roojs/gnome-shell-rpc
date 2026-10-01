@@ -23,7 +23,7 @@ namespace Meta
 			set {
 				this.priv_background = value;
 				if (this.rpc_lid != 0 && value != null) {
-					GnomeShellRpc.call_value(
+					Gsr.call_value(
 						"Meta-BackgroundContent.set_background",
 						this,
 						OLLMrpc.args("o", value));
@@ -60,7 +60,7 @@ namespace Meta
 			set {
 				this.priv_rounded_clip_radius = value;
 				if (this.rpc_lid != 0) {
-					GnomeShellRpc.call_value(
+					Gsr.call_value(
 						"Meta-BackgroundContent.set_rounded_clip_radius",
 						this,
 						OLLMrpc.args("f", (double) value));
@@ -85,7 +85,7 @@ namespace Meta
 				return;
 			}
 			if (bounds == null) {
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Meta-BackgroundContent.set_rounded_clip_bounds",
 					this,
 					OLLMrpc.args("ay", new GLib.Bytes(new uint8[0])));
@@ -93,7 +93,7 @@ namespace Meta
 			}
 			uint8[] data = new uint8[sizeof(Graphene.Rect)];
 			*((Graphene.Rect*) data) = bounds;
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Meta-BackgroundContent.set_rounded_clip_bounds",
 				this,
 				OLLMrpc.args("ay", new GLib.Bytes(data)));
@@ -104,7 +104,7 @@ namespace Meta
 			if (this.rpc_lid == 0) {
 				return;
 			}
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Meta-BackgroundContent.set_vignette",
 				this,
 				OLLMrpc.args(
@@ -138,7 +138,7 @@ namespace Meta
 		public void attached(Clutter.Actor actor)
 		{
 			// GJS never calls this — Clutter C lifecycle only. No RPC: server
-			// Helper-BackgroundActor.create already attaches real content to
+			// Gsr-Mutter-BackgroundActor.create already attaches real content to
 			// the leased actor. Client attach only exposes actor.content for
 			// GJS; state crosses via set_background / set_vignette.
 		}

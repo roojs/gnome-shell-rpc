@@ -4,7 +4,7 @@
  * Assigns a wire id and forwards {@link GLib.Cancellable.cancel} to
  * {@code RPC-Cancellable.cancel} on the server.
  */
-namespace GnomeShellRpc.GiStub
+namespace Gsr.Client.Rpc
 {
 	public class CancellableBridge : GLib.Object
 	{
@@ -24,7 +24,7 @@ namespace GnomeShellRpc.GiStub
 			}
 			var id = CancellableBridge.next_id++;
 			var watch = cancellable.connect((c) => {
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"RPC-Cancellable.cancel",
 					null,
 					OLLMrpc.args("t", id)

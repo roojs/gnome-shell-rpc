@@ -1,6 +1,6 @@
 		public static FocusManager get_for_stage(Clutter.Stage stage)
 		{
-			var response = GnomeShellRpc.call_value(
+			var response = Gsr.call_value(
 				"St-FocusManager.get_for_stage",
 				null,
 				OLLMrpc.args("o", stage));
@@ -13,8 +13,8 @@
 		 */
 		public bool navigate_from_event(Clutter.Event event)
 		{
-			var response = GnomeShellRpc.call_value(
-				"Helper-FocusManager.navigate_from_event", this,
+			var response = Gsr.call_value(
+				"Gsr-St-FocusManager.navigate_from_event", this,
 				OLLMrpc.args("iuu",
 					(int) event.type(),
 					event.get_key_symbol(),

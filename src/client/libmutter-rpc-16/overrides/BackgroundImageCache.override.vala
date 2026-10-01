@@ -5,8 +5,8 @@
 		public BackgroundImage load(GLib.File file)
 		{
 			var uri = file != null ? file.get_uri() : "";
-			var response = GnomeShellRpc.call_value(
-				"Helper-BackgroundImageCache.load",
+			var response = Gsr.call_value(
+				"Gsr-Mutter-BackgroundImageCache.load",
 				this,
 				OLLMrpc.args("s", uri)
 			);

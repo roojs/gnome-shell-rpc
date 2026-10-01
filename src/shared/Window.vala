@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Ui
+namespace Gsr.Shared
 {
 	/**
 	 * One window in the list the compositor sends to the shell client.
@@ -12,8 +12,8 @@ namespace GnomeShellRpc.Ui
 	 * == Example ==
 	 *
 	 * {{{
-	 * GnomeShellRpc.Ui.Window.rpc_register();
-	 * var snap = new GnomeShellRpc.Ui.Window() {
+	 * Gsr.Shared.Window.rpc_register();
+	 * var snap = new Gsr.Shared.Window() {
 	 *     id = 3,
 	 *     title = "gedit",
 	 * };

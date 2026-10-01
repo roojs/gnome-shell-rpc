@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.FakeShell
+namespace Gsr.FakeShell
 {
 	/**
 	 * Throwaway top bar: clock, focused title, Minimize.
@@ -8,7 +8,7 @@ namespace GnomeShellRpc.FakeShell
 	 * == Example ==
 	 *
 	 * {{{
-	 * var bar = new GnomeShellRpc.FakeShell.TopBar(app, session);
+	 * var bar = new Gsr.FakeShell.TopBar(app, session);
 	 * bar.present();
 	 * }}}
 	 */

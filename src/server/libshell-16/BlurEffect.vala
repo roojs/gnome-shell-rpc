@@ -1,27 +1,34 @@
 /**
- * Helper-BlurEffect — compositor {@link Clutter.Effect} for client
- * {@link Shell.BlurEffect}.
+ * Gsr-Shell-BlurEffect — the blur the stage actually paints.
+ *
+ * This class runs inside gsr-server, the compositor process. Shell JS
+ * constructs {@link global::Shell.BlurEffect} in gsr-client. That process has no
+ * Clutter stage and no Cogl context, so it cannot blur pixels. The client
+ * object is a lease: it sends create and property sets over RPC. Paint,
+ * offscreen textures, and the brightness snippet run here, on the actor
+ * that is on the stage. This is not a cache and not a faster copy of the
+ * client class.
  *
  * Stock {@code shell-blur-effect} paint path in Vala: offscreen layers,
- * {@link Clutter.BlurNode}, brightness snippet. Stage / Cogl context from
+ * {@link global::Clutter.BlurNode}, brightness snippet. Stage / Cogl context from
  * {@link bind} (no ShellGlobal).
  *
  * == Example ==
  *
  * {{{
- * Rpc.Helper.BlurEffect.bind(display);
- * // client: new Shell.BlurEffect() { radius = 30, mode = BACKGROUND };
+ * Gsr.Server.Shell.BlurEffect.bind(display);
+ * // client: new global::Shell.BlurEffect() { radius = 30, mode = BACKGROUND };
  * }}}
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Shell
 {
-	public class BlurEffect : Clutter.Effect
+	public class BlurEffect : global::Clutter.Effect
 	{
 		private static Cogl.Context? cogl_context;
 
 		private int priv_radius = 0;
 		private float priv_brightness = 1f;
-		/* 0 = actor, 1 = background — matches Shell.BlurMode. */
+		/* 0 = actor, 1 = background — matches global::Shell.BlurMode. */
 		private int priv_mode = 0;
 
 		/**
@@ -91,18 +98,18 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			OLLMrpc.Bin.register("Shell-BlurEffect", typeof(BlurEffect));
 			OLLMrpc.Request.add_class(
-				"Helper-BlurEffect", typeof(BlurEffect),
+				"Gsr-Shell-BlurEffect", typeof(BlurEffect),
 				"create", "",
 				null
 			);
 		}
 
-		public static void bind(Meta.Display display)
+		public static void bind(global::Meta.Display display)
 		{
 			var stage = display.get_context().get_backend().get_stage();
-			var clutter_ctx = ((Clutter.Actor) stage).get_context();
+			var clutter_ctx = ((global::Clutter.Actor) stage).get_context();
 			cogl_context = clutter_ctx.get_backend().get_cogl_context();
-			OLLMrpc.Request.register_live("Helper-BlurEffect", new BlurEffect());
+			OLLMrpc.Request.register_live("Gsr-Shell-BlurEffect", new BlurEffect());
 		}
 
 		construct {
@@ -124,7 +131,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				this.brightness_pipeline.get_uniform_location("brightness");
 		}
 
-		public override void set_actor(Clutter.Actor? actor)
+		public override void set_actor(global::Clutter.Actor? actor)
 		{
 			base.set_actor(actor);
 			this.actor_texture = null;
@@ -136,13 +143,13 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		public override void paint_node(
-			Clutter.PaintNode node,
-			Clutter.PaintContext paint_context,
-			Clutter.EffectPaintFlags flags
+			global::Clutter.PaintNode node,
+			global::Clutter.PaintContext paint_context,
+			global::Clutter.EffectPaintFlags flags
 		) {
 			var actor = this.get_actor();
 			if (this.radius <= 0) {
-				node.add_child(new Clutter.ActorNode(actor, -1));
+				node.add_child(new global::Clutter.ActorNode(actor, -1));
 				return;
 			}
 
@@ -150,7 +157,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				? (uint8) 255
 				: actor.get_paint_opacity();
 
-			var source_box = Clutter.ActorBox();
+			var source_box = global::Clutter.ActorBox();
 			if (this.mode == 0) {
 				source_box = actor.get_allocation_box();
 			} else {
@@ -164,7 +171,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				source_box.set_origin(origin_x, origin_y);
 				source_box.set_size(width, height);
 			}
-			Clutter.ActorBox.clamp_to_pixel(ref source_box);
+			global::Clutter.ActorBox.clamp_to_pixel(ref source_box);
 
 			float box_w;
 			float box_h;
@@ -183,7 +190,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			var fb_w = (uint) Math.floorf(box_w / downscale);
 			var fb_h = (uint) Math.floorf(box_h / downscale);
 			if (fb_w == 0 || fb_h == 0) {
-				node.add_child(new Clutter.ActorNode(actor, -1));
+				node.add_child(new global::Clutter.ActorNode(actor, -1));
 				return;
 			}
 
@@ -242,38 +249,38 @@ namespace GnomeShellRpc.Rpc.Helper
 			float actor_h;
 			actor.get_size(out actor_w, out actor_h);
 
-			var brightness_node = new Clutter.LayerNode.to_framebuffer(
+			var brightness_node = new global::Clutter.LayerNode.to_framebuffer(
 				this.brightness_fb, this.brightness_pipeline);
 			node.add_child(brightness_node);
-			var bright_box = Clutter.ActorBox();
+			var bright_box = global::Clutter.ActorBox();
 			bright_box.set_size(actor_w, actor_h);
 			brightness_node.add_rectangle(bright_box);
 
-			var blur_node = new Clutter.BlurNode(
+			var blur_node = new global::Clutter.BlurNode(
 				(uint) (this.tex_width / this.downscale_factor),
 				(uint) (this.tex_height / this.downscale_factor),
 				this.radius / this.downscale_factor);
 			brightness_node.add_child(blur_node);
-			var blur_box = Clutter.ActorBox();
+			var blur_box = global::Clutter.ActorBox();
 			blur_box.set_size(
 				this.brightness_texture.get_width(),
 				this.brightness_texture.get_height());
 			blur_node.add_rectangle(blur_box);
 
 			if (this.mode == 0) {
-				var layer_node = new Clutter.LayerNode.to_framebuffer(
+				var layer_node = new global::Clutter.LayerNode.to_framebuffer(
 					this.actor_fb, this.actor_pipeline);
 				blur_node.add_child(layer_node);
-				var layer_box = Clutter.ActorBox();
+				var layer_box = global::Clutter.ActorBox();
 				layer_box.set_size(this.tex_width / this.downscale_factor,
 					this.tex_height / this.downscale_factor);
 				layer_node.add_rectangle(layer_box);
 
 				var transform = Graphene.Matrix();
 				transform.init_scale(1f / this.downscale_factor, 1f / this.downscale_factor, 1f);
-				var transform_node = new Clutter.TransformNode(transform);
+				var transform_node = new global::Clutter.TransformNode(transform);
 				layer_node.add_child(transform_node);
-				transform_node.add_child(new Clutter.ActorNode(actor, 255));
+				transform_node.add_child(new global::Clutter.ActorNode(actor, 255));
 				return;
 			}
 
@@ -281,20 +288,20 @@ namespace GnomeShellRpc.Rpc.Helper
 			source_box.get_origin(out transformed_x, out transformed_y);
 			source_box.get_size(out transformed_width, out transformed_height);
 
-			var background_node = new Clutter.LayerNode.to_framebuffer(
+			var background_node = new global::Clutter.LayerNode.to_framebuffer(
 				this.background_fb, this.background_pipeline);
 			blur_node.add_child(background_node);
-			var bg_box = Clutter.ActorBox();
+			var bg_box = global::Clutter.ActorBox();
 			bg_box.set_size(this.tex_width / this.downscale_factor,
 				this.tex_height / this.downscale_factor);
 			background_node.add_rectangle(bg_box);
 
-			var blit_node = new Clutter.BlitNode(paint_context.get_framebuffer());
+			var blit_node = new global::Clutter.BlitNode(paint_context.get_framebuffer());
 			background_node.add_child(blit_node);
 			blit_node.add_blit_rectangle((int) transformed_x, (int) transformed_y,
 				0, 0, (int) transformed_width, (int) transformed_height);
 
-			node.add_child(new Clutter.ActorNode(actor, -1));
+			node.add_child(new global::Clutter.ActorNode(actor, -1));
 		}
 
 		public void create(OLLMrpc.Request request)

@@ -6,14 +6,14 @@
 
 		public void set_to_value(GLib.Value value)
 		{
-			GnomeShellRpc.call_value("Clutter-Transition.set_to", this,
+			Gsr.call_value("Clutter-Transition.set_to", this,
 				OLLMrpc.args("V", value));
 			this.mirror_interval_value(false, value);
 		}
 
 		public void set_from_value(GLib.Value value)
 		{
-			GnomeShellRpc.call_value("Clutter-Transition.set_from", this,
+			Gsr.call_value("Clutter-Transition.set_from", this,
 				OLLMrpc.args("V", value));
 			this.mirror_interval_value(true, value);
 		}

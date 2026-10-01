@@ -1,10 +1,10 @@
-namespace GnomeShellRpc
+namespace Gsr.Server
 {
 	/**
 	 * Process entry: configure mutter, install {@link Plugin}, run the loop.
 	 *
 	 * Parses {@code --debug} via {@link GLib.OptionEntry} (unknown options
-	 * left for {@link Meta.Context.configure}). Routes {@link GLib.debug}
+	 * left for {@link global::Meta.Context.configure}). Routes {@link GLib.debug}
 	 * through {@link ApplicationInterface.debug_log}.
 	 *
 	 * == Example ==
@@ -50,10 +50,10 @@ namespace GnomeShellRpc
 				return 1;
 			}
 
-			GnomeShellRpc.debug_on = CompositorApp.opt_debug;
-			GnomeShellRpc.debug_critical_enabled = CompositorApp.opt_debug_critical;
+			Gsr.debug_on = CompositorApp.opt_debug;
+			Gsr.debug_critical_enabled = CompositorApp.opt_debug_critical;
 
-			var ctx = new Meta.Context("Mutter(GnomeShellRpc)");
+			var ctx = new global::Meta.Context("Mutter(GnomeShellRpc)");
 			try {
 				ctx.configure(ref argv);
 			} catch (GLib.Error e) {
@@ -61,7 +61,7 @@ namespace GnomeShellRpc
 				return 1;
 			}
 
-			ctx.set_plugin_gtype(typeof(GnomeShellRpc.Plugin));
+			ctx.set_plugin_gtype(typeof(Gsr.Server.Plugin));
 
 			try {
 				ctx.setup();

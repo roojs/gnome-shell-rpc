@@ -13,8 +13,8 @@
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-BackgroundActor.create",
+			var response = Gsr.call_value(
+				"Gsr-Mutter-BackgroundActor.create",
 				null,
 				OLLMrpc.args("oi", this.meta_display, this.monitor)
 			);

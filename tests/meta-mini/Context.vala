@@ -1,7 +1,7 @@
 namespace Meta
 {
 	/**
-	 * Mini stand-in so shared {@link GnomeShellRpc.GiStub.Runtime} can register.
+	 * Mini stand-in so shared {@link Gsr.Client.Rpc.Runtime} can register.
 	 */
 	public class Context : GLib.Object, OLLMrpc.Live.Interface
 	{
@@ -14,7 +14,7 @@ namespace Meta
 
 		public Backend get_backend()
 		{
-			var response = GnomeShellRpc.call_value(
+			var response = Gsr.call_value(
 				"Meta-Context.get_backend", this);
 			var backend = new Backend();
 			backend.rpc_lid = response.args.get(0).get_uint64();

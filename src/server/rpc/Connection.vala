@@ -10,7 +10,7 @@
  * {@link GLib.BufferedInputStream.get_available}, or poll waits forever while
  * the next Request sits in the stream buffer.
  */
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server.Rpc
 {
 	public class Connection : OLLMrpc.Transport.Connection
 	{

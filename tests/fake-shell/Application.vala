@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.FakeShell
+namespace Gsr.FakeShell
 {
 	/**
 	 * Gtk application that connects {@link Session} and shows
@@ -10,7 +10,7 @@ namespace GnomeShellRpc.FakeShell
 	 * ./build/src/fake-shell --debug
 	 * }}}
 	 */
-	public class Application : Gtk.Application, GnomeShellRpc.ApplicationInterface
+	public class Application : Gtk.Application, Gsr.ApplicationInterface
 	{
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
@@ -33,7 +33,7 @@ namespace GnomeShellRpc.FakeShell
 			);
 
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				GnomeShellRpc.ApplicationInterface.debug_log(
+				Gsr.ApplicationInterface.debug_log(
 					this.get_application_id(), dom, lvl, msg
 				);
 			});
@@ -63,8 +63,8 @@ namespace GnomeShellRpc.FakeShell
 				return 1;
 			}
 
-			GnomeShellRpc.debug_on = Application.opt_debug;
-			GnomeShellRpc.debug_critical_enabled =
+			Gsr.debug_on = Application.opt_debug;
+			Gsr.debug_critical_enabled =
 				Application.opt_debug_critical;
 
 			this.hold();

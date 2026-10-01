@@ -10,10 +10,10 @@
 			GLib.OutputStream output,
 			GLib.Cancellable? cancellable
 		) throws GLib.Error {
-			var cancel_id = GnomeShellRpc.GiStub.CancellableBridge.register(
+			var cancel_id = Gsr.Client.Rpc.CancellableBridge.register(
 				cancellable);
-			var response = GnomeShellRpc.call_value(
-				"Helper-Selection.transfer", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-Selection.transfer", this,
 				OLLMrpc.args("isxt", (int) selection_type, mimetype,
 					(int64) size, cancel_id));
 			if (response.args.size < 1 || !response.args.get(0).get_boolean()) {

@@ -1,9 +1,9 @@
 /**
- * Helper-Actor — GJS {@code St.Widget} subclass peer; slot-keyed
+ * Gsr-Clutter-Actor — GJS {@code global::St.Widget} subclass peer; slot-keyed
  * {@link Actor.vfuncs} ({@code vfunc_id}). Measure/allocate/event emit
  * lives in {@link LayoutHooks}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class Actor : global::St.Widget
 	{
@@ -21,7 +21,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		{
 			var helper = new Actor();
 			OLLMrpc.Request.add_class(
-				"Helper-Actor", typeof(Actor),
+				"Gsr-Clutter-Actor", typeof(Actor),
 				"create", "s",
 				"add_hook", "it",
 				"add_hooks", "Sv",
@@ -35,13 +35,13 @@ namespace GnomeShellRpc.Rpc.Helper
 				"fire_key", "uu",
 				"deliver_event", "ibddduu",
 				null);
-			OLLMrpc.Request.register_live("Helper-Actor", helper);
+			OLLMrpc.Request.register_live("Gsr-Clutter-Actor", helper);
 			ActorVfuncIds.register_vfunc_ids();
 			style_changed_id = OLLMrpc.Gi.vfunc_offset("St", "Widget", "style_changed");
 		}
 
 		/**
-		 * ''Helper-Actor.add_hook'' — bind one vfunc hook on the lease.
+		 * ''Gsr-Clutter-Actor.add_hook'' — bind one vfunc hook on the lease.
 		 */
 		public void add_hook(OLLMrpc.Request request, int vfunc_id, uint64 hook_id)
 		{
@@ -58,7 +58,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				return;
 			}
 			var clutter_actor = request.connection.leases.get(
-				(int) request.lease_id) as Clutter.Actor;
+				(int) request.lease_id) as global::Clutter.Actor;
 			if (clutter_actor == null) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
@@ -78,7 +78,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.create'' — lease a helper for a client type.
+		 * ''Gsr-Clutter-Actor.create'' — lease a helper for a client type.
 		 *
 		 * Hooks and signals are later calls. {@link add_hook} is
 		 * still the call for one vfunc on an actor that already
@@ -99,7 +99,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.add_hooks'' — store the construct vfuncs
+		 * ''Gsr-Clutter-Actor.add_hooks'' — store the construct vfuncs
 		 * on the leased actor.
 		 *
 		 * One hook id is allocated per ''vfunc_ids'' entry and
@@ -147,7 +147,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.add_signals'' — subscribe each name on the lease.
+		 * ''Gsr-Clutter-Actor.add_signals'' — subscribe each name on the lease.
 		 *
 		 * ''Subscription.connect'' writes no reply. This method
 		 * replies once after the list. An empty name or a missing
@@ -174,7 +174,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.add_properties'' — apply initial property
+		 * ''Gsr-Clutter-Actor.add_properties'' — apply initial property
 		 * pairs on the leased actor.
 		 *
 		 * Arguments are name, value, name, value. An object value
@@ -264,7 +264,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				for_width, min_height_p, natural_height_p);
 		}
 
-		public override void allocate(Clutter.ActorBox box)
+		public override void allocate(global::Clutter.ActorBox box)
 		{
 			var hook = this.vfuncs.get(ActorVfuncIds.allocate_id);
 			if (hook == null) {
@@ -282,12 +282,12 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		[CCode (cname = "clutter_actor_allocate")]
 		static extern void clutter_actor_allocate_public(
-			Clutter.Actor actor,
-			Clutter.ActorBox box
+			global::Clutter.Actor actor,
+			global::Clutter.ActorBox box
 		);
 
 		/**
-		 * ''Helper-Actor.allocate_public'' — C {@code clutter_actor_allocate}
+		 * ''Gsr-Clutter-Actor.allocate_public'' — C {@code clutter_actor_allocate}
 		 * (adjust_allocation then Class->allocate). GI
 		 * {@code Clutter-Actor.allocate} hits klass->allocate and skips
 		 * that wrapper (workspace-dot-align-smoke C).
@@ -295,18 +295,18 @@ namespace GnomeShellRpc.Rpc.Helper
 		public void allocate_public(OLLMrpc.Request request, GLib.Bytes box_bytes)
 		{
 			var peer = request.connection.leases.get((int) request.lease_id) as Actor;
-			if (peer == null || box_bytes.length < sizeof(Clutter.ActorBox)) {
+			if (peer == null || box_bytes.length < sizeof(global::Clutter.ActorBox)) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			Clutter.ActorBox box = *((Clutter.ActorBox*) box_bytes.get_data());
+			global::Clutter.ActorBox box = *((global::Clutter.ActorBox*) box_bytes.get_data());
 			clutter_actor_allocate_public(peer, box);
 			request.reply(new OLLMrpc.Response());
 		}
 
 		/**
-		 * ''Helper-Actor.base_preferred_width'' — St measure with hooks popped.
+		 * ''Gsr-Clutter-Actor.base_preferred_width'' — St measure with hooks popped.
 		 */
 		public void base_preferred_width(
 			OLLMrpc.Request request,
@@ -328,7 +328,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.base_preferred_height'' — see base_preferred_width.
+		 * ''Gsr-Clutter-Actor.base_preferred_height'' — see base_preferred_width.
 		 */
 		public void base_preferred_height(
 			OLLMrpc.Request request,
@@ -349,11 +349,11 @@ namespace GnomeShellRpc.Rpc.Helper
 			});
 		}
 
-		public override bool event(Clutter.Event clutter_event)
+		public override bool event(global::Clutter.Event clutter_event)
 		{
 			var hook = this.vfuncs.get(ActorVfuncIds.event_id);
 			if (hook == null) {
-				/* Parent ClutterActorClass.event is NULL on St.Widget —
+				/* Parent ClutterActorClass.event is NULL on global::St.Widget —
 				 * Vala base.event would call through 0 (motion SIGSEGV). */
 				return false;
 			}
@@ -363,7 +363,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			return false;
 		}
 
-		public override bool captured_event(Clutter.Event clutter_event)
+		public override bool captured_event(global::Clutter.Event clutter_event)
 		{
 			var hook = this.vfuncs.get(ActorVfuncIds.captured_event_id);
 			if (hook == null) {
@@ -376,7 +376,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * St.Widget::style-changed default handler (Class offset). Stock
+		 * global::St.Widget::style-changed default handler (Class offset). Stock
 		 * emit runs this; GJS {@code connect('style-changed')} needs the
 		 * client Live.Hook (buttonbox-hpadding-smoke).
 		 */
@@ -390,32 +390,32 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.pointer_click'' — stage coords; virtual pointer
+		 * ''Gsr-Clutter-Actor.pointer_click'' — stage coords; virtual pointer
 		 * motion + primary press/release (B3 hit-test prove).
 		 */
 		public void pointer_click(OLLMrpc.Request request, double x, double y)
 		{
-			var backend = Clutter.get_default_backend();
+			var backend = global::Clutter.get_default_backend();
 			var seat = backend.get_default_seat();
 			var virt = seat.create_virtual_device(
-				Clutter.InputDeviceType.POINTER_DEVICE);
+				global::Clutter.InputDeviceType.POINTER_DEVICE);
 			if (virt == null) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR);
 				return;
 			}
 			virt.notify_absolute_motion(0, x, y);
-			virt.notify_button(1, Clutter.Button.PRIMARY,
-				Clutter.ButtonState.PRESSED);
-			virt.notify_button(2, Clutter.Button.PRIMARY,
-				Clutter.ButtonState.RELEASED);
+			virt.notify_button(1, global::Clutter.Button.PRIMARY,
+				global::Clutter.ButtonState.PRESSED);
+			virt.notify_button(2, global::Clutter.Button.PRIMARY,
+				global::Clutter.ButtonState.RELEASED);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});
 		}
 
 		/**
-		 * ''Helper-Actor.fire_button_press'' — fire the leased peer's
+		 * ''Gsr-Clutter-Actor.fire_button_press'' — fire the leased peer's
 		 * {@code event} Live.Hook (same emit as {@link event} / 
 		 * {@link LayoutHooks.measure_event}). Seat/pick path is
 		 * {@link pointer_click}.
@@ -439,10 +439,10 @@ namespace GnomeShellRpc.Rpc.Helper
 			actor.get_transformed_position(out ax, out ay);
 			hook.emit(OLLMrpc.args("tiddu",
 				hook.connection.export(actor),
-				(int) Clutter.EventType.BUTTON_PRESS,
+				(int) global::Clutter.EventType.BUTTON_PRESS,
 				(double) (ax + actor.get_width() / 2.0f),
 				(double) (ay + actor.get_height() / 2.0f),
-				(uint32) Clutter.Button.PRIMARY));
+				(uint32) global::Clutter.Button.PRIMARY));
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});
@@ -450,20 +450,20 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		[CCode (cname = "clutter_actor_event")]
 		private static extern bool clutter_actor_event(
-			Clutter.Actor actor,
-			unowned Clutter.Event event,
+			global::Clutter.Actor actor,
+			unowned global::Clutter.Event event,
 			bool capture
 		);
 
 		[CCode (cname = "gsr_clutter_event_key_insert", cheader_filename = "gsr-clutter-event-key.h")]
-		private static extern Clutter.Event gsr_clutter_event_key_insert(
-			Clutter.EventType type,
+		private static extern global::Clutter.Event gsr_clutter_event_key_insert(
+			global::Clutter.EventType type,
 			uint32 keyval,
-			Clutter.ModifierType modifiers
+			global::Clutter.ModifierType modifiers
 		);
 
 		/**
-		 * ''Helper-Actor.deliver_event'' — stock {@code clutter_actor_event}.
+		 * ''Gsr-Clutter-Actor.deliver_event'' — stock {@code clutter_actor_event}.
 		 *
 		 * The client event is Compact. When {@code clutter_get_current_event}
 		 * is still that press (overview search re-delivers the stage key
@@ -482,21 +482,21 @@ namespace GnomeShellRpc.Rpc.Helper
 			uint state
 		) {
 			var actor = request.connection.leases.get(
-				(int) request.lease_id) as Clutter.Actor;
+				(int) request.lease_id) as global::Clutter.Actor;
 			if (actor == null) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			var type = (Clutter.EventType) event_type;
-			unowned var current = Clutter.get_current_event();
+			var type = (global::Clutter.EventType) event_type;
+			unowned var current = global::Clutter.get_current_event();
 			var stop = false;
 			if (current != null && Actor.event_matches(current, type, button, keyval)) {
 				stop = clutter_actor_event(actor, current, capture);
-			} else if (type == Clutter.EventType.KEY_PRESS
-					|| type == Clutter.EventType.KEY_RELEASE) {
+			} else if (type == global::Clutter.EventType.KEY_PRESS
+					|| type == global::Clutter.EventType.KEY_RELEASE) {
 				var ev = gsr_clutter_event_key_insert(
-					type, keyval, (Clutter.ModifierType) state);
+					type, keyval, (global::Clutter.ModifierType) state);
 				if (ev != null) {
 					stop = clutter_actor_event(actor, ev, capture);
 					ev.free();
@@ -509,8 +509,8 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		static bool event_matches(
-			Clutter.Event current,
-			Clutter.EventType type,
+			global::Clutter.Event current,
+			global::Clutter.EventType type,
 			uint button,
 			uint keyval
 		) {
@@ -518,13 +518,13 @@ namespace GnomeShellRpc.Rpc.Helper
 				return false;
 			}
 			switch (type) {
-				case Clutter.EventType.KEY_PRESS:
-				case Clutter.EventType.KEY_RELEASE:
+				case global::Clutter.EventType.KEY_PRESS:
+				case global::Clutter.EventType.KEY_RELEASE:
 					return current.get_key_symbol() == keyval;
-				case Clutter.EventType.BUTTON_PRESS:
-				case Clutter.EventType.BUTTON_RELEASE:
-				case Clutter.EventType.PAD_BUTTON_PRESS:
-				case Clutter.EventType.PAD_BUTTON_RELEASE:
+				case global::Clutter.EventType.BUTTON_PRESS:
+				case global::Clutter.EventType.BUTTON_RELEASE:
+				case global::Clutter.EventType.PAD_BUTTON_PRESS:
+				case global::Clutter.EventType.PAD_BUTTON_RELEASE:
 					return current.get_button() == button;
 				default:
 					return true;
@@ -532,7 +532,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-Actor.fire_key'' — nested B2 prove. Virtual keyboard
+		 * ''Gsr-Clutter-Actor.fire_key'' — nested B2 prove. Virtual keyboard
 		 * keyval (+ optional Super/Ctrl/Alt/Shift) through mutter grabs.
 		 * Not stock Shell; same seat pattern as {@link pointer_click}.
 		 */
@@ -541,49 +541,49 @@ namespace GnomeShellRpc.Rpc.Helper
 			uint keyval,
 			uint modifiers
 		) {
-			var backend = Clutter.get_default_backend();
+			var backend = global::Clutter.get_default_backend();
 			var seat = backend.get_default_seat();
 			var virt = seat.create_virtual_device(
-				Clutter.InputDeviceType.KEYBOARD_DEVICE);
+				global::Clutter.InputDeviceType.KEYBOARD_DEVICE);
 			if (virt == null) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR);
 				return;
 			}
-			var mods = (Clutter.ModifierType) modifiers;
-			if ((mods & Clutter.ModifierType.SUPER_MASK) != 0) {
-				virt.notify_keyval(0, Clutter.Key.Super_L,
-					Clutter.KeyState.PRESSED);
+			var mods = (global::Clutter.ModifierType) modifiers;
+			if ((mods & global::Clutter.ModifierType.SUPER_MASK) != 0) {
+				virt.notify_keyval(0, global::Clutter.Key.Super_L,
+					global::Clutter.KeyState.PRESSED);
 			}
-			if ((mods & Clutter.ModifierType.CONTROL_MASK) != 0) {
-				virt.notify_keyval(0, Clutter.Key.Control_L,
-					Clutter.KeyState.PRESSED);
+			if ((mods & global::Clutter.ModifierType.CONTROL_MASK) != 0) {
+				virt.notify_keyval(0, global::Clutter.Key.Control_L,
+					global::Clutter.KeyState.PRESSED);
 			}
-			if ((mods & Clutter.ModifierType.MOD1_MASK) != 0) {
-				virt.notify_keyval(0, Clutter.Key.Alt_L,
-					Clutter.KeyState.PRESSED);
+			if ((mods & global::Clutter.ModifierType.MOD1_MASK) != 0) {
+				virt.notify_keyval(0, global::Clutter.Key.Alt_L,
+					global::Clutter.KeyState.PRESSED);
 			}
-			if ((mods & Clutter.ModifierType.SHIFT_MASK) != 0) {
-				virt.notify_keyval(0, Clutter.Key.Shift_L,
-					Clutter.KeyState.PRESSED);
+			if ((mods & global::Clutter.ModifierType.SHIFT_MASK) != 0) {
+				virt.notify_keyval(0, global::Clutter.Key.Shift_L,
+					global::Clutter.KeyState.PRESSED);
 			}
-			virt.notify_keyval(0, keyval, Clutter.KeyState.PRESSED);
-			virt.notify_keyval(0, keyval, Clutter.KeyState.RELEASED);
-			if ((mods & Clutter.ModifierType.SHIFT_MASK) != 0) {
-				virt.notify_keyval(0, Clutter.Key.Shift_L,
-					Clutter.KeyState.RELEASED);
+			virt.notify_keyval(0, keyval, global::Clutter.KeyState.PRESSED);
+			virt.notify_keyval(0, keyval, global::Clutter.KeyState.RELEASED);
+			if ((mods & global::Clutter.ModifierType.SHIFT_MASK) != 0) {
+				virt.notify_keyval(0, global::Clutter.Key.Shift_L,
+					global::Clutter.KeyState.RELEASED);
 			}
-			if ((mods & Clutter.ModifierType.MOD1_MASK) != 0) {
-				virt.notify_keyval(0, Clutter.Key.Alt_L,
-					Clutter.KeyState.RELEASED);
+			if ((mods & global::Clutter.ModifierType.MOD1_MASK) != 0) {
+				virt.notify_keyval(0, global::Clutter.Key.Alt_L,
+					global::Clutter.KeyState.RELEASED);
 			}
-			if ((mods & Clutter.ModifierType.CONTROL_MASK) != 0) {
-				virt.notify_keyval(0, Clutter.Key.Control_L,
-					Clutter.KeyState.RELEASED);
+			if ((mods & global::Clutter.ModifierType.CONTROL_MASK) != 0) {
+				virt.notify_keyval(0, global::Clutter.Key.Control_L,
+					global::Clutter.KeyState.RELEASED);
 			}
-			if ((mods & Clutter.ModifierType.SUPER_MASK) != 0) {
-				virt.notify_keyval(0, Clutter.Key.Super_L,
-					Clutter.KeyState.RELEASED);
+			if ((mods & global::Clutter.ModifierType.SUPER_MASK) != 0) {
+				virt.notify_keyval(0, global::Clutter.Key.Super_L,
+					global::Clutter.KeyState.RELEASED);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

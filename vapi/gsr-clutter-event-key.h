@@ -1,5 +1,5 @@
 /* Private mutter Clutter event ctors — exported from libmutter-clutter but
- * not in the public clutter-event.h. Used by Helper-FocusManager. */
+ * not in the public clutter-event.h. Used by Gsr-St-FocusManager. */
 #pragma once
 
 #include <clutter/clutter.h>

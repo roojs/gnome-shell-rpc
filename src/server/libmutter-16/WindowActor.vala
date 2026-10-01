@@ -1,11 +1,11 @@
 /**
- * Delivers {@link Meta.WindowActor} Override RPC (plan 0.5.5 D).
+ * Delivers {@link global::Meta.WindowActor} Override RPC (plan 0.5.5 D).
  *
- * Wire prefix ''Helper-WindowActor''. Lease is the window actor.
+ * Wire prefix ''Gsr-Mutter-WindowActor''. Lease is the window actor.
  * {@link paint_to_content} replies with RGBA dims on {@link OLLMrpc.Response.args}
  * and the pixel memfd on {@link OLLMrpc.Request.reply}'s buffer.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class WindowActor : GLib.Object
 	{
@@ -15,12 +15,12 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-WindowActor", typeof(WindowActor),
+				"Gsr-Mutter-WindowActor", typeof(WindowActor),
 				"paint_to_content", "biiii",
 				"get_image", "biiii",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-WindowActor",
+			OLLMrpc.Request.register_live("Gsr-Mutter-WindowActor",
 				new WindowActor());
 		}
 
@@ -32,9 +32,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			int clip_width,
 			int clip_height
 		) {
-			var actor = (Meta.WindowActor) request.connection.leases.get(
+			var actor = (global::Meta.WindowActor) request.connection.leases.get(
 				(int) request.lease_id);
-			Clutter.Content? content = null;
+			global::Clutter.Content? content = null;
 			try {
 				if (has_clip) {
 					Mtk.Rectangle clip = {
@@ -55,7 +55,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				});
 				return;
 			}
-			var texture_content = content as Clutter.TextureContent;
+			var texture_content = content as global::Clutter.TextureContent;
 			if (texture_content == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -95,7 +95,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			int clip_width,
 			int clip_height
 		) {
-			var actor = (Meta.WindowActor) request.connection.leases.get(
+			var actor = (global::Meta.WindowActor) request.connection.leases.get(
 				(int) request.lease_id);
 			Mtk.Rectangle? clip = null;
 			if (has_clip) {

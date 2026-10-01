@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiRpcMock
+namespace Gsr.GiRpcMock
 {
 	/**
 	 * Singleton boot object graph for Meta → Clutter stage chain.

@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server.Rpc
 {
 	/**
 	 * {@code G_DEFINE_TYPE} registers this class on the first
@@ -14,35 +14,35 @@ namespace GnomeShellRpc.Rpc
 	 * == Example ==
 	 *
 	 * {{{
-	 * new GnomeShellRpc.Rpc.Server().start(meta_display);
+	 * new Gsr.Server.Rpc.Server().start(meta_display);
 	 * }}}
 	 */
 	public class Server : GLib.Object
 	{
-		public Meta.Display display { get; private set; }
+		public global::Meta.Display display { get; private set; }
 		public Listen listen { get; private set; }
-		public Ui.Display ui_display { get; private set; }
+		public Gsr.Server.Meta.Display ui_display { get; private set; }
 
-		private Gee.HashMap<Meta.Window, ulong> title_watch_ids =
-			new Gee.HashMap<Meta.Window, ulong>();
-		private Meta.WaylandClient? smoke_client = null;
+		private Gee.HashMap<global::Meta.Window, ulong> title_watch_ids =
+			new Gee.HashMap<global::Meta.Window, ulong>();
+		private global::Meta.WaylandClient? smoke_client = null;
 		private bool window_actor_aliased = false;
 		private string rpc_socket_path = "";
 
-		public void start(Meta.Display display)
+		public void start(global::Meta.Display display)
 		{
 			this.display = display;
 			var frame_gate = new StartupFrameGate(display);
 			OLLMrpc.rpc_register(true);
 			/* Prefer error codes on Callback.reply → reply_error (throws). */
-			Rpc.LiveCallback.rpc_register();
+			Gsr.Server.LiveCallback.rpc_register();
 			Shared.Rectangle.rpc_register();
-			Ui.Window.rpc_register();
-			Ui.Workspace.rpc_register();
-			Ui.Display.rpc_register();
-			Ui.Compositor.rpc_register();
-			Rpc.Daemon.rpc_register();
-			Rpc.Bootstrap.rpc_register();
+			Gsr.Shared.Window.rpc_register();
+			Gsr.Shared.Workspace.rpc_register();
+			Gsr.Server.Meta.Display.rpc_register();
+			Gsr.Server.Meta.Compositor.rpc_register();
+			Gsr.Server.Daemon.rpc_register();
+			Gsr.Server.Bootstrap.rpc_register();
 
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
@@ -50,29 +50,29 @@ namespace GnomeShellRpc.Rpc
 			OLLMrpc.Gi.register("Clutter", "16");
 			OLLMrpc.Gi.register("St", "16");
 			/* Opaque boxed {@code ClutterStage::before-update} arg. */
-			OLLMrpc.Bin.register("Clutter-Frame", typeof(Clutter.Frame));
+			OLLMrpc.Bin.register("Clutter-Frame", typeof(global::Clutter.Frame));
 
-			Rpc.CancellableBridge.register();
-			Rpc.Helper.rpc_register(frame_gate);
-			Rpc.Helper.Settings.bind(display);
-			Rpc.Helper.AppLaunch.bind(display);
-			Rpc.Helper.GLSLEffect.bind(display);
-			Rpc.Helper.BlurEffect.bind(display);
-			Rpc.Helper.InvertLightnessEffect.bind(display);
+			Gsr.Server.CancellableBridge.register();
+			Gsr.Server.rpc_register(frame_gate);
+			Gsr.Server.Meta.Settings.bind(display);
+			Gsr.Server.Meta.AppLaunch.bind(display);
+			Gsr.Server.Shell.GLSLEffect.bind(display);
+			Gsr.Server.Shell.BlurEffect.bind(display);
+			Gsr.Server.Shell.InvertLightnessEffect.bind(display);
 
-			this.ui_display = new Ui.Display(display);
+			this.ui_display = new Gsr.Server.Meta.Display(display);
 			OLLMrpc.Request.register("RPC-Daemon", new Daemon());
 			OLLMrpc.Request.register_live("Meta-Display", this.ui_display);
 			OLLMrpc.Request.register_live("Meta-Compositor",
-				new Ui.Compositor(display.get_compositor()));
+				new Gsr.Server.Meta.Compositor(display.get_compositor()));
 			OLLMrpc.Bin.register_alias("Meta-Compositor", display.get_compositor().get_type());
 			OLLMrpc.Bin.register_alias("Meta-Context", display.get_context().get_type());
 			OLLMrpc.Bin.register_alias("Meta-Backend", display.get_context().get_backend().get_type());
-			OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Rpc.Helper.Constraint));
+			OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Gsr.Server.Clutter.Constraint));
 			/* Layout-relay peer — Gi convert needs gtype_to_alias (add_child…). */
-			OLLMrpc.Bin.register_alias("St-Widget", typeof(Rpc.Helper.Actor));
+			OLLMrpc.Bin.register_alias("St-Widget", typeof(Gsr.Server.Clutter.Actor));
 			OLLMrpc.Bin.register_alias(
-				"Clutter-LayoutManager", typeof(Rpc.Helper.LayoutManager));
+				"Clutter-LayoutManager", typeof(Gsr.Server.Clutter.LayoutManager));
 			/* Align/Bind/Snap: real mutter GTypes from Gi.register — do not alias. */
 			var monitor_manager = display.get_context().get_backend().get_monitor_manager();
 			if (monitor_manager != null
@@ -191,7 +191,7 @@ namespace GnomeShellRpc.Rpc
 				}
 			});
 
-			foreach (unowned Meta.Window win in display.list_all_windows()) {
+			foreach (unowned global::Meta.Window win in display.list_all_windows()) {
 				if (win == null) {
 					continue;
 				}
@@ -209,7 +209,7 @@ namespace GnomeShellRpc.Rpc
 		private void alias_stage_view()
 		{
 			var stage = this.display.get_context().get_backend().get_stage();
-			unowned GLib.List<Clutter.StageView>? views = null;
+			unowned GLib.List<global::Clutter.StageView>? views = null;
 			if (stage != null) {
 				views = stage.peek_stage_views();
 			}
@@ -237,7 +237,7 @@ namespace GnomeShellRpc.Rpc
 		}
 
 		/**
-		 * Spawn {@code gnome-shell-rpc} via {@link Meta.WaylandClient}.
+		 * Spawn {@code gnome-shell-rpc} via {@link global::Meta.WaylandClient}.
 		 *
 		 * Default (no {@code GI_META_SMOKE}, or {@code init}): product
 		 * {@code init.js} resource. Otherwise a {@code src/gjs-embed/} smoke.
@@ -273,7 +273,7 @@ namespace GnomeShellRpc.Rpc
 			string[] argv = { shell_bin };
 			/* --debug on mutter-rpc is the only switch. The client stays quiet
 			 * unless this process was started with it. */
-			if (GnomeShellRpc.debug_on) {
+			if (Gsr.debug_on) {
 				argv += "--debug";
 			}
 			/* Nested boot: user extensions off via host memory settings. */
@@ -331,11 +331,11 @@ namespace GnomeShellRpc.Rpc
 				launcher.setenv("WAYLAND_DISPLAY", wayland_display, true);
 			}
 			try {
-				this.smoke_client = new Meta.WaylandClient(
+				this.smoke_client = new global::Meta.WaylandClient(
 					this.display.get_context(), launcher);
 				var proc = this.smoke_client.spawnv(this.display, argv);
 				GLib.debug(
-					"spawned %s pid=%s MUTTER_RPC_SOCKET=%s WAYLAND_DISPLAY=%s via Meta.WaylandClient",
+					"spawned %s pid=%s MUTTER_RPC_SOCKET=%s WAYLAND_DISPLAY=%s via global::Meta.WaylandClient",
 					string.joinv(" ", argv),
 					proc.get_identifier().to_string(),
 					this.rpc_socket_path,
@@ -350,7 +350,7 @@ namespace GnomeShellRpc.Rpc
 
 		private uint64? lease_handle_for(
 			OLLMrpc.Transport.Connection connection,
-			Meta.Window meta_window)
+			global::Meta.Window meta_window)
 		{
 			var ptr = (uint64) (void*) meta_window;
 			var hi = (int) (ptr >> 32);
@@ -365,7 +365,7 @@ namespace GnomeShellRpc.Rpc
 			return (uint64) inner.get(lo);
 		}
 
-		private void track_window(Meta.Window meta_window)
+		private void track_window(global::Meta.Window meta_window)
 		{
 			meta_window.unmanaged.connect(() => {
 				if (this.listen == null) {

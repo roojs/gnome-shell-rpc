@@ -5,7 +5,7 @@
 		 */
 		public Graphene.Point pivot_point {
 			get {
-				var response = GnomeShellRpc.call_value(
+				var response = Gsr.call_value(
 					"Clutter-AlignConstraint.get_pivot_point", this);
 				var blob = (GLib.Bytes) response.args.get(0).get_boxed();
 				return *((Graphene.Point*) blob.get_data());
@@ -14,7 +14,7 @@
 				uint8[] data = new uint8[sizeof(Graphene.Point)];
 				*((Graphene.Point*) data) = value;
 				var bytes = new GLib.Bytes(data);
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Clutter-AlignConstraint.set_pivot_point", this,
 					OLLMrpc.args("ay", bytes));
 			}

@@ -4,9 +4,9 @@
  * Holds RGBA from the Helper memfd. Preferred size is the paint size.
  * {@link paint_content} is a no-op until a local Cogl upload path exists.
  */
-namespace GnomeShellRpc.GiStub
+namespace Gsr.Client.Rpc
 {
-	public class PaintedContent : GLib.Object, Clutter.Content
+	public class PaintedContent : GLib.Object, global::Clutter.Content
 	{
 		public int pixel_width { get; construct; }
 		public int pixel_height { get; construct; }
@@ -43,17 +43,17 @@ namespace GnomeShellRpc.GiStub
 		}
 
 		public void paint_content(
-			Clutter.Actor actor,
-			Clutter.PaintNode node,
-			Clutter.PaintContext paint_context
+			global::Clutter.Actor actor,
+			global::Clutter.PaintNode node,
+			global::Clutter.PaintContext paint_context
 		) {
 		}
 
-		public void attached(Clutter.Actor actor)
+		public void attached(global::Clutter.Actor actor)
 		{
 		}
 
-		public void detached(Clutter.Actor actor)
+		public void detached(global::Clutter.Actor actor)
 		{
 		}
 	}

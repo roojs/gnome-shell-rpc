@@ -4,7 +4,7 @@
  * A window actor's pivot notify otherwise writes the raw boxed
  * point and {@code StreamValue} resets the connection.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class GraphenePointOverride : OLLMrpc.Bin.TypeOverride
 	{

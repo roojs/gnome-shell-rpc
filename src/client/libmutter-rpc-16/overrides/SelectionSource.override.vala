@@ -7,10 +7,10 @@
 			string mimetype,
 			GLib.Cancellable? cancellable
 		) throws GLib.Error {
-			var cancel_id = GnomeShellRpc.GiStub.CancellableBridge.register(
+			var cancel_id = Gsr.Client.Rpc.CancellableBridge.register(
 				cancellable);
-			var response = GnomeShellRpc.call_value(
-				"Helper-SelectionSource.read", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-SelectionSource.read", this,
 				OLLMrpc.args("st", mimetype, cancel_id));
 			if (response.args.size < 1 || !response.args.get(0).get_boolean()
 					|| response.buffer == null || response.buffer.fd < 0) {

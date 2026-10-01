@@ -20,7 +20,7 @@
  * the socket fd — never {@code bin.in_stream.get_available()}. So the Response
  * sits in the buffer, {@code poll(socket)} never wakes → deadlock.
  *
- * Our OWN server {@link GnomeShellRpc.Rpc.Connection.emit_wait_poll} already
+ * Our OWN server {@link Gsr.Server.Rpc.Connection.emit_wait_poll} already
  * fixes this exact class for the SERVER: {@code input_pending()} checks
  * {@code bin.in_stream.get_available()}. The libocrpc CLIENT {@code call_poll}
  * has the same latent bug, unfixed.
@@ -94,15 +94,15 @@ class Gate : GLib.Object
 static void boot_rpc()
 {
 	OLLMrpc.rpc_register(true);
-	GnomeShellRpc.Rpc.Daemon.rpc_register();
-	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
+	Gsr.Server.Daemon.rpc_register();
+	OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
 	Gate.rpc_register();
 }
 
 static int run_server(string sock)
 {
 	boot_rpc();
-	var listen = new GnomeShellRpc.Rpc.Listen(sock) {
+	var listen = new Gsr.Server.Rpc.Listen(sock) {
 		live_handles = true,
 	};
 	if (!listen.start()) {

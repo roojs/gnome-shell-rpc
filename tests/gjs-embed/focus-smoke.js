@@ -4,7 +4,7 @@
  *   GI_META_SMOKE=focus-smoke GSR_WESTON_MODE=prove \
  *     ./scripts/weston-gsr-session.sh
  *
- * Uses St.Widget subclass + Helper-Actor.fire_button_press (B3 path).
+ * Uses St.Widget subclass + Gsr-Clutter-Actor.fire_button_press (B3 path).
  * St.Button peers are stock StButton — not Helper.Actor — so fire_button_press
  * cannot cast them.
  */

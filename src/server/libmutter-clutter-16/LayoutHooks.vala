@@ -3,7 +3,7 @@
  *
  * 🚫 Do not revive emit_guard / {@code suppress_emit} / measure-depth skips.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
 	public class LayoutHooks
 	{
@@ -76,7 +76,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static bool measure_allocate(
 			OLLMrpc.Live.Hook hook,
 			Actor actor,
-			Clutter.ActorBox box
+			global::Clutter.ActorBox box
 		) {
 			hook.emit(OLLMrpc.args("tdddd",
 				hook.connection.export(actor),
@@ -96,12 +96,12 @@ namespace GnomeShellRpc.Rpc.Helper
 		/**
 		 * Emit event hook. {@code true} = JS handled (EVENT_STOP);
 		 * {@code false} = fall through — caller returns false (propagate).
-		 * 🚫 Do not {@code base.event}: St.Widget parent class slot is NULL.
+		 * 🚫 Do not {@code base.event}: global::St.Widget parent class slot is NULL.
 		 */
 		public static bool measure_event(
 			OLLMrpc.Live.Hook hook,
-			Clutter.Actor actor,
-			Clutter.Event event
+			global::Clutter.Actor actor,
+			global::Clutter.Event event
 		) {
 			float x = 0.0f, y = 0.0f;
 			event.get_coords(out x, out y);
@@ -109,14 +109,14 @@ namespace GnomeShellRpc.Rpc.Helper
 			uint32 button = 0;
 			uint key = 0;
 			switch (et) {
-				case Clutter.EventType.BUTTON_PRESS:
-				case Clutter.EventType.BUTTON_RELEASE:
-				case Clutter.EventType.PAD_BUTTON_PRESS:
-				case Clutter.EventType.PAD_BUTTON_RELEASE:
+				case global::Clutter.EventType.BUTTON_PRESS:
+				case global::Clutter.EventType.BUTTON_RELEASE:
+				case global::Clutter.EventType.PAD_BUTTON_PRESS:
+				case global::Clutter.EventType.PAD_BUTTON_RELEASE:
 					button = event.get_button();
 					break;
-				case Clutter.EventType.KEY_PRESS:
-				case Clutter.EventType.KEY_RELEASE:
+				case global::Clutter.EventType.KEY_PRESS:
+				case global::Clutter.EventType.KEY_RELEASE:
 					key = event.get_key_symbol();
 					break;
 				default:
@@ -137,7 +137,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		/**
 		 * Emit style-changed hook (void). Client emits
-		 * {@code St.Widget::style-changed} for GJS connect handlers.
+		 * {@code global::St.Widget::style-changed} for GJS connect handlers.
 		 */
 		public static void measure_style_changed(OLLMrpc.Live.Hook hook, Actor actor) 
 		{

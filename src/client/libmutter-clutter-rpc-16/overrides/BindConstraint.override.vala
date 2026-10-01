@@ -43,7 +43,7 @@
 			if (this.rpc_lid == 0) {
 				return;
 			}
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Clutter-BindConstraint.set_source", this,
 				OLLMrpc.args("o", this.priv_source));
 		}
@@ -53,7 +53,7 @@
 			if (this.rpc_lid == 0) {
 				return;
 			}
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Clutter-BindConstraint.set_coordinate", this,
 				OLLMrpc.args("i", (int) this.priv_coordinate));
 		}
@@ -63,7 +63,7 @@
 			if (this.rpc_lid == 0) {
 				return;
 			}
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Clutter-BindConstraint.set_offset", this,
 				OLLMrpc.args("f", (double) this.priv_offset));
 		}

@@ -14,7 +14,7 @@
 			if (this.device_type_known) {
 				return this.device_type_priv;
 			}
-			var response = GnomeShellRpc.call_value(
+			var response = Gsr.call_value(
 				"Clutter-InputDevice.get_device_type", this);
 			return (InputDeviceType) response.retval.get_int();
 		}

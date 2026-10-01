@@ -1,8 +1,8 @@
 		public void play_from_file(GLib.File file, string description, GLib.Cancellable? cancellable)
 		{
-			uint64 cancel_id = GnomeShellRpc.GiStub.CancellableBridge.register(cancellable);
-			GnomeShellRpc.call_value(
-				"Helper-SoundPlayer.play_from_file",
+			uint64 cancel_id = Gsr.Client.Rpc.CancellableBridge.register(cancellable);
+			Gsr.call_value(
+				"Gsr-Mutter-SoundPlayer.play_from_file",
 				this,
 				OLLMrpc.args(
 					"sst",
@@ -15,9 +15,9 @@
 
 		public void play_from_theme(string name, string description, GLib.Cancellable? cancellable)
 		{
-			uint64 cancel_id = GnomeShellRpc.GiStub.CancellableBridge.register(cancellable);
-			GnomeShellRpc.call_value(
-				"Helper-SoundPlayer.play_from_theme",
+			uint64 cancel_id = Gsr.Client.Rpc.CancellableBridge.register(cancellable);
+			Gsr.call_value(
+				"Gsr-Mutter-SoundPlayer.play_from_theme",
 				this,
 				OLLMrpc.args("sst", name, description, cancel_id)
 			);

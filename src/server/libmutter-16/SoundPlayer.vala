@@ -1,22 +1,22 @@
 /**
- * Delivers {@link Meta.SoundPlayer} Override RPC (plan 0.5.7 C1).
+ * Delivers {@link global::Meta.SoundPlayer} Override RPC (plan 0.5.7 C1).
  *
- * Wire prefix ''Helper-SoundPlayer''. Lease is the player;
+ * Wire prefix ''Gsr-Mutter-SoundPlayer''. Lease is the player;
  * {@link OLLMrpc.Request.register_live} keeps this singleton as ''this''.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class SoundPlayer : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-SoundPlayer", typeof(SoundPlayer),
+				"Gsr-Mutter-SoundPlayer", typeof(SoundPlayer),
 				"play_from_file", "sst",
 				"play_from_theme", "sst",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-SoundPlayer", new SoundPlayer());
+			OLLMrpc.Request.register_live("Gsr-Mutter-SoundPlayer", new SoundPlayer());
 		}
 
 		public void play_from_file(
@@ -33,9 +33,9 @@ namespace GnomeShellRpc.Rpc.Helper
 				});
 				return;
 			}
-			var player = (Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
+			var player = (global::Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
 			player.play_from_file(GLib.File.new_for_uri(uri), description,
-				GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id));
+				Gsr.Server.CancellableBridge.lookup(cancel_id));
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});
@@ -47,9 +47,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			string description,
 			uint64 cancel_id
 		) {
-			var player = (Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
+			var player = (global::Meta.SoundPlayer) request.connection.leases.get((int) request.lease_id);
 			player.play_from_theme(name, description,
-				GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id));
+				Gsr.Server.CancellableBridge.lookup(cancel_id));
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

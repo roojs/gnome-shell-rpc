@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.FakeShell
+namespace Gsr.FakeShell
 {
 	/**
 	 * Client-side display: window graph plus {@code Display} calls.
@@ -33,7 +33,7 @@ namespace GnomeShellRpc.FakeShell
 				rows = (Gee.ArrayList<GLib.Object>) list_resp.retval.get_object();
 			}
 			foreach (var obj in rows) {
-				var snap = (Ui.Window)obj;
+				var snap = (Gsr.Shared.Window)obj;
 				seen.add(snap.id);
 				if (!this.windows.has_key(snap.id)) {
 					this.windows.set(snap.id, new Window(this.session, snap.id));
@@ -79,7 +79,7 @@ namespace GnomeShellRpc.FakeShell
 				}
 				return;
 			}
-			var snap = (Ui.Window)resp.retval.get_object();
+			var snap = (Gsr.Shared.Window)resp.retval.get_object();
 			if (!this.windows.has_key(snap.id)) {
 				this.windows.set(snap.id, new Window(this.session, snap.id));
 				this.session.client.proxies.set(snap.id, this.windows.get(snap.id));

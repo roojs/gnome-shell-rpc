@@ -1,27 +1,27 @@
 /**
- * Delivers {@link Meta.BackgroundActor} construct RPC.
+ * Delivers {@link global::Meta.BackgroundActor} construct RPC.
  *
  * Lease id in {@link OLLMrpc.Response.args} (same packing as
  * {@link Background.create}) — avoid {@code retval} re-entering client
  * {@code construct}.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class BackgroundActor : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-BackgroundActor", typeof(BackgroundActor),
+				"Gsr-Mutter-BackgroundActor", typeof(BackgroundActor),
 				"create", "oi",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-BackgroundActor",
+			OLLMrpc.Request.register_live("Gsr-Mutter-BackgroundActor",
 				new BackgroundActor());
 		}
 
 		/**
-		 * ''Helper-BackgroundActor.create'' — compositor background actor.
+		 * ''Gsr-Mutter-BackgroundActor.create'' — compositor background actor.
 		 *
 		 * @param request inbound RPC
 		 * @param display compositor display (wire ''o'' / lease)
@@ -29,10 +29,10 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public void create(
 			OLLMrpc.Request request,
-			Meta.Display display,
+			global::Meta.Display display,
 			int monitor
 		) {
-			var actor = new Meta.BackgroundActor(display, monitor);
+			var actor = new global::Meta.BackgroundActor(display, monitor);
 			/* Stock attach MetaBackgroundContent — client facade needs its
 			 * lease so content.background / set_vignette RPC to the peer. */
 			var content = actor.get_content();
@@ -42,7 +42,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			}
 			/* Shell wallpaper lives under window_group; drop Plugin's
 			 * opaque pre-RPC fill so it no longer covers this actor. */
-			GnomeShellRpc.Plugin.release_placeholder_backgrounds();
+			Gsr.Server.Plugin.release_placeholder_backgrounds();
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args( "tt", (uint64) request.connection.export(actor),

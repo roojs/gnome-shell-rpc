@@ -2,7 +2,7 @@
  * Owned {@code Shell.InvertLightnessEffect} — stock
  * {@code shell-invert-lightness-effect}.
  *
- * Paint runs on the compositor via {@code Helper-InvertLightnessEffect.create}.
+ * Paint runs on the compositor via {@code Gsr-Shell-InvertLightnessEffect.create}.
  */
 namespace Shell
 {
@@ -30,7 +30,7 @@ namespace Shell
 			set construct {
 				this.priv_enabled = value;
 				if (this.mint_done) {
-					GnomeShellRpc.call_value("Clutter-ActorMeta.set_enabled", this,
+					Gsr.call_value("Clutter-ActorMeta.set_enabled", this,
 						OLLMrpc.args("b", this.priv_enabled));
 				}
 			}
@@ -41,14 +41,14 @@ namespace Shell
 				this.mint_done = true;
 				return;
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-InvertLightnessEffect.create");
+			var response = Gsr.call_value(
+				"Gsr-Shell-InvertLightnessEffect.create");
 			this.rpc_lid = response.args.get(0).get_uint64();
 			if (this.priv_name != null && this.priv_name.length > 0) {
-				GnomeShellRpc.call_value("Clutter-ActorMeta.set_name", this,
+				Gsr.call_value("Clutter-ActorMeta.set_name", this,
 					OLLMrpc.args("s", this.priv_name));
 			}
-			GnomeShellRpc.call_value("Clutter-ActorMeta.set_enabled", this,
+			Gsr.call_value("Clutter-ActorMeta.set_enabled", this,
 				OLLMrpc.args("b", this.priv_enabled));
 			this.mint_done = true;
 		}

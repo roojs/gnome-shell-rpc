@@ -93,7 +93,7 @@ function main() {
 	/* ---- C: stock WorkspaceDot — extends Clutter.Actor, not St.Widget ----
 	 * panel.js WorkspaceDot.vfunc_allocate: set_allocation then
 	 * _dot.allocate(full box) with y_align CENTER. St.Widget Dotish was a
-	 * false green (Helper-Actor hooks); Clutter.Actor is the real shape. */
+	 * false green (Gsr-Clutter-Actor hooks); Clutter.Actor is the real shape. */
 	const Dotish = GObject.registerClass(
 	class Dotish extends Clutter.Actor {
 		vfunc_get_preferred_width(_forHeight) {

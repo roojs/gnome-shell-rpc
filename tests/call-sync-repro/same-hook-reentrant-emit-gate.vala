@@ -113,17 +113,17 @@ class Gate : GLib.Object
 static void boot_rpc()
 {
 	OLLMrpc.rpc_register(true);
-	GnomeShellRpc.Rpc.Daemon.rpc_register();
-	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
+	Gsr.Server.Daemon.rpc_register();
+	OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
 	/* The product server replaces the stock live singleton (Server.vala). */
-	GnomeShellRpc.Rpc.LiveCallback.rpc_register();
+	Gsr.Server.LiveCallback.rpc_register();
 	Gate.rpc_register();
 }
 
 static int run_server(string sock)
 {
 	boot_rpc();
-	var listen = new GnomeShellRpc.Rpc.Listen(sock) {
+	var listen = new Gsr.Server.Rpc.Listen(sock) {
 		live_handles = true,
 	};
 	if (!listen.start()) {

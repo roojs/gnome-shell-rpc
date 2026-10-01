@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiStub
+namespace Gsr.Client.Rpc
 {
 	/**
 	 * Vala bridge to {@code meta_backend_get_settings} in {@code c-meta-shell-gaps.c}.

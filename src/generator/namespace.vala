@@ -16,6 +16,6 @@
  *   --typelib-dir=…/mutter-16 --outdir=./build/src/clutter-include
  * }}}
  */
-namespace GnomeShellRpc.GiStubGen
+namespace Gsr.Generator
 {
 }

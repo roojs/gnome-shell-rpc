@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiRpcMock
+namespace Gsr.GiRpcMock
 {
 	/**
 	 * Hand mock for wires {@link OLLMrpc.GiMock} cannot answer correctly.
@@ -46,7 +46,8 @@ namespace GnomeShellRpc.GiRpcMock
 		public bool dispatch(OLLMrpc.Request request)
 		{
 			var method = request.method;
-			if (!method.has_prefix("Helper-")
+			if (!method.has_prefix("Gsr-")
+				&& !method.has_prefix("Helper-")
 				&& !method.has_prefix("Meta-")
 				&& !method.has_prefix("St-")
 				&& !method.has_prefix("Clutter-")
@@ -201,14 +202,14 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 
-				case "Helper-ThemeContext":
+				case "Gsr-St-ThemeContext":
 					if (name == "set_theme") {
 						this.reply_void(request);
 						return true;
 					}
 					break;
 
-				case "Helper-Icon":
+				case "Gsr-St-Icon":
 					switch (name) {
 						case "set_gicon":
 						case "set_fallback_gicon":
@@ -221,7 +222,7 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
-				case "Helper-Actor":
+				case "Gsr-Clutter-Actor":
 					switch (name) {
 						case "create":
 							this.reply_args_lease(request, "St-Widget");
@@ -229,14 +230,14 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
-				case "Helper-Clutter":
+				case "Gsr-Clutter":
 					if (name == "get_current_event") {
 						this.reply_void(request);
 						return true;
 					}
 					break;
 
-				case "Helper-Interval":
+				case "Gsr-Clutter-Interval":
 					if (name == "create") {
 						this.reply_args_lease(request, "Clutter-Interval");
 						return true;
@@ -275,7 +276,7 @@ namespace GnomeShellRpc.GiRpcMock
 					return false;
 
 				/* —— Helper-* (non-GIR) —— */
-				case "Helper-Background":
+				case "Gsr-Mutter-Background":
 					switch (name) {
 						case "create":
 							this.reply_args_lease(request, "Meta-Background");
@@ -287,7 +288,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-BackgroundImageCache":
+				case "Gsr-Mutter-BackgroundImageCache":
 					if (name == "load") {
 						this.reply_retval_leased(request,
 							HelperMock.mint("Meta-BackgroundImage"));
@@ -295,7 +296,7 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
-				case "Helper-BackgroundActor":
+				case "Gsr-Mutter-BackgroundActor":
 					if (name == "create") {
 						var actor = HelperMock.mint("Meta-BackgroundActor");
 						var content = HelperMock.mint("Meta-BackgroundContent");
@@ -310,7 +311,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-Context":
+				case "Gsr-Mutter-Context":
 					if (name == "terminate_with_error") {
 						this.reply_void(request);
 						return true;
@@ -318,7 +319,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-Settings":
+				case "Gsr-Mutter-Settings":
 					if (name == "get_ui_scaling_factor") {
 						this.reply_retval_i(request, 1);
 						return true;
@@ -326,7 +327,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-IdleMonitor":
+				case "Gsr-Mutter-IdleMonitor":
 					switch (name) {
 						case "add_idle_watch":
 						case "add_user_active_watch":
@@ -336,7 +337,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-Constraint":
+				case "Gsr-Clutter-Constraint":
 					if (name == "create") {
 						this.reply_args_lease(request, "Clutter-Constraint");
 						return true;
@@ -353,7 +354,7 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
-				case "Helper-Display":
+				case "Gsr-Mutter-Display":
 					switch (name) {
 						case "add_keybinding":
 							this.reply_retval_u(request, 1);
@@ -372,7 +373,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-Window":
+				case "Gsr-Mutter-Window":
 					switch (name) {
 						case "foreach_transient":
 						case "foreach_ancestor":
@@ -385,7 +386,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-WindowActor":
+				case "Gsr-Mutter-WindowActor":
 					switch (name) {
 						case "paint_to_content":
 						case "get_image":
@@ -395,7 +396,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-SoundPlayer":
+				case "Gsr-Mutter-SoundPlayer":
 					switch (name) {
 						case "play_from_file":
 						case "play_from_theme":
@@ -405,7 +406,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-Selection":
+				case "Gsr-Mutter-Selection":
 					if (name == "transfer") {
 						this.reply_args_bool(request, false);
 						return true;
@@ -413,7 +414,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-SelectionSource":
+				case "Gsr-Mutter-SelectionSource":
 					if (name == "read") {
 						this.reply_args_bool(request, false);
 						return true;
@@ -421,7 +422,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-SelectionSourceMemory":
+				case "Gsr-Mutter-SelectionSourceMemory":
 					if (name == "create") {
 						this.reply_retval_leased(request, HelperMock.mint("Meta-SelectionSource"));
 						return true;
@@ -429,7 +430,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-ShapedTexture":
+				case "Gsr-Mutter-ShapedTexture":
 					if (name == "get_image") {
 						this.reply_void(request);
 						return true;
@@ -437,7 +438,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-ShaderEffect":
+				case "Gsr-Clutter-ShaderEffect":
 					if (name == "set_uniform") {
 						this.reply_void(request);
 						return true;
@@ -445,7 +446,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-GLSLEffect":
+				case "Gsr-Shell-GLSLEffect":
 					switch (name) {
 						case "create":
 							this.reply_args_lease(request, "Clutter-OffscreenEffect");
@@ -462,7 +463,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Do not add here unless Helper-* / GiMock cannot answer. */
 					break;
 
-				case "Helper-BlurEffect":
+				case "Gsr-Shell-BlurEffect":
 					if (name == "create") {
 						this.reply_args_lease(request, "Shell-BlurEffect");
 						return true;
@@ -470,7 +471,7 @@ namespace GnomeShellRpc.GiRpcMock
 					/* Props: stock Shell-BlurEffect.set_property — not Helper. */
 					break;
 
-				case "Helper-InvertLightnessEffect":
+				case "Gsr-Shell-InvertLightnessEffect":
 					if (name == "create") {
 						this.reply_args_lease(request,
 							"Shell-InvertLightnessEffect");
@@ -478,7 +479,7 @@ namespace GnomeShellRpc.GiRpcMock
 					}
 					break;
 
-				case "Helper-ClutterThreads":
+				case "Gsr-Clutter-Threads":
 					if (name == "threads_add_repaint_func") {
 						this.reply_retval_u(request, 1);
 						return true;
@@ -608,7 +609,7 @@ namespace GnomeShellRpc.GiRpcMock
 					return false;
 			}
 
-			if (prefix.has_prefix("Helper-")) {
+			if (prefix.has_prefix("Gsr-") || prefix.has_prefix("Helper-")) {
 				GLib.warning("HelperMock: unhandled %s — void reply", method);
 				this.reply_void(request);
 				return true;

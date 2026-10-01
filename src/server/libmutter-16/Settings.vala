@@ -1,18 +1,18 @@
 /**
  * Delivers {@code meta_settings_get_ui_scaling_factor} for libshell (0.7.1 Phase 2).
  *
- * Wire prefix ''Helper-Settings''. No lease — reads compositor backend settings.
+ * Wire prefix ''Gsr-Mutter-Settings''. No lease — reads compositor backend settings.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class Settings : GLib.Object
 	{
-		public Meta.Display meta_display { get; construct; }
+		public global::Meta.Display meta_display { get; construct; }
 
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-Settings", typeof(Settings),
+				"Gsr-Mutter-Settings", typeof(Settings),
 				"get_ui_scaling_factor", "",
 				null
 			);
@@ -23,21 +23,21 @@ namespace GnomeShellRpc.Rpc.Helper
 		 *
 		 * @param display mutter display (server process)
 		 */
-		public static void bind(Meta.Display display)
+		public static void bind(global::Meta.Display display)
 		{
 			OLLMrpc.Request.register_live(
-				"Helper-Settings",
+				"Gsr-Mutter-Settings",
 				new Settings(display)
 			);
 		}
 
-		public Settings(Meta.Display meta_display)
+		public Settings(global::Meta.Display meta_display)
 		{
 			GLib.Object(meta_display: meta_display);
 		}
 
 		/**
-		 * ''Helper-Settings.get_ui_scaling_factor'' — compositor UI scale.
+		 * ''Gsr-Mutter-Settings.get_ui_scaling_factor'' — compositor UI scale.
 		 *
 		 * @param request inbound RPC
 		 */

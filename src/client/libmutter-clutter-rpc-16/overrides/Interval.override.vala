@@ -1,6 +1,6 @@
 		/**
 		 * GJS: {@code new Clutter.Interval({ value_type: pspec.value_type })}.
-		 * Mint via Helper-Interval.create. Client Vala is set_*_value;
+		 * Mint via Gsr-Clutter-Interval.create. Client Vala is set_*_value;
 		 * Gi typelib name is set_initial / set_final (GIR shadows). Wire
 		 * that + capital-V. peek/get keep a local mirror (GValue* ABI).
 		 */
@@ -23,12 +23,12 @@
 			if (this.rpc_lid != 0) {
 				return;
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-Interval.create",
+			var response = Gsr.call_value(
+				"Gsr-Clutter-Interval.create",
 				null,
 				OLLMrpc.args("s", this.priv_value_type.name()));
 			this.rpc_lid = response.args.get(0).get_uint64();
-			GnomeShellRpc.GiStub.Runtime.register_handle(this);
+			Gsr.Client.Rpc.Runtime.register_handle(this);
 		}
 
 		public Interval()
@@ -58,7 +58,7 @@
 		public void set_initial_value(GLib.Value value)
 		{
 			this.mirror_value(true, value);
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Clutter-Interval.set_initial", this,
 				OLLMrpc.args("V", value));
 		}
@@ -66,7 +66,7 @@
 		public void set_final_value(GLib.Value value)
 		{
 			this.mirror_value(false, value);
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Clutter-Interval.set_final", this,
 				OLLMrpc.args("V", value));
 		}

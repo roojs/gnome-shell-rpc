@@ -4,7 +4,7 @@
  * Wire prefix {@code RPC-Cancellable}. Twins are created on first
  * {@link lookup} and cancelled via {@link cancel}.
  */
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server
 {
 	public class CancellableBridge : GLib.Object
 	{

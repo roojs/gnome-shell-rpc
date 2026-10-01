@@ -3,7 +3,7 @@
  *
  * The nested harness shadows gtk4-demo with a test wrapper. This script then
  * launches org.gtk.Demo4.desktop through Shell.App.launch(), which crosses the
- * existing Helper-AppLaunch boundary. The wrapper records the real child PID,
+ * existing Gsr-Mutter-AppLaunch boundary. The wrapper records the real child PID,
  * environment, stderr, and exit status. This script separately identifies a
  * Meta window (mutter) or an X11 window on the parent Weston display.
  *

@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Ui
+namespace Gsr.Server.Meta
 {
 	/**
 	 * Live {@code Meta-Compositor} RPC handler.
@@ -9,9 +9,9 @@ namespace GnomeShellRpc.Ui
 	 * == Example ==
 	 *
 	 * {{{
-	 * GnomeShellRpc.Ui.Compositor.rpc_register();
+	 * Gsr.Server.Meta.Compositor.rpc_register();
 	 * OLLMrpc.Request.register_live("Meta-Compositor",
-	 *     new GnomeShellRpc.Ui.Compositor(meta_display.get_compositor()));
+	 *     new Gsr.Server.Meta.Compositor(meta_display.get_compositor()));
 	 * }}}
 	 */
 	public class Compositor : GLib.Object
@@ -25,9 +25,9 @@ namespace GnomeShellRpc.Ui
 			);
 		}
 
-		public Meta.Compositor meta_compositor { get; construct; }
+		public global::Meta.Compositor meta_compositor { get; construct; }
 
-		public Compositor(Meta.Compositor meta_compositor)
+		public Compositor(global::Meta.Compositor meta_compositor)
 		{
 			GLib.Object(meta_compositor: meta_compositor);
 		}
@@ -45,7 +45,7 @@ namespace GnomeShellRpc.Ui
 			var response = new OLLMrpc.Response() {
 				id = request.id,
 			};
-			foreach (unowned Meta.WindowActor actor in this.meta_compositor.get_window_actors()) {
+			foreach (unowned global::Meta.WindowActor actor in this.meta_compositor.get_window_actors()) {
 				var handle = GLib.Value(typeof(uint64));
 				handle.set_uint64(request.connection.export(actor));
 				response.args.add(handle);

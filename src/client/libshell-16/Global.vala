@@ -75,34 +75,34 @@ namespace Shell
 
 		/**
 		 * Nested B3 prove — server virtual pointer click at stage coords.
-		 * Not stock Shell; Helper-Actor.pointer_click only.
+		 * Not stock Shell; Gsr-Clutter-Actor.pointer_click only.
 		 */
 		public void pointer_click(float x, float y)
 		{
-			GnomeShellRpc.call_value(
-				"Helper-Actor.pointer_click",
+			Gsr.call_value(
+				"Gsr-Clutter-Actor.pointer_click",
 				null,
 				OLLMrpc.args("dd", (double) x, (double) y));
 		}
 
 		/**
 		 * Nested B3 prove — fire BUTTON_PRESS Live.Hook on {@code actor}
-		 * (Helper-Actor peer). Not stock Shell.
+		 * (Gsr-Clutter-Actor peer). Not stock Shell.
 		 */
 		public void fire_button_press(Clutter.Actor actor)
 		{
-			GnomeShellRpc.call_value(
-				"Helper-Actor.fire_button_press", actor);
+			Gsr.call_value(
+				"Gsr-Clutter-Actor.fire_button_press", actor);
 		}
 
 		/**
 		 * Nested B2 prove — virtual keyboard keyval (+ modifiers) on the
-		 * compositor seat (Helper-Actor.fire_key). Not stock Shell.
+		 * compositor seat (Gsr-Clutter-Actor.fire_key). Not stock Shell.
 		 */
 		public void fire_key(uint keyval, Clutter.ModifierType modifiers)
 		{
-			GnomeShellRpc.call_value(
-				"Helper-Actor.fire_key",
+			Gsr.call_value(
+				"Gsr-Clutter-Actor.fire_key",
 				null,
 				OLLMrpc.args("uu", keyval, (uint) modifiers));
 		}
@@ -166,7 +166,7 @@ namespace Shell
 			}
 			instance = new Global(display);
 			var event_vfunc_id = OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "event");
-			var event_hook_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+			var event_hook_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
 				var type = (Clutter.EventType) call.args.get(1).get_int();
 				var x = (float) call.args.get(2).get_double();
 				var y = (float) call.args.get(3).get_double();
@@ -190,8 +190,8 @@ namespace Shell
 				}
 				return OLLMrpc.args("b", false);
 			});
-			GnomeShellRpc.call_value(
-				"Helper-Actor.add_hook", instance.stage,
+			Gsr.call_value(
+				"Gsr-Clutter-Actor.add_hook", instance.stage,
 				OLLMrpc.args("it", event_vfunc_id, event_hook_id));
 		}
 
@@ -395,8 +395,8 @@ namespace Shell
 		{
 			int factor;
 			try {
-				var response = GnomeShellRpc.call_value(
-					"Helper-Settings.get_ui_scaling_factor");
+				var response = Gsr.call_value(
+					"Gsr-Mutter-Settings.get_ui_scaling_factor");
 				factor = response.retval.get_int();
 			} catch (GLib.Error e) {
 				GLib.warning("update_scaling_factor: %s", e.message);

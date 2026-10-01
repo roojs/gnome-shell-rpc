@@ -1,25 +1,24 @@
 /**
- * Helper-Clutter — namespace Clutter functions that need packed returns
- * (Compact {@link Clutter.Event} cannot go through Gi.dispatch).
+ * Gsr-Clutter — namespace Clutter functions that need packed returns
+ * (Compact {@link global::Clutter.Event} cannot go through Gi.dispatch).
  *
- * Class must not be named {@code Clutter} — that shadows the Clutter
- * namespace inside {@code GnomeShellRpc.Rpc.Helper} (Display.vala etc.).
+ * Stock {@code global::Clutter} is qualified because this class is also named global::Clutter.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Clutter
 {
-	public class ClutterHelper : GLib.Object
+	public class Clutter : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-Clutter", typeof(ClutterHelper),
+				"Gsr-Clutter", typeof(Clutter),
 				"get_current_event", "",
 				"event_get", "",
 				"event_add_filter", "tt",
 				"event_remove_filter", "u",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-Clutter", new ClutterHelper());
+			OLLMrpc.Request.register_live("Gsr-Clutter", new Clutter());
 		}
 
 		/**
@@ -29,7 +28,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public void get_current_event(OLLMrpc.Request request)
 		{
-			unowned var ev = Clutter.get_current_event();
+			unowned var ev = global::Clutter.get_current_event();
 			this.reply_event(request, ev);
 		}
 
@@ -38,7 +37,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		 */
 		public void event_get(OLLMrpc.Request request)
 		{
-			var ev = Clutter.Event.get();
+			var ev = global::Clutter.Event.get();
 			this.reply_event(request, ev);
 		}
 
@@ -57,10 +56,10 @@ namespace GnomeShellRpc.Rpc.Helper
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			Clutter.Stage? stage = null;
+			global::Clutter.Stage? stage = null;
 			if (stage_lid != 0) {
 				stage = request.connection.leases.get((int) stage_lid)
-					as Clutter.Stage;
+					as global::Clutter.Stage;
 				if (stage == null) {
 					request.connection.reply_error(request,
 						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
@@ -68,7 +67,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				}
 			}
 			var row = request.connection.callbacks.get((int) callback_id);
-			var filter_id = Clutter.Event.add_filter(
+			var filter_id = global::Clutter.Event.add_filter(
 				stage, (event, event_actor) => {
 					var fields = this.pack_event(event);
 					if (event_actor == null) {
@@ -88,7 +87,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		public void event_remove_filter(OLLMrpc.Request request, uint id)
 		{
-			Clutter.Event.remove_filter(id);
+			global::Clutter.Event.remove_filter(id);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});
@@ -96,7 +95,7 @@ namespace GnomeShellRpc.Rpc.Helper
 
 		private void reply_event(
 			OLLMrpc.Request request,
-			Clutter.Event? ev
+			global::Clutter.Event? ev
 		) {
 			if (ev == null) {
 				request.reply(new OLLMrpc.Response() {
@@ -110,27 +109,27 @@ namespace GnomeShellRpc.Rpc.Helper
 			});
 		}
 
-		private Gee.ArrayList<GLib.Value?> pack_event(Clutter.Event ev)
+		private Gee.ArrayList<GLib.Value?> pack_event(global::Clutter.Event ev)
 		{
 			float x = 0f, y = 0f;
 			ev.get_coords(out x, out y);
 			var et = ev.get_type();
 			uint32 button = 0;
 			uint key = 0;
-			Clutter.Actor? related = null;
+			global::Clutter.Actor? related = null;
 			switch (et) {
-				case Clutter.EventType.BUTTON_PRESS:
-				case Clutter.EventType.BUTTON_RELEASE:
-				case Clutter.EventType.PAD_BUTTON_PRESS:
-				case Clutter.EventType.PAD_BUTTON_RELEASE:
+				case global::Clutter.EventType.BUTTON_PRESS:
+				case global::Clutter.EventType.BUTTON_RELEASE:
+				case global::Clutter.EventType.PAD_BUTTON_PRESS:
+				case global::Clutter.EventType.PAD_BUTTON_RELEASE:
 					button = ev.get_button();
 					break;
-				case Clutter.EventType.KEY_PRESS:
-				case Clutter.EventType.KEY_RELEASE:
+				case global::Clutter.EventType.KEY_PRESS:
+				case global::Clutter.EventType.KEY_RELEASE:
 					key = ev.get_key_symbol();
 					break;
-				case Clutter.EventType.ENTER:
-				case Clutter.EventType.LEAVE:
+				case global::Clutter.EventType.ENTER:
+				case global::Clutter.EventType.LEAVE:
 					related = ev.get_related();
 					break;
 				default:

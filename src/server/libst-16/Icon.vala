@@ -4,10 +4,10 @@
  * {@code g_icon_to_string} form and the compositor rebuilds via
  * {@code g_icon_new_for_string}.
  *
- * Wire prefix {@code Helper-Icon}. Same St.vapi constraint as
+ * Wire prefix {@code Gsr-St-Icon}. Same global::St.vapi constraint as
  * {@link ThemeContext}: distro has no installable St-16.vapi for mutter-rpc.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.St
 {
 	public class Icon : GLib.Object
 	{
@@ -36,18 +36,18 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-Icon", typeof(Icon),
+				"Gsr-St-Icon", typeof(Icon),
 				"set_gicon", "s",
 				"get_gicon", "",
 				"set_fallback_gicon", "s",
 				"get_fallback_gicon", "",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-Icon", new Icon());
+			OLLMrpc.Request.register_live("Gsr-St-Icon", new Icon());
 		}
 
 		/**
-		 * {@code Helper-Icon.set_gicon} — serialized icon → real GIcon on
+		 * {@code Gsr-St-Icon.set_gicon} — serialized icon → real GIcon on
 		 * the leased StIcon.
 		 */
 		public void set_gicon(OLLMrpc.Request request, string icon_str)
@@ -59,7 +59,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				try {
 					gicon = GLib.Icon.new_for_string(icon_str);
 				} catch (GLib.Error e) {
-					GLib.warning("Helper-Icon.set_gicon(%s): %s",
+					GLib.warning("Gsr-St-Icon.set_gicon(%s): %s",
 						icon_str, e.message);
 				}
 			}
@@ -70,7 +70,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * {@code Helper-Icon.get_gicon} — GIcon → serialized string.
+		 * {@code Gsr-St-Icon.get_gicon} — GIcon → serialized string.
 		 */
 		public void get_gicon(OLLMrpc.Request request)
 		{
@@ -91,7 +91,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * {@code Helper-Icon.set_fallback_gicon}.
+		 * {@code Gsr-St-Icon.set_fallback_gicon}.
 		 */
 		public void set_fallback_gicon(
 			OLLMrpc.Request request,
@@ -104,7 +104,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				try {
 					gicon = GLib.Icon.new_for_string(icon_str);
 				} catch (GLib.Error e) {
-					GLib.warning("Helper-Icon.set_fallback_gicon(%s): %s",
+					GLib.warning("Gsr-St-Icon.set_fallback_gicon(%s): %s",
 						icon_str, e.message);
 				}
 			}
@@ -115,7 +115,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * {@code Helper-Icon.get_fallback_gicon}.
+		 * {@code Gsr-St-Icon.get_fallback_gicon}.
 		 */
 		public void get_fallback_gicon(OLLMrpc.Request request)
 		{

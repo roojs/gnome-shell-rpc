@@ -1,11 +1,11 @@
 /**
  * Nested Wayland has no {@code MetaBarrierImpl}. Stock {@code meta_barrier_new}
  * fails {@code GInitable}. {@code GLib.Object.new} skips that check, so the
- * real {@link Meta.Barrier} is returned and the wire schema stays
+ * real {@link global::Meta.Barrier} is returned and the wire schema stays
  * {@code MetaBarrier}. {@code priv->impl} stays null: {@code release} does
  * nothing, and {@code hit} / {@code leave} never fire.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class Barrier : GLib.Object
 	{
@@ -24,7 +24,7 @@ namespace GnomeShellRpc.Rpc.Helper
 		[CCode (cname = "gnome_shell_rpc_rpc_helper_barrier_new")]
 		public void mint(
 			OLLMrpc.Request request,
-			Meta.Backend backend,
+			global::Meta.Backend backend,
 			int x1,
 			int y1,
 			int x2,
@@ -32,15 +32,15 @@ namespace GnomeShellRpc.Rpc.Helper
 			uint directions,
 			uint flags
 		) {
-			var created = (Meta.Barrier) GLib.Object.new(
-				typeof(Meta.Barrier),
+			var created = (global::Meta.Barrier) GLib.Object.new(
+				typeof(global::Meta.Barrier),
 				"backend", backend,
 				"x1", x1,
 				"y1", y1,
 				"x2", x2,
 				"y2", y2,
-				"directions", (Meta.BarrierDirection) directions,
-				"flags", (Meta.BarrierFlags) flags
+				"directions", (global::Meta.BarrierDirection) directions,
+				"flags", (global::Meta.BarrierFlags) flags
 			);
 			request.connection.export(created);
 			request.reply(new OLLMrpc.Response() {

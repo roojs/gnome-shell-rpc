@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Ui
+namespace Gsr.Shared
 {
 	/** Workspace snapshot for RPC clients. */
 	public class Workspace : GLib.Object, OLLMrpc.Bin.Serializable

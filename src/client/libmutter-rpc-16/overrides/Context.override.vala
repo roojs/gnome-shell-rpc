@@ -17,7 +17,7 @@
 		public void terminate()
 		{
 			try {
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Meta-Context.terminate", this);
 			} catch (GLib.Error e) {
 				GLib.warning(

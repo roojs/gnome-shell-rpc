@@ -1,21 +1,21 @@
 /**
- * Delivers {@link Meta.SelectionSourceMemory} Override RPC (plan 0.5.8).
+ * Delivers {@link global::Meta.SelectionSourceMemory} Override RPC (plan 0.5.8).
  *
- * Wire prefix ''Helper-SelectionSourceMemory''. Constructor takes mimetype +
+ * Wire prefix ''Gsr-Mutter-SelectionSourceMemory''. Constructor takes mimetype +
  * {@link GLib.Bytes} payload; reply exports the compositor source.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class SelectionSourceMemory : GLib.Object
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-SelectionSourceMemory", typeof(SelectionSourceMemory),
+				"Gsr-Mutter-SelectionSourceMemory", typeof(SelectionSourceMemory),
 				"create", "say",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-SelectionSourceMemory",
+			OLLMrpc.Request.register_live("Gsr-Mutter-SelectionSourceMemory",
 				new SelectionSourceMemory());
 		}
 
@@ -24,9 +24,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			string mimetype,
 			GLib.Bytes content
 		) {
-			Meta.SelectionSource? source = null;
+			global::Meta.SelectionSource? source = null;
 			try {
-				source = new Meta.SelectionSourceMemory(mimetype, content);
+				source = new global::Meta.SelectionSourceMemory(mimetype, content);
 			} catch (GLib.Error e) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e);

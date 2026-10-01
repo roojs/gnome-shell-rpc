@@ -9,7 +9,7 @@
  *
  * Replaces the stock live singleton after {@link OLLMrpc.rpc_register}.
  */
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server
 {
 	public class LiveCallback : GLib.Object
 	{
@@ -29,7 +29,7 @@ namespace GnomeShellRpc.Rpc
 		 * ''RPC-Live-Callback.register'' — allocate one callback id.
 		 *
 		 * The reply is that id. A helper actor stores its vfuncs
-		 * with ''Helper-Actor.add_hooks'', not this call.
+		 * with ''Gsr-Clutter-Actor.add_hooks'', not this call.
 		 *
 		 * @param request inbound RPC
 		 */

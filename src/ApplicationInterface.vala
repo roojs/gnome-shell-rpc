@@ -1,4 +1,4 @@
-namespace GnomeShellRpc
+namespace Gsr
 {
 	// Static storage for debug logging
 	private static GLib.FileStream? debug_log_file = null;
@@ -20,7 +20,7 @@ namespace GnomeShellRpc
 	 * Shared surface for gnome-shell-rpc applications.
 	 *
 	 * Apps implement this interface, parse {@code --debug} via
-	 * {@link GLib.OptionEntry}, set {@link GnomeShellRpc.debug_on}, and install
+	 * {@link GLib.OptionEntry}, set {@link Gsr.debug_on}, and install
 	 * a log handler that calls {@link debug_log}.
 	 *
 	 * == Example ==
@@ -33,7 +33,7 @@ namespace GnomeShellRpc
 	 *     protected override int command_line(GLib.ApplicationCommandLine cl)
 	 *     {
 	 *         // … OptionContext.parse …
-	 *         GnomeShellRpc.debug_on = opt_debug;
+	 *         Gsr.debug_on = opt_debug;
 	 *         GLib.Log.set_default_handler((dom, lvl, msg) => {
 	 *             ApplicationInterface.debug_log(
 	 *                 this.get_application_id(), dom, lvl, msg);
@@ -100,7 +100,7 @@ namespace GnomeShellRpc
 
 		/**
 		 * Debug logging. Stderr gets debug output only when
-		 * {@link GnomeShellRpc.debug_on} is set, plus critical warnings.
+		 * {@link Gsr.debug_on} is set, plus critical warnings.
 		 * The cache file ~/.cache/gnome-shell-rpc/{app_id}.debug.log is
 		 * opened only when debug is on.
 		 *

@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiRpcMock
+namespace Gsr.GiRpcMock
 {
 	/**
 	 * Ffi {@code RPC-Bootstrap.get_display} — exports a {@code Meta-Display}

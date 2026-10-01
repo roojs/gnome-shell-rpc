@@ -24,7 +24,7 @@
  * {@code hook.emit}, no further write ever arrives to nudge it.
  *
  * Our OWN server fixed this class on its side: {@link
- * GnomeShellRpc.Rpc.Connection.input_pending} consults
+ * Gsr.Server.Rpc.Connection.input_pending} consults
  * {@code bin.in_stream.get_available()} before polling. {@link
  * OLLMrpc.Client.call_poll} / {@code poll_drain_readable} have no equivalent.
  *
@@ -110,16 +110,16 @@ class Gate : GLib.Object
 static void boot_rpc()
 {
 	OLLMrpc.rpc_register(true);
-	GnomeShellRpc.Rpc.Daemon.rpc_register();
-	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
-	GnomeShellRpc.Rpc.LiveCallback.rpc_register();
+	Gsr.Server.Daemon.rpc_register();
+	OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
+	Gsr.Server.LiveCallback.rpc_register();
 	Gate.rpc_register();
 }
 
 static int run_server(string sock)
 {
 	boot_rpc();
-	var listen = new GnomeShellRpc.Rpc.Listen(sock) {
+	var listen = new Gsr.Server.Rpc.Listen(sock) {
 		live_handles = true,
 	};
 	if (!listen.start()) {
@@ -286,7 +286,7 @@ int main(string[] args)
 			+ "  server waits in emit and writes nothing more. Deadlock.\n"
 			+ "  fix (OLLMchat): drain bin.in_stream.get_available() in\n"
 			+ "  Client.poll_drain_readable / before poll() in call_poll, the way\n"
-			+ "  GnomeShellRpc.Rpc.Connection.input_pending already does server-side.\n",
+			+ "  Gsr.Server.Rpc.Connection.input_pending already does server-side.\n",
 			stall_err == "" ? "ok" : stall_err,
 			provoke_err == "" ? "ok" : provoke_err,
 			notif_n, invoke_n);

@@ -15,7 +15,7 @@
 					|| this.name.length == 0) {
 				return;
 			}
-			GnomeShellRpc.call_value("Clutter-ActorMeta.set_name", this,
+			Gsr.call_value("Clutter-ActorMeta.set_name", this,
 				OLLMrpc.args("s", this.name));
 		}
 
@@ -24,7 +24,7 @@
 			if (this.rpc_lid == 0) {
 				return;
 			}
-			GnomeShellRpc.call_value("Clutter-ActorMeta.set_enabled", this,
+			Gsr.call_value("Clutter-ActorMeta.set_enabled", this,
 				OLLMrpc.args("b", this.enabled));
 		}
 
@@ -43,30 +43,30 @@
 		);
 
 		/**
-		 * Mint the compositor peer. Base = {@code Helper-Constraint.create}
+		 * Mint the compositor peer. Base = {@code Gsr-Clutter-Constraint.create}
 		 * (JS subclasses). Align/Bind/Snap use their leaf {@code .new}.
 		 * Not virtual — extra Class slots shift GIR offsets.
 		 */
 		protected void mint_server_lease()
 		{
 			if (this.get_type().is_a(typeof(AlignConstraint))) {
-				var response = GnomeShellRpc.call_value("Clutter-AlignConstraint.new");
+				var response = Gsr.call_value("Clutter-AlignConstraint.new");
 				this.rpc_lid = response.args.get(0).get_uint64();
 				return;
 			}
 			if (this.get_type().is_a(typeof(BindConstraint))) {
 				var bind = (BindConstraint) this;
-				var response = GnomeShellRpc.call_value("Clutter-BindConstraint.new");
+				var response = Gsr.call_value("Clutter-BindConstraint.new");
 				bind.rpc_lid = response.args.get(0).get_uint64();
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Clutter-BindConstraint.set_source", bind,
 					OLLMrpc.args("o", bind.source));
 
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Clutter-BindConstraint.set_coordinate", bind,
 					OLLMrpc.args("i", (int) bind.coordinate));
 
-				GnomeShellRpc.call_value(
+				Gsr.call_value(
 					"Clutter-BindConstraint.set_offset", bind,
 					OLLMrpc.args("f", (double) bind.offset));
 
@@ -74,15 +74,15 @@
 			}
 			if (this.get_type().is_a(typeof(SnapConstraint))) {
 				var snap = (SnapConstraint) this;
-				var response = GnomeShellRpc.call_value("Clutter-SnapConstraint.new");
+				var response = Gsr.call_value("Clutter-SnapConstraint.new");
 				snap.rpc_lid = response.args.get(0).get_uint64();
-				GnomeShellRpc.call_value("Clutter-SnapConstraint.set_edges", snap,
+				Gsr.call_value("Clutter-SnapConstraint.set_edges", snap,
 					OLLMrpc.args("ii",(int) snap.from_edge, (int) snap.to_edge));
 				return;
 			}
 			var self = this;
-			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
-				var actor = (Actor) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
+			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+				var actor = (Actor) Gsr.Client.Rpc.Runtime.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
 				var box = ActorBox();
 				box.x1 = (float) call.args.get(1).get_double();
@@ -94,8 +94,8 @@
 					(double) box.x1, (double) box.y1,
 					(double) box.x2, (double) box.y2);
 			});
-			var response = GnomeShellRpc.call_value(
-				"Helper-Constraint.create",
+			var response = Gsr.call_value(
+				"Gsr-Clutter-Constraint.create",
 				null,
 				OLLMrpc.args("t", callback_id));
 			this.rpc_lid = response.args.get(0).get_uint64();

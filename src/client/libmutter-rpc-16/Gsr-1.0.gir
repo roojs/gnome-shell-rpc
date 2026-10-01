@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <!--
-  Peer typelib for Meta.RpcSubprocess (compositor Gio.Subprocess is not on
-  the wire). Do not patch stock Meta GIR.
+  GJS methods for Meta.RpcSubprocess (spawnv stdout and wait).
 
-  GJS resolves methods via g_irepository_find_by_gtype after require().
+  Stock Meta-16.gir returns Gio.Subprocess, so these methods cannot
+  go there. require("Gsr", "1.0"). Compiled as-is; not injected.
 -->
 <repository version="1.2"
             xmlns="http://www.gtk.org/introspection/core/1.0"
@@ -11,7 +11,7 @@
             xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
   <include name="GObject" version="2.0"/>
   <include name="Gio" version="2.0"/>
-  <namespace name="GnomeShellRpc"
+  <namespace name="Gsr"
              version="1.0"
              shared-library="libmutter-rpc-16.so"
              c:identifier-prefixes="GnomeShellRpc"

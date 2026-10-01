@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.Rpc
+namespace Gsr.Server
 {
 	/** Mutter typelib dir (from meson); needed for {@link OLLMrpc.Gi.register}. */
 	public const string MUTTER_TYPELIB_DIR = "@MUTTER_TYPELIB_DIR@";

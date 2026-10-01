@@ -7,58 +7,61 @@
  * == Example ==
  *
  * {{{
- * GnomeShellRpc.Rpc.Helper.rpc_register(gate);
+ * Gsr.Server.rpc_register(gate);
  * }}}
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server
 {
 	/**
 	 * Register all Override Helpers (wire tables + live singletons).
 	 *
-	 * @param gate startup frame gate shared with Meta.Context
+	 * @param gate startup frame gate shared with global::Meta.Context
 	 */
 	public void rpc_register(StartupFrameGate gate)
 	{
-		SoundPlayer.rpc_register();
-		Background.rpc_register();
-		BackgroundImageCache.rpc_register();
-		BackgroundActor.rpc_register();
-		Context.rpc_register(gate);
-		Settings.rpc_register();
-		IdleMonitor.rpc_register();
-		Display.rpc_register();
-		Window.rpc_register();
-		WindowActor.rpc_register();
-		Selection.rpc_register();
-		SelectionSource.rpc_register();
-		SelectionSourceMemory.rpc_register();
-		ShapedTexture.rpc_register();
-		Text.rpc_register();
-		ShaderEffect.rpc_register();
-		GLSLEffect.rpc_register();
-		BlurEffect.rpc_register();
-		InvertLightnessEffect.rpc_register();
-		ClutterThreads.rpc_register();
-		ClutterHelper.rpc_register();
-		Barrier.rpc_register();
-		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
-		OLLMrpc.Bin.TypeOverride.register(new ActorBoxOverride());
-		OLLMrpc.Bin.TypeOverride.register(new GraphenePointOverride());
-		OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());
-		OLLMrpc.Bin.TypeOverride.register(new PickContextOverride());
-		Interval.rpc_register();
-		Constraint.rpc_register();
-		St.rpc_register();
-		ThemeContext.rpc_register();
-		Icon.rpc_register();
-		IconTheme.rpc_register();
-		ImageContent.rpc_register();
-		FocusManager.rpc_register();
-		Actor.rpc_register();
-		LayoutManager.rpc_register();
-		ClutterPaintContext.rpc_register();
-		ClutterStage.rpc_register();
-		WaylandClient.rpc_register();
-		AppLaunch.rpc_register();
+		Meta.SoundPlayer.rpc_register();
+		Meta.Background.rpc_register();
+		Meta.BackgroundImageCache.rpc_register();
+		Meta.BackgroundActor.rpc_register();
+		Meta.Context.rpc_register(gate);
+		Meta.Settings.rpc_register();
+		Meta.IdleMonitor.rpc_register();
+		Meta.Keybinding.rpc_register();
+		Meta.Window.rpc_register();
+		Meta.WindowActor.rpc_register();
+		Meta.Selection.rpc_register();
+		Meta.SelectionSource.rpc_register();
+		Meta.SelectionSourceMemory.rpc_register();
+		Meta.ShapedTexture.rpc_register();
+		Meta.Barrier.rpc_register();
+		Meta.WaylandClient.rpc_register();
+		Meta.AppLaunch.rpc_register();
+
+		Clutter.Text.rpc_register();
+		Clutter.ShaderEffect.rpc_register();
+		Clutter.ClutterThreads.rpc_register();
+		Clutter.Clutter.rpc_register();
+		Clutter.Interval.rpc_register();
+		Clutter.Constraint.rpc_register();
+		Clutter.Actor.rpc_register();
+		Clutter.LayoutManager.rpc_register();
+		Clutter.ClutterPaintContext.rpc_register();
+		Clutter.ClutterStage.rpc_register();
+		OLLMrpc.Bin.TypeOverride.register(new Clutter.ClutterEventOverride());
+		OLLMrpc.Bin.TypeOverride.register(new Clutter.ActorBoxOverride());
+		OLLMrpc.Bin.TypeOverride.register(new Clutter.GraphenePointOverride());
+		OLLMrpc.Bin.TypeOverride.register(new Clutter.InputDeviceOverride());
+		OLLMrpc.Bin.TypeOverride.register(new Clutter.PickContextOverride());
+
+		St.St.rpc_register();
+		St.ThemeContext.rpc_register();
+		St.Icon.rpc_register();
+		St.IconTheme.rpc_register();
+		St.ImageContent.rpc_register();
+		St.FocusManager.rpc_register();
+
+		Shell.GLSLEffect.rpc_register();
+		Shell.BlurEffect.rpc_register();
+		Shell.InvertLightnessEffect.rpc_register();
 	}
 }

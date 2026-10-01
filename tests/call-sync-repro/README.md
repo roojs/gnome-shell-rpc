@@ -234,11 +234,11 @@ Shape: `Gate.make` exports Peer → client calls `Gate.echo` with wire arg
 | 2026-09-14 | **PASS** after OPC Ffi lease resolve |
 
 → [`docs/bugs/done/2026-09-14-ffi-o-lease-resolve.md`](../../docs/bugs/done/2026-09-14-ffi-o-lease-resolve.md).
-Helpers (`Helper-WaylandClient`, Background, pad/grab) use GObject `"o"`.
+Helpers (`Gsr-Mutter-WaylandClient`, Background, pad/grab) use GObject `"o"`.
 
 ## hook-o-gate
 
-Shape: `Gate.make` returns lease `"t"` only (Helper-Actor.create; no
+Shape: `Gate.make` returns lease `"t"` only (Gsr-Clutter-Actor.create; no
 Response.retval object). `Gate.emit_od` does
 `hook.emit(args("od", peer, 1.5))`. Client Invoke `get_object()` must
 be the minted Peer.

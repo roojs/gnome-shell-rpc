@@ -1,24 +1,24 @@
 /**
- * Delivers {@link Meta.WaylandClient} Override RPC.
+ * Delivers {@link global::Meta.WaylandClient} Override RPC.
  *
- * Wire prefix ''Helper-WaylandClient''. Each create exports **this** helper
+ * Wire prefix ''Gsr-Mutter-WaylandClient''. Each create exports **this** helper
  * row (launcher + mutter peer). Instance methods run with that row as
  * {@code self} — no {@code request.lease_id} lookup of the Meta peer.
  *
  * {@code Gio.SubprocessLauncher} stays compositor-side (flags + cwd on wire).
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class WaylandClient : GLib.Object
 	{
-		private Meta.WaylandClient? peer = null;
+		private global::Meta.WaylandClient? peer = null;
 		private GLib.SubprocessLauncher? launcher = null;
 		private GLib.Subprocess? subprocess = null;
 
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-WaylandClient", typeof(WaylandClient),
+				"Gsr-Mutter-WaylandClient", typeof(WaylandClient),
 				"create", "ou",
 				/* ''as'' = one FFI pointer (null-terminated). ''S'' would
 				 * pass get_boxed().length which is -1 after wire decode. */
@@ -32,17 +32,17 @@ namespace GnomeShellRpc.Rpc.Helper
 			);
 			/* Not register_live — Ffi must bind lease_id → this row as self. */
 			OLLMrpc.Request.register(
-				"Helper-WaylandClient", new WaylandClient()
+				"Gsr-Mutter-WaylandClient", new WaylandClient()
 			);
 		}
 
 		/**
-		 * ''Helper-WaylandClient.create'' — mint a helper row + mutter peer.
+		 * ''Gsr-Mutter-WaylandClient.create'' — mint a helper row + mutter peer.
 		 * Reply lease id in {@link OLLMrpc.Response.args} (same as Background).
 		 */
 		public void create(
 			OLLMrpc.Request request,
-			Meta.Context context,
+			global::Meta.Context context,
 			uint flags
 		) {
 			if (context == null) {
@@ -50,7 +50,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
 					new GLib.IOError.FAILED(
-						"Helper-WaylandClient.create: context is null"
+						"Gsr-Mutter-WaylandClient.create: context is null"
 					)
 				);
 				return;
@@ -60,7 +60,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				(GLib.SubprocessFlags) flags
 			);
 			try {
-				row.peer = new Meta.WaylandClient(context, row.launcher);
+				row.peer = new global::Meta.WaylandClient(context, row.launcher);
 			} catch (GLib.Error e) {
 				request.connection.reply_error(
 					request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e
@@ -75,14 +75,14 @@ namespace GnomeShellRpc.Rpc.Helper
 		}
 
 		/**
-		 * ''Helper-WaylandClient.spawnv'' — {@code this} is the leased row.
+		 * ''Gsr-Mutter-WaylandClient.spawnv'' — {@code this} is the leased row.
 		 * Typed Ffi {@code osas}: {@code as} is one pointer — match with
 		 * null-terminated argv (length-bearing needs Ffi {@code S}, but wire
 		 * {@code get_boxed().length} is {@code -1}).
 		 */
 		public void spawnv(
 			OLLMrpc.Request request,
-			Meta.Display display,
+			global::Meta.Display display,
 			string cwd,
 			[CCode (array_length = false, array_null_terminated = true)]
 			string[] argv
@@ -92,7 +92,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
 					new GLib.IOError.FAILED(
-						"Helper-WaylandClient.spawnv: no peer (create row?)"
+						"Gsr-Mutter-WaylandClient.spawnv: no peer (create row?)"
 					)
 				);
 				return;
@@ -102,7 +102,7 @@ namespace GnomeShellRpc.Rpc.Helper
 					request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
 					new GLib.IOError.FAILED(
-						"Helper-WaylandClient.spawnv: display is null"
+						"Gsr-Mutter-WaylandClient.spawnv: display is null"
 					)
 				);
 				return;
@@ -114,7 +114,7 @@ namespace GnomeShellRpc.Rpc.Helper
 				}
 			}
 			GLib.message(
-				"Helper-WaylandClient.spawnv argv_len=%d cwd='%s'",
+				"Gsr-Mutter-WaylandClient.spawnv argv_len=%d cwd='%s'",
 				wire.length, cwd ?? "(null)"
 			);
 			if (this.launcher != null && cwd != null && cwd.length > 0) {
@@ -147,18 +147,18 @@ namespace GnomeShellRpc.Rpc.Helper
 					fd = Posix.dup(fd);
 				} else {
 					GLib.warning(
-						"Helper-WaylandClient.spawnv stdout type=%s "
+						"Gsr-Mutter-WaylandClient.spawnv stdout type=%s "
 						+ "(not UnixInputStream)",
 						stdout.get_type().name()
 					);
 				}
 			} else {
 				GLib.warning(
-					"Helper-WaylandClient.spawnv get_stdout_pipe null"
+					"Gsr-Mutter-WaylandClient.spawnv get_stdout_pipe null"
 				);
 			}
 			GLib.message(
-				"Helper-WaylandClient.spawnv stdout_fd=%d", fd
+				"Gsr-Mutter-WaylandClient.spawnv stdout_fd=%d", fd
 			);
 			var response = new OLLMrpc.Response() {
 				id = request.id,

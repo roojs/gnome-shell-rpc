@@ -1,11 +1,11 @@
 /**
- * Delivers {@link Meta.SelectionSource} Override RPC (plan 0.5.5 F).
+ * Delivers {@link global::Meta.SelectionSource} Override RPC (plan 0.5.5 F).
  *
- * Wire prefix ''Helper-SelectionSource''. Lease is the source.
+ * Wire prefix ''Gsr-Mutter-SelectionSource''. Lease is the source.
  * {@link read} finishes mutter's async read on the compositor and replies
  * with the payload memfd.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class SelectionSource : GLib.Object
 	{
@@ -15,11 +15,11 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-SelectionSource", typeof(SelectionSource),
+				"Gsr-Mutter-SelectionSource", typeof(SelectionSource),
 				"read", "st",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-SelectionSource",
+			OLLMrpc.Request.register_live("Gsr-Mutter-SelectionSource",
 				new SelectionSource());
 		}
 
@@ -28,9 +28,9 @@ namespace GnomeShellRpc.Rpc.Helper
 			string mimetype,
 			uint64 cancel_id
 		) {
-			var source = (Meta.SelectionSource) request.connection.leases.get(
+			var source = (global::Meta.SelectionSource) request.connection.leases.get(
 				(int) request.lease_id);
-			var cancel = GnomeShellRpc.Rpc.CancellableBridge.lookup(cancel_id);
+			var cancel = Gsr.Server.CancellableBridge.lookup(cancel_id);
 			source.read_async.begin(mimetype, cancel, (obj, res) => {
 				GLib.Error? err = null;
 				GLib.InputStream? input = null;

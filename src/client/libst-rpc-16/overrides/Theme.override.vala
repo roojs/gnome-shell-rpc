@@ -42,7 +42,7 @@
 		}
 
 		/**
-		 * Wire URIs for {@link GnomeShellRpc.Rpc.Helper.ThemeContext.set_theme}.
+		 * Wire URIs for {@link Gsr.Server.St.ThemeContext.set_theme}.
 		 */
 		public string[] stylesheet_uris()
 		{

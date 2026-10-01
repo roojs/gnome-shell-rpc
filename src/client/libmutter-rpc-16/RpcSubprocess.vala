@@ -29,8 +29,8 @@ namespace Meta
 		public async bool wait_async(
 			GLib.Cancellable? cancellable = null
 		) throws GLib.Error {
-			var response = GnomeShellRpc.call_value(
-				"Helper-WaylandClient.wait", this
+			var response = Gsr.call_value(
+				"Gsr-Mutter-WaylandClient.wait", this
 			);
 			return response.retval.get_boolean();
 		}
@@ -38,8 +38,8 @@ namespace Meta
 		public bool get_if_exited()
 		{
 			try {
-				var response = GnomeShellRpc.call_value(
-					"Helper-WaylandClient.get_if_exited", this
+				var response = Gsr.call_value(
+					"Gsr-Mutter-WaylandClient.get_if_exited", this
 				);
 				return response.retval.get_boolean();
 			} catch (GLib.Error e) {
@@ -50,8 +50,8 @@ namespace Meta
 		public int get_exit_status()
 		{
 			try {
-				var response = GnomeShellRpc.call_value(
-					"Helper-WaylandClient.get_exit_status", this
+				var response = Gsr.call_value(
+					"Gsr-Mutter-WaylandClient.get_exit_status", this
 				);
 				return response.retval.get_int();
 			} catch (GLib.Error e) {
@@ -62,8 +62,8 @@ namespace Meta
 		public void send_signal(int signal_num)
 		{
 			try {
-				GnomeShellRpc.call_value(
-					"Helper-WaylandClient.send_signal", this,
+				Gsr.call_value(
+					"Gsr-Mutter-WaylandClient.send_signal", this,
 					OLLMrpc.args("i", signal_num)
 				);
 			} catch (GLib.Error e) {
@@ -73,8 +73,8 @@ namespace Meta
 		public void force_exit()
 		{
 			try {
-				GnomeShellRpc.call_value(
-					"Helper-WaylandClient.force_exit", this
+				Gsr.call_value(
+					"Gsr-Mutter-WaylandClient.force_exit", this
 				);
 			} catch (GLib.Error e) {
 			}

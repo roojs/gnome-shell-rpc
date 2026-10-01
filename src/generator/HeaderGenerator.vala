@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GiStubGen
+namespace Gsr.Generator
 {
 	/**
 	 * Emit stock-shaped {@code <subdir>/*.h} from a typelib.

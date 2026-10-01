@@ -40,13 +40,13 @@ namespace Meta
 		/** Minimize this window on the nested compositor. */
 		public void minimize()
 		{
-			GnomeShellRpc.call_value("Meta-Window.minimize", this);
+			Gsr.call_value("Meta-Window.minimize", this);
 		}
 
 		/** Unminimize this window on the nested compositor. */
 		public void unminimize()
 		{
-			GnomeShellRpc.call_value("Meta-Window.unminimize", this);
+			Gsr.call_value("Meta-Window.unminimize", this);
 		}
 
 		/**
@@ -56,7 +56,7 @@ namespace Meta
 		 */
 		public void activate(uint32 current_time = 0)
 		{
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Meta-Window.activate",
 				this,
 				OLLMrpc.args("u", current_time)
@@ -70,7 +70,7 @@ namespace Meta
 		 */
 		public void delete(uint32 timestamp = 0)
 		{
-			GnomeShellRpc.call_value(
+			Gsr.call_value(
 				"Meta-Window.delete",
 				this,
 				OLLMrpc.args("u", timestamp)
@@ -83,13 +83,13 @@ namespace Meta
 		 */
 		public void foreach_transient(WindowForeachFunc func)
 		{
-			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
-				var win = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
+			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+				var win = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
 				return OLLMrpc.args("b", func(win));
 			});
-			GnomeShellRpc.call_value(
-				"Helper-Window.foreach_transient", this,
+			Gsr.call_value(
+				"Gsr-Mutter-Window.foreach_transient", this,
 				OLLMrpc.args("t", callback_id));
 		}
 
@@ -99,13 +99,13 @@ namespace Meta
 		 */
 		public void foreach_ancestor(WindowForeachFunc func)
 		{
-			var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
-				var win = (Window) GnomeShellRpc.GiStub.Runtime.client.proxies.get(
+			var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
+				var win = (Window) Gsr.Client.Rpc.Runtime.client.proxies.get(
 					(int) call.args.get(0).get_uint64());
 				return OLLMrpc.args("b", func(win));
 			});
-			GnomeShellRpc.call_value(
-				"Helper-Window.foreach_ancestor", this,
+			Gsr.call_value(
+				"Gsr-Mutter-Window.foreach_ancestor", this,
 				OLLMrpc.args("t", callback_id));
 		}
 
@@ -140,8 +140,8 @@ namespace Meta
 				pos_x = pos_hint.x;
 				pos_y = pos_hint.y;
 			}
-			var response = GnomeShellRpc.call_value(
-				"Helper-Window.begin_grab_op", this,
+			var response = Gsr.call_value(
+				"Gsr-Mutter-Window.begin_grab_op", this,
 				OLLMrpc.args("uosiubff", (uint) op, wire, device_name,
 					sequence_slot, timestamp, has_pos, pos_x, pos_y));
 			return response.retval.get_boolean();

@@ -73,15 +73,15 @@ class Gate : GLib.Object
 static void boot_rpc()
 {
 	OLLMrpc.rpc_register(true);
-	GnomeShellRpc.Rpc.Daemon.rpc_register();
-	OLLMrpc.Request.register("RPC-Daemon", new GnomeShellRpc.Rpc.Daemon());
+	Gsr.Server.Daemon.rpc_register();
+	OLLMrpc.Request.register("RPC-Daemon", new Gsr.Server.Daemon());
 	Gate.rpc_register();
 }
 
 static int run_server(string sock)
 {
 	boot_rpc();
-	var listen = new GnomeShellRpc.Rpc.Listen(sock) {
+	var listen = new Gsr.Server.Rpc.Listen(sock) {
 		live_handles = true,
 	};
 	if (!listen.start()) {
@@ -184,7 +184,7 @@ int main(string[] args)
 			return 2;
 		}
 
-		/* Same shape as GnomeShellRpc.call_value object→lease rewrite. */
+		/* Same shape as Gsr.call_value object→lease rewrite. */
 		var lease_arg = GLib.Value(typeof(uint64));
 		lease_arg.set_uint64(peer.rpc_lid);
 		var echo_req = new OLLMrpc.Request() {

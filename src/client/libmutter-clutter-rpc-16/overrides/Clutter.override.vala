@@ -13,8 +13,8 @@
 	[CCode (cname = "clutter_get_current_event")]
 	public static unowned Event? get_current_event()
 	{
-		var response = GnomeShellRpc.call_value(
-			"Helper-Clutter.get_current_event");
+		var response = Gsr.call_value(
+			"Gsr-Clutter.get_current_event");
 		current_event_cache = event_from_values(response.args);
 		return current_event_cache;
 	}
@@ -76,7 +76,7 @@
 		GLib.DestroyNotify? notify,
 		void* user_data
 	) {
-		var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+		var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
 			var event = event_from_values(call.args);
 			if (event == null) {
 				return OLLMrpc.args("b", false);
@@ -89,8 +89,8 @@
 				"b", func(event, event_actor, user_data));
 		});
 		var stage_lid = stage == null ? 0 : stage.rpc_lid;
-		var response = GnomeShellRpc.call_value(
-			"Helper-Clutter.event_add_filter", null,
+		var response = Gsr.call_value(
+			"Gsr-Clutter.event_add_filter", null,
 			OLLMrpc.args("tt", stage_lid, callback_id));
 		var row = new EventFilterRegistration() {
 			id = response.retval.get_uint(),
@@ -114,10 +114,10 @@
 				kept += row;
 				continue;
 			}
-			GnomeShellRpc.call_value(
-				"Helper-Clutter.event_remove_filter", null,
+			Gsr.call_value(
+				"Gsr-Clutter.event_remove_filter", null,
 				OLLMrpc.args("u", id));
-			GnomeShellRpc.GiStub.Runtime.callback_unbind(row.callback_id);
+			Gsr.Client.Rpc.Runtime.callback_unbind(row.callback_id);
 			if (row.destroy_notify != null) {
 				row.destroy_notify(row.user_data);
 			}
@@ -131,8 +131,8 @@
 	 */
 	public static Event? event_get()
 	{
-		return event_from_values(GnomeShellRpc.call_value(
-			"Helper-Clutter.event_get").args);
+		return event_from_values(Gsr.call_value(
+			"Gsr-Clutter.event_get").args);
 	}
 
 	/**
@@ -153,13 +153,13 @@
 	 * Opaque boxed {@code ClutterFrame} (GIR record, size 0). Compact so
 	 * {@code typeof(Frame)} is a boxed GType for {@code Bin.register}
 	 * {@code Clutter-Frame} — {@code before-update} arg. GType lives in
-	 * {@code c-clutter-frame-type.c} (same boxed pattern as Event).
+	 * {@code c-clutter-abi.c} (same boxed pattern as Event).
 	 *
 	 * GIR {@code get_count} / {@code set_result} / … take mutter's
 	 * {@code ClutterFrame*}. This peer has no such object (size-0 boxed,
 	 * no {@code rpc_lid}). Do not stub them.
 	 */
-	[CCode (cname = "ClutterFrame", cheader_filename = "gsr-clutter-effect-abi.h", copy_function = "clutter_frame_copy", free_function = "clutter_frame_free", type_id = "CLUTTER_TYPE_FRAME")]
+	[CCode (cname = "ClutterFrame", cheader_filename = "namespace.h", copy_function = "clutter_frame_copy", free_function = "clutter_frame_free", type_id = "CLUTTER_TYPE_FRAME")]
 	[Compact]
 	public class Frame
 	{
@@ -176,7 +176,7 @@
 
 	/**
 	 * Compact ClutterEvent* (GJS typelib union). Sole Clutter GIR union —
-	 * denied in generator; fields match header-overrides/Event.h.
+	 * denied in Clutter.deny; fields match header-overrides/Event.h.
 	 * copy_function is required for Vala to emit clutter_event_get_type.
 	 */
 	[CCode (cname = "ClutterEvent", copy_function = "clutter_event_copy", free_function = "clutter_event_free", has_type_id = true)]
@@ -230,10 +230,10 @@
 		{
 			if (src.holds(typeof(uint64))) {
 				var lid = (int) src.get_uint64();
-				if (lid == 0 || GnomeShellRpc.GiStub.Runtime.client == null) {
+				if (lid == 0 || Gsr.Client.Rpc.Runtime.client == null) {
 					return null;
 				}
-				return GnomeShellRpc.GiStub.Runtime.client.proxies.get(lid) as Actor;
+				return Gsr.Client.Rpc.Runtime.client.proxies.get(lid) as Actor;
 			}
 			if (src.type().is_a(typeof(GLib.Object))) {
 				return src.get_object() as Actor;
@@ -344,11 +344,11 @@
 		void* data,
 		GLib.DestroyNotify? notify
 	) {
-		var callback_id = GnomeShellRpc.GiStub.Runtime.callback_bind((call) => {
+		var callback_id = Gsr.Client.Rpc.Runtime.callback_bind((call) => {
 			return OLLMrpc.args("b", func(data));
 		});
-		var response = GnomeShellRpc.call_value(
-			"Helper-ClutterThreads.threads_add_repaint_func",
+		var response = Gsr.call_value(
+			"Gsr-Clutter-Threads.threads_add_repaint_func",
 			null,
 			OLLMrpc.args("ut", (uint) flags, callback_id));
 		return (uint32) response.retval.get_uint();

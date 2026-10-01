@@ -1,4 +1,4 @@
-namespace GnomeShellRpc.GjsEmbed
+namespace Gsr.GjsEmbed
 {
 	/**
 	 * Embed {@link Gjs.Context} and eval a script file.
@@ -13,7 +13,7 @@ namespace GnomeShellRpc.GjsEmbed
 	 *   ./build/src/gjs-embed --debug src/gjs-embed/smoke.js
 	 * }}}
 	 */
-	public class Application : GLib.Application, GnomeShellRpc.ApplicationInterface
+	public class Application : GLib.Application, Gsr.ApplicationInterface
 	{
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
@@ -35,7 +35,7 @@ namespace GnomeShellRpc.GjsEmbed
 			);
 
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				GnomeShellRpc.ApplicationInterface.debug_log(
+				Gsr.ApplicationInterface.debug_log(
 					this.get_application_id(), dom, lvl, msg
 				);
 			});
@@ -63,8 +63,8 @@ namespace GnomeShellRpc.GjsEmbed
 				return 1;
 			}
 
-			GnomeShellRpc.debug_on = Application.opt_debug;
-			GnomeShellRpc.debug_critical_enabled =
+			Gsr.debug_on = Application.opt_debug;
+			Gsr.debug_critical_enabled =
 				Application.opt_debug_critical;
 
 			if (remaining.length < 2) {

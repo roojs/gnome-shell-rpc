@@ -1,11 +1,11 @@
 /**
- * Delivers {@link Meta.ShapedTexture} Override RPC (plan 0.5.8).
+ * Delivers {@link global::Meta.ShapedTexture} Override RPC (plan 0.5.8).
  *
- * Wire prefix ''Helper-ShapedTexture''. Lease is the shaped texture.
+ * Wire prefix ''Gsr-Mutter-ShapedTexture''. Lease is the shaped texture.
  * {@link get_image} replies with ARGB32 dims on {@link OLLMrpc.Response.args}
  * and the pixel memfd on {@link OLLMrpc.Request.reply}'s buffer.
  */
-namespace GnomeShellRpc.Rpc.Helper
+namespace Gsr.Server.Meta
 {
 	public class ShapedTexture : GLib.Object
 	{
@@ -15,11 +15,11 @@ namespace GnomeShellRpc.Rpc.Helper
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"Helper-ShapedTexture", typeof(ShapedTexture),
+				"Gsr-Mutter-ShapedTexture", typeof(ShapedTexture),
 				"get_image", "biiii",
 				null
 			);
-			OLLMrpc.Request.register_live("Helper-ShapedTexture",
+			OLLMrpc.Request.register_live("Gsr-Mutter-ShapedTexture",
 				new ShapedTexture());
 		}
 
@@ -31,7 +31,7 @@ namespace GnomeShellRpc.Rpc.Helper
 			int clip_width,
 			int clip_height
 		) {
-			var stex = (Meta.ShapedTexture) request.connection.leases.get(
+			var stex = (global::Meta.ShapedTexture) request.connection.leases.get(
 				(int) request.lease_id);
 			Mtk.Rectangle? clip = null;
 			if (has_clip) {
