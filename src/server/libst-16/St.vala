@@ -3,8 +3,8 @@
  * Viewport). {@link OLLMrpc.Gi} would parent-walk those to
  * {@code clutter_actor_new}; this mints via {@code g_object_new} instead.
  *
- * Wire method is {@code new}; Vala ctor symbol would collide — class ctor
- * cname is {@code _create}, mint exports as {@code _new} for Ffi.
+ * Wire method is {@code new}. Ffi looks up {@code gsr_server_st_st_new}.
+ * The Vala ctor uses a different cname so {@link mint} can own that symbol.
  *
  * @see docs/bugs/done/2026-09-07-st-ctor-parent-walks-to-actor.md
  */
@@ -35,7 +35,7 @@ namespace Gsr.Server.St
 		 *
 		 * @param request inbound construct (no lease)
 		 */
-		[CCode (cname = "gnome_shell_rpc_rpc_helper_st_new")]
+		[CCode (cname = "gsr_server_st_st_new")]
 		public void mint(OLLMrpc.Request request)
 		{
 			var dot = request.method.index_of_char('.');

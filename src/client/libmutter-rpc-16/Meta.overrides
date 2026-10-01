@@ -7,6 +7,8 @@ Compositor.get_window_actors list_elem=WindowActor
 # Opaque MetaSettings record — GObject class + Settings.override.vala (0.7.1).
 Settings emit=opaque-as-class
 
-# Hand class (Meta.deny) — Meta.register() emits Bin.register inline.
-BackgroundContent register=hand
+# Stock implements Clutter.Content. emit_implements is off for the namespace.
+BackgroundContent implements=Clutter.Content
+
+# Not a stock Meta type. Meta.register() inlines Bin.register.
 RpcSubprocess register=hand

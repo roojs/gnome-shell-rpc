@@ -21,7 +21,7 @@ namespace Gsr.Server.Meta
 			OLLMrpc.Request.register_live("Meta-Barrier", new Barrier());
 		}
 
-		[CCode (cname = "gnome_shell_rpc_rpc_helper_barrier_new")]
+		[CCode (cname = "gsr_server_meta_barrier_new")]
 		public void mint(
 			OLLMrpc.Request request,
 			global::Meta.Backend backend,

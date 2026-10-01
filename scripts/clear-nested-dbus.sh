@@ -24,6 +24,8 @@ CLEAR_WESTON="${GSR_CLEAR_WESTON:-0}"
 
 pkill -9 -u "$UID_NOW" -x mutter-rpc 2>/dev/null || true
 pkill -9 -u "$UID_NOW" -x gnome-shell-rpc 2>/dev/null || true
+pkill -9 -u "$UID_NOW" -x gsr-server 2>/dev/null || true
+pkill -9 -u "$UID_NOW" -x gsr-client 2>/dev/null || true
 pkill -9 -u "$UID_NOW" -f '/dbus-run-session( |$)' 2>/dev/null || true
 if [[ "$CLEAR_WESTON" == "1" ]]; then
 	pkill -9 -u "$UID_NOW" -f "weston.*${SOCK}" 2>/dev/null || true

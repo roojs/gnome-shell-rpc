@@ -35,7 +35,8 @@ namespace Gsr.Server.Clutter
 			OLLMrpc.Request.register_live("Clutter-SnapConstraint", helper);
 		}
 
-		/* Distinct from mint cname {@code *_new} (Ffi leaf construct). */
+		/* Ffi looks up {@code gsr_server_clutter_constraint_new}. Keep the
+		 * Vala ctor off that symbol so {@link mint} can own it. */
 		[CCode (cname = "gnome_shell_rpc_rpc_helper_constraint_ctor")]
 		public Constraint()
 		{
@@ -94,7 +95,7 @@ namespace Gsr.Server.Clutter
 		 *
 		 * @param request inbound construct (no lease)
 		 */
-		[CCode (cname = "gnome_shell_rpc_rpc_helper_constraint_new")]
+		[CCode (cname = "gsr_server_clutter_constraint_new")]
 		public void mint(OLLMrpc.Request request)
 		{
 			var dot = request.method.index_of_char('.');

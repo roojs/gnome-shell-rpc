@@ -43,9 +43,14 @@ KeyBinding.is_reversed
 # --- Hand class / construct (override or dedicated Vala) ---
 
 # Client owns attach: BackgroundActor.override sets actor.content.
-# Full class: src/gi-stub/BackgroundContent.vala (implements Clutter.Content).
-# Meta.overrides: register=hand → Bin.register inline in Meta.register().
-BackgroundContent
+# Property setters and Clutter.Content methods: BackgroundContent.override.vala.
+# They must not RPC until rpc_lid is set.
+BackgroundContent.background
+BackgroundContent.brightness
+BackgroundContent.vignette
+BackgroundContent.vignette_sharpness
+BackgroundContent.rounded_clip_radius
+BackgroundContent.set_rounded_clip_bounds
 Background.new
 Background.meta_display
 BackgroundActor.new
@@ -100,7 +105,7 @@ ShapedTexture.get_image
 WindowActor.get_image
 WaylandCompositor.get_wayland_display
 
-# C ABI / opaque settings — MetaSettingsAbi + Backend.override.
+# C ABI / opaque settings — Backend.override get_settings.
 Backend.get_settings
 Settings.get_ui_scaling_factor
 

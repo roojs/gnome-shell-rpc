@@ -25,7 +25,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MUTTER_RPC="${GSR_MUTTER_RPC:-$ROOT/build/src/mutter-rpc}"
+if [[ -n "${GSR_MUTTER_RPC:-}" ]]; then
+	MUTTER_RPC="$GSR_MUTTER_RPC"
+elif [[ -x "$ROOT/build/src/gsr-server" ]]; then
+	MUTTER_RPC="$ROOT/build/src/gsr-server"
+else
+	MUTTER_RPC="$ROOT/build/src/mutter-rpc"
+fi
 TIMEOUT_SEC="${GSR_NESTED_TIMEOUT:-25}"
 SETTLE_SEC="${GSR_NESTED_SETTLE:-10}"
 STAYUP=0
@@ -83,6 +89,8 @@ stop_tree() {
 	pkill -9 -P "$pid" 2>/dev/null || true
 	pkill -9 -x mutter-rpc 2>/dev/null || true
 	pkill -9 -x gnome-shell-rpc 2>/dev/null || true
+	pkill -9 -x gsr-server 2>/dev/null || true
+	pkill -9 -x gsr-client 2>/dev/null || true
 	wait "$pid" 2>/dev/null || true
 	# dbus-daemon --config-file gsr-nested-dbus is reparented to init
 	# if we only SIGKILL mutter — see scripts/clear-nested-dbus.sh

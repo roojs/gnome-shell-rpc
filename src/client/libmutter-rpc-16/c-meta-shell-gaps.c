@@ -2,7 +2,7 @@
  * libshell link-time meta_* exports (plan 0.7.1).
  * X11 (#3–10): permanent noops — Wayland-only shell client.
  * #1 meta_backend_get_settings: local GObject stub (scaling signal).
- * #2 meta_settings_get_ui_scaling_factor: Vala MetaSettingsAbi (Helper RPC).
+ * #2 meta_settings_get_ui_scaling_factor: Vala Meta.Settings (Helper RPC).
  */
 
 #include <meta/meta-backend.h>
@@ -61,7 +61,7 @@ gsr_meta_backend_get_settings_vala (MetaBackend *backend)
   return meta_backend_get_settings (backend);
 }
 
-/* meta_settings_get_ui_scaling_factor — Vala MetaSettingsAbi.vala (Helper RPC) */
+/* meta_settings_get_ui_scaling_factor — Vala Meta.Settings (Helper RPC) */
 
 MetaX11Display *
 meta_display_get_x11_display (MetaDisplay *display)

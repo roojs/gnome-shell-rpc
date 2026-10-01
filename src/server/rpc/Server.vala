@@ -9,7 +9,7 @@ namespace Gsr.Server.Rpc
 
 	/**
 	 * RPC server boot — socket, registrations, display/window notifications,
-	 * then spawn {@code gnome-shell-rpc} (default {@code init.js}; no pid watch).
+	 * then spawn {@code gsr-client} (default {@code init.js}; no pid watch).
 	 *
 	 * == Example ==
 	 *
@@ -237,7 +237,7 @@ namespace Gsr.Server.Rpc
 		}
 
 		/**
-		 * Spawn {@code gnome-shell-rpc} via {@link global::Meta.WaylandClient}.
+		 * Spawn {@code gsr-client} via {@link global::Meta.WaylandClient}.
 		 *
 		 * Default (no {@code GI_META_SMOKE}, or {@code init}): product
 		 * {@code init.js} resource. Otherwise a {@code src/gjs-embed/} smoke.
@@ -254,13 +254,13 @@ namespace Gsr.Server.Rpc
 				return;
 			}
 			var bindir = GLib.Path.get_dirname(self_exe);
-			var shell_bin = GLib.Path.build_filename(bindir, "gnome-shell-rpc");
+			var shell_bin = GLib.Path.build_filename(bindir, "gsr-client");
 			if (!GLib.FileUtils.test(shell_bin, GLib.FileTest.IS_EXECUTABLE)) {
 				shell_bin = GLib.Path.build_filename(
-					bindir, "..", "gnome-shell", "client-libs", "gnome-shell-rpc");
+					bindir, "..", "gnome-shell", "client-libs", "gsr-client");
 			}
 			if (!GLib.FileUtils.test(shell_bin, GLib.FileTest.IS_EXECUTABLE)) {
-				GLib.warning("gnome-shell-rpc missing at %s — skip client spawn", shell_bin);
+				GLib.warning("gsr-client missing next to %s — skip client spawn", self_exe);
 				return;
 			}
 
@@ -271,7 +271,7 @@ namespace Gsr.Server.Rpc
 				|| smoke_env == "init.js";
 
 			string[] argv = { shell_bin };
-			/* --debug on mutter-rpc is the only switch. The client stays quiet
+			/* --debug on gsr-server is the only switch. The client stays quiet
 			 * unless this process was started with it. */
 			if (Gsr.debug_on) {
 				argv += "--debug";

@@ -9,7 +9,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MUTTER_RPC="${GSR_MUTTER_RPC:-$ROOT/build/src/mutter-rpc}"
+if [[ -n "${GSR_MUTTER_RPC:-}" ]]; then
+	MUTTER_RPC="$GSR_MUTTER_RPC"
+elif [[ -x "$ROOT/build/src/gsr-server" ]]; then
+	MUTTER_RPC="$ROOT/build/src/gsr-server"
+else
+	MUTTER_RPC="$ROOT/build/src/mutter-rpc"
+fi
 RT="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 MUTTER_WL="${GSR_MUTTER_WAYLAND_DISPLAY:-wayland-mutter-gsr}"
 WESTON_WL="${GSR_WESTON_SOCKET:-wayland-gsr}"
