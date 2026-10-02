@@ -89,6 +89,9 @@ back under GNOME’s thumb). Weston’s `xwayland=true` plus autolaunch’s
 ./scripts/weston-gsr-session.sh --debug   # log terminal, debug logs, default window
 ```
 
+The Weston window is pinned to the host origin (`GSR_WESTON_X` / `GSR_WESTON_Y`,
+default `0,0`) so it does not land in a new place on each launch.
+
 Without `--debug`, Weston opens and waits. The top-left panel button (Wayland
 icon) starts the nested shell with no `--debug` and no log terminal. That
 window is sized to Weston's whole output. The terminal icon beside it is
@@ -104,7 +107,8 @@ Scripts:
 
 | Script | Role |
 |--------|------|
-| `scripts/weston-gsr-session.sh` | Starts Weston (X11 window) with generated ini |
+| `scripts/weston-gsr-session.sh` | Starts Weston (X11 window) with generated ini, pinned on the host |
+| `scripts/weston-gsr-place-host-window.sh` | Moves that window to `GSR_WESTON_X`,`GSR_WESTON_Y` |
 | `scripts/weston-gsr.ini.in` | Template: XWayland + `[autolaunch]` |
 | `scripts/weston-gsr-autolaunch.sh` | Inside Weston → prove, or wait for the panel button |
 | `scripts/weston-gsr-launch.sh` | Panel button: start the nested shell |

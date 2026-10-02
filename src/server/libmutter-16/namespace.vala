@@ -1,5 +1,7 @@
 namespace Gsr.Server.Meta
 {
+	/* G_DEFINE_TYPE registers this class on the first get_type call.
+	 * Gi.register maps MetaWindow only. Nested clients are MetaWindowWayland. */
 	[CCode (cname = "meta_window_wayland_get_type")]
 	extern GLib.Type meta_window_wayland_get_type();
 
@@ -22,46 +24,26 @@ namespace Gsr.Server.Meta
 		Barrier.rpc_register();
 		WaylandClient.rpc_register();
 		AppLaunch.rpc_register();
-		Display.rpc_register();
-		Compositor.rpc_register();
+		/* Display and Compositor stay before Gi.register in Server.start. */
+		// Display.rpc_register();
+		// Compositor.rpc_register();
 	}
 
-	public Display bind(global::Meta.Display display)
+	public void bind(global::Meta.Display display)
 	{
 		Settings.bind(display);
 		AppLaunch.bind(display);
+	}
 
-		var ui = new Display(display);
+	public void register_alias(global::Meta.Display display, Display ui)
+	{
 		OLLMrpc.Request.register_live("Meta-Display", ui);
-		var compositor = display.get_compositor();
-		OLLMrpc.Request.register_live("Meta-Compositor", new Compositor(compositor));
-		OLLMrpc.Bin.register_alias("Meta-Compositor", compositor.get_type());
+		OLLMrpc.Request.register_live("Meta-Compositor",
+			new Compositor(display.get_compositor()));
+		OLLMrpc.Bin.register_alias("Meta-Compositor", display.get_compositor().get_type());
 		OLLMrpc.Bin.register_alias("Meta-Context", display.get_context().get_type());
-		var backend = display.get_context().get_backend();
-		OLLMrpc.Bin.register_alias("Meta-Backend", backend.get_type());
-		var monitor_manager = backend.get_monitor_manager();
-		if (monitor_manager != null
-				&& !OLLMrpc.Bin.gtype_to_alias.has_key(monitor_manager.get_type())) {
-			OLLMrpc.Bin.register_alias("Meta-MonitorManager", monitor_manager.get_type());
-		}
-		var sn = display.get_startup_notification();
-		if (sn != null && !OLLMrpc.Bin.gtype_to_alias.has_key(sn.get_type())) {
-			OLLMrpc.Bin.register_alias("Meta-StartupNotification", sn.get_type());
-		}
-		var player = display.get_sound_player();
-		if (player != null && !OLLMrpc.Bin.gtype_to_alias.has_key(player.get_type())) {
-			OLLMrpc.Bin.register_alias("Meta-SoundPlayer", player.get_type());
-		}
-		var idle = backend.get_core_idle_monitor();
-		if (idle != null && !OLLMrpc.Bin.gtype_to_alias.has_key(idle.get_type())) {
-			OLLMrpc.Bin.register_alias("Meta-IdleMonitor", idle.get_type());
-		}
-		/* Gi.register maps MetaWindow only. Nested clients are
-		 * MetaWindowWayland (--no-x11). from_name does not load it. */
-		var wayland_window = meta_window_wayland_get_type();
-		if (!OLLMrpc.Bin.gtype_to_alias.has_key(wayland_window)) {
-			OLLMrpc.Bin.register_alias("Meta-Window", wayland_window);
-		}
-		return ui;
+		OLLMrpc.Bin.register_alias("Meta-Backend",
+			display.get_context().get_backend().get_type());
+		OLLMrpc.Bin.register_alias("Meta-Window", meta_window_wayland_get_type());
 	}
 }

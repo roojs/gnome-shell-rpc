@@ -8,5 +8,6 @@ namespace Gsr.Server.St
 		IconTheme.rpc_register();
 		ImageContent.rpc_register();
 		FocusManager.rpc_register();
+		OLLMrpc.Bin.register_alias("St-Widget", typeof(Clutter.Actor));
 	}
 }
