@@ -49,6 +49,35 @@ function patchShellApp() {
 	};
 }
 
+let styleDepth = 0;
+let styleMaxDepth = 0;
+let styleLogged = false;
+
+function patchStyleDepth(BaseIcon) {
+	const proto = BaseIcon?.prototype;
+	if (proto == null || typeof proto.vfunc_style_changed !== 'function')
+		return;
+	if (proto.__gsrStyleDepth)
+		return;
+	proto.__gsrStyleDepth = true;
+	const orig = proto.vfunc_style_changed;
+	proto.vfunc_style_changed = function () {
+		styleDepth++;
+		if (styleDepth > styleMaxDepth)
+			styleMaxDepth = styleDepth;
+		if (styleDepth >= 3 && !styleLogged) {
+			styleLogged = true;
+			log('gsr-style-depth: nested max=' + styleMaxDepth + ' ' +
+				new Error('depth').stack.split('\n').slice(1, 8).join(' | '));
+		}
+		try {
+			return orig.apply(this, arguments);
+		} finally {
+			styleDepth--;
+		}
+	};
+}
+
 function installIconPatch() {
 	if (installed)
 		return;
@@ -72,6 +101,49 @@ function installIconPatch() {
 			}
 		}
 	})();
+
+	GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
+		import('resource:///org/gnome/shell/ui/iconGrid.js').then(iconGrid => {
+			patchStyleDepth(iconGrid.BaseIcon);
+			LOG('BaseIcon style depth watch on');
+			return import('resource:///org/gnome/shell/ui/main.js');
+		}).then(main => {
+			const dash = main.overview?.dash;
+			const items = dash?._box?.get_children?.() ?? [];
+			const target = (items[0]?.child) || dash?._showAppsIcon?.toggleButton;
+			const appDisplay = main.overview?._overview?.controls?.appDisplay;
+			if (target != null && target.width > 0 && target.height > 0) {
+				let x = target.x;
+				let y = target.y;
+				try {
+					const pos = target.get_transformed_position();
+					if (Array.isArray(pos) && Number.isFinite(pos[0])) {
+						x = pos[0];
+						y = pos[1];
+					}
+				} catch (e) {
+					log('gsr-style-depth: position ' + e);
+				}
+				const cx = x + target.width / 2;
+				const cy = y + target.height / 2;
+				log(`gsr-style-depth: pointer ${cx},${cy} w=${target.width} h=${target.height}`);
+				if (Number.isFinite(cx) && Number.isFinite(cy))
+					global.pointer_click(cx, cy);
+				target.sync_hover();
+			} else {
+				log(`gsr-style-depth: no dash target items=${items.length}`);
+			}
+			if (appDisplay)
+				appDisplay._redisplay();
+			else
+				log('gsr-style-depth: no appDisplay');
+		}).catch(e => log('gsr-style-depth: drive ' + e));
+		GLib.timeout_add(GLib.PRIORITY_DEFAULT, 3000, () => {
+			log('gsr-style-depth: max=' + styleMaxDepth);
+			return GLib.SOURCE_REMOVE;
+		});
+		return GLib.SOURCE_REMOVE;
+	});
 
 	LOG('probe hooks installed (preload)');
 }

@@ -1,0 +1,20 @@
+name: Release - Fedora
+
+# Manual Fedora 42 RPM build. Fedora 42 ships GNOME 48 (mutter 16).
+
+on:
+  workflow_dispatch:
+
+run-name: Release - Fedora - ${{ github.ref_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-rpm-fedora:
+    name: Fedora 42 RPM
+    uses: ./.github/workflows/x-rpm.yml
+    with:
+      job_name: Fedora 42 RPM
+      image: fedora:42
+      artifact_name: gnome-shell-rpc-rpm-fedora

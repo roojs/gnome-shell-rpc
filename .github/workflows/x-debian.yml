@@ -1,0 +1,94 @@
+name: X - Debian .deb build (Release calls this)
+
+# The real dpkg-buildpackage job. Start Release - Debian, not this file.
+# ubuntu:25.04 is the mutter 16 (shell 48) generation. A shell-50 build is a
+# second workflow (0.9), not a matrix here.
+
+on:
+  workflow_call:
+
+jobs:
+  build-debian:
+    name: Debian package
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:25.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      ROOJS_APT_SUITE: plucky
+      TZ: UTC
+    steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates curl
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: gnome-shell-rpc
+
+      # CI helper (not the user install path — see https://roojs.github.io/repos/).
+      - name: Enable roojs APT and install build dependencies
+        working-directory: gnome-shell-rpc
+        run: |
+          set -euo pipefail
+          bash scripts/ci/enable-roojs-apt.sh
+          apt-get install -y --no-install-recommends build-essential devscripts dpkg-dev
+          apt-get build-dep -y --no-install-recommends ./
+
+      - name: Build Debian package (amd64)
+        working-directory: gnome-shell-rpc
+        env:
+          DEBFULLNAME: GitHub Actions
+          DEBEMAIL: actions@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          chmod +x debian/rules
+          dpkg-buildpackage -us -uc -b
+
+      - name: Check package contents
+        working-directory: gnome-shell-rpc
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          debs=(../gnome-shell-rpc_*.deb)
+          if [ "${#debs[@]}" -ne 1 ]; then
+            echo "expected one gnome-shell-rpc .deb, got: ${debs[*]}" >&2
+            exit 1
+          fi
+          dpkg-deb -c "${debs[0]}" | tee ../contents.txt
+          for want in \
+            ./usr/bin/gsr-server \
+            ./usr/bin/gsr-client \
+            ./usr/bin/gsr-session \
+            ./usr/share/wayland-sessions/gsr.desktop \
+            ./usr/lib/systemd/user/org.gnome.ShellRpc@.service; do
+            grep -q " ${want}\$" ../contents.txt || { echo "missing ${want}" >&2; exit 1; }
+          done
+          if grep -qE ' \./usr/bin/gnome-shell$| \./usr/lib/[^ ]*girepository-1\.0/Meta-16\.typelib$' ../contents.txt; then
+            echo "package ships a stock gnome-shell or Meta-16.typelib path" >&2
+            exit 1
+          fi
+
+      - name: Collect artifacts
+        working-directory: gnome-shell-rpc
+        run: |
+          mkdir -p artifacts
+          shopt -s nullglob
+          for deb in ../*.deb; do
+            case "${deb}" in
+              *dbgsym*) continue ;;
+            esac
+            cp -v "${deb}" artifacts/
+          done
+          ls -lh artifacts
+
+      - name: Upload Debian artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnome-shell-rpc-debian
+          path: gnome-shell-rpc/artifacts/*

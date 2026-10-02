@@ -153,7 +153,14 @@ message(
 # Client St is libst-rpc-16.so + build-tree St-16.typelib — NOT these distro typelibs.
 # Distro St-16.gir is only the API schema input for gi-stub-gen / g-ir-compiler.
 
+# Debian/Ubuntu: /usr/lib/gnome-shell. Fedora: /usr/lib64/gnome-shell.
 gnome_shell_pkglibdir = '/usr/lib/gnome-shell'
+foreach candidate : ['/usr/lib/gnome-shell', '/usr/lib64/gnome-shell']
+  if fs.exists(candidate / 'libst-16.so')
+    gnome_shell_pkglibdir = candidate
+    break
+  endif
+endforeach
 gnome_shell_girdir = '/usr/share/gnome-shell'
 gnome_shell_st_lib = gnome_shell_pkglibdir / 'libst-16.so'
 gnome_shell_st_gir = gnome_shell_girdir / 'St-16.gir'

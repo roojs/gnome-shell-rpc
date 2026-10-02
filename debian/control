@@ -1,0 +1,60 @@
+Source: gnome-shell-rpc
+Section: gnome
+Priority: optional
+Maintainer: Alan Knowles <alan@roojs.com>
+Build-Depends: debhelper-compat (= 13),
+               meson,
+               ninja-build,
+               pkg-config,
+               valac,
+               gobject-introspection,
+               libgirepository1.0-dev,
+               libgio-2.0-dev-bin,
+               python3,
+               xsltproc,
+               git,
+               ca-certificates,
+               libmutter-16-dev (>= 48),
+               libmutter-16-dev (<< 49),
+               gnome-shell (>= 48),
+               gnome-shell (<< 49),
+               gnome-shell-common (>= 48),
+               gnome-shell-common (<< 49),
+               libgjs-dev,
+               gjs,
+               libocrpc-dev (>= 1.3.1~),
+               libgee-0.8-dev,
+               libjson-glib-dev,
+               libsoup-3.0-dev,
+               libglib2.0-dev,
+               libatk1.0-dev,
+               libcairo2-dev,
+               libpango1.0-dev,
+               libgraphene-1.0-dev,
+               libgdk-pixbuf-2.0-dev,
+               libx11-dev,
+               libnm-dev,
+               libsecret-1-dev,
+               libpolkit-agent-1-dev,
+               libpolkit-gobject-1-dev,
+               libgcr-4-dev,
+               libsystemd-dev,
+               systemd-dev,
+               libgtk-4-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/roojs/gnome-shell-rpc
+Vcs-Browser: https://github.com/roojs/gnome-shell-rpc
+Vcs-Git: https://github.com/roojs/gnome-shell-rpc.git
+
+Package: gnome-shell-rpc
+Architecture: any
+Depends: libmutter-16-0,
+         gnome-shell (>= 48),
+         gnome-shell (<< 49),
+         gnome-session,
+         libocrpc1 (>= 1.3.1~),
+         ${shlibs:Depends},
+         ${misc:Depends}
+Recommends: gdm3 | lightdm
+Description: GNOME Shell RPC
+ GNOME Shell RPC session for GDM and LightDM, built for mutter 16.

@@ -1,0 +1,16 @@
+name: Release - Debian
+
+# Manual .deb build.
+
+on:
+  workflow_dispatch:
+
+run-name: Release - Debian - ${{ github.ref_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-debian:
+    name: Debian package
+    uses: ./.github/workflows/x-debian.yml

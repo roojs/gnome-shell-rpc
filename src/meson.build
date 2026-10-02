@@ -531,6 +531,7 @@ mutter_clutter_rpc_lib = shared_library(
   # Actor overrides write Shell.Signals symbols defined in libshell-16.
   link_args: ['-Wl,--unresolved-symbols=ignore-all'],
   install: true,
+  install_rpath: mutter_typelib_dir,
 )
 
 # Generator-owned stock-shaped clutter/ tree (0.7.4).
@@ -575,7 +576,8 @@ stage_clutter_headers = custom_target(
 )
 meson.add_install_script(
   'sh', '-c',
-  'mkdir -p "$2" && cp -a "$1/." "$2/"',
+  'mkdir -p "${DESTDIR}$2" && cp -a "$1/." "${DESTDIR}$2/"',
+  'sh',
   mutter_clutter_rpc_incdir,
   get_option('prefix') / get_option('includedir') / mutter_clutter_rpc_gir_name,
 )
@@ -706,6 +708,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
   vala_header: 'mutter-rpc-16.h',
   vala_vapi: 'mutter-rpc-16.vapi',
   install: true,
+  install_rpath: mutter_typelib_dir,
 )
 
 # mutter_rpc_client_dep is declared after st_rpc_lib (Clutter Runtime needs st_register).
@@ -824,6 +827,7 @@ st_rpc_lib = shared_library(
   vala_header: 'st-rpc-16.h',
   vala_vapi: 'st-rpc-16.vapi',
   install: true,
+  install_rpath: mutter_typelib_dir,
 )
 
 mutter_rpc_client_dep = declare_dependency(
@@ -960,7 +964,9 @@ shell_gi_lib = shared_library(
   vala_header: 'shell-16.h',
   vala_vapi: 'shell-16.vapi',
   vala_gir: 'Shell-16.gir',
-  install: false,
+  install: true,
+  install_dir: [true, false, false, false],
+  install_rpath: mutter_typelib_dir,
 )
 
 # Injected GIR is what the typelib / install ship (as Shell-16.gir).
@@ -1002,7 +1008,8 @@ shell_gi_typelib = custom_target(
   ],
   depends: [shell_gi_lib],
   build_by_default: true,
-  install: false,
+  install: true,
+  install_dir: mutter_rpc_typelib_install_dir,
 )
 
 # Meta.RpcSubprocess peer methods for GJS (find_by_gtype). Not stock Meta GIR.
@@ -1018,7 +1025,8 @@ gsr_rpc_subprocess_typelib = custom_target(
   ],
   depends: [mutter_rpc_lib],
   build_by_default: true,
-  install: false,
+  install: true,
+  install_dir: mutter_rpc_typelib_install_dir,
 )
 
 # 0.7.7 S1 — JS gresource (vendor tree + substituted misc/config.js).
@@ -1125,7 +1133,7 @@ gnome_shell_rpc = executable('gsr-client',
   ],
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
   install: true,
-  install_rpath: get_option('prefix') / get_option('libdir'),
+  install_rpath: get_option('prefix') / get_option('libdir') + ':' + mutter_typelib_dir,
 )
 
 configure_file(
@@ -1265,7 +1273,7 @@ mutter_rpc = executable('gsr-server',
   build_rpath: compositor_rpath,
   export_dynamic: true,
   install: true,
-  install_rpath: get_option('prefix') / get_option('libdir'),
+  install_rpath: get_option('prefix') / get_option('libdir') + ':' + mutter_typelib_dir + ':' + gnome_shell_pkglibdir,
 )
 
 session_data = meson.project_source_root() / 'data'
@@ -1290,7 +1298,7 @@ systemd = dependency('systemd', required: false)
 if systemd.found()
   systemduserunitdir = systemd.get_variable('systemduserunitdir')
 else
-  systemduserunitdir = get_option('libdir') / 'systemd' / 'user'
+  systemduserunitdir = 'lib' / 'systemd' / 'user'
 endif
 install_data(
   session_data / 'systemd' / 'org.gnome.ShellRpc.target',

@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+%:
+	dh $@
+
+# meson setup clones vendor/gnome-shell (48.0) when it is missing; the JS
+# gresource is compiled from it. Nothing from vendor/ is installed.
+override_dh_auto_configure:
+	meson setup build --prefix=/usr --libdir=lib/$(DEB_HOST_MULTIARCH)
+
+override_dh_auto_build:
+	ninja -C build
+
+override_dh_auto_install:
+	DESTDIR=$(CURDIR)/debian/gnome-shell-rpc ninja -C build install
+
+# The tests need a nested compositor.
+override_dh_auto_test:
+
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info

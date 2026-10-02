@@ -1,0 +1,71 @@
+name: X - RPM build (Release calls this)
+
+# The real rpmbuild job. Start Release - Fedora, not this file.
+
+on:
+  workflow_call:
+    inputs:
+      job_name:
+        description: Actions job display name
+        type: string
+        required: true
+      image:
+        description: Container image (needs mutter 16 / shell 48)
+        type: string
+        required: true
+      artifact_name:
+        description: upload-artifact name
+        type: string
+        required: true
+
+jobs:
+  build-rpm:
+    name: ${{ inputs.job_name }}
+    runs-on: ubuntu-24.04
+    container:
+      image: ${{ inputs.image }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install git
+        run: |
+          set -euo pipefail
+          dnf -y install --setopt=install_weak_deps=False git-core ca-certificates curl
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build RPM
+        run: |
+          set -euo pipefail
+          bash scripts/ci/build-rpm.sh
+
+      - name: Check package contents
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          rpms=(artifacts/gnome-shell-rpc-[0-9]*.rpm)
+          if [ "${#rpms[@]}" -ne 1 ]; then
+            echo "expected one gnome-shell-rpc .rpm, got: ${rpms[*]}" >&2
+            exit 1
+          fi
+          rpm -qlp "${rpms[0]}" | tee contents.txt
+          for want in \
+            /usr/bin/gsr-server \
+            /usr/bin/gsr-client \
+            /usr/bin/gsr-session \
+            /usr/share/wayland-sessions/gsr.desktop \
+            /usr/lib/systemd/user/org.gnome.ShellRpc@.service; do
+            grep -qx "${want}" contents.txt || { echo "missing ${want}" >&2; exit 1; }
+          done
+          if grep -qE '^/usr/bin/gnome-shell$|girepository-1\.0/Meta-16\.typelib$' contents.txt; then
+            echo "package ships a stock gnome-shell or Meta-16.typelib path" >&2
+            exit 1
+          fi
+
+      - name: Upload RPM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: artifacts/*.rpm

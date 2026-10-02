@@ -140,7 +140,7 @@ namespace Gsr.Server.Rpc
 		 * Spawn {@code gsr-client} via {@link global::Meta.WaylandClient}.
 		 *
 		 * Default (no {@code GI_META_SMOKE}, or {@code init}): product
-		 * {@code init.js} resource. Otherwise a {@code src/gjs-embed/} smoke.
+		 * {@code init.js} resource. Otherwise a {@code tests/gjs-embed/} smoke.
 		 * Sets {@code MUTTER_RPC_SOCKET} and {@code WAYLAND_DISPLAY}.
 		 */
 		private void spawn_client()
@@ -182,7 +182,7 @@ namespace Gsr.Server.Rpc
 					smoke_name += ".js";
 				}
 				var script = GLib.Path.build_filename(
-					bindir, "..", "..", "src", "gjs-embed", smoke_name);
+					bindir, "..", "..", "tests", "gjs-embed", smoke_name);
 				if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
 					GLib.warning("%s missing at %s — skip client spawn", smoke_name, script);
 					return;

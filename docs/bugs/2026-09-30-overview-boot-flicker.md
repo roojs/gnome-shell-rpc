@@ -39,7 +39,7 @@ Shots 14:31. Left: our nest. Right: GNOME Shell.
 
 ## Dash icons
 
-Bottom bar icons are the wrong size. User 2026-09-30, after checking the picker. Recorded. Not investigated.
+Icons look the right size. The bar is too tall and the icons sit at the top of it. User 2026-10-02. See phase 6.
 
 ## Phases
 
@@ -50,9 +50,9 @@ Bottom bar icons are the wrong size. User 2026-09-30, after checking the picker.
 | 3 | Dash missing on the picker | Show-apps item preferred width was 0. Its layout manager said 48. The button now allocates 44×80. |
 | 4 | Grey square over the dash | Workspace thumbnails. Asking for their own preferred size during allocate returned 0, so the scale went negative and the full-size thumbnail backgrounds painted over the dash. Preferred size during allocate now runs the size vfunc. Scale is positive. The icon row is visible. |
 | 5 | Why the top-left button does not open and close the overview | Click proves 17:29–17:32. The click is the hot corner, not the button vfunc. Hide starts. `hide-done` is not reliable: absent for 5s, then present in 0.7s after a `stopped` subscribe, then absent again for 5s with that same subscribe. While `anim` stays true the next click is refused. Subscribe reverted. Still open. Unsure it is still the live problem. |
-| 6 | Bottom bar icons are the wrong size | Recorded 2026-09-30. Not investigated. |
+| 6 | Dash bar is too tall, icons sit at the top | Icons look the right size (2026-10-02). The pill fills the dash allocation. Last measure: show-apps item 88px, dash 112px. Extra height is below the icon. |
 
-Phase 1 probe stays at `src/shell-js-probe/overview-boot/ui/overview.js`. Layout waits. Phase 6 is recorded only.
+Phase 1 probe stays at `src/shell-js-probe/overview-boot/ui/overview.js`. Layout waits. Phase 6 is the tall dash bar, icons at the top.
 
 ---
 
@@ -102,5 +102,11 @@ The picker card stays `540x383` in the `800x568` work area. That is `ControlsMan
 | 17:32 | yes | `hide` at 17:32:43. At 17:32:48 still `HIDING` `anim=true`. `should-toggle` `why=anim`. No `hide-done`. |
 
 `Adjustment.ease` connects `stopped` after `add_transition`. `Actor.ease` subscribes in `get_transition`. The subscribe made `hide-done` arrive once and miss once. It is not the fix. Reverted. Do not put it back on this table.
+
+**Phase 6 (2026-10-02).** User: icon glyphs look the right size. The pill is too tall and the icons sit at the top of it. `dash.js` background is a `BinLayout` child, so it fills the dash allocation. That height is the row's preferred height. Debug prove 13:58: `ShowAppsIcon` 80×88, `Dash` height 112 for width 800. 112 is the 88px item plus the background's 12px padding top and bottom. The item is taller than the icon: Yaru `#dash .dash-item-container .show-apps` sets `padding-bottom: 12px`, and the icon is packed at the top of that box. The background sizer is a `BindConstraint` on `showAppsIcon.icon` height; the pill still grows to the taller item because the background fills the dash.
+
+**Debug session crash (2026-10-02 15:09).** `./scripts/weston-gsr-session.sh --debug`. Client log: `JS ERROR: too much recursion` from 15:09:24, same stack each time. Top of the stack is 67 frames of `BaseIcon.vfunc_style_changed` at `iconGrid.js:137` (`super.vfunc_style_changed()`). Under that: line 150 (`_createIconTexture`), `AppIcon.vfunc_leave_event`, `shouldShowTooltip`, `Dash._syncLabel`, `Dash._hookUpLabel`, then `IconGrid.addItem` during app-grid `_redisplay`. At 15:09:31 `gsr-client` SIGSEGV in `pcre2_compile_8` via `string.replace("-", "_")` in `Signals.vala` `shell_signals_emit` of `style-changed`. `gsr-server` then SIGTRAP in `Connection.drain_readable`: `Error receiving data: Connection reset by peer`. Server death is the client socket closing.
+
+**Smoke (2026-10-02 15:22–15:26).** `tests/gjs-embed/style-reenter-smoke.js`. `Shell.SquareBin` `vfunc_style_changed` calls `super`, then either `set_style` or `sync_hover`, and counts depth. Nested `set_style`: `entered=8 completed=8 maxDepth=2`. `sync_hover`: `entered=5 completed=5 maxDepth=1 leave=0`. Both `ok`. The super call does not loop on this path. No product change for the crash until a smoke fails on the addItem → leave_event stack.
 
 **🚫** vendor `js/` as the ship path. **🚫** Idle. **🚫** layout.js ship hack. Overlay is a probe.
