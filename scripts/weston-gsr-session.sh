@@ -108,23 +108,9 @@ else
 	echo "weston-gsr-session: panel button starts the shell (window fills Weston)"
 fi
 
-# Host window manager places a new X window wherever it likes. Pin Weston
-# so a screen recording frames the same rectangle every time.
-# GSR_WESTON_X / GSR_WESTON_Y override the origin (default 0,0).
-HOST_DISPLAY="${DISPLAY:-}"
-PLACE_X="${GSR_WESTON_X:-0}"
-PLACE_Y="${GSR_WESTON_Y:-0}"
-
-weston \
+exec weston \
 	--backend=x11-backend.so \
 	--width="$WIDTH" \
 	--height="$HEIGHT" \
 	--socket="$SOCK" \
-	--config="$INI" &
-WESTON_PID=$!
-trap 'kill "$WESTON_PID" 2>/dev/null || true; wait "$WESTON_PID" 2>/dev/null || true' INT TERM
-if [[ -n "$HOST_DISPLAY" ]]; then
-	bash "$ROOT/scripts/weston-gsr-place-host-window.sh" \
-		"$HOST_DISPLAY" "$WESTON_PID" "$PLACE_X" "$PLACE_Y" "$WIDTH" "$HEIGHT" &
-fi
-wait "$WESTON_PID"
+	--config="$INI"

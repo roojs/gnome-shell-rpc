@@ -162,6 +162,10 @@ fi
 if [[ -n "${GI_META_GDB:-}" ]]; then
 	env_args+=(GI_META_GDB="$GI_META_GDB")
 fi
+PLACE_SO="$ROOT/build/libgsr-nested-place.so"
+if [[ -f "$PLACE_SO" ]]; then
+	env_args+=(LD_PRELOAD="${PLACE_SO}${LD_PRELOAD:+:$LD_PRELOAD}")
+fi
 if [[ -n "${GI_META_GDB_BIN:-}" ]]; then
 	env_args+=(GI_META_GDB_BIN="$GI_META_GDB_BIN")
 fi

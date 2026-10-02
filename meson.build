@@ -188,6 +188,14 @@ fake_shell = executable('fake-shell',
   install: false,
 )
 
+# Weston places an unpositioned X client at random. This interposes
+# XSetWMNormalHints in gsr-server so the nested stage claims a position.
+shared_library('gsr-nested-place',
+  'scripts/gsr-nested-place.c',
+  dependencies: [dependency('x11'), cc.find_library('dl')],
+  install: false,
+)
+
 if get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != ''
   subdir('gnome-shell/client-libs')
 endif

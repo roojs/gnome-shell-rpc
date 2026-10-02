@@ -21,15 +21,17 @@ second `Gsr-St-ThemeContext.set_theme`). Active work:
 ## How it fits together
 
 ```
-mutter-rpc (compositor)                 gnome-shell-rpc (shell)
-  real libmutter                             our gresource (from vendor JS) + libmutter-rpc-16
+gsr-server (compositor)                 gsr-client (shell)
+  src/server/, real libmutter            src/client/, gresource + libmutter-rpc-16
          ▲                                            │
          └──────────── libocrpc / Unix socket ────────┘
 ```
 
-- **Compositor** — **`mutter-rpc`**: mutter plugin in this repo; real Mutter.
-- **Client** — **`gnome-shell-rpc`**: stock GJS plus our copy of shell
+- **Compositor** — **`gsr-server`** in `src/server/`: mutter plugin; real Mutter.
+- **Client** — **`gsr-client`** in `src/client/`: stock GJS plus our copy of shell
   JavaScript, described below. **`libmutter-rpc-16`** stands in for `libmutter`.
+
+Shared types live in `src/shared/`. Folder roles: [`src/README.md`](src/README.md).
 
 All development uses **nested** mutter. Do **not** point this at your host
 `gnome-shell`, and do **not** nest under host GNOME (that freezes the desktop).
@@ -54,7 +56,7 @@ binary:
    checkout is gitignored. Open `vendor/gnome-shell/js/` when you need to read
    the shell sources; workspace search will not see them.
 2. The build compiles that `js/` tree (plus a generated `misc/config.js`) into
-   a GResource and links it into **`gnome-shell-rpc`**.
+   a GResource and links it into **`gsr-client`**.
 3. The client runs that resource: `resource:///org/gnome/shell/ui/init.js` and
    the modules it imports.
 
@@ -93,7 +95,7 @@ GSR_NESTED_STAYUP=1 ./scripts/weston-gsr-prove.sh
 | ------ | ---- |
 | `scripts/weston-gsr-session.sh` | Weston (X11). `--debug` adds the log terminal |
 | `scripts/weston-gsr-prove.sh` | Timed prove for scoring / agents |
-| `scripts/nested-weston-prove.sh` | `dbus-run-session` + `mutter-rpc --nested` (inside Weston) |
+| `scripts/nested-weston-prove.sh` | `dbus-run-session` + `gsr-server --nested` (inside Weston) |
 
 Prove log: `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`  
 Debug: `~/.cache/gnome-shell-rpc/{mutter-rpc,org.gnome.ShellRpc}.debug.log`
@@ -105,8 +107,8 @@ Build / install / older `dbus-run-session` notes: [`docs/build.md`](docs/build.m
 
 ```bash
 # Stop a stuck nest
-pkill -9 -f 'mutter-rpc --wayland'
-pkill -9 -f gnome-shell-rpc
+pkill -9 -f 'gsr-server --wayland'
+pkill -9 -f gsr-client
 pkill -9 -f 'weston.*wayland-gsr'
 ```
 

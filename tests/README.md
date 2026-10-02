@@ -1,17 +1,14 @@
 # Tests and harnesses
 
-Everything here is **not** the nested product path (**`mutter-rpc`** + **`gnome-shell-rpc`** only).
+Not the nested product path (`gsr-server` + `gsr-client`).
 
-Plan: [`docs/plans/0.7.10-src-directory-layout.md`](../docs/plans/0.7.10-src-directory-layout.md).
-
-| Path (target) | What it is | Today |
-| ------------- | ---------- | ----- |
-| **`meta-mini/`** | Hand **`Meta-16.gir`** + legacy Vala used by old smokes / optional builds | `src/meta-mini/` |
-| **`call-sync-repro/`** | Vala RPC repro | already here |
-| **`gi-rpc-mock/`** | **`gi-rpc-mock`** — mock RPC **server** | `src/gi-rpc-mock/` |
-| **`gjs-embed/`** | **`gjs-embed`** + `*-smoke.js` | `src/gjs-embed/` |
-| **`ollm-demo-client/`** | Renamed from **`rpc-client`** | `src/rpc-client/` |
-| **`fake-shell/`** | **`fake-shell`** GTK probe | `src/fake-shell/` |
-| **`gi-rpc-smoke/`** | Legacy **GiRpcSmoke** / **gi-rpc-echo** | `src/gi-rpc-smoke/`, `gi-rpc-echo/` |
-
-**Status:** “Today” column is current on disk; moves are deferred until 0.7.10 runs.
+| Path | What |
+| ---- | ---- |
+| `meta-mini/` | Hand-written `Meta-16.gir` and the legacy Vala that goes with it |
+| `call-sync-repro/` | Vala RPC repro |
+| `gi-rpc-mock/` | `gi-rpc-mock` mock RPC server |
+| `gjs-embed/` | `gjs-embed` and `*-smoke.js` |
+| `ollm-demo-client/` | Demo client; binary stays `rpc-client` |
+| `fake-shell/` | `fake-shell` GTK probe |
+| `gi-rpc-smoke/` | Legacy GiRpcSmoke; `gi-rpc-echo/` sits beside it |
+| `shell-js-probe/` | Shell JS probe |

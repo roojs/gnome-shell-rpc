@@ -68,9 +68,9 @@ Main artifacts under `build/src/`:
 
 | Output | Role |
 | --- | --- |
-| `mutter-rpc` | Compositor binary (mutter plugin) |
-| `gnome-shell-rpc` | Shell client (GJS + gresource compiled from `vendor/gnome-shell/js`) |
-| `gjs-embed` | **Temporary** test GJS host (manual smokes only) |
+| `gsr-server` | Compositor binary (mutter plugin) |
+| `gsr-client` | Shell client (GJS + gresource compiled from `vendor/gnome-shell/js`) |
+| `build/gjs-embed` | **Temporary** test GJS host (manual smokes only) |
 | `libmutter-rpc-16.so` | Client Meta stubs (RPC to plugin) |
 | `Meta-16.typelib` | GI typelib → `libmutter-rpc-16.so` |
 | `libst-rpc-16.so` | Client St stubs (RPC to server libst) |
@@ -113,7 +113,7 @@ See [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md)
 ./scripts/weston-gsr-session.sh --debug
 ```
 
-Plain session mode starts `mutter-rpc --wayland --nested --no-x11` on Weston’s
+Plain session mode starts `gsr-server --wayland --nested --no-x11` on Weston’s
 XWayland (`DISPLAY=:N`, not host `:0`) with no `--debug`, no debug logs, and
 no log terminal. The nested window fills Weston. `--debug` opens
 `weston-terminal` inside Weston and follows the debug logs.
@@ -123,27 +123,27 @@ Prove mode still starts mutter from Weston autolaunch. Log:
 ### Host-GNOME nested (manual only — freezes host)
 
 ```bash
-dbus-run-session ./build/src/mutter-rpc --debug --wayland --nested
+dbus-run-session ./build/src/gsr-server --debug --wayland --nested
 ```
 
 **Emergency stop:**
 
 ```bash
-pkill -9 -f 'mutter-rpc --wayland' ; pkill -9 -f gnome-shell-rpc
+pkill -9 -f 'gsr-server --wayland' ; pkill -9 -f gsr-client
 pkill -9 -f 'weston.*wayland-gsr'
 ```
 
-On startup the plugin listens on `$XDG_RUNTIME_DIR/mutter-rpc.sock` (or `MUTTER_RPC_SOCKET`) and spawns **`gnome-shell-rpc`** with **`resource:///org/gnome/shell/ui/init.js`** by default (`MUTTER_RPC_SOCKET` + `WAYLAND_DISPLAY` set on the child).
+On startup the plugin listens on `$XDG_RUNTIME_DIR/mutter-rpc.sock` (or `MUTTER_RPC_SOCKET`) and spawns **`gsr-client`** with **`resource:///org/gnome/shell/ui/init.js`** by default (`MUTTER_RPC_SOCKET` + `WAYLAND_DISPLAY` set on the child).
 
 Override with a smoke script:
 
 ```bash
 GI_META_SMOKE=mutter-rpc-load.js \
   WAYLAND_DISPLAY=wayland-gsr \
-  dbus-run-session ./build/src/mutter-rpc --wayland --nested --no-x11
+  dbus-run-session ./build/src/gsr-server --wayland --nested --no-x11
 ```
 
-`GI_META_SMOKE=init` is the same as the default. Other smokes live under `src/gjs-embed/` (`meta-smoke.js`, etc.). Run them manually with **`gjs-embed`** or via **`GI_META_SMOKE`** as above (compositor spawns **`gnome-shell-rpc`**, not **`gjs-embed`**).
+`GI_META_SMOKE=init` is the same as the default. Other smokes live under `tests/gjs-embed/` (`meta-smoke.js`, etc.). Run them manually with **`gjs-embed`** or via **`GI_META_SMOKE`** as above (compositor spawns **`gsr-client`**, not **`gjs-embed`**).
 
 ---
 
@@ -156,13 +156,13 @@ MUTTER_TL=$(pkg-config --variable=typelibdir libmutter-16)
 export GI_TYPELIB_PATH=$PWD/build/src:$MUTTER_TL${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}
 export LD_LIBRARY_PATH=$PWD/build/src${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
-./build/src/gnome-shell-rpc --debug src/gjs-embed/mutter-rpc-load.js
+./build/src/gsr-client --debug tests/gjs-embed/mutter-rpc-load.js
 ```
 
 Or with the temporary test host:
 
 ```bash
-./build/src/gjs-embed --debug src/gjs-embed/mutter-rpc-load.js
+./build/gjs-embed --debug tests/gjs-embed/mutter-rpc-load.js
 ```
 
 `mutter-rpc-load.js` checks that `Meta` resolves to `libmutter-rpc-16.so`, not distro `libmutter-16`.
@@ -184,7 +184,7 @@ For launch/minimize exercises against a running compositor, use `meta-smoke.js` 
 That path can wedge **host** input. Keep SSH / a text VT ready:
 
 ```bash
-pkill -9 mutter-rpc; pkill -9 gnome-shell-rpc
+pkill -9 gsr-server; pkill -9 gsr-client
 ```
 
 Stronger isolation when even Weston-in-X11 is not enough: second VT/seat, or a

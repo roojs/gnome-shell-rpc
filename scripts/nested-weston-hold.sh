@@ -80,6 +80,11 @@ fi
 if [[ -n "${GI_META_GDB:-}" ]]; then
 	env_args+=(GI_META_GDB="$GI_META_GDB")
 fi
+# Nested stage otherwise lands at a random Weston coordinate.
+PLACE_SO="$ROOT/build/libgsr-nested-place.so"
+if [[ -f "$PLACE_SO" ]]; then
+	env_args+=(LD_PRELOAD="${PLACE_SO}${LD_PRELOAD:+:$LD_PRELOAD}")
+fi
 
 DBUS_CONFIG="$("$ROOT/scripts/prepare-nested-dbus.sh" "$RT/gsr-nested-dbus-$$")"
 mutter_cmd=(
