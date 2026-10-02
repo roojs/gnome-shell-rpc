@@ -26,7 +26,6 @@ until the bar moves or you hit one of the stop conditions below.
 File/update the tracking bug, pick the next allowed step, rebuild, prove,
 repeat. No Idle/defer/helper thrash. No layout.js ship hacks.
 
-The banner lives on the **currently active plan only** (today:
-`docs/plans/0.8-init-complete-and-interaction.md`). Do **not** paste it on
-other plans, bugs, or docs — user call 2026-09-13: it was only relevant to
-the plan being run and had splattered everywhere.
+This rule is the only copy. Do **not** paste it into plans, bugs, or other
+docs. User call 2026-10-02: it is not for general reading, and it does not
+belong in every plan.

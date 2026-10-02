@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=GNOME Shell RPC
+Exec=gsr-server --wayland
+OnlyShowIn=GNOME;
+NoDisplay=true
+X-GNOME-Autostart-Phase=DisplayServer
+X-GNOME-Provides=panel;windowmanager;
+X-GNOME-Autostart-Notify=true
+X-GNOME-AutoRestart=false

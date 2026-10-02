@@ -5,4 +5,13 @@ namespace Gsr.Client
 
 	/** {@link GLib.Application} id for this executable (meson). */
 	public const string APPLICATION_ID = "@APPLICATION_ID@";
+
+	/** Installed RPC typelib dir (prefix/libdir/mutter-rpc-16). */
+	public const string TYPELIB_INSTALL_DIR = "@TYPELIB_INSTALL_DIR@";
+
+	/** Distro mutter typelib dir. */
+	public const string MUTTER_TYPELIB_DIR = "@MUTTER_TYPELIB_DIR@";
+
+	/** Distro gnome-shell pkglibdir (Gvc). */
+	public const string GNOME_SHELL_PKGLIBDIR = "@GNOME_SHELL_PKGLIBDIR@";
 }

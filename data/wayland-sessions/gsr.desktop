@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=GNOME Shell RPC
+Comment=GNOME Shell RPC
+Exec=gsr-session
+TryExec=gsr-server
+Type=Application
+DesktopNames=GNOME
+X-GDM-SessionRegisters=true

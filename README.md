@@ -10,11 +10,10 @@ but calls go out-of-process instead of in-process.
 
 The goal is a shell client you can restart without tearing down the desktop.
 
-**Status (2026-09-14):** nested stack **builds and boots** on **gnome-shell 48**
-/ **libmutter-16**. Thin host + `init.js` corridor through **READY** / prepare
-is green. Nest still **dies after READY** while extensions load (current:
-second `Gsr-St-ThemeContext.set_theme`). Active work:
-[`docs/plans/0.8-init-complete-and-interaction.md`](docs/plans/0.8-init-complete-and-interaction.md).
+**Status (2026-10-02):** 0.8 interaction is done
+([`docs/plans/done/0.8-init-complete-and-interaction.md`](docs/plans/done/0.8-init-complete-and-interaction.md)).
+Active work:
+[`docs/plans/1.1-installable-bootable-session.md`](docs/plans/1.1-installable-bootable-session.md).
 
 ---
 
@@ -136,7 +135,7 @@ pkill -9 -f 'weston.*wayland-gsr'
 | [`docs/build.md`](docs/build.md) | Prerequisites, meson/ninja, install |
 | [`docs/libmutter-rpc-for-gnome-shell-js.md`](docs/libmutter-rpc-for-gnome-shell-js.md) | Point gnome-shell JS at `libmutter-rpc` |
 | [`docs/README.md`](docs/README.md) | Docs index + agent plans |
-| [`docs/plans/0.8-init-complete-and-interaction.md`](docs/plans/0.8-init-complete-and-interaction.md) | Active plan (stay-up → interaction) |
+| [`docs/plans/1.1-installable-bootable-session.md`](docs/plans/1.1-installable-bootable-session.md) | Active plan (installable login session) |
 
 RPC wire format lives in OLLMchat **libocrpc**.
 

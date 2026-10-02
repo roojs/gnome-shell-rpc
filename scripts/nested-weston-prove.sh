@@ -32,6 +32,10 @@ elif [[ -x "$ROOT/build/src/gsr-server" ]]; then
 else
 	MUTTER_RPC="$ROOT/build/src/mutter-rpc"
 fi
+# Uninstalled typelibs sit next to this binary. Installed runs leave it unset.
+if [[ -z "${GSR_TYPELIB_DIR:-}" ]]; then
+	export GSR_TYPELIB_DIR="$(dirname "$MUTTER_RPC")"
+fi
 TIMEOUT_SEC="${GSR_NESTED_TIMEOUT:-25}"
 SETTLE_SEC="${GSR_NESTED_SETTLE:-10}"
 STAYUP=0

@@ -1,0 +1,8 @@
+#!/bin/sh
+if [ -n "$GDMSESSION" ]; then
+	exec gnome-session --session=gsr
+fi
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+	exec dbus-run-session -- gsr-server --wayland
+fi
+exec gsr-server --wayland

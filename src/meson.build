@@ -103,6 +103,7 @@ meta_mini_vala_args = [
 
 # Legacy client Shell/St from vendor; disabled by default (Phase C uses St RPC stubs).
 mutter_rpc_gir_name = 'mutter-rpc-16'
+mutter_rpc_typelib_install_dir = get_option('libdir') / mutter_rpc_gir_name
 gnome_shell_client_libdir = meson.project_build_root() / 'gnome-shell' / 'client-libs'
 gnome_shell_client_typelibdir = get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != '' ? gnome_shell_client_libdir : ''
 
@@ -155,6 +156,9 @@ gjs_embed_config = configure_file(
   configuration: configuration_data({
     'GNOME_SHELL_JS_DIR': gnome_shell_js_runtime_dir,
     'APPLICATION_ID': 'org.gnome.ShellRpc.GjsEmbed',
+    'TYPELIB_INSTALL_DIR': get_option('prefix') / mutter_rpc_typelib_install_dir,
+    'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
+    'GNOME_SHELL_PKGLIBDIR': gnome_shell_pkglibdir,
   }),
 )
 
@@ -164,6 +168,9 @@ gnome_shell_rpc_config = configure_file(
   configuration: configuration_data({
     'GNOME_SHELL_JS_DIR': gnome_shell_js_runtime_dir,
     'APPLICATION_ID': 'org.gnome.ShellRpc',
+    'TYPELIB_INSTALL_DIR': get_option('prefix') / mutter_rpc_typelib_install_dir,
+    'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
+    'GNOME_SHELL_PKGLIBDIR': gnome_shell_pkglibdir,
   }),
 )
 
@@ -301,7 +308,6 @@ endif
 # MUTTER_TL=$(pkg-config --variable=typelibdir libmutter-16)
 # GI_TYPELIB_PATH=$(pkg-config --variable=typelibdir libmutter-rpc-16):$MUTTER_TL \
 #   ./build/src/gjs-embed --debug src/../tests/gjs-embed/meta-smoke.js
-mutter_rpc_typelib_install_dir = get_option('libdir') / mutter_rpc_gir_name
 
 meta_deny_file = files('client/libmutter-rpc-16/Meta.deny')
 meta_overrides_file = files('client/libmutter-rpc-16/Meta.overrides')
@@ -1054,6 +1060,7 @@ gnome_shell_rpc = executable('gsr-client',
     'client/namespace.vala',
     'client/ShellApplication.vala',
   ) + shell_js_resources + gsr_js_resources,
+  gnome_shell_rpc_config,
   dependencies: gjs_shell_deps + [
     mutter_vapi_dep,
     ocrpc_dep,
@@ -1117,7 +1124,8 @@ gnome_shell_rpc = executable('gsr-client',
     gsr_rpc_subprocess_typelib,
   ],
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
-  install: false,
+  install: true,
+  install_rpath: get_option('prefix') / get_option('libdir'),
 )
 
 configure_file(
@@ -1256,5 +1264,40 @@ mutter_rpc = executable('gsr-server',
   link_args: gnome_shell_st_link_args,
   build_rpath: compositor_rpath,
   export_dynamic: true,
-  install: false,
+  install: true,
+  install_rpath: get_option('prefix') / get_option('libdir'),
+)
+
+session_data = meson.project_source_root() / 'data'
+install_data(
+  session_data / 'gsr-session',
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
+)
+install_data(
+  session_data / 'wayland-sessions' / 'gsr.desktop',
+  install_dir: get_option('datadir') / 'wayland-sessions',
+)
+install_data(
+  session_data / 'gnome-session' / 'sessions' / 'gsr.session',
+  install_dir: get_option('datadir') / 'gnome-session' / 'sessions',
+)
+install_data(
+  session_data / 'applications' / 'org.gnome.ShellRpc.desktop',
+  install_dir: get_option('datadir') / 'applications',
+)
+systemd = dependency('systemd', required: false)
+if systemd.found()
+  systemduserunitdir = systemd.get_variable('systemduserunitdir')
+else
+  systemduserunitdir = get_option('libdir') / 'systemd' / 'user'
+endif
+install_data(
+  session_data / 'systemd' / 'org.gnome.ShellRpc.target',
+  session_data / 'systemd' / 'org.gnome.ShellRpc@.service',
+  install_dir: systemduserunitdir,
+)
+install_data(
+  session_data / 'systemd' / 'gnome-session@gsr.target.d' / 'gsr.session.conf',
+  install_dir: systemduserunitdir / 'gnome-session@gsr.target.d',
 )

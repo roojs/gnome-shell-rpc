@@ -1,0 +1,14 @@
+[Unit]
+Description=GNOME Shell RPC on Wayland
+After=gnome-session-manager.target
+Requisite=gnome-session-initialized.target
+PartOf=gnome-session-initialized.target
+Before=gnome-session-initialized.target
+ConditionEnvironment=XDG_SESSION_TYPE=wayland
+
+[Service]
+Slice=session.slice
+Type=simple
+ExecStart=/usr/bin/gsr-server --wayland
+Restart=no
+TimeoutStopSec=5

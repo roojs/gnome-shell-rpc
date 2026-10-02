@@ -59,7 +59,13 @@ namespace Gsr.Client
 			Gsr.debug_critical_enabled =
 				Application.opt_debug_critical;
 
-			prepend_typelib_paths();
+			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
+			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
+			GI.Repository.prepend_search_path(TYPELIB_INSTALL_DIR);
+			var typelib_dir = GLib.Environment.get_variable("GSR_TYPELIB_DIR") ?? "";
+			if (typelib_dir.length > 0) {
+				GI.Repository.prepend_search_path(typelib_dir);
+			}
 			/*
 			 * Meta.RpcSubprocess peer (DING stdout / wait). Stock Meta GIR
 			 * still returns Gio.Subprocess; GJS finds our methods by GType.
@@ -186,15 +192,6 @@ namespace Gsr.Client
 				"gnome-shell-rpc: disable-user-extensions "
 				+ "(memory org.gnome.shell)"
 			);
-		}
-
-		private void prepend_typelib_paths()
-		{
-			var typelib_dir = GLib.Environment.get_variable("GI_RPC_SMOKE_TYPELIB_DIR") ?? "";
-			if (typelib_dir.length > 0) {
-				GI.Repository.prepend_search_path(typelib_dir);
-				GLib.debug("typelib prepend %s", typelib_dir);
-			}
 		}
 
 		private string resolve_script(unowned string[] remaining, string js_dir)

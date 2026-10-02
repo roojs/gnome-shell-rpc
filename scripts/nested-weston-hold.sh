@@ -16,6 +16,9 @@ elif [[ -x "$ROOT/build/src/gsr-server" ]]; then
 else
 	MUTTER_RPC="$ROOT/build/src/mutter-rpc"
 fi
+if [[ -z "${GSR_TYPELIB_DIR:-}" ]]; then
+	export GSR_TYPELIB_DIR="$(dirname "$MUTTER_RPC")"
+fi
 RT="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 MUTTER_WL="${GSR_MUTTER_WAYLAND_DISPLAY:-wayland-mutter-gsr}"
 WESTON_WL="${GSR_WESTON_SOCKET:-wayland-gsr}"

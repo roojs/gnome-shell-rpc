@@ -194,34 +194,7 @@ namespace Gsr.Server.Rpc
 			argv = GdbSpawnWrap.maybe_wrap_argv(argv);
 #endif
 
-			/* bindir first (our Meta/St/Shell). PKGLIBDIR after — Gvc only lives
-			 * there (0.7.3 row 6); stock Shell/St typelibs must not shadow ours. */
-			var tip = GLib.Environment.get_variable("GI_TYPELIB_PATH");
-			var client_tl = GNOME_SHELL_CLIENT_TYPELIB_DIR;
-			string[] tip_parts = {
-				bindir, MUTTER_TYPELIB_DIR, GNOME_SHELL_PKGLIBDIR
-			};
-			if (client_tl.length > 0) {
-				tip_parts += client_tl;
-			}
-			if (tip != null && tip.length > 0) {
-				tip_parts += tip;
-			}
-			tip = string.joinv(":", tip_parts);
-
-			var ld = GLib.Environment.get_variable("LD_LIBRARY_PATH");
-			string[] ld_parts = { bindir, GNOME_SHELL_PKGLIBDIR };
-			if (client_tl.length > 0) {
-				ld_parts += client_tl;
-			}
-			if (ld != null && ld.length > 0) {
-				ld_parts += ld;
-			}
-			ld = string.joinv(":", ld_parts);
-
 			var launcher = new GLib.SubprocessLauncher(GLib.SubprocessFlags.NONE);
-			launcher.setenv("GI_TYPELIB_PATH", tip, true);
-			launcher.setenv("LD_LIBRARY_PATH", ld, true);
 			if (this.rpc_socket_path.length > 0) {
 				launcher.setenv("MUTTER_RPC_SOCKET", this.rpc_socket_path, true);
 			}
