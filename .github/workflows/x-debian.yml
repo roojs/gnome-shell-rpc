@@ -47,6 +47,21 @@ jobs:
           DEBEMAIL: actions@users.noreply.github.com
         run: |
           set -euo pipefail
+          chmod +x scripts/release/changelog.sh scripts/release/sync-debian-changelog.sh
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            if cl_ver="$(./scripts/release/changelog.sh version 2>/dev/null)"; then
+              tag_ver="${GITHUB_REF_NAME#v}"
+              if [[ "${cl_ver}" != "${tag_ver}" ]]; then
+                echo "CHANGELOG.md version ${cl_ver} != tag ${tag_ver}" >&2
+                exit 1
+              fi
+              ./scripts/release/sync-debian-changelog.sh
+            else
+              ./scripts/release/sync-debian-changelog.sh --release "$GITHUB_REF_NAME"
+            fi
+          else
+            ./scripts/release/sync-debian-changelog.sh
+          fi
           chmod +x debian/rules
           dpkg-buildpackage -us -uc -b
 

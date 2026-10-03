@@ -6,7 +6,8 @@ namespace Gsr.Client.Rpc
 	/**
 	 * Sync RPC call with positional {@link GLib.Value}s and optional instance.
 	 *
-	 * An open {@link Clutter.Actor.prop_batch} with nothing in it is
+	 * The instance and every object argument are flushed first. An open
+	 * {@link Clutter.Actor.prop_batch} with nothing in it is
 	 * closed. A non-empty map is sent as
 	 * ''Gsr-Clutter-Actor.add_properties'' and closed. Entries are added
 	 * only by {@link Client.Clutter.Batch.call_value} while the batch is open, so
@@ -51,6 +52,10 @@ namespace Gsr.Client.Rpc
 				req.args.add(zero);
 				continue;
 			}
+			/* Stock applies construct properties before the object can
+			 * be passed anywhere. Clutter expand propagation depends on
+			 * that order (child y_expand before add_child). */
+			flush_prop(obj);
 			var lease = lease_id_of(obj, method);
 			var wire = GLib.Value(GLib.Type.UINT64);
 			wire.set_uint64(lease);

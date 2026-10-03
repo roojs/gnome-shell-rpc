@@ -90,8 +90,8 @@ back under GNOME’s thumb). Weston’s `xwayland=true` plus autolaunch’s
 ```
 
 Weston otherwise places the nested stage at a random spot inside its
-output. `libgsr-nested-place.so` makes that window claim a position
-(`GSR_NESTED_X` / `GSR_NESTED_Y`, default `0,32`, just under the panel).
+output. `libgsr-nested-place.so` makes that window claim a position, so
+it opens at the top-left of the Weston output every time.
 
 Without `--debug`, Weston opens and waits. The top-left panel button (Wayland
 icon) starts the nested shell with no `--debug` and no log terminal. That

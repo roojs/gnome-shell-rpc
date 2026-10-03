@@ -1,0 +1,6 @@
+{
+  "uuid": "gsr-dash-icons@probe",
+  "name": "gsr dash icon probe",
+  "description": "Stock GNOME Shell side of the dash icon size probe. Log only.",
+  "shell-version": ["48"]
+}

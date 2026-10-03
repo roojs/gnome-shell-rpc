@@ -30,7 +30,7 @@ BuildRequires: gnome-shell >= 48
 BuildRequires: gnome-shell < 49
 BuildRequires: gjs
 BuildRequires: pkgconfig(gjs-1.0)
-BuildRequires: libocrpc-devel >= 1.3.1~
+BuildRequires: libocrpc-devel >= 1.4.0
 BuildRequires: pkgconfig(gee-0.8)
 BuildRequires: pkgconfig(glib-2.0)
 BuildRequires: pkgconfig(gio-unix-2.0)
@@ -53,7 +53,7 @@ BuildRequires: pkgconfig(gtk4)
 Requires: gnome-shell >= 48
 Requires: gnome-shell < 49
 Requires: gnome-session
-Requires: libocrpc%{?_isa} >= 1.3.1~
+Requires: libocrpc%{?_isa} >= 1.4.0
 Recommends: (gdm or lightdm)
 
 %description
@@ -93,7 +93,3 @@ export QA_RPATHS=$(( 0x0001 ))
 %{_userunitdir}/org.gnome.ShellRpc.target
 %{_userunitdir}/org.gnome.ShellRpc@.service
 %{_userunitdir}/gnome-session@gsr.target.d/
-
-%changelog
-* Fri Oct 02 2026 Alan Knowles <alan@roojs.com> - 0.1.0-1
-- Installable session for GDM and LightDM, built for mutter 16 (shell 48)

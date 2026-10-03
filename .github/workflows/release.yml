@@ -1,0 +1,122 @@
+name: Release
+
+# Tag pushes (scripts/release.sh) build the .deb and .rpm, then publish
+# them on vX.Y.Z-packages. The packages tag must not rebuild
+# (tags exclude below). A workflow_dispatch run builds and does not
+# publish or finalize. To test one distro, run Release - Debian or
+# Release - Fedora.
+
+run-name: Release - ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '!v*-packages'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-debian:
+    name: Debian
+    if: ${{ !endsWith(github.ref_name, '-packages') }}
+    uses: ./.github/workflows/x-debian.yml
+    permissions:
+      contents: read
+
+  build-rpm-fedora:
+    name: Fedora
+    if: ${{ !endsWith(github.ref_name, '-packages') }}
+    uses: ./.github/workflows/x-rpm.yml
+    with:
+      job_name: Fedora 42 RPM
+      image: fedora:42
+      artifact_name: gnome-shell-rpc-rpm-fedora
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish
+    needs: [build-debian, build-rpm-fedora]
+    if: startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref_name, '-packages')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ github.token }}
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+          pattern: gnome-shell-rpc-*
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p artifacts/packages
+          for f in artifacts/*; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.deb|*.rpm) mv "$f" artifacts/packages/ ;;
+              *)
+                echo "unclassified release asset: $f" >&2
+                exit 1
+                ;;
+            esac
+          done
+          packages_files=(artifacts/packages/*)
+          ls -lh artifacts/packages
+          ((${#packages_files[@]})) || {
+            echo "no Debian / RPM assets" >&2
+            exit 1
+          }
+          chmod +x scripts/release/changelog.sh scripts/release/render-release-notes.sh
+          ./scripts/release/render-release-notes.sh "$GITHUB_REF_NAME" release-notes.md
+          pkg_tag="${GITHUB_REF_NAME}-packages"
+          {
+            echo "Debian (\`.deb\`) and RPM (\`.rpm\`) builds for ${GITHUB_REF_NAME}."
+            echo
+            echo "Notes: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          } > packages-notes.md
+          gh release create "$pkg_tag" "${packages_files[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "${GITHUB_REF_NAME} packages" \
+            --notes-file packages-notes.md \
+            --latest=false \
+          || {
+            gh release upload "$pkg_tag" "${packages_files[@]}" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$pkg_tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --notes-file packages-notes.md \
+              --latest=false
+          }
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+          || gh release edit "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --notes-file release-notes.md
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest
+
+      - name: Finalize changelog on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          ./scripts/release/finalize-changelog.sh "$GITHUB_REF_NAME"
+          git add CHANGELOG.md
+          git diff --staged --quiet && exit 0
+          git commit -m "Finalize changelog for $GITHUB_REF_NAME"
+          git push origin HEAD:main

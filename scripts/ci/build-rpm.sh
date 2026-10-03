@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
 # Build the gnome-shell-rpc RPM from the repository checkout (Fedora).
 # Usage: scripts/ci/build-rpm.sh [version]
-# Version defaults to project() version in meson.build.
+# Version defaults to CHANGELOG.md (packaging-version), or GITHUB_REF_NAME
+# with leading v stripped on a tag.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
+chmod +x "$ROOT/scripts/release/changelog.sh"
 
 if [ "$#" -ge 1 ] && [ -n "$1" ]; then
   ver="$1"
+elif [ -n "${GITHUB_REF_NAME:-}" ] && [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+  ver="${GITHUB_REF_NAME#v}"
+  cl_ver="$("$ROOT/scripts/release/changelog.sh" version)"
+  if [ "$cl_ver" != "$ver" ]; then
+    echo "CHANGELOG.md version ${cl_ver} != tag ${ver}" >&2
+    exit 1
+  fi
 else
-  ver="$(sed -n "s/^  version: '\([^']*\)',$/\1/p" meson.build | head -n1)"
+  ver="$("$ROOT/scripts/release/changelog.sh" packaging-version)"
 fi
 if [ -z "$ver" ]; then
   echo "Could not determine package version" >&2
@@ -76,6 +85,8 @@ tar --exclude='./.git' \
   .
 
 cp packaging/rpm/gnome-shell-rpc.spec "${TOPDIR}/SPECS/gnome-shell-rpc.spec"
+"$ROOT/scripts/release/changelog.sh" sync \
+  --splice-spec "${TOPDIR}/SPECS/gnome-shell-rpc.spec"
 rpmbuild -bb \
   --define "_topdir ${TOPDIR}" \
   --define "gsr_version ${rpm_ver}" \

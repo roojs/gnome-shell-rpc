@@ -9,6 +9,8 @@
 .gdb_history
 .vscode/
 .specstory/
+# Written by scripts/release/sync-debian-changelog.sh before the package build.
+/debian/changelog
 # Accidental valac dumps at repo root (not meson build outputs)
 /PubLayout.c
 /pub_layout.c

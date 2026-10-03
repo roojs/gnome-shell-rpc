@@ -39,7 +39,7 @@ Shots 14:31. Left: our nest. Right: GNOME Shell.
 
 ## Dash icons
 
-Icons look the right size. The bar is too tall and the icons sit at the top of it. User 2026-10-02. See phase 6.
+Fixed. [`done/2026-10-03-dash-icon-size.md`](done/2026-10-03-dash-icon-size.md).
 
 ## Phases
 
