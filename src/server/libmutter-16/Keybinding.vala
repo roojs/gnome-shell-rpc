@@ -68,6 +68,10 @@ namespace Gsr.Server.Meta
 					row.emit(OLLMrpc.args("tt",
 						row.connection.export(d), win_h));
 				});
+			if (action != 0) {
+				((Gsr.Server.Rpc.Connection) request.connection).session_leases.add(
+					new Gsr.Server.Rpc.Lease(display, name));
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("u", action),
@@ -97,6 +101,10 @@ namespace Gsr.Server.Meta
 					row.emit(OLLMrpc.args("tt",
 						row.connection.export(d), win_h));
 				});
+			if (ok) {
+				((Gsr.Server.Rpc.Connection) request.connection).session_leases.add(
+					new Gsr.Server.Rpc.Lease(null, name));
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("b", ok),

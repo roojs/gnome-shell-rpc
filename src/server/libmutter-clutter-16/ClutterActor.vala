@@ -65,14 +65,17 @@ namespace Gsr.Server.Clutter
 				return;
 			}
 			if (vfunc_id == ActorVfuncIds.event_id) {
-				clutter_actor.key_press_event.connect((a, ev) => {
-					LayoutHooks.measure_event(hook, clutter_actor, ev);
-					return false;
-				});
-				clutter_actor.key_release_event.connect((a, ev) => {
-					LayoutHooks.measure_event(hook, clutter_actor, ev);
-					return false;
-				});
+				var leases = ((Gsr.Server.Rpc.Connection) request.connection).session_leases;
+				leases.add(new Gsr.Server.Rpc.Lease(clutter_actor, "",
+					clutter_actor.key_press_event.connect((a, ev) => {
+						LayoutHooks.measure_event(hook, clutter_actor, ev);
+						return false;
+					})));
+				leases.add(new Gsr.Server.Rpc.Lease(clutter_actor, "",
+					clutter_actor.key_release_event.connect((a, ev) => {
+						LayoutHooks.measure_event(hook, clutter_actor, ev);
+						return false;
+					})));
 			}
 			request.reply(new OLLMrpc.Response());
 		}

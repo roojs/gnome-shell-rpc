@@ -406,6 +406,34 @@ executable('subscribe-signal-args-gate',
   install: false,
 )
 
+# Named signal with a GObject arg never exported on this connection
+# (mutter window-added during Meta.Window construction).
+executable('subscribe-unexported-object-arg-gate',
+  [
+    'subscribe-unexported-object-arg-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+# Live.Hook.emit on a stopped connection must return (client gone,
+# Clutter vfunc trampoline still fires).
+executable('hook-emit-after-stop-gate',
+  ['hook-emit-after-stop-gate.vala'],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # notify:: must put the typed property value on Notification.args.
 executable('subscribe-notify-args-gate',
   [

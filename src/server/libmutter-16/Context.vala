@@ -49,6 +49,7 @@ namespace Gsr.Server.Meta
 
 			((global::Meta.Context) request.connection.leases.get(
 				(int) request.lease_id)).notify_ready();
+			((Gsr.Server.Rpc.Connection) request.connection).ready = true;
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

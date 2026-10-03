@@ -10,6 +10,7 @@ compositor_sources = files(
   'server/namespace.vala',
   'server/rpc/namespace.vala',
   'server/rpc/Connection.vala',
+  'server/rpc/Lease.vala',
   'server/rpc/Listen.vala',
   'server/rpc/Server.vala',
   'shared/namespace.vala',

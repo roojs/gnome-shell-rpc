@@ -21,6 +21,7 @@ namespace Gsr.Server.Rpc
 		private global::Meta.WaylandClient? smoke_client = null;
 		private bool window_actor_aliased = false;
 		private string rpc_socket_path = "";
+		private GLib.Subprocess? client_proc = null;
 
 		public void start(global::Meta.Display display)
 		{
@@ -88,6 +89,52 @@ namespace Gsr.Server.Rpc
 				foreach (var view in stage.peek_stage_views()) {
 					connection.export(view);
 				}
+				/* Stock layout.js shutdown: the shell reparents these mutter
+				 * groups into uiGroup. Put them back on the stage before
+				 * destroying the shell's actors, or they die with uiGroup. */
+				var compositor = this.display.get_compositor();
+				global::Clutter.Actor[] adopted = {
+					compositor.get_window_group(),
+					compositor.get_top_window_group(),
+					compositor.get_feedback_group(),
+				};
+				var doomed = new Gee.ArrayList<global::Clutter.Actor>();
+				var conn = (Gsr.Server.Rpc.Connection) connection;
+				conn.stopping.connect((c) => {
+					foreach (var lease in c.leases.values) {
+						// FIXME - this is shit
+						var hooked = lease as Gsr.Server.Clutter.Actor;
+						if (hooked != null) {
+							hooked.vfuncs.clear();
+						}
+						var actor = lease as global::Clutter.Actor;
+						if (actor == null
+							|| actor is global::Meta.WindowActor
+							|| actor in adopted) {
+							continue;
+						}
+						var parent = actor.get_parent();
+						if (parent == stage || parent == adopted[0]) {
+							doomed.add(actor);
+						}
+					}
+				});
+				conn.stopped.connect(() => {
+					foreach (var group in adopted) {
+						var parent = group.get_parent();
+						if (parent == stage) {
+							continue;
+						}
+						if (parent != null) {
+							parent.remove_child(group);
+						}
+						stage.add_child(group);
+					}
+					foreach (var actor in doomed) {
+						actor.destroy();
+					}
+					doomed.clear();
+				});
 			});
 			if (!this.listen.start()) {
 				GLib.error("failed to start RPC listener on %s", socket_path);
@@ -206,6 +253,7 @@ namespace Gsr.Server.Rpc
 				this.smoke_client = new global::Meta.WaylandClient(
 					this.display.get_context(), launcher);
 				var proc = this.smoke_client.spawnv(this.display, argv);
+				this.client_proc = proc;
 				GLib.debug(
 					"spawned %s pid=%s MUTTER_RPC_SOCKET=%s WAYLAND_DISPLAY=%s via global::Meta.WaylandClient",
 					string.joinv(" ", argv),
@@ -213,9 +261,66 @@ namespace Gsr.Server.Rpc
 					this.rpc_socket_path,
 					wayland_display ?? "(unset)"
 				);
+				GLib.Timeout.add_seconds(30, () => {
+					if (this.client_proc != proc) {
+						return GLib.Source.REMOVE;
+					}
+					foreach (var connection in this.listen.connections) {
+						if (((Gsr.Server.Rpc.Connection) connection).ready) {
+							return GLib.Source.REMOVE;
+						}
+					}
+					GLib.warning("client not ready after 30s, killing it");
+					proc.force_exit();
+					return GLib.Source.REMOVE;
+				});
+				proc.wait_async.begin(null, (obj, res) => {
+					try {
+						proc.wait_async.end(res);
+					} catch (GLib.Error e) {
+						GLib.warning("client wait: %s", e.message);
+					}
+					if (this.client_proc != proc) {
+						return;
+					}
+					this.client_proc = null;
+					var was_ready = false;
+					foreach (var connection in this.listen.connections.to_array()) {
+						was_ready |= ((Gsr.Server.Rpc.Connection) connection).ready;
+						connection.stop();
+					}
+					this.listen.connections.clear();
+					GLib.debug("client exited ready=%s", was_ready.to_string());
+					if (was_ready) {
+						this.spawn_client();
+						if (this.client_proc != null) {
+							return;
+						}
+					}
+					var mgr = this.display.get_workspace_manager();
+					var workspace = mgr.get_active_workspace() ?? mgr.get_workspace_by_index(0);
+					if (workspace == null) {
+						return;
+					}
+					foreach (unowned global::Meta.Window window in this.display.list_all_windows()) {
+						var type = window.get_window_type();
+						if (window.is_override_redirect()
+							|| type == global::Meta.WindowType.DESKTOP
+							|| type == global::Meta.WindowType.DOCK) {
+							continue;
+						}
+						if (!window.is_on_all_workspaces() && window.get_workspace() != workspace) {
+							window.change_workspace(workspace);
+						}
+						if (window.minimized) {
+							window.unminimize();
+						}
+					}
+				});
 			} catch (GLib.Error e) {
 				GLib.warning("client spawn failed: %s", e.message);
 				this.smoke_client = null;
+				this.client_proc = null;
 				return;
 			}
 		}

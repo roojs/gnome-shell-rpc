@@ -34,7 +34,7 @@ export XDG_RUNTIME_DIR="$RT"
 unset WAYLAND_DISPLAY
 unset WAYLAND_SOCKET
 
-if pgrep -x gsr-server >/dev/null 2>&1 || pgrep -x mutter-rpc >/dev/null 2>&1; then
+if pgrep -u "$(id -u)" -x gsr-server >/dev/null 2>&1 || pgrep -u "$(id -u)" -x mutter-rpc >/dev/null 2>&1; then
 	exit 0
 fi
 

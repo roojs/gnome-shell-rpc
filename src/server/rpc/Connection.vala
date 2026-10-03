@@ -22,6 +22,22 @@ namespace Gsr.Server.Rpc
 		 */
 		public signal void stopped();
 
+		/**
+		 * Emitted once, before base stop, while leases are still set.
+		 */
+		public signal void stopping();
+
+		/**
+		 * Set when this client calls Meta.Context.notify_ready.
+		 */
+		public bool ready = false;
+
+		/**
+		 * {@link Lease} objects. Typed GLib.Object because gi-rpc-echo
+		 * builds this file without mutter.
+		 */
+		public Gee.ArrayList<GLib.Object> session_leases = new Gee.ArrayList<GLib.Object>();
+
 		public Connection(GLib.SocketConnection? stream = null)
 		{
 			GLib.Object(stream: stream);
@@ -35,6 +51,8 @@ namespace Gsr.Server.Rpc
 			}
 
 			this.stopped_emitted = true;
+			this.stopping();
+			this.session_leases.clear();
 			base.stop();
 			this.stopped();
 		}
