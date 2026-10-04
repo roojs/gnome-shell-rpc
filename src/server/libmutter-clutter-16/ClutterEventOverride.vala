@@ -61,6 +61,17 @@ namespace Gsr.Server.Clutter
 			} else {
 				fields.add(OLLMrpc.val("o", related));
 			}
+			var scroll = 0u;
+			if (ev.get_type() == global::Clutter.EventType.SCROLL) {
+				scroll = (uint) ev.get_scroll_source();
+			}
+			fields.add(OLLMrpc.val("u", scroll));
+			var device_type = -1;
+			unowned var device = ev.get_source_device();
+			if (device != null) {
+				device_type = (int) device.get_device_type();
+			}
+			fields.add(OLLMrpc.val("i", device_type));
 			return fields;
 		}
 
@@ -77,7 +88,7 @@ namespace Gsr.Server.Clutter
 			int index,
 			out int consumed
 		) {
-			consumed = 6;
+			consumed = 8;
 			return GLib.Value(typeof(global::Clutter.Event));
 		}
 	}

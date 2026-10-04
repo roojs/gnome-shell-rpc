@@ -37,3 +37,29 @@
 		display_singleton = (Display) response.retval.get_object();
 		return display_singleton;
 	}
+
+	/**
+	 * Alt+F2 {@code r}. Compositor stays up; {@code Server-Rpc-SpawnClient} replaces
+	 * {@code gsr-client}. Does not call stock {@code meta_restart}.
+	 *
+	 * @param message text stock mutter would show; ignored here
+	 * @param context stock {@link Context}; ignored here
+	 */
+	public void restart(string? message, Context context)
+	{
+		Gsr.Client.Rpc.call_value(
+			"Server-Rpc-SpawnClient.restart",
+			null,
+			OLLMrpc.args("so", message, context));
+	}
+
+	/**
+	 * True when this client was spawned by a manual restart.
+	 *
+	 * @return {@code client_is_restart} on {@link Gsr.Server.Rpc.SpawnClient}
+	 */
+	public bool is_restart()
+	{
+		var response = Gsr.Client.Rpc.call_value("Server-Rpc-SpawnClient.is_restart");
+		return response.retval.get_boolean();
+	}

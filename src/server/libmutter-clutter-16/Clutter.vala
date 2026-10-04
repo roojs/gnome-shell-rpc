@@ -143,6 +143,17 @@ namespace Gsr.Server.Clutter
 			} else {
 				args.add(OLLMrpc.val("o", related));
 			}
+			var scroll = 0u;
+			if (et == global::Clutter.EventType.SCROLL) {
+				scroll = (uint) ev.get_scroll_source();
+			}
+			args.add(OLLMrpc.val("u", scroll));
+			var device_type = -1;
+			unowned var device = ev.get_source_device();
+			if (device != null) {
+				device_type = (int) device.get_device_type();
+			}
+			args.add(OLLMrpc.val("i", device_type));
 			return args;
 		}
 	}

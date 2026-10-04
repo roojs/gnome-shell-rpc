@@ -143,7 +143,7 @@ GI_META_SMOKE=mutter-rpc-load.js \
   dbus-run-session ./build/src/gsr-server --wayland --nested --no-x11
 ```
 
-`GI_META_SMOKE=init` is the same as the default. Other smokes live under `tests/gjs-embed/` (`meta-smoke.js`, etc.). Run them manually with **`gjs-embed`** or via **`GI_META_SMOKE`** as above (compositor spawns **`gsr-client`**, not **`gjs-embed`**).
+`GI_META_SMOKE=init` is the same as the default. Other smokes live under `tests/gjs-embed/` (`meta-smoke.js`, etc.). Run them manually with **`gjs-embed`** or via **`GI_META_SMOKE`** as above (compositor spawns **`gsr-smoke`**, not **`gjs-embed`**).
 
 ---
 
@@ -156,7 +156,7 @@ MUTTER_TL=$(pkg-config --variable=typelibdir libmutter-16)
 export GI_TYPELIB_PATH=$PWD/build/src:$MUTTER_TL${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}
 export LD_LIBRARY_PATH=$PWD/build/src${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
-./build/src/gsr-client --debug tests/gjs-embed/mutter-rpc-load.js
+./build/src/gsr-smoke --debug tests/gjs-embed/mutter-rpc-load.js
 ```
 
 Or with the temporary test host:

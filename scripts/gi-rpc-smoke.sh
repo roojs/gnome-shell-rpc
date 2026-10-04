@@ -68,7 +68,7 @@ client_env() {
 
 require_bins() {
 	local miss=0
-	for bin in "$BINDIR/gi-rpc-mock" "$BINDIR/gnome-shell-rpc"; do
+	for bin in "$BINDIR/gi-rpc-mock" "$BINDIR/gsr-client" "$BINDIR/gsr-smoke"; do
 		if [[ ! -x "$bin" ]]; then
 			echo "$(basename "$0"): missing $bin (meson build?)" >&2
 			miss=1
@@ -95,9 +95,9 @@ default_script() {
 run_client() {
 	client_env
 	if [[ -z "$1" ]]; then
-		"$BINDIR/gnome-shell-rpc" --debug "${@:2}"
+		"$BINDIR/gsr-client" --debug "${@:2}"
 	else
-		"$BINDIR/gnome-shell-rpc" --debug "$@"
+		"$BINDIR/gsr-smoke" --debug "$@"
 	fi
 }
 
@@ -110,9 +110,9 @@ cmd_client() {
 	fi
 	client_env
 	if [[ -z "$script" ]]; then
-		exec "$BINDIR/gnome-shell-rpc" --debug "$@"
+		exec "$BINDIR/gsr-client" --debug "$@"
 	else
-		exec "$BINDIR/gnome-shell-rpc" --debug "$script" "$@"
+		exec "$BINDIR/gsr-smoke" --debug "$script" "$@"
 	fi
 }
 

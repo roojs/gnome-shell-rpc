@@ -128,12 +128,17 @@ namespace Gsr
 				|| (level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0;
 
 			if (should_output) {
-				// Write to stderr for immediate console output
+				// Write to stderr for immediate console output.
+				// A fatal log aborts when this handler returns, and abort
+				// does not flush stdio, so the error line is flushed here.
 				GLib.stderr.printf(
 					timestamp + ": " + level.to_string() + " : "
 						+ (in_domain == null ? "" : in_domain) + " : "
 						+ message + "\n"
 				);
+				if ((level & GLib.LogLevelFlags.LEVEL_ERROR) != 0) {
+					GLib.stderr.flush();
+				}
 			}
 
 			// Handle critical errors if debug_critical is enabled

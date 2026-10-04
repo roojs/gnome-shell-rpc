@@ -34,7 +34,7 @@
 		if (fields.size > 6) {
 			related = Event.actor_from_value(fields.get(6));
 		}
-		return new Event.local(
+		var ev = new Event.local(
 			(EventType) fields.get(0).get_int(),
 			(float) fields.get(1).get_double(),
 			(float) fields.get(2).get_double(),
@@ -42,6 +42,8 @@
 			fields.get(4).get_uint(),
 			keyval,
 			related);
+		ev.read_scroll_tail(fields, 7);
+		return ev;
 	}
 
 	/**
@@ -82,8 +84,8 @@
 				return OLLMrpc.args("b", false);
 			}
 			Actor? event_actor = null;
-			if (call.args.size > 7) {
-				event_actor = Event.actor_from_value(call.args.get(7));
+			if (call.args.size > 9) {
+				event_actor = Event.actor_from_value(call.args.get(9));
 			}
 			return OLLMrpc.args(
 				"b", func(event, event_actor, user_data));
@@ -191,6 +193,8 @@
 		public uint32 state;
 		public uint32 keyval;
 		public Actor? related;
+		public uint32 scroll_source;
+		public InputDevice? source_device;
 
 		public Event.local(
 			EventType type,
@@ -199,7 +203,9 @@
 			uint32 button,
 			uint32 state = 0,
 			uint32 keyval = 0,
-			Actor? related = null
+			Actor? related = null,
+			ScrollSource scroll_source = ScrollSource.unknown,
+			InputDevice? source_device = null
 		) {
 			this.event_type = type;
 			this.x = x;
@@ -208,6 +214,8 @@
 			this.state = state;
 			this.keyval = keyval;
 			this.related = related;
+			this.scroll_source = (uint32) scroll_source;
+			this.source_device = source_device;
 		}
 
 		public static Event from_local(
@@ -217,9 +225,37 @@
 			uint32 button,
 			uint32 state = 0,
 			uint32 keyval = 0,
-			Actor? related = null
+			Actor? related = null,
+			ScrollSource scroll_source = ScrollSource.unknown,
+			InputDevice? source_device = null
 		) {
-			return new Event.local(type, x, y, button, state, keyval, related);
+			return new Event.local(
+				type, x, y, button, state, keyval, related,
+				scroll_source, source_device);
+		}
+
+		/**
+		 * Scroll source and source-device type packed after the event's
+		 * other fields. Device type {@code -1} means there is no device.
+		 */
+		public void read_scroll_tail(
+			Gee.ArrayList<GLib.Value?> fields,
+			int index
+		) {
+			if (fields.size <= index) {
+				return;
+			}
+			this.scroll_source = fields.get(index).get_uint();
+			if (fields.size <= index + 1) {
+				return;
+			}
+			var device_type = fields.get(index + 1).get_int();
+			if (device_type < 0) {
+				return;
+			}
+			var device = new InputDevice();
+			device.device_type = (InputDeviceType) device_type;
+			this.source_device = device;
 		}
 
 		/**
@@ -245,7 +281,8 @@
 		public Event copy() {
 			return new Event.local(
 				this.event_type, this.x, this.y, this.button,
-				this.state, this.keyval, this.related);
+				this.state, this.keyval, this.related,
+				(ScrollSource) this.scroll_source, this.source_device);
 		}
 
 		[CCode (cname = "clutter_event_type")]
@@ -287,6 +324,23 @@
 		[CCode (cname = "clutter_event_get_related")]
 		public unowned Actor? get_related() {
 			return this.related;
+		}
+
+		/**
+		 * Stock {@code clutter_event_get_scroll_source}.
+		 */
+		[CCode (cname = "clutter_event_get_scroll_source")]
+		public ScrollSource get_scroll_source() {
+			return (ScrollSource) this.scroll_source;
+		}
+
+		/**
+		 * Stock {@code clutter_event_get_source_device}. Null when the
+		 * packed event has no device.
+		 */
+		[CCode (cname = "clutter_event_get_source_device")]
+		public unowned InputDevice? get_source_device() {
+			return this.source_device;
 		}
 	}
 

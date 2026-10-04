@@ -122,12 +122,24 @@ namespace Gsr.Server.Clutter
 				default:
 					break;
 			}
-			hook.emit(OLLMrpc.args("tidduu",
+			var fields = OLLMrpc.args("tidduu",
 				hook.connection.export(actor),
 				(int) et,
 				(double) x, (double) y,
 				button,
-				key));
+				key);
+			var scroll = 0u;
+			if (et == global::Clutter.EventType.SCROLL) {
+				scroll = (uint) event.get_scroll_source();
+			}
+			fields.add(OLLMrpc.val("u", scroll));
+			var device_type = -1;
+			unowned var device = event.get_source_device();
+			if (device != null) {
+				device_type = (int) device.get_device_type();
+			}
+			fields.add(OLLMrpc.val("i", device_type));
+			hook.emit(fields);
 			if (hook.reply_args.size < 1) {
 				return false;
 			}

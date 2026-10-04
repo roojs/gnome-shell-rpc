@@ -88,6 +88,9 @@ Display.add_keybinding
 Display.list_all_windows
 Display.get_startup_notification
 keybindings_set_custom_handler
+# Hand: Meta.override.vala → Server-Rpc-SpawnClient. Must not call mutter meta_restart.
+restart
+is_restart
 Window.foreach_transient
 Window.foreach_ancestor
 Window.begin_grab_op

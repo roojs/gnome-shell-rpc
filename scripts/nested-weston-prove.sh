@@ -53,10 +53,10 @@ TEE_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc/nested-weston-prove.tee
 # Truncate so stale A4 / smoke markers from prior runs cannot early-stop.
 : >"$CLIENT_LOG"
 : >"$TEE_LOG"
-# Stock path: Meta.is_restart means _prepareStartupAnimation ran (A4 proxy until
+# Stock path: Server-Rpc-SpawnClient.is_restart means _prepareStartupAnimation ran (A4 proxy until
 # a non-override startup-complete marker exists).
 # GSR_NESTED_NO_A4=1 — keep running after A4 (stay-up / post-READY extension spawn).
-A4_PAT='method=Meta\.is_restart'
+A4_PAT='method=Server-Rpc-SpawnClient\.is_restart'
 if [[ "${GSR_NESTED_NO_A4:-0}" == "1" ]]; then
 	A4_PAT='__gsr_no_a4_early_stop__'
 fi

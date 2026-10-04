@@ -32,5 +32,7 @@ union _ClutterEvent
 		guint32 state;
 		guint32 keyval;
 		ClutterActor *related;
+		guint32 scroll_source;
+		ClutterInputDevice *source_device;
 	};
 };

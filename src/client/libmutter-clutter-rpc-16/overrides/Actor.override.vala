@@ -354,6 +354,7 @@
 				keyval = call.args.get(5).get_uint();
 			}
 			var ev = Event.from_local(type, x, y, button, 0, keyval);
+			ev.read_scroll_tail(call.args, 6);
 			Gsr.Client.Rpc.VfuncRelay.begin(this);
 			var baseline = GLib.Type.from_name("StWidget");
 			var has_override = baseline != GLib.Type.INVALID
@@ -405,6 +406,7 @@
 				keyval = call.args.get(5).get_uint();
 			}
 			var ev = Event.from_local(type, x, y, button, 0, keyval);
+			ev.read_scroll_tail(call.args, 6);
 			bool stop = this.signal_captured_event(ev);
 			var baseline = GLib.Type.from_name("StWidget");
 			var has_override = baseline != GLib.Type.INVALID

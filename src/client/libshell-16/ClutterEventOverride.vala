@@ -76,6 +76,13 @@ namespace Shell
 			} else {
 				fields.add(OLLMrpc.val("o", related));
 			}
+			fields.add(OLLMrpc.val("u", (uint) ev.get_scroll_source()));
+			var device_type = -1;
+			var device = ev.get_source_device();
+			if (device != null) {
+				device_type = (int) device.device_type;
+			}
+			fields.add(OLLMrpc.val("i", device_type));
 			return fields;
 		}
 
@@ -92,7 +99,7 @@ namespace Shell
 			int index,
 			out int consumed
 		) {
-			consumed = 6;
+			consumed = 8;
 			var ev = Clutter.Event.from_local(
 				(Clutter.EventType) fields.get(index).get_int(),
 				(float) fields.get(index + 1).get_double(),
@@ -101,6 +108,7 @@ namespace Shell
 				0,
 				fields.get(index + 4).get_uint(),
 				Clutter.Event.actor_from_value(fields.get(index + 5)));
+			ev.read_scroll_tail(fields, index + 6);
 			if (ClutterEventOverride.held == null) {
 				ClutterEventOverride.held = new Gee.ArrayList<void*>();
 			}

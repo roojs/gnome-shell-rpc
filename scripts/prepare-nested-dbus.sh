@@ -5,6 +5,11 @@
 # That manager is attached to the host session bus/display, so it cannot own
 # org.gnome.Terminal on dbus-run-session's private bus. Prefer a direct Exec
 # service for this nested session.
+#
+# gnome-keyring-daemon --start finds the host socket at
+# $XDG_RUNTIME_DIR/keyring and never owns org.freedesktop.secrets here.
+# xdg-desktop-portal then blocks for 25s, and gnome-terminal gives up before
+# it can open a window. /bin/false makes that activation fail at once.
 set -euo pipefail
 
 OUT_DIR="${1:?usage: prepare-nested-dbus.sh OUT_DIR}"
@@ -17,6 +22,11 @@ cat >"$SERVICE_DIR/org.gnome.Terminal.service" <<'EOF'
 [D-BUS Service]
 Name=org.gnome.Terminal
 Exec=/usr/libexec/gnome-terminal-server
+EOF
+cat >"$SERVICE_DIR/org.freedesktop.secrets.service" <<'EOF'
+[D-BUS Service]
+Name=org.freedesktop.secrets
+Exec=/bin/false
 EOF
 
 python3 - "$SYSTEM_CONFIG" "$CONFIG" "$SERVICE_DIR" <<'PY'

@@ -13,7 +13,7 @@ SETTLE_SEC="${NESTED_INIT_PROVE_SETTLE:-1}"
 TEE_LOG="${NESTED_INIT_PROVE_LOG:-/tmp/nested-init-prove.log}"
 CLIENT_LOG="$CACHE/org.gnome.ShellRpc.debug.log"
 # Optional debug only — do not default to src/shell-js
-A4_PAT='method=Meta\.is_restart'
+A4_PAT='method=Server-Rpc-SpawnClient\.is_restart'
 
 fail=0
 pass() { echo "PASS  $*"; }

@@ -6,6 +6,8 @@
 
 Separate from [`2026-10-03-frames-stop-after-shell-started.md`](2026-10-03-frames-stop-after-shell-started.md). That one is a nested debug boot that logs `GNOME Shell started` and then stops framing. This login never logged that line.
 
+The 2026-10-04 `alan2` login is [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md). That one paints the crash screen. The client dies on a missing `clutter_event_get_scroll_source`, not this end-of-stream abort.
+
 ## Seen
 
 2026-10-03 09:54:45. GDM password login for `alan2` (uid 1002). `gdm-wayland-session` ran `gsr-session`, which ran `gnome-session --session=gsr` (`GDMSESSION` set). Session 140, type wayland, VT 4. As of 09:59 the session was still up and `Active=no` (another seat session in front).

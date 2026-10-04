@@ -164,7 +164,7 @@ Do not wrap gdb until:
 | `~/.cache/gnome-shell-rpc/mutter-rpc.debug.log` | Server recv. `Unexpected early end-of-stream` → see §2. |
 | `nested-weston-prove.tee.log` | Mutter stdout copy; prove truncates it. |
 
-`READY=1` + `method=Meta.is_restart` on a **default prove** usually means A4
+`READY=1` + `method=Server-Rpc-SpawnClient.is_restart` on a **default prove** usually means A4
 **succeeded** and the script killed the nest ~0.3s later. That is progress,
 not a SEGV.
 
