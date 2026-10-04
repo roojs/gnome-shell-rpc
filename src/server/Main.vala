@@ -7,6 +7,11 @@ namespace Gsr.Server
 	 * left for {@link global::Meta.Context.configure}). Routes {@link GLib.debug}
 	 * through {@link ApplicationInterface.debug_log}.
 	 *
+	 * Stderr gets ''started'' before the log handler, then a flush.
+	 * After {@link GLib.Log.set_default_handler}, phase lines are
+	 * {@link GLib.debug}. The handler prints those when {@code --debug}
+	 * is on.
+	 *
 	 * == Example ==
 	 *
 	 * {{{
@@ -28,6 +33,9 @@ namespace Gsr.Server
 
 		public static int run(string[] args)
 		{
+			GLib.stderr.printf("started\n");
+			GLib.stderr.flush();
+
 			CompositorApp.opt_debug = false;
 			CompositorApp.opt_debug_critical = false;
 
@@ -46,7 +54,9 @@ namespace Gsr.Server
 			try {
 				opt_context.parse(ref argv);
 			} catch (GLib.OptionError e) {
-				GLib.stderr.printf("error: %s\n", e.message);
+				Gsr.debug_on = CompositorApp.opt_debug;
+				Gsr.debug_critical_enabled = CompositorApp.opt_debug_critical;
+				GLib.debug("error: %s", e.message);
 				return 1;
 			}
 
@@ -57,7 +67,7 @@ namespace Gsr.Server
 			try {
 				ctx.configure(ref argv);
 			} catch (GLib.Error e) {
-				GLib.stderr.printf("Error initializing: %s\n", e.message);
+				GLib.debug("Error initializing: %s", e.message);
 				return 1;
 			}
 
@@ -66,7 +76,7 @@ namespace Gsr.Server
 			try {
 				ctx.setup();
 			} catch (GLib.Error e) {
-				GLib.stderr.printf("Failed to setup: %s\n", e.message);
+				GLib.debug("Failed to setup: %s", e.message);
 				return 1;
 			}
 
@@ -74,10 +84,11 @@ namespace Gsr.Server
 				ctx.start();
 				ctx.run_main_loop();
 			} catch (GLib.Error e) {
-				GLib.stderr.printf("Failed to start: %s\n", e.message);
+				GLib.debug("Failed to start: %s", e.message);
 				return 1;
 			}
 
+			GLib.debug("exit 0");
 			return 0;
 		}
 	}
