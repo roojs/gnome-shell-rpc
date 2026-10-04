@@ -36,7 +36,9 @@ namespace Gsr.Server.Rpc
 		 * {@link Lease} objects. Typed GLib.Object because gi-rpc-echo
 		 * builds this file without mutter.
 		 */
-		public Gee.ArrayList<GLib.Object> session_leases = new Gee.ArrayList<GLib.Object>();
+		public Gee.ArrayList<GLib.Object> session_leases {
+			get; set; default = new Gee.ArrayList<GLib.Object>();
+		}
 
 		public Connection(GLib.SocketConnection? stream = null)
 		{

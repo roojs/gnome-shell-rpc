@@ -15,10 +15,12 @@ namespace Gsr.Client
 
 		private static bool opt_debug = false;
 		private static bool opt_debug_critical = false;
+		private static bool opt_disable_extensions = false;
 
 		private const GLib.OptionEntry[] options = {
 			{ "debug", 'd', 0, GLib.OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "debug-critical", 0, 0, GLib.OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
+			{ "disable-extensions", 0, 0, GLib.OptionArg.NONE, ref opt_disable_extensions, "Start with user extensions off", null },
 			{ null }
 		};
 
@@ -41,6 +43,7 @@ namespace Gsr.Client
 		{
 			Application.opt_debug = false;
 			Application.opt_debug_critical = false;
+			Application.opt_disable_extensions = false;
 
 			var args = command_line.get_arguments();
 			var opt_context = new GLib.OptionContext("[SCRIPT.js]");
@@ -82,6 +85,7 @@ namespace Gsr.Client
 
 			Gsr.Client.Rpc.register();
 			global::Shell.Global.bind_display(global::Meta.get_display());
+			/* Always off for now (temporary); later only with --disable-extensions. */
 			Application.apply_extension_policy();
 
 			var js_dir = GLib.Environment.get_variable("GNOME_SHELL_JS_DIR") ?? "";
