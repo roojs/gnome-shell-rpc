@@ -352,6 +352,7 @@ namespace Gsr.Server.Rpc
 		 * "Log Out" on the give-up screen. Exits this mutter immediately.
 		 * SessionManager.Logout is rejected until the running phase, and
 		 * waiting on it is what made the button sluggish.
+		 FIXME  DOES NOT WORK
 		 */
 		private void on_crash_logout()
 		{

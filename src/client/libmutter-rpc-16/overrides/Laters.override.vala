@@ -31,6 +31,8 @@
 		}
 
 		private static int add_depth;
+		private int redraw_depth;
+		private bool redraw_pending;
 		private uint32 next_later_id = 1;
 		private Gee.HashMap<uint32, LaterEntry> later_entries {
 			get; set; default = new Gee.HashMap<uint32, LaterEntry>();
@@ -106,6 +108,30 @@
 		}
 
 		private void run_before_redraw()
+		{
+			/* before-update is delivered on the RPC reply of a later that
+			 * is already running. Running the queue from there re-enters
+			 * WorkspaceTracker._checkWorkspaces, which appends a workspace
+			 * on every entry. Finish this pass, run once more for laters
+			 * queued during it, and leave a further pass to the next frame. */
+			if (this.redraw_depth > 0) {
+				this.redraw_pending = true;
+				return;
+			}
+			this.redraw_depth++;
+			this.dispatch_before_redraw();
+			if (this.redraw_pending) {
+				this.redraw_pending = false;
+				this.dispatch_before_redraw();
+			}
+			if (this.redraw_pending) {
+				this.redraw_pending = false;
+				this.schedule_stage_update();
+			}
+			this.redraw_depth--;
+		}
+
+		private void dispatch_before_redraw()
 		{
 			var snapshot = new Gee.ArrayList<uint32>();
 			snapshot.add_all(this.pending_ids);

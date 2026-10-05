@@ -154,6 +154,14 @@ Client 276086, then 276203 and 276204:
 
 09:54:09 `log out: Logout interface is only available after the Running phase starts`. The compositor scope exited the same second, after that call returned. The button had waited on a logout the session manager will not accept before the running phase. `on_crash_logout` now only calls `context.terminate()`.
 
+## Seen again — 2026-10-05 10:08
+
+Debug was already on. Client 290822. At 10:08:37 `before-update` arrives on the reply of `get_workspace_by_index`, which `_checkWorkspaces` is still inside. The queue runs `_checkWorkspaces` again. Each entry calls `append_new_workspace`. The next entry's `get_active_workspace_index` receives `workareas-changed`, which calls `getWorkAreaForMonitor`, which receives another `before-update`. gjs then logs `Expected an object of type MetaWorkspace … got type undefined` at `remove_workspace(this._workspaces[i])` and `too much recursion`. The trap at 10:09:01 is that loop, not a missing debug line.
+
+`Laters.run_before_redraw` no longer runs the queue from inside a later. One follow-up pass runs after the current callback returns. A further nested `before-update` schedules the next frame.
+
+`org.gnome.ShellRpc.desktop` now has `X-GNOME-HiddenUnderSystemd=true`, same as stock `org.gnome.Shell.desktop`. gnome-session was starting a second `gsr-server` beside the systemd unit, and the unit exited with `Native backend mode needs to be session controller`.
+
 ## Seen again — 2026-10-05 10:02
 
 User: the login hangs. Installed `/usr/bin/gsr-client` and `gsr-server` at 10:01:27 (the path open of `libgvc.so`). No `gsr-server` and no `gsr-client` started after that install.
