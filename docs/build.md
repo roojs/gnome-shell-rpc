@@ -8,8 +8,27 @@ All commands assume a checkout of this repo. **Do not** use these against your l
 
 ## Prerequisites
 
-- **libocrpc** from a sibling OLLMchat build (`libocrpc.so` + `ocrpc.vapi` in one directory)
+- **libocrpc 1.4.0+** from the [roojs package repository](https://roojs.github.io/repos/) (`libocrpc-dev` on Debian/Ubuntu, `libocrpc-devel` on Fedora)
 - **gnome-shell 48** / **libmutter-16** on the host (Ubuntu 25.04+ or Debian with mutter 48)
+
+### libocrpc
+
+Same APT setup as [OLLMchat](https://github.com/roojs/OLLMchat#apt-debian--ubuntu). Suites: Debian 13 (`trixie`), Ubuntu 25.04 (`plucky`), 25.10 (`questing`), 26.04 (`resolute`).
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://roojs.github.io/repos/key.gpg \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/roojs.gpg
+
+curl -fsSL https://roojs.github.io/repos/sources \
+  | sed "s/@suite@/$(lsb_release -cs)/" \
+  | sudo tee /etc/apt/sources.list.d/roojs.sources
+
+sudo apt update
+sudo apt install libocrpc-dev
+```
+
+Fedora and the rest of the repository layout: [roojs package repositories](https://roojs.github.io/repos/).
 
 ### Debian / Ubuntu
 
@@ -21,7 +40,9 @@ sudo apt install \
   pkg-config \
   meson \
   ninja-build \
+  cmake \
   valac \
+  xsltproc \
   gobject-introspection \
   libgirepository-2.0-dev \
   libmutter-16-dev \
@@ -31,24 +52,28 @@ sudo apt install \
   libjson-glib-dev \
   libsoup-3.0-dev \
   libgtk-4-dev \
+  libnm-dev \
+  libsecret-1-dev \
   libpolkit-agent-1-dev \
+  libpolkit-gobject-1-dev \
   libgcr-4-dev \
+  libsystemd-dev \
   gnome-shell \
   dbus-x11
 ```
 
+- **cmake** — Meson probes for it while resolving dependencies (`Found CMake: NO` if it is missing)
+- **xsltproc** — `meson setup` requires it; `scripts/gir-xslt-inject.sh` writes `Shell-16.injected.gir`
 - **libmutter-16-dev** — compositor link + mutter typelibs (Clutter/Cogl/Mtk come with it)
 - **gjs** / **libgjs-dev** — `gjs-embed` and smoke scripts
 - **libgee-0.8-dev**, **libjson-glib-dev**, **libsoup-3.0-dev** — `libocrpc` headers at compile time
 - **libgtk-4-dev** — `fake-shell` test client
+- **libnm-dev**, **libsecret-1-dev**, **libpolkit-agent-1-dev**, **libpolkit-gobject-1-dev**, **libgcr-4-dev**, **libsystemd-dev** — `libshell-16` and `gsr-client` (NetworkAgent, keyring, polkit, gcr). The same packages are required for the legacy vendored client-lib build (`-Dgnome_shell_client_libs=enabled`)
 - **gnome-shell** — stock **`libst-16.so`**, **`St-16.gir`**, **`Gvc-1.0.gir`** under `/usr/lib/gnome-shell/` and `/usr/share/gnome-shell/`. Shell JS for the client is compiled from **`vendor/gnome-shell/js`** into our gresource.
-- **libpolkit-agent-1-dev**, **libgcr-4-dev** — only if enabling legacy vendored client-lib build (`-Dgnome_shell_client_libs=enabled`)
 - **dbus-x11** — `dbus-run-session` for nested compositor runs
 
-Build OLLMchat **libocrpc** first, then pass its output directory to meson:
-
 ```bash
-meson setup build 
+meson setup build
 ninja -C build
 ```
 
@@ -56,7 +81,6 @@ ninja -C build
 
 ```bash
 ./scripts/gnome-shell-fetch.sh                                       # once
-meson setup build -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc
 meson setup build -Dvendor_gnome_shell=enabled                       # Meson runs fetch if missing
 meson setup build -Dgnome_shell_client_libs=enabled --reconfigure    # legacy client-libs
 ./scripts/gnome-shell-fetch.sh --refresh                             # refresh vendor pin
@@ -87,8 +111,7 @@ Install puts St/Shell next to Meta typelibs under **`${libdir}/mutter-rpc-16/`**
 Default meson prefix is `/usr` — **prefer a user prefix** so nothing overwrites distro mutter:
 
 ```bash
-meson setup build --prefix=$HOME/.local \
-  -Docrpc_libdir=/path/to/OLLMchat/build/libocrpc
+meson setup build --prefix=$HOME/.local
 ninja -C build install
 ```
 

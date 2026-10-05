@@ -177,6 +177,8 @@ gnome_shell_rpc_config = configure_file(
 )
 
 g_ir_compiler = find_program('g-ir-compiler')
+# gir-xslt-inject.sh. Checked here so a missing xsltproc fails setup, not ninja.
+xsltproc = find_program('xsltproc')
 
 gi_stub_gen = executable('gi-stub-gen',
   files(
@@ -985,6 +987,7 @@ shell_gi_gir = custom_target(
     meson.project_source_root() / 'scripts/gir-inject.xsl',
     meson.current_source_dir() / 'client/libshell-16/search.function.gir',
     meson.current_source_dir() / 'client/libshell-16/app-info.gir',
+    xsltproc,
   ],
   depend_files: [
     files('client/libshell-16/search.function.gir', 'client/libshell-16/app-info.gir'),

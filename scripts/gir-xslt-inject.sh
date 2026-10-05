@@ -1,12 +1,13 @@
 #!/bin/sh
 # Product GIR override: xsltproc identity + snippet files. Never overwrite vala_gir.
-# usage: gir-xslt-inject.sh IN OUT XSL GSTRV APPINFO
+# usage: gir-xslt-inject.sh IN OUT XSL GSTRV APPINFO XSLTPROC
 set -eu
 in=$1
 out=$2
 xsl=$3
 gstrv=$4
 appinfo=$5
+xsltproc=$6
 
 in_real=$(realpath "$in")
 out_real=$(realpath -m "$out")
