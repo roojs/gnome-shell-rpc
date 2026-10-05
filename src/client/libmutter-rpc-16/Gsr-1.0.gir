@@ -89,12 +89,6 @@
           </parameter>
         </parameters>
       </method>
-      <property name="rpc-lid"
-                writable="1"
-                construct="1"
-                transfer-ownership="none">
-        <type name="guint64" c:type="guint64"/>
-      </property>
     </class>
   </namespace>
 </repository>

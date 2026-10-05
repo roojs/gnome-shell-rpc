@@ -2,7 +2,7 @@
 
 **Status:** ⏳ open. User 2026-10-03. Logged in as `alan2` from GDM, session **GNOME Shell RPC**. The VT stayed black.
 
-**Plan:** [`../plans/1.2-teardown-and-restart.md`](../plans/1.2-teardown-and-restart.md) is the active plan. This is the installed greeter session from [`../plans/done/1.1-installable-bootable-session.md`](../plans/done/1.1-installable-bootable-session.md).
+**Plan:** [`../plans/done/1.2-teardown-and-restart.md`](../plans/done/1.2-teardown-and-restart.md) is archived. This is the installed greeter session from [`../plans/done/1.1-installable-bootable-session.md`](../plans/done/1.1-installable-bootable-session.md).
 
 Separate from [`2026-10-03-frames-stop-after-shell-started.md`](2026-10-03-frames-stop-after-shell-started.md). That one is a nested debug boot that logs `GNOME Shell started` and then stops framing. This login never logged that line.
 

@@ -10,6 +10,7 @@ namespace Meta
 {
 	public class RpcSubprocess : GLib.Object, OLLMrpc.Live.Interface
 	{
+		[CCode (gir = false)]
 		public uint64 rpc_lid { get; set construct; default = 0; }
 		private GLib.InputStream? stdout_pipe = null;
 

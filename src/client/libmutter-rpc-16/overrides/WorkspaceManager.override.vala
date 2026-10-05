@@ -12,6 +12,13 @@
 				this.cached_n_workspaces = response.retval.get_int();
 				return this.cached_n_workspaces;
 			}
+			/* Stock JS grows WorkspaceTracker._workspaces from
+			 * notify::n-workspaces. A read-only property rejects that
+			 * update, so remove_workspace is handed undefined. */
+			set {
+				this.cached_n_workspaces = value;
+				this.workspaces_by_index = null;
+			}
 		}
 
 		public Workspace? get_workspace_by_index(int32 index)

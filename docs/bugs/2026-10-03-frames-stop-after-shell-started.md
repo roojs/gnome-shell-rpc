@@ -2,7 +2,7 @@
 
 **Status:** ⏳ open. User 2026-10-03. Debug session looked hung. The client log goes quiet. The main loop is still running. `before-update` stops.
 
-**Plan:** [`../plans/1.2-teardown-and-restart.md`](../plans/1.2-teardown-and-restart.md) is the active plan. This is a separate boot hang.
+**Plan:** [`../plans/done/1.2-teardown-and-restart.md`](../plans/done/1.2-teardown-and-restart.md) is archived. This is a separate boot hang.
 
 ## Seen
 

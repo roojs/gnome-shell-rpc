@@ -10,6 +10,7 @@ namespace Shell
 {
 	public class GLSLEffect : Clutter.OffscreenEffect, OLLMrpc.Live.Interface
 	{
+		[CCode (gir = false)]
 		public uint64 rpc_lid { get; set construct; default = 0; }
 
 		/**

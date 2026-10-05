@@ -2,9 +2,9 @@
 
 **Status:** ⏳ open. User 2026-10-04. `Gsr.Client.Application.command_line` in `src/client/Application.vala` is the greeter and nested shell. The same function also runs smoke scripts and debug probes.
 
-**Plan:** [`../plans/1.2.4-shell-boot.md`](../plans/1.2.4-shell-boot.md).
+**Plan:** [`../plans/done/1.2.4-shell-boot.md`](../plans/done/1.2.4-shell-boot.md) is archived. This bug stays open.
 
-Separate from [`2026-10-04-terminal-launch-slow.md`](2026-10-04-terminal-launch-slow.md) and [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md). Those are failures seen through this boot. This bug is the boot itself.
+Separate from [`done/2026-10-04-terminal-launch-slow.md`](done/2026-10-04-terminal-launch-slow.md) and [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md). Those are failures seen through this boot. This bug is the boot itself.
 
 ## What the shell boot is
 
@@ -17,7 +17,7 @@ A product start does this, in order:
 5. Eval `resource:///org/gnome/shell-rpc/signals.js` (connect wrap, 0.8.6).
 6. `Server-Bootstrap.begin_shell_startup`.
 7. Eval `resource:///org/gnome/shell/ui/init.js` as a module.
-8. Eval `resource:///org/gnome/shell-rpc/restart.js` (Alt+F2 `r`, [`../plans/1.2.2-x11-manual-restart.md`](../plans/1.2.2-x11-manual-restart.md)).
+8. Eval `resource:///org/gnome/shell-rpc/restart.js` (Alt+F2 `r`, [`../plans/done/1.2.2-x11-manual-restart.md`](../plans/done/1.2.2-x11-manual-restart.md)).
 
 `Gsr.Server.Rpc.SpawnClient.spawn_client` (`src/server/rpc/SpawnClient.vala`) spawns that binary as `gsr-client`. `Server.start` calls it. With no `GI_META_SMOKE`, the argv is the binary plus `--debug` / `--disable-extensions`. `resolve_script` then picks the init resource.
 

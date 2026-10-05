@@ -16,7 +16,7 @@ User-facing docs (no plan numbers):
 | [`coding-standards-router.md`](coding-standards-router.md) | Which standards apply to a change |
 | [`../src/README.md`](../src/README.md) | What each `src/` folder is for |
 
-Agent / design history: active plan [`plans/1.2-teardown-and-restart.md`](plans/1.2-teardown-and-restart.md); archive [`plans/done/`](plans/done/) (1.1 is there). See [`guide-to-writing-plans.md`](guide-to-writing-plans.md).
+Agent / design history: no active plan. **1.2** and subplans **1.2.1–1.2.5** are in [`plans/done/`](plans/done/). See [`guide-to-writing-plans.md`](guide-to-writing-plans.md).
 
 Closed bug write-ups: [`bugs/done/`](bugs/done/).
 

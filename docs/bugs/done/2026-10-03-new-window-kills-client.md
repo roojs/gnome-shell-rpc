@@ -1,6 +1,6 @@
 # Opening a window kills the shell client
 
-**Status:** ✔️ fixed in libocrpc 2026-10-03. Found while proving [`../../plans/1.2-teardown-and-restart.md`](../../plans/1.2-teardown-and-restart.md).
+**Status:** ✔️ fixed in libocrpc 2026-10-03. Found while proving [`../../plans/done/1.2-teardown-and-restart.md`](../../plans/done/1.2-teardown-and-restart.md).
 
 ## Seen
 

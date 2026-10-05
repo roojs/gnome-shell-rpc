@@ -10,10 +10,9 @@ but calls go out-of-process instead of in-process.
 
 The goal is a shell client you can restart without tearing down the desktop.
 
-**Status (2026-10-03):** 1.1 installable session is done
-([`docs/plans/done/1.1-installable-bootable-session.md`](docs/plans/done/1.1-installable-bootable-session.md)).
-Active work:
-[`docs/plans/1.2-teardown-and-restart.md`](docs/plans/1.2-teardown-and-restart.md).
+**Status (2026-10-05):** 1.2 and subplans 1.2.1–1.2.5 are done
+([`docs/plans/done/1.2-teardown-and-restart.md`](docs/plans/done/1.2-teardown-and-restart.md)).
+No active plan.
 
 ---
 
@@ -135,7 +134,7 @@ pkill -9 -f 'weston.*wayland-gsr'
 | [`docs/build.md`](docs/build.md) | Prerequisites, meson/ninja, install |
 | [`docs/libmutter-rpc-for-gnome-shell-js.md`](docs/libmutter-rpc-for-gnome-shell-js.md) | Point gnome-shell JS at `libmutter-rpc` |
 | [`docs/README.md`](docs/README.md) | Docs index + agent plans |
-| [`docs/plans/1.2-teardown-and-restart.md`](docs/plans/1.2-teardown-and-restart.md) | Active plan (teardown and restart) |
+| [`docs/plans/done/1.2-teardown-and-restart.md`](docs/plans/done/1.2-teardown-and-restart.md) | 1.2 archived (teardown and restart) |
 
 RPC wire format lives in OLLMchat **libocrpc**.
 

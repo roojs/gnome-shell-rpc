@@ -117,6 +117,14 @@ namespace Gsr.Server.Rpc
 			if (wayland_display != null && wayland_display.length > 0) {
 				launcher.setenv("WAYLAND_DISPLAY", wayland_display, true);
 			}
+			/* gjs dlopens libgvc.so by name. The client runpath is not
+			 * searched for that. */
+			var library_path = Gsr.Server.GNOME_SHELL_PKGLIBDIR;
+			var existing_path = GLib.Environment.get_variable("LD_LIBRARY_PATH");
+			if (existing_path != null && existing_path.length > 0) {
+				library_path = Gsr.Server.GNOME_SHELL_PKGLIBDIR + ":" + existing_path;
+			}
+			launcher.setenv("LD_LIBRARY_PATH", library_path, true);
 			try {
 				this.smoke_client = new global::Meta.WaylandClient(
 					this.display.get_context(), launcher);
@@ -226,6 +234,7 @@ namespace Gsr.Server.Rpc
 				text = "Log Out",
 				font_name = "Sans Bold 12",
 				color = white,
+				selectable = false,
 				reactive = true,
 				translation_x = -16.0f,
 				translation_y = 12.0f,
@@ -257,6 +266,7 @@ namespace Gsr.Server.Rpc
 					+ "Your applications are still running. Choose how to continue.",
 				font_name = "Sans 14",
 				color = white,
+				selectable = false,
 				line_alignment = global::Pango.Alignment.CENTER,
 				x_align = global::Clutter.ActorAlign.CENTER,
 				margin_bottom = 12.0f,
@@ -336,6 +346,7 @@ namespace Gsr.Server.Rpc
 				text = label,
 				font_name = "Sans Bold 12",
 				color = global::Cogl.Color.from_4f(1.0f, 1.0f, 1.0f, 1.0f),
+				selectable = false,
 				x_expand = true,
 				y_expand = true,
 				x_align = global::Clutter.ActorAlign.CENTER,
@@ -347,7 +358,8 @@ namespace Gsr.Server.Rpc
 
 		/**
 		 * "Log Out" on the give-up screen. Nested: only this mutter exits.
-		 * Failure aborts: there is no shell left to recover to.
+		 * A real session asks the session manager, then exits. The shell
+		 * is already gone, so nothing else will end the display.
 		 */
 		private async void on_crash_logout()
 		{
@@ -362,10 +374,11 @@ namespace Gsr.Server.Rpc
 					"org.gnome.SessionManager", "/org/gnome/SessionManager",
 					"org.gnome.SessionManager", "Logout",
 					new GLib.Variant("(u)", 1), null,
-					GLib.DBusCallFlags.NONE, -1, null);
+					GLib.DBusCallFlags.NONE, 2000, null);
 			} catch (GLib.Error e) {
-				GLib.error("log out: %s", e.message);
+				GLib.warning("log out: %s", e.message);
 			}
+			context.terminate();
 		}
 	}
 }

@@ -9,6 +9,9 @@ ConditionEnvironment=XDG_SESSION_TYPE=wayland
 [Service]
 Slice=session.slice
 Type=simple
-ExecStart=/usr/bin/gsr-server --wayland
+# --wayland is Mutter's flag, passed through to Meta.Context. Not a
+# gsr-server option. It selects the Wayland compositor. Nested tests
+# add --nested.
+ExecStart=/usr/bin/gsr-server --debug --wayland
 Restart=no
 TimeoutStopSec=5

@@ -289,6 +289,7 @@ namespace Gsr.Server.Clutter
 				stream.puts(@"
 	public class $(class_name) : $(bases), OLLMrpc.Live.Interface
 	{
+		[CCode (gir = false)]
 		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
 			} else {
@@ -371,6 +372,7 @@ namespace Gsr.Server.Clutter
 			stream.puts(@"
 	public class $(class_name) : GLib.Object, OLLMrpc.Live.Interface
 	{
+		[CCode (gir = false)]
 		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
 			var methods = 0;
@@ -1002,6 +1004,7 @@ $(minted)				this.rpc_ctor_clear();
 			stream.puts(@"
 	public class $(class_name) : GLib.Object, OLLMrpc.Live.Interface
 	{
+		[CCode (gir = false)]
 		public uint64 rpc_lid { get; set construct; default = 0; }
 ");
 			var methods = 0;

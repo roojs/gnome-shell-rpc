@@ -1134,9 +1134,11 @@ gnome_shell_rpc = executable('gsr-client',
     st_rpc_typelib,
     gsr_rpc_subprocess_typelib,
   ],
-  build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
+  # libgvc.so lives in the gnome-shell pkglibdir. Gvc.MixerControl
+  # is that library; without it on the runpath the type comes out void.
+  build_rpath: ocrpc_rpath + ':' + meson.current_build_dir() + ':' + gnome_shell_pkglibdir,
   install: true,
-  install_rpath: get_option('prefix') / get_option('libdir') + ':' + mutter_typelib_dir,
+  install_rpath: get_option('prefix') / get_option('libdir') + ':' + mutter_typelib_dir + ':' + gnome_shell_pkglibdir,
 )
 
 # Smoke and debug host. Same link as gsr-client.
@@ -1211,9 +1213,9 @@ gsr_smoke = executable('gsr-smoke',
     st_rpc_typelib,
     gsr_rpc_subprocess_typelib,
   ],
-  build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
+  build_rpath: ocrpc_rpath + ':' + meson.current_build_dir() + ':' + gnome_shell_pkglibdir,
   install: true,
-  install_rpath: get_option('prefix') / get_option('libdir') + ':' + mutter_typelib_dir,
+  install_rpath: get_option('prefix') / get_option('libdir') + ':' + mutter_typelib_dir + ':' + gnome_shell_pkglibdir,
 )
 
 configure_file(

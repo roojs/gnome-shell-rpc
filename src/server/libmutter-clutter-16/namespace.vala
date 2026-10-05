@@ -1,7 +1,9 @@
 namespace Gsr.Server.Clutter
 {
 	/* G_DEFINE_TYPE registers this class on the first get_type call.
-	 * Gi.register maps ClutterStageView only. Nested views are MetaRendererView. */
+	 * Gi.register maps ClutterStageView only. Nested views are
+	 * MetaRendererView. The greeter view is MetaRendererViewNative.
+	 * That get_type is not exported. */
 	[CCode (cname = "meta_renderer_view_get_type")]
 	extern GLib.Type meta_renderer_view_get_type();
 
@@ -42,6 +44,11 @@ namespace Gsr.Server.Clutter
 			OLLMrpc.Bin.register_alias("Clutter-Stage", stage.get_type());
 		}
 		OLLMrpc.Bin.register_alias("Clutter-StageView", meta_renderer_view_get_type());
+		// needed as nested and real wayland created different view types
+		var native_view = GLib.Type.from_name("MetaRendererViewNative");
+		if (native_view != GLib.Type.INVALID) {
+			OLLMrpc.Bin.register_alias("Clutter-StageView", native_view);
+		}
 		if (!OLLMrpc.Bin.gtype_to_alias.has_key(ctx.get_type())) {
 			OLLMrpc.Bin.register_alias("Clutter-Context", ctx.get_type());
 		}

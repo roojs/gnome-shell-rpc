@@ -1,10 +1,10 @@
 # GNOME Terminal launch is slow
 
-**Status:** ⏳ open. User 2026-10-04. Testing with GNOME Terminal. The launch feels painfully slow.
+**Status:** ✅ closed 2026-10-05. User: terminal launch is performing.
 
-**Plan:** none yet. [`../plans/done/1.2-teardown-and-restart.md`](../plans/done/1.2-teardown-and-restart.md) is done. This is not part of it.
+**Plan:** none yet. [`../../plans/done/1.2-teardown-and-restart.md`](../../plans/done/1.2-teardown-and-restart.md) is done. This is not part of it.
 
-Separate from [`done/2026-09-30-rpc-call-volume.md`](done/2026-09-30-rpc-call-volume.md). That one counted the calls. The timings below are from it. This bug is why a Terminal click takes so long. Also separate from [`2026-10-03-frames-stop-after-shell-started.md`](2026-10-03-frames-stop-after-shell-started.md): frames stopping after boot would freeze the overview-hide animation, but that is not yet shown to be this delay.
+Separate from [`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md). That one counted the calls. The timings below are from it. This bug is why a Terminal click takes so long. Also separate from [`../2026-10-03-frames-stop-after-shell-started.md`](../2026-10-03-frames-stop-after-shell-started.md): frames stopping after boot would freeze the overview-hide animation, but that is not yet shown to be this delay.
 
 ## Launch path
 
@@ -78,7 +78,7 @@ This sample is a dying nest (prove kill, broken Wayland). It is not a clean “h
 
 ### Click to a visible window was about half a minute on 2026-09-30
 
-[`done/2026-09-30-rpc-call-volume.md`](done/2026-09-30-rpc-call-volume.md), one `Helper-AppLaunch.launch_desktop_file`, opening a terminal:
+[`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md), one `Helper-AppLaunch.launch_desktop_file`, opening a terminal:
 
 | When | Calls | What |
 | --- | ---: | --- |

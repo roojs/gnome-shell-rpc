@@ -1,4 +1,6 @@
 #!/bin/sh
+# --wayland below is Mutter's flag, not a gsr-server option. Nested
+# tests add --nested.
 if [ -n "$GDMSESSION" ]; then
 	exec gnome-session --session=gsr
 fi
