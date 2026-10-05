@@ -126,7 +126,7 @@ During that startup, not the later crash: `Expected an object of type MetaWorksp
 
 `n-workspaces` was logged not writable in the same second as the workspace error. `WorkspaceTracker` fills `_workspaces` from `notify::n-workspaces`. The read-only property dropped that update, so `remove_workspace` was passed undefined. The property now has a setter that stores the count and clears the index cache, which emits the notify.
 
-`Gvc.MixerControl` is `libgvc.so` in `/usr/lib/gnome-shell`. `gsr-client`'s runpath did not include that directory, so the type came out void. The client runpath now includes the gnome-shell pkglibdir. 09:43 installed that binary and the void error remained: gjs dlopens `libgvc.so` by name, and that search does not use the executable runpath. The client spawn now puts the pkglibdir on `LD_LIBRARY_PATH`.
+`Gvc.MixerControl` is `libgvc.so` in `/usr/lib/gnome-shell`. `gsr-client`'s runpath did not include that directory, so the type came out void. The client runpath now includes the gnome-shell pkglibdir. 09:43 installed that binary and the void error remained: gjs dlopens `libgvc.so` by name, and that search does not use the executable runpath. Putting the pkglibdir on `LD_LIBRARY_PATH` loaded stock `/usr/lib/gnome-shell/libshell-16.so` ahead of ours. 09:54 the client died at once: `undefined symbol: shell_signals_pending_signals`. That env change is removed. `prepare_host` opens `/usr/lib/gnome-shell/libgvc.so` by path and marks it resident before GI loads Shell.
 
 09:10:11, about fourteen seconds later: kernel `trap int3` for `gsr-client` 256685 in `libglib-2.0.so.0.8400.1` at offset `0x73e0f`. Same offset as the earlier aborts. The journal for that pid stops at 09:09:58 on `St-Bin.get_child`, mid RPC flood. No `Unexpected early end-of-stream`, no schema line, no `client exited` before the trap. The server pid has three journal lines for the whole login (`started`, the mutter banner, and nothing else).
 
@@ -139,3 +139,23 @@ Installed `gsr-client` runpath includes `/usr/lib/gnome-shell` (mtime 09:43:07).
 First client 266609 was spawned `--debug` at 09:43:23 because the server has `--debug`. `notify::n-workspaces` fired at 09:43:26. No `MetaWorkspace` / undefined error. Quick settings still failed: `Unsupported type void` in `getMixerControl`. Last journal line 09:43:28, still in theme RPCs. No kernel trap for this pid. The session agent dropped at 09:43:31. Next client 267404 is up by 09:43:38, same void error, and `trap int3` at 09:43:47. Same glib offset `0x73e0f`. No schema line and no end-of-stream line before it.
 
 Host `gnome-shell` logged `Xwayland exited unexpectedly` at 09:44:21. That is the session leaving, about half a minute after the trap. `on_crash_logout` waits up to 2 seconds for `SessionManager.Logout`, then terminates the compositor. No `log out:` line.
+
+## Seen again — 2026-10-05 09:54
+
+User: failed to boot, instant crash. Log Out on the crash window still sluggish.
+
+Client 276086, then 276203 and 276204:
+
+```text
+/usr/bin/gsr-client: symbol lookup error: /lib/x86_64-linux-gnu/libmutter-clutter-rpc-16.so: undefined symbol: shell_signals_pending_signals
+```
+
+`LD_LIBRARY_PATH` was `/usr/lib/gnome-shell` first, so `libshell-16.so` resolved to the stock copy. Ours is the one that defines `shell_signals_pending_signals`.
+
+09:54:09 `log out: Logout interface is only available after the Running phase starts`. The compositor scope exited the same second, after that call returned. The button had waited on a logout the session manager will not accept before the running phase. `on_crash_logout` now only calls `context.terminate()`.
+
+## Seen again — 2026-10-05 10:02
+
+User: the login hangs. Installed `/usr/bin/gsr-client` and `gsr-server` at 10:01:27 (the path open of `libgvc.so`). No `gsr-server` and no `gsr-client` started after that install.
+
+Session 160 (leader 275583, tty4) is the 09:54 login. `gsr-server` 275857 exited at 09:54:09. `gnome-session-binary --session=gsr` 275739 is still running, with the settings daemons. State `online`, not active. Password at 10:02:22 unlocked the keyring and closed the greeter. Logind did not open a new session. The login is that leftover session, which has no compositor. The path open has not run.

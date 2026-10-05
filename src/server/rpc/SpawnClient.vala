@@ -117,14 +117,6 @@ namespace Gsr.Server.Rpc
 			if (wayland_display != null && wayland_display.length > 0) {
 				launcher.setenv("WAYLAND_DISPLAY", wayland_display, true);
 			}
-			/* gjs dlopens libgvc.so by name. The client runpath is not
-			 * searched for that. */
-			var library_path = Gsr.Server.GNOME_SHELL_PKGLIBDIR;
-			var existing_path = GLib.Environment.get_variable("LD_LIBRARY_PATH");
-			if (existing_path != null && existing_path.length > 0) {
-				library_path = Gsr.Server.GNOME_SHELL_PKGLIBDIR + ":" + existing_path;
-			}
-			launcher.setenv("LD_LIBRARY_PATH", library_path, true);
 			try {
 				this.smoke_client = new global::Meta.WaylandClient(
 					this.display.get_context(), launcher);
@@ -242,7 +234,7 @@ namespace Gsr.Server.Rpc
 			logout.add_constraint(new global::Clutter.AlignConstraint(
 				stage, global::Clutter.AlignAxis.X_AXIS, 1.0f));
 			logout.button_release_event.connect((e) => {
-				this.on_crash_logout.begin();
+				this.on_crash_logout();
 				return true;
 			});
 			stage.insert_child_above(logout, backdrop);
@@ -321,7 +313,7 @@ namespace Gsr.Server.Rpc
 				return true;
 			});
 			this.crash_choice(column, "Log Out").button_release_event.connect((e) => {
-				this.on_crash_logout.begin();
+				this.on_crash_logout();
 				return true;
 			});
 			notice.add_child(column);
@@ -357,28 +349,13 @@ namespace Gsr.Server.Rpc
 		}
 
 		/**
-		 * "Log Out" on the give-up screen. Nested: only this mutter exits.
-		 * A real session asks the session manager, then exits. The shell
-		 * is already gone, so nothing else will end the display.
+		 * "Log Out" on the give-up screen. Exits this mutter immediately.
+		 * SessionManager.Logout is rejected until the running phase, and
+		 * waiting on it is what made the button sluggish.
 		 */
-		private async void on_crash_logout()
+		private void on_crash_logout()
 		{
-			var context = this.display.get_context();
-			if (context.get_backend().get_type().name() == "MetaBackendX11Nested") {
-				context.terminate();
-				return;
-			}
-			try {
-				var bus = yield GLib.Bus.get(GLib.BusType.SESSION);
-				yield bus.call(
-					"org.gnome.SessionManager", "/org/gnome/SessionManager",
-					"org.gnome.SessionManager", "Logout",
-					new GLib.Variant("(u)", 1), null,
-					GLib.DBusCallFlags.NONE, 2000, null);
-			} catch (GLib.Error e) {
-				GLib.warning("log out: %s", e.message);
-			}
-			context.terminate();
+			this.display.get_context().terminate();
 		}
 	}
 }

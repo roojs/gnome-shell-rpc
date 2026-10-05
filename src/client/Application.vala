@@ -76,6 +76,14 @@ namespace Gsr.Client
 		 */
 		protected void prepare_host()
 		{
+			/* Open libgvc by path. Putting the gnome-shell pkglibdir on
+			 * LD_LIBRARY_PATH loads stock libshell-16.so and the client
+			 * dies looking up shell_signals_pending_signals. */
+			var gvc_path = GLib.Path.build_filename(GNOME_SHELL_PKGLIBDIR, "libgvc.so");
+			var gvc = GLib.Module.open(gvc_path, GLib.ModuleFlags.BIND_LAZY);
+			if (gvc != null) {
+				gvc.make_resident();
+			}
 			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 			GI.Repository.prepend_search_path(TYPELIB_INSTALL_DIR);
