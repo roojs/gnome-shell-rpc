@@ -451,6 +451,24 @@ executable('subscribe-notify-args-gate',
   install: false,
 )
 
+# A notify applied to a Live proxy must not invoke its outbound RPC setter.
+# FAIL until libocrpc has a side-effect-free mirror-update path.
+executable('notify-proxy-setter-echo-gate',
+  [
+    'notify-proxy-setter-echo-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Named-signal boxed arg that is not GLib.Bytes (ClutterFrame analog).
 executable('subscribe-boxed-signal-arg-gate',
   [
