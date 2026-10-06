@@ -47,11 +47,15 @@ produces:
 FAIL notify-proxy-setter-echo-gate: notify called outbound setter 1 time(s)
 ```
 
-The gate compiles and fails against installed libocrpc. The libocrpc
-notification mirror needs a side-effect-free update contract; it must not
-invoke a Live proxy's public/outbound setter. Do not work around this in
-GNOME Shell JavaScript, `St.Adjustment`, or its bidirectional workspace
-binding. Fix libocrpc, make this gate pass, then repeat the installed login.
+The gate compiles and fails against installed libocrpc. The fix
+direction is an equality check on both ends, written up in
+`OLLMchat/docs/bugs/2026-10-06-notify-proxy-setter-echo.md`: a changed
+value still goes through the setter once, and the same value coming
+back does not. The gate's `outbound_sets == 0` bar matches the
+rejected "never call the setter" idea and changes with that design.
+Do not work around this in GNOME Shell JavaScript, `St.Adjustment`,
+or its workspace binding. Fix libocrpc, make the updated gate pass,
+then repeat the installed login.
 
 ## Seen again — 2026-10-06 08:22
 
