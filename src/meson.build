@@ -899,6 +899,10 @@ gsr_st_boxed_lib = static_library(
     '--pkg=st-rpc-16',
     '--vapidir', meson.current_build_dir(),
   ],
+  c_args: [
+    '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
+    '-include', 'mutter-clutter-rpc-16.h',
+  ],
   vala_header: 'gsr-st-boxed.h',
   vala_vapi: 'gsr-st-boxed.vapi',
 )
