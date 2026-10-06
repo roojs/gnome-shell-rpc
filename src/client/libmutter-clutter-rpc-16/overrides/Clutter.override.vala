@@ -342,6 +342,16 @@
 		public unowned InputDevice? get_source_device() {
 			return this.source_device;
 		}
+
+		/**
+		 * Stock name shell JS still calls. Mutter 48 removed
+		 * {@code clutter_event_get_device}; the packed device is
+		 * {@link source_device}.
+		 */
+		[CCode (cname = "clutter_event_get_device")]
+		public unowned InputDevice? get_device() {
+			return this.source_device;
+		}
 	}
 
 	/**

@@ -252,3 +252,49 @@ wrote into a socket the client had already closed. Both clients logged
 startup, and `mapped` not writable on `StEntry`, `StWidget`, and
 `WorkspacesDisplay`. Those criticals are still in the journal. They are
 not the line that names either death.
+
+## Seen again — 2026-10-06 13:28 (VM)
+
+Same machine, after the libocrpc copy (`libocrpc.so` 2119920 bytes,
+mtime 13:11:55; `dpkg` still says `1.4.0-1`) and the `St.Adjustment`
+setter. Binaries mtime 13:28:16. Session from GDM at 13:28:39.
+`gsr-server` 12481. No kernel trap this boot. No new `/var/crash` file.
+
+| PID | What happened |
+| --- | --- |
+| 12788 | Spawned 13:28:41. From 13:28:45 the server log is `St-Adjustment.set_value`, and the last 722 recvs before the drop are only that method (ids 12747–12778 are consecutive, about 30 in 26 ms). 13:28:55.849 `Connection reset by peer`. `client exited manual-restart=false`. No write error, no kernel trap. `St-Widget.set_label_actor` returned `-32602` at 13:28:50 (`uncaught error` in `St_generated.vala:2963`). That is five seconds earlier and the client kept running. |
+| 13033 | Crash-screen restart with debug, spawned 13:28:57. Still alive. 25 `set_value` calls in the whole session, not a run. |
+
+The click that started Help is 13:29:36. `button-press-event` reaches
+`searchController.js` → `dnd.js` `_onButtonPress`, which throws
+`Could not locate clutter_event_get_device` (`undefined symbol` in
+`libmutter-clutter-rpc-16.so`). The `clicked` signal still runs.
+`Gsr-Mutter-AppLaunch.launch_desktop_file` is 13:29:37.870.
+`/usr/bin/yelp` 13173 starts the same second. Overview actors `hide`.
+`window_created title=(null) frame=0,0 0x0` is 13:29:40, so the window
+is not on screen yet. That is the return to the desktop with no
+launcher and no window.
+
+The socket dies at 13:30:32, while Help is up and a key has just been
+released. Last client notifications are `key-release-event`,
+`captured-event`, `event`, then `before-update`. The server is inside
+that `before-update` measuring `Gjs_ui_runDialog_RunDialog` when the
+write throws:
+
+```text
+13:30:32.637908  connection write error: unsupported bin value type 'GrapheneSize'
+13:30:32.659657  Client.vala:723: Unexpected early end-of-stream
+```
+
+`Graphene.Size` is width and height. There is a `TypeOverride` for
+`Graphene.Point` and `Graphene.Rect`. There is none for `Graphene.Size`.
+The client process stays up and the connection is stopped, so later
+clicks do nothing. `gsr-server` is still the compositor. The
+`MetaWindowWayland` lease error did not recur. `window_created` is in
+the log and the client was still answering calls after it.
+
+Fixed in tree. `Graphene.Size` is width, height, same as `Graphene.Point`.
+`clutter_event_get_device` is the packed source device.
+`St.Adjustment.value` keeps the notified value and does not send
+`set_value` again while that send is still on the stack. The echo gate
+passes, including a server clamp that notifies a different double.

@@ -27,6 +27,7 @@ namespace Gsr.Server.Clutter
 		OLLMrpc.Bin.TypeOverride.register(new RectangleOverride());
 		OLLMrpc.Bin.TypeOverride.register(new RegionOverride());
 		OLLMrpc.Bin.TypeOverride.register(new GrapheneRectOverride());
+		OLLMrpc.Bin.TypeOverride.register(new GrapheneSizeOverride());
 		/* Clutter-Frame stays immediately after Gi.register in Server.start. */
 		// OLLMrpc.Bin.register("Clutter-Frame", typeof(global::Clutter.Frame));
 		OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Constraint));

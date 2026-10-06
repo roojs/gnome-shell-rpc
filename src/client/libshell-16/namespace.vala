@@ -13,5 +13,6 @@ namespace Shell
 		RectangleOverride.register();
 		RegionOverride.register();
 		GrapheneRectOverride.register();
+		GrapheneSizeOverride.register();
 	}
 }

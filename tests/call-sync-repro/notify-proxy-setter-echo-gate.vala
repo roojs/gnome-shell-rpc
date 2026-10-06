@@ -11,7 +11,7 @@
  *   timeout 5 ./build/tests/call-sync-repro/notify-proxy-setter-echo-gate
  *
  * PASS -> one real change sends one setter RPC. The notify of that
- * value, and a later set of that value, send nothing more.
+ * value, a later set of that value, and a notify of NaN send nothing more.
  * FAIL -> the setter RPCs the echo and the server notify loops.
  */
 
@@ -25,6 +25,11 @@ class ServerPeer : GLib.Object, OLLMrpc.Live.Interface
 			return this.stored_value;
 		}
 		set {
+			/* A clamp the client did not send. The notify must not
+			 * make the client setter call set_value again. */
+			if (value > 10) {
+				value = 10;
+			}
 			this.stored_value = value;
 			this.notify_property("value");
 		}
@@ -37,6 +42,7 @@ class ClientProxy : GLib.Object, OLLMrpc.Live.Interface
 	public static int depth = 0;
 	public static OLLMrpc.Client? rpc;
 	private double stored_value = 0;
+	private bool setting_value;
 
 	public uint64 rpc_lid { get; set construct; default = 0; }
 
@@ -45,11 +51,18 @@ class ClientProxy : GLib.Object, OLLMrpc.Live.Interface
 			return this.stored_value;
 		}
 		set {
-			if (this.stored_value == value) {
+			if (this.setting_value) {
+				this.stored_value = value;
+				return;
+			}
+			if (this.stored_value == value
+				|| (this.stored_value != this.stored_value && value != value)) {
 				return;
 			}
 			this.stored_value = value;
+			this.setting_value = true;
 			this.send("EchoGate.set_value", OLLMrpc.args("d", value));
+			this.setting_value = false;
 		}
 	}
 
@@ -269,6 +282,22 @@ int main(string[] args)
 		server.force_exit();
 		stderr.printf(
 			"FAIL notify-proxy-setter-echo-gate: same value sent %d\n",
+			ClientProxy.outbound_sets);
+		return 1;
+	}
+	proxy.@value = double.NAN;
+	if (ClientProxy.outbound_sets != 2) {
+		server.force_exit();
+		stderr.printf(
+			"FAIL notify-proxy-setter-echo-gate: nan sent %d\n",
+			ClientProxy.outbound_sets);
+		return 1;
+	}
+	proxy.@value = 11;
+	if (ClientProxy.outbound_sets != 3) {
+		server.force_exit();
+		stderr.printf(
+			"FAIL notify-proxy-setter-echo-gate: clamp echo sent %d\n",
 			ClientProxy.outbound_sets);
 		return 1;
 	}

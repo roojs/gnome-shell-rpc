@@ -20,6 +20,7 @@
 		}
 
 		private double priv_value;
+		private bool setting_value;
 
 		public double @value {
 			get {
@@ -28,13 +29,29 @@
 				return (double) response.retval.get_double();
 			}
 			set {
-				if (this.priv_value == value) {
+				/* Notify is applied with set_property before call_value
+				 * returns. Stock clamps, so the notified double is not
+				 * always the one just stored, and NaN never compares
+				 * equal. Swallow that re-entry. */
+				if (this.setting_value) {
+					this.priv_value = value;
+					return;
+				}
+				if (this.priv_value == value
+					|| (this.priv_value != this.priv_value && value != value)) {
 					return;
 				}
 				this.priv_value = value;
-				Gsr.Client.Rpc.call_value(
-					"St-Adjustment.set_value", this,
-					OLLMrpc.args("d", value));
+				this.setting_value = true;
+				try {
+					Gsr.Client.Rpc.call_value("St-Adjustment.set_value", this,
+						OLLMrpc.args("d", value));
+				} catch (GLib.Error e) {
+					this.setting_value = false;
+					GLib.warning("St-Adjustment.set_value: %s", e.message);
+					return;
+				}
+				this.setting_value = false;
 			}
 		}
 
