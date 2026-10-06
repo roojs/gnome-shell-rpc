@@ -1,25 +1,51 @@
 /**
- * FAIL gate: applying a server notify to a client Live proxy must not call the
- * proxy's public setter. Generated gnome-shell-rpc setters send an RPC, so
- * Client.set_property() echoes notify::value back to the server forever.
+ * A server notify is applied with proxy.set_property(). The generated
+ * setter stores the value and returns before call_poll when it already
+ * matches. The server peer notifies on every set, including the same
+ * value, so the echo does not die on the server.
  *
- *   meson compile -C build notify-proxy-setter-echo-gate
+ *   meson compile -C build tests/call-sync-repro/notify-proxy-setter-echo-gate
  *   timeout 5 ./build/tests/call-sync-repro/notify-proxy-setter-echo-gate
  *
- * PASS -> typed notify arrives and the outbound proxy setter is not called.
- * FAIL -> libocrpc Client applies notify with proxy.set_property().
+ * PASS -> one real change sends one setter RPC. The notify of that
+ * value, and a later set of that value, send nothing more.
+ * FAIL -> the setter RPCs the echo and the server notify loops.
  */
 
 class ServerPeer : GLib.Object, OLLMrpc.Live.Interface
 {
 	public uint64 rpc_lid { get; set construct; default = 0; }
-	public bool visible { get; set; default = false; }
+	private bool stored_visible = false;
+	private double stored_level = 0;
+
+	public bool visible {
+		get {
+			return this.stored_visible;
+		}
+		set {
+			this.stored_visible = value;
+			this.notify_property("visible");
+		}
+	}
+
+	public double level {
+		get {
+			return this.stored_level;
+		}
+		set {
+			this.stored_level = value;
+			this.notify_property("level");
+		}
+	}
 }
 
 class ClientProxy : GLib.Object, OLLMrpc.Live.Interface
 {
 	public static int outbound_sets = 0;
+	public static int depth = 0;
+	public static OLLMrpc.Client? rpc;
 	private bool stored_visible = false;
+	private double stored_level = 0;
 
 	public uint64 rpc_lid { get; set construct; default = 0; }
 
@@ -28,9 +54,45 @@ class ClientProxy : GLib.Object, OLLMrpc.Live.Interface
 			return this.stored_visible;
 		}
 		set {
-			ClientProxy.outbound_sets++;
+			if (this.stored_visible == value) {
+				return;
+			}
 			this.stored_visible = value;
+			this.send("EchoGate.set_visible", OLLMrpc.args("b", value));
 		}
+	}
+
+	public double level {
+		get {
+			return this.stored_level;
+		}
+		set {
+			if (this.stored_level == value) {
+				return;
+			}
+			this.stored_level = value;
+			this.send("EchoGate.set_level", OLLMrpc.args("d", value));
+		}
+	}
+
+	private void send(string method, Gee.ArrayList<GLib.Value?> args)
+	{
+		if (ClientProxy.depth > 2) {
+			stderr.printf("FAIL notify-proxy-setter-echo-gate: setter recursed\n");
+			GLib.error("notify echo recursed");
+		}
+		ClientProxy.outbound_sets++;
+		ClientProxy.depth++;
+		try {
+			ClientProxy.rpc.call_poll(new OLLMrpc.Request() {
+				method = method,
+				args = args,
+			});
+		} catch (GLib.Error e) {
+			stderr.printf("FAIL notify-proxy-setter-echo-gate: %s %s\n", method, e.message);
+			GLib.error("%s", e.message);
+		}
+		ClientProxy.depth--;
 	}
 }
 
@@ -44,7 +106,8 @@ class EchoGate : GLib.Object
 		OLLMrpc.Request.add_class(
 			"EchoGate", typeof(EchoGate),
 			"make", "",
-			"show", "",
+			"set_visible", "",
+			"set_level", "",
 			null
 		);
 		OLLMrpc.Request.register_live("EchoGate", new EchoGate());
@@ -62,14 +125,27 @@ class EchoGate : GLib.Object
 		});
 	}
 
-	public void show(OLLMrpc.Request request)
+	public void set_visible(OLLMrpc.Request request)
 	{
-		if (EchoGate.peer == null) {
+		if (EchoGate.peer == null || request.args.size < 1) {
 			request.connection.reply_error(
 				request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 			return;
 		}
-		EchoGate.peer.visible = true;
+		EchoGate.peer.visible = request.args.get(0).get_boolean();
+		request.reply(new OLLMrpc.Response() {
+			id = request.id,
+		});
+	}
+
+	public void set_level(OLLMrpc.Request request)
+	{
+		if (EchoGate.peer == null || request.args.size < 1) {
+			request.connection.reply_error(
+				request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+			return;
+		}
+		EchoGate.peer.level = request.args.get(0).get_double();
 		request.reply(new OLLMrpc.Response() {
 			id = request.id,
 		});
@@ -145,6 +221,7 @@ int main(string[] args)
 		live_handles = true,
 		call_timeout_seconds = 3,
 	};
+	ClientProxy.rpc = client;
 	var loop = new GLib.MainLoop();
 	var connected = false;
 	client.connect.begin(new OLLMrpc.Request() {
@@ -181,15 +258,21 @@ int main(string[] args)
 		rpc_lid = lid,
 	};
 	client.proxies.set((int) lid, proxy);
-	ClientProxy.outbound_sets = 0;
 
-	var got_typed_notify = false;
+	var got_visible = false;
+	var got_level = false;
 	client.notification.connect((notif) => {
 		if (notif.method == "notify::visible"
 				&& notif.args.size == 1
 				&& notif.args.get(0).holds(GLib.Type.BOOLEAN)
 				&& notif.args.get(0).get_boolean()) {
-			got_typed_notify = true;
+			got_visible = true;
+		}
+		if (notif.method == "notify::level"
+				&& notif.args.size == 1
+				&& notif.args.get(0).holds(GLib.Type.DOUBLE)
+				&& notif.args.get(0).get_double() == 1.5) {
+			got_level = true;
 		}
 	});
 
@@ -200,26 +283,55 @@ int main(string[] args)
 			args = OLLMrpc.args("s", "notify::visible"),
 		});
 		client.call_poll(new OLLMrpc.Request() {
-			method = "EchoGate.show",
+			method = "RPC-Live-Subscribe.rpc_signal",
+			lease_id = lid,
+			args = OLLMrpc.args("s", "notify::level"),
 		});
 	} catch (GLib.Error e) {
 		server.force_exit();
-		stderr.printf("FAIL notify-proxy-setter-echo-gate: call %s\n", e.message);
+		stderr.printf("FAIL notify-proxy-setter-echo-gate: subscribe %s\n", e.message);
 		return 2;
 	}
 
-	server.force_exit();
-	if (!got_typed_notify) {
-		stderr.printf("FAIL notify-proxy-setter-echo-gate: notify missing\n");
+	ClientProxy.outbound_sets = 0;
+	proxy.visible = true;
+	if (!got_visible || ClientProxy.outbound_sets != 1) {
+		server.force_exit();
+		stderr.printf(
+			"FAIL notify-proxy-setter-echo-gate: visible notify=%s outbound=%d\n",
+			got_visible ? "yes" : "no",
+			ClientProxy.outbound_sets);
 		return 1;
 	}
-	if (ClientProxy.outbound_sets != 0) {
+	proxy.visible = true;
+	if (ClientProxy.outbound_sets != 1) {
+		server.force_exit();
 		stderr.printf(
-			"FAIL notify-proxy-setter-echo-gate: notify called outbound setter %d time(s)\n",
+			"FAIL notify-proxy-setter-echo-gate: same visible sent %d\n",
 			ClientProxy.outbound_sets);
 		return 1;
 	}
 
+	ClientProxy.outbound_sets = 0;
+	proxy.level = 1.5;
+	if (!got_level || ClientProxy.outbound_sets != 1) {
+		server.force_exit();
+		stderr.printf(
+			"FAIL notify-proxy-setter-echo-gate: level notify=%s outbound=%d\n",
+			got_level ? "yes" : "no",
+			ClientProxy.outbound_sets);
+		return 1;
+	}
+	proxy.level = 1.5;
+	if (ClientProxy.outbound_sets != 1) {
+		server.force_exit();
+		stderr.printf(
+			"FAIL notify-proxy-setter-echo-gate: same level sent %d\n",
+			ClientProxy.outbound_sets);
+		return 1;
+	}
+
+	server.force_exit();
 	stderr.printf("PASS notify-proxy-setter-echo-gate\n");
 	return 0;
 }

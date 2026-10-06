@@ -38,24 +38,26 @@ with that file is [`done/2026-10-06-apport-crash-dialog.md`](done/2026-10-06-app
 The next two clients,
 10550 and 10581, trapped in `GLib.error` at 15:31:12 and 15:31:18.
 
-This is not an `St.Adjustment` implementation guess. The reduced
-`tests/call-sync-repro/notify-proxy-setter-echo-gate.vala` uses an ordinary
-Live proxy whose setter only counts calls. One server `notify::visible`
-produces:
+This is not an `St.Adjustment` implementation guess. libocrpc applies
+the notify with `set_property`. That is the call the real adjustment
+already receives. Stock `st_adjustment_set_value` returns when
+`priv->value` already matches, so it does not notify again. The
+generated client setter had no such field, so `set_property` sent
+`set_value` again.
+`OLLMchat/docs/bugs/2026-10-06-notify-proxy-setter-echo.md` concludes
+this is not a libocrpc bug.
+
+The generated setter now keeps the last value (`priv_<name>` in
+`gi-stub-gen`) and returns before `call_poll` when it
+already matches. A changed value still goes through the setter once.
+The gate's server notifies on every set, including the same value:
 
 ```text
-FAIL notify-proxy-setter-echo-gate: notify called outbound setter 1 time(s)
+PASS notify-proxy-setter-echo-gate
 ```
 
-The gate compiles and fails against installed libocrpc. The fix
-direction is an equality check on both ends, written up in
-`OLLMchat/docs/bugs/2026-10-06-notify-proxy-setter-echo.md`: a changed
-value still goes through the setter once, and the same value coming
-back does not. The gate's `outbound_sets == 0` bar matches the
-rejected "never call the setter" idea and changes with that design.
-Do not work around this in GNOME Shell JavaScript, `St.Adjustment`,
-or its workspace binding. Fix libocrpc, make the updated gate pass,
-then repeat the installed login.
+Do not skip `set_property` in `Client.vala`. Do not patch
+`workspace.js`. Stock `St.Adjustment` on the server already compares.
 
 ## Seen again — 2026-10-06 08:22
 
@@ -180,9 +182,9 @@ back into `dispatch_message`.
 
 That is the 15:30 notify echo. A `notify::value` calls the proxy
 setter, the setter sends `St-Adjustment.set_value`, and the reply
-notify does it again until the stack overflows. The failing gate is
-already `tests/call-sync-repro/notify-proxy-setter-echo-gate.vala`.
-This is libocrpc. Do not patch it from `St.Adjustment` or shell JS.
+notify does it again until the stack overflows. libocrpc stays on
+`set_property`. The generated setter now returns before `call_poll`
+when the bits already match. Do not patch `workspace.js`.
 
 Server 593932 trapped in the same second, `GLib.error` in
 `Connection.drain_readable` while parsing. The second client died
@@ -204,10 +206,10 @@ The client log at 10:08:59 is the same notify echo, now also in JS.
 `notify::value` is followed by `St-Adjustment.set_value`, and
 `workspace.js` `_updateBorderRadius` (connected at line 955 to that
 notify) logs `JS ERROR: too much recursion`. The client SIGSEGV is
-10:09:01. This is still
-`tests/call-sync-repro/notify-proxy-setter-echo-gate.vala`. The OPC
-bug is `OLLMchat/docs/bugs/2026-10-06-notify-proxy-setter-echo.md`.
-Do not patch `workspace.js` or `St.Adjustment`.
+10:09:01. The OPC writeup concludes it is the consumer's generated setter.
+That setter now holds the value and returns before `call_poll` when
+the bits already match. `notify-proxy-setter-echo-gate` passes. Do
+not patch `workspace.js`.
 
 The crash screen did not appear because the server died with the
 client. At 10:09:01.924 `mutter-rpc.debug.log` has
