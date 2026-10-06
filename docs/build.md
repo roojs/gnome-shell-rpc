@@ -72,6 +72,12 @@ sudo apt install \
 - **gnome-shell** — stock **`libst-16.so`**, **`St-16.gir`**, **`Gvc-1.0.gir`** under `/usr/lib/gnome-shell/` and `/usr/share/gnome-shell/`. Shell JS for the client is compiled from **`vendor/gnome-shell/js`** into our gresource.
 - **dbus-x11** — `dbus-run-session` for nested compositor runs
 
+Recommended: **systemd-coredump**. The build succeeds without it. When `/usr/lib/systemd/systemd-coredump` is missing, the crash screen says core dumps are not available. With it, `coredumpctl` has the core after a shell crash. See [`nested-debug.md`](nested-debug.md).
+
+```bash
+sudo apt install systemd-coredump
+```
+
 ```bash
 meson setup build
 ninja -C build

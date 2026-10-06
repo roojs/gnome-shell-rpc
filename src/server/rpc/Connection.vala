@@ -169,7 +169,18 @@ namespace Gsr.Server.Rpc
 				try {
 					request = this.bin.parse() as OLLMrpc.Request;
 				} catch (GLib.Error e) {
-					GLib.error("%s", e.message);
+					/* A dead client resets the socket mid-message. Aborting
+					 * here takes the compositor with it, so the crash screen
+					 * never paints. HUP already stops without aborting. */
+					GLib.warning("%s", e.message);
+					if (this.emit_poll_depth == 0) {
+						this.stop();
+						break;
+					}
+					foreach (var id in this.callbacks.keys) {
+						this.callbacks.get(id).replied = true;
+					}
+					break;
 				}
 				if (request == null) {
 					GLib.warning("connection read: expected Request");

@@ -1,6 +1,6 @@
-# Boot crash, and Log Out hangs
+# Boot crash
 
-**Status:** ⏳ open. User 2026-10-05. Two failures on the installed greeter session, tracked here together.
+**Status:** ⏳ open. User 2026-10-05. The crash-screen Log Out failure was split out 2026-10-06 to [`2026-10-06-crash-screen-logout.md`](2026-10-06-crash-screen-logout.md).
 
 Earlier logins: [`2026-10-03-greeter-login-black-screen.md`](2026-10-03-greeter-login-black-screen.md), [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md).
 
@@ -15,14 +15,6 @@ The shell does not stay up. The user gets the crash screen at login.
 By 10:44 both processes are gone. `gnome-session-binary --session=gsr` (383306) is still running.
 
 The 10:08 login, before this install, died in a re-entered `WorkspaceTracker._checkWorkspaces` (`append_new_workspace` on every nested `before-update`). `Laters.run_before_redraw` in this install does not run the queue from inside a later. This boot still does not stay up.
-
-## Log Out hangs
-
-Log Out on the crash screen does not return to GDM.
-
-The 10:40 `gsr-server` calls `context.terminate()` from the button handler. That runs mutter shutdown on the click, so the button sits there. When the compositor does exit, `gnome-session-binary --session=gsr` is still the logind session, and the greeter does not come back. `SessionManager.Logout` is rejected before the running phase.
-
-`on_crash_logout` no longer calls `terminate()`. On a real backend it `SIGKILL`s every other process of this user, which includes `gnome-session`, then `SIGKILL`s itself. Nested (`MetaBackendX11Nested`) only kills this process, so a nested run does not take the host desktop with it. Installed 10:54:08 together with `gsr-client`. User: neither fix worked.
 
 10:54:28 `gsr-server` 394103, `gsr-client` 394514. `READY=1` at 10:54:31. Last client criticals are `mapped` not writable on `QuickSettings`, `StEntry`, and `StWidget`. No abort string. Kernel at 10:54:38: `gsr-client` `trap int3` in `libglib-2.0.so.0.8400.1` at offset `0x73e0f`. No new core. One second earlier the greeter `gnome-shell` 393297 logged `Xwayland terminated, exiting since it was mandatory` and `Xwayland exited unexpectedly` from `init.js`. That process is not `gsr-client`.
 
@@ -41,7 +33,9 @@ The returned notify repeats the write.
 
 The loop grew from request 10728 at 15:30:56.617 to request 16654 at
 15:31:01.981. The Apport report is for PID 10211 at 15:31:02 and says
-`SIGSEGV`; it contains a core but no retraced stack. The next two clients,
+`SIGSEGV`; it contains a core but no retraced stack. The dialog that came
+with that file is [`done/2026-10-06-apport-crash-dialog.md`](done/2026-10-06-apport-crash-dialog.md).
+The next two clients,
 10550 and 10581, trapped in `GLib.error` at 15:31:12 and 15:31:18.
 
 This is not an `St.Adjustment` implementation guess. The reduced
@@ -59,50 +53,162 @@ invoke a Live proxy's public/outbound setter. Do not work around this in
 GNOME Shell JavaScript, `St.Adjustment`, or its bidirectional workspace
 binding. Fix libocrpc, make this gate pass, then repeat the installed login.
 
-## Apport dialog
+## Seen again — 2026-10-06 08:22
 
-Apport 2.32 is enabled and active on the machine. It wrote
-`/var/crash/_usr_bin_gsr-client.1000.crash` and the GTK crash dialog interrupted
-the restart/logout flow.
+`alan2` from GDM, session 188, tty4, leader 411674. Installed that minute:
+`/usr/bin/gsr-client` and `/usr/bin/gsr-server` (mtime 08:22:43). `gsr-server`
+411960 spawned `gsr-client --debug` 412378. `gnome-session-binary --session=gsr`
+entered the running state at 08:22:55, before either client died.
 
-Apport already has an executable-specific denylist. Its installed
-`Report.check_ignored()` reads every non-comment line under
-`/etc/apport/report-ignore/`. A package-owned file such as
-`/etc/apport/report-ignore/gnome-shell-rpc` containing:
+Two clients, then the crash screen. The Log Out that followed is in
+[`2026-10-06-crash-screen-logout.md`](2026-10-06-crash-screen-logout.md).
 
-```text
-/usr/bin/gsr-client
-```
+| PID | What the journal still has | Trap |
+| --- | --- | --- |
+| 412378 | Startup through theme and layout. Last kept lines 08:22:59: `mapped` not writable on `StEntry`, `StWidget`, and `WorkspacesDisplay`, then `g_closure_unref`. | 08:23:09 `int3` in `libglib-2.0.so.0.8400.1` at `0x73e0f` |
+| 413035 | Only the last fraction of a second. Request ids already past 14157. `captured-event`, `event`, `style-changed`, `captured-event`, `event`. | 08:23:25 same `int3` offset |
 
-suppresses presentation for this executable without disabling Apport for the
-rest of the machine. The per-user `Report.mark_ignore()` alternative writes
-`~/.apport-ignore.xml`, but its entry is tied to the executable mtime; every
-development install makes the dialog eligible again. Use the system denylist
-for this development package.
+journald at 08:23:25: `Suppressed 77345 messages from user@1002.service`. The
+first client's exit, the spawn of 413035, and whatever killed 412378 are in
+that drop. A second polkit agent for `/usr/bin/gsr-client --debug` registered
+at 08:23:16, so 413035 was already up then. No `JS ERROR`. No
+`Unexpected early end-of-stream`. No new file under `/var/crash/` (the
+`gsr-client` crash there is still the 2026-10-04 09:42 one). No
+`/etc/apport/report-ignore` entry for `gsr-client`. `coredumpctl` is not
+installed.
 
-## Logout validation — 2026-10-05 15:37
-
-The crash-screen Log Out only called `Meta.Context.terminate()`. That cleanly
-stopped `org.gnome.ShellRpc@wayland.service` at 15:31:21, but it did not log
-out the GNOME session:
-
-- `gnome-session-manager@gsr.service` stayed active, PID 9924.
-- Its status was `GNOME Session Manager phase is RUNNING`.
-- logind session 18 stayed active on VT 2.
-- `gnome-session@gsr.target` and `gnome-session.target` stayed active.
-
-From SSH, the supported call:
+The death that is still in the journal is 413035. Five milliseconds before
+`Connection reset by peer`:
 
 ```text
-org.gnome.SessionManager.Logout(1)
+08:23:25.885  gsr-server[411960]: connection write error: unsupported bin value type 'MetaBarrierEvent'
+08:23:25.890  gsr-client[413035]: Error receiving data: Connection reset by peer
+08:23:25      kernel: gsr-client[413035] trap int3 … libglib-2.0.so.0.8400.1+0x73e0f
 ```
 
-returned successfully. In the same second logind recorded `Session 18 logged
-out` and removed it; the manager and both session targets became inactive.
-Only GDM's greeter session remained.
+`Meta.Barrier` `hit` and `left` both carry a `MetaBarrierEvent`. Shell
+`PressureBarrier` connects to those two signals (`vendor/gnome-shell/js/ui/layout.js`)
+and reads `event.dx`, `event.dy`, and `event.time`. The value is a boxed
+record. `OLLMrpc.Bin.StreamValue` throws `unsupported bin value type` when a
+boxed type has no alias and no `TypeOverride`. `ClutterEvent` already has an
+override. `MetaBarrierEvent` does not. The write drops the socket. The client
+aborts on the short read. That is this crash screen.
 
-For a session that has reached RUNNING, the crash-screen control must request
-`SessionManager.Logout(1)` instead of merely terminating Mutter. This exact
-solution is validated on the hung session. The earlier pre-RUNNING rejection
-is a separate fallback case and must not be answered by killing every process
-owned by the user.
+A window close is not in the lines that survived. The recovered sequence is
+a pointer `captured-event` / `event` and then the barrier write.
+
+## Unsupported boxed types — audit 2026-10-06
+
+`unsupported bin value type` is one failure. `OLLMrpc.Gi.register` aliases
+object and interface GTypes only. A boxed record is written by
+`StreamValue` when it is in `gtype_to_alias` (payload is four zero bytes)
+or expanded first by a `TypeOverride`. Anything else throws, the socket
+drops, and the client traps.
+
+Stock GIR for Meta, Clutter, Cogl, Mtk, St, Shell, and Graphene. Already
+covered, so these do not throw:
+
+| Record | How |
+| --- | --- |
+| `Clutter.Event` | `TypeOverride` |
+| `Clutter.ActorBox` | `TypeOverride` |
+| `Clutter.PickContext` | `TypeOverride` |
+| `Graphene.Point` | `TypeOverride` |
+| `Clutter.Frame` | `Bin.register("Clutter-Frame")`. `before-update` stays up because the payload is empty. |
+| `Meta.BarrierEvent` | `TypeOverride`. `hit` / `left` fields: event id, dt, time, x, y, dx, dy, released, grabbed. This is the 08:23:25 death. |
+| `Mtk.Rectangle` | `TypeOverride`. x, y, width, height. `show-tile-preview`, `show-window-menu`, `size-change` (two rectangles), `show-resize-popup`, `screenshot-taken`. |
+| `Meta.KeyBinding` | `TypeOverride`. name, modifiers, mask, is-builtin, is-reversed. The client stub is one byte; `meta_key_binding_get_name` and the other four getters live in `libmutter-rpc-16.so` for the handler. |
+| `Graphene.Rect` | `TypeOverride`. origin x/y, size width/height. `cursor-location-changed`. |
+| `Mtk.Region` | `TypeOverride`. rectangle count, then each x, y, width, height. `paint-view`. Shell JS does not connect it. |
+
+`size-change` is the window size-change animation, connected before any
+window is closed. A later resize, tile, or menu is the same write failure
+as the barrier hit. The 08:23:09 death of client 412378 is still inside
+the dropped journal, so this audit does not name its type.
+
+Nineteen further boxed records appear only as a method return or an out
+parameter. The same throw happens when that result is written. They do
+not fire on their own.
+
+`Clutter.Colorimetry`, `Clutter.EOTF`, `Clutter.EventSequence`,
+`Clutter.Luminance`, `Clutter.Margin`, `Clutter.PaintVolume`,
+`Clutter.Perspective`, `Cogl.Color` (17 methods, including
+`Clutter.Actor.get_background_color` and `Clutter.Text.get_color`),
+`Cogl.DepthState`, `Cogl.DmaBufHandle`, `Cogl.FrameClosure`,
+`Cogl.MatrixEntry`, `Cogl.TimestampQuery`, `Graphene.Matrix`,
+`Graphene.Point3D`, `Meta.Group`, `Meta.Settings`, `St.IconColors`,
+`St.Shadow` (five `St.ThemeNode` getters).
+
+`Colorimetry`, `EOTF`, `Luminance`, and `DepthState` have no GType in the
+GIR. `DmaBufHandle`, `TimestampQuery`, `Meta.Group`, and `Meta.Settings`
+are disguised. The ones with a GType are the ones `StreamValue` can be
+handed: `ClutterEventSequence`, `ClutterMargin`, `ClutterPaintVolume`,
+`ClutterPerspective`, `CoglColor`, `CoglFrameClosure`, `CoglMatrixEntry`,
+`GrapheneMatrix`, `GraphenePoint3D`, `StIconColors`, `StShadow`.
+
+## Seen again — 2026-10-06 09:29
+
+Installed 09:29:18, including the five signal `TypeOverride`s.
+`gsr-server` 593932, session 203, user `alan2`. systemd-coredump kept
+three cores. `coredumpctl` marks them inaccessible from this account:
+the ACL is `user:alan2:r--`. `/home/alan2/.cache/gnome-shell-rpc/` is
+also permission denied. The stacks below are the ones journald stored.
+
+First client 594319. Journald dropped the lines (`Suppressed 89657
+messages` at 09:30:04). The copied core and
+`mutter-rpc.debug.log` name it. At 09:29:45.081 the server logged
+`connection write error: Unregistered class type schema:
+MetaInputDeviceNative`. Seven milliseconds later the client core has
+`Client.vala:723: Unexpected early end-of-stream`, and the kernel
+`trap int3` is that `GLib.error`. Installed `libocrpc.so` (2026-10-05
+10:34) still aborts on every parse error except it logs this one as
+fatal. `InputDeviceOverride` packs `MetaInputDeviceX11` as a device
+type and writes every other device unchanged, so the Wayland subclass
+has no schema. That is the only unregistered-schema line in this log.
+The five signal records did not throw.
+
+Second client 595001. SIGSEGV at 09:29:57. The stack repeats:
+
+`oll_mrpc_client_dispatch_message` → `g_object_set_property` →
+`st_adjustment_set_value` → `gsr_client_rpc_call_value` →
+`oll_mrpc_client_call_poll` → `oll_mrpc_bin_stream_value_write` →
+back into `dispatch_message`.
+
+That is the 15:30 notify echo. A `notify::value` calls the proxy
+setter, the setter sends `St-Adjustment.set_value`, and the reply
+notify does it again until the stack overflows. The failing gate is
+already `tests/call-sync-repro/notify-proxy-setter-echo-gate.vala`.
+This is libocrpc. Do not patch it from `St.Adjustment` or shell JS.
+
+Server 593932 trapped in the same second, `GLib.error` in
+`Connection.drain_readable` while parsing. The second client died
+inside `StreamValue.write`, so the server read a broken message and
+aborted on it.
+
+Copied to `/tmp/gsr-crash-0929` and read. The client debug log is only
+the second process: it is opened with truncate, so 594319's lines are
+gone from the file and live in the core.
+
+## Seen again — 2026-10-06 10:09
+
+App grid came up, an app started, then the session died with no crash
+screen. Installed binaries from the `MetaInputDeviceNative` pack.
+`gsr-client` 690523, `gsr-server` 690113. Logs and cores copied to
+`/tmp/gsr-crash-1009`.
+
+The client log at 10:08:59 is the same notify echo, now also in JS.
+`notify::value` is followed by `St-Adjustment.set_value`, and
+`workspace.js` `_updateBorderRadius` (connected at line 955 to that
+notify) logs `JS ERROR: too much recursion`. The client SIGSEGV is
+10:09:01. This is still
+`tests/call-sync-repro/notify-proxy-setter-echo-gate.vala`. The OPC
+bug is `OLLMchat/docs/bugs/2026-10-06-notify-proxy-setter-echo.md`.
+Do not patch `workspace.js` or `St.Adjustment`.
+
+The crash screen did not appear because the server died with the
+client. At 10:09:01.924 `mutter-rpc.debug.log` has
+`Connection.vala:172: Error receiving data: Connection reset by peer`,
+and the kernel `trap int3` is that `GLib.error`. `on_crash()` runs
+from the client wait callback. An abort in `drain_readable` ends the
+compositor first, so the backdrop is never painted. A parse error now
+warns and stops the connection, the same way HUP already does.

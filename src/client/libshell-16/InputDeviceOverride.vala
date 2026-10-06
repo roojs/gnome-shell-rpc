@@ -1,7 +1,8 @@
 /**
  * Client rebuild of a {@link Clutter.InputDevice} from a signal argument.
  *
- * The server packs {@code MetaInputDeviceX11} as its device type.
+ * The server packs {@code MetaInputDeviceX11} and
+ * {@code MetaInputDeviceNative} as a device type.
  * A leased device arrives as the object.
  */
 namespace Shell

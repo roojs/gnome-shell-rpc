@@ -36,6 +36,8 @@ compositor_sources = files(
   'server/libmutter-16/SelectionSourceMemory.vala',
   'server/libmutter-16/ShapedTexture.vala',
   'server/libmutter-16/Barrier.vala',
+  'server/libmutter-16/BarrierEventOverride.vala',
+  'server/libmutter-16/KeyBindingOverride.vala',
   'server/libmutter-16/WaylandClient.vala',
   'server/libmutter-16/AppLaunch.vala',
   'server/libmutter-clutter-16/namespace.vala',
@@ -56,6 +58,9 @@ compositor_sources = files(
   'server/libmutter-clutter-16/GraphenePointOverride.vala',
   'server/libmutter-clutter-16/InputDeviceOverride.vala',
   'server/libmutter-clutter-16/PickContextOverride.vala',
+  'server/libmutter-clutter-16/RectangleOverride.vala',
+  'server/libmutter-clutter-16/RegionOverride.vala',
+  'server/libmutter-clutter-16/GrapheneRectOverride.vala',
   'server/libmutter-clutter-16/shader-uniform-apply.c',
   'server/libst-16/namespace.vala',
   'server/libst-16/St.vala',
@@ -670,6 +675,7 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     'client/libmutter-rpc-16/RpcSubprocess.vala',
     'client/libmutter-rpc-16/c-gio-subprocess-launcher-cwd.c',
     'client/libmutter-rpc-16/c-closure-ref.c',
+    'client/libmutter-rpc-16/key-binding-wire.c',
   ),
   meta_window_generated,
   dependencies: [
@@ -862,6 +868,11 @@ shell_gi_lib = shared_library(
     'client/libshell-16/GraphenePointOverride.vala',
     'client/libshell-16/InputDeviceOverride.vala',
     'client/libshell-16/PickContextOverride.vala',
+    'client/libshell-16/BarrierEventOverride.vala',
+    'client/libshell-16/KeyBindingOverride.vala',
+    'client/libshell-16/RectangleOverride.vala',
+    'client/libshell-16/RegionOverride.vala',
+    'client/libshell-16/GrapheneRectOverride.vala',
     'client/libshell-16/ActionMode.vala',
     'client/libshell-16/AppState.vala',
     'client/libshell-16/AppLaunchGpu.vala',
@@ -1393,4 +1404,16 @@ install_data(
 install_data(
   session_data / 'systemd' / 'gnome-session@gsr.target.d' / 'gsr.session.conf',
   install_dir: systemduserunitdir / 'gnome-session@gsr.target.d',
+)
+apport_report_ignore = configure_file(
+  input: session_data / 'apport' / 'report-ignore.in',
+  output: 'gnome-shell-rpc',
+  configuration: {
+    'gsr_client': get_option('prefix') / get_option('bindir') / 'gsr-client',
+    'gsr_server': get_option('prefix') / get_option('bindir') / 'gsr-server',
+  },
+)
+install_data(
+  apport_report_ignore,
+  install_dir: get_option('sysconfdir') / 'apport' / 'report-ignore',
 )

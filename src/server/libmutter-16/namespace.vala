@@ -22,6 +22,8 @@ namespace Gsr.Server.Meta
 		SelectionSourceMemory.rpc_register();
 		ShapedTexture.rpc_register();
 		Barrier.rpc_register();
+		OLLMrpc.Bin.TypeOverride.register(new BarrierEventOverride());
+		OLLMrpc.Bin.TypeOverride.register(new KeyBindingOverride());
 		WaylandClient.rpc_register();
 		AppLaunch.rpc_register();
 		/* Display and Compositor stay before Gi.register in Server.start. */

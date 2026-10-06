@@ -8,5 +8,10 @@ namespace Shell
 		GraphenePointOverride.register();
 		InputDeviceOverride.register();
 		PickContextOverride.register();
+		BarrierEventOverride.register();
+		KeyBindingOverride.register();
+		RectangleOverride.register();
+		RegionOverride.register();
+		GrapheneRectOverride.register();
 	}
 }

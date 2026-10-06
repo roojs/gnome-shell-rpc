@@ -1,0 +1,3 @@
+# Session shell and compositor. Apport must not report them.
+@gsr_client@
+@gsr_server@

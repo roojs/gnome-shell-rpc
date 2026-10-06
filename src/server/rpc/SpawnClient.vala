@@ -234,7 +234,8 @@ namespace Gsr.Server.Rpc
 			logout.add_constraint(new global::Clutter.AlignConstraint(
 				stage, global::Clutter.AlignAxis.X_AXIS, 1.0f));
 			logout.button_release_event.connect((e) => {
-				this.on_crash_logout();
+				logout.reactive = false;
+				this.on_crash_logout.begin();
 				return true;
 			});
 			stage.insert_child_above(logout, backdrop);
@@ -263,6 +264,17 @@ namespace Gsr.Server.Rpc
 				x_align = global::Clutter.ActorAlign.CENTER,
 				margin_bottom = 12.0f,
 			});
+			if (!GLib.FileUtils.test("/usr/lib/systemd/systemd-coredump", GLib.FileTest.IS_EXECUTABLE)) {
+				column.add_child(new global::Clutter.Text() {
+					text = "systemd-coredump is not installed. Core dumps are not available.",
+					font_name = "Sans 12",
+					color = white,
+					selectable = false,
+					line_alignment = global::Pango.Alignment.CENTER,
+					x_align = global::Clutter.ActorAlign.CENTER,
+					margin_bottom = 12.0f,
+				});
+			}
 			this.crash_choice(column, "Restart").button_release_event.connect((e) => {
 				foreach (var actor in this.crash_actors) {
 					actor.destroy();
@@ -312,8 +324,10 @@ namespace Gsr.Server.Rpc
 				}
 				return true;
 			});
-			this.crash_choice(column, "Log Out").button_release_event.connect((e) => {
-				this.on_crash_logout();
+			var logout_choice = this.crash_choice(column, "Log Out");
+			logout_choice.button_release_event.connect((e) => {
+				logout_choice.reactive = false;
+				this.on_crash_logout.begin();
 				return true;
 			});
 			notice.add_child(column);
@@ -349,13 +363,36 @@ namespace Gsr.Server.Rpc
 		}
 
 		/**
-		 * "Log Out" on the give-up screen. Exits this mutter immediately.
-		 * SessionManager.Logout is rejected until the running phase, and
-		 * waiting on it is what made the button sluggish.
-		 FIXME  DOES NOT WORK
+		 * "Log Out" on the give-up screen. {@code SessionManager.Logout}
+		 * only works once gnome-session is RUNNING; on success gnome-session
+		 * stops this unit itself. Before that, logind {@code Session.Terminate}
+		 * on {@code session/auto} ({@code XDG_SESSION_ID} is not set inside
+		 * a user service).
 		 */
-		private void on_crash_logout()
+		private async void on_crash_logout()
 		{
+			try {
+				var bus = yield GLib.Bus.get(GLib.BusType.SESSION);
+				yield bus.call(
+					"org.gnome.SessionManager", "/org/gnome/SessionManager",
+					"org.gnome.SessionManager", "Logout",
+					new GLib.Variant("(u)", 1), null,
+					GLib.DBusCallFlags.NONE, -1, null);
+				return;
+			} catch (GLib.Error e) {
+				GLib.warning("SessionManager.Logout: %s", e.message);
+			}
+			try {
+				var bus = yield GLib.Bus.get(GLib.BusType.SYSTEM);
+				yield bus.call(
+					"org.freedesktop.login1", "/org/freedesktop/login1/session/auto",
+					"org.freedesktop.login1.Session", "Terminate",
+					null, null,
+					GLib.DBusCallFlags.NONE, -1, null);
+				return;
+			} catch (GLib.Error e) {
+				GLib.warning("login1 Session.Terminate: %s", e.message);
+			}
 			this.display.get_context().terminate();
 		}
 	}
