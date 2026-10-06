@@ -59,10 +59,14 @@ Widget.new
 
 # Adjustment.override — GIR ctor needs actor + six doubles; mint with zeros.
 # Transitions stay client-owned (Clutter.Transition not always leased).
+# value: stock st_adjustment_set_value returns when priv->value already
+# matches and does not notify. The override setter does the same so a
+# notify applied with set_property does not send set_value again.
 Adjustment.new
 Adjustment.add_transition
 Adjustment.remove_transition
 Adjustment.get_transition
+Adjustment.value
 
 # GLib.Icon not on object wire — Icon.override via Gsr-St-Icon string form.
 Icon.gicon

@@ -1,8 +1,11 @@
 /**
- * A server notify is applied with proxy.set_property(). The generated
- * setter stores the value and returns before call_poll when it already
- * matches. The server peer notifies on every set, including the same
- * value, so the echo does not die on the server.
+ * A server notify is applied with proxy.set_property(). Stock
+ * st_adjustment_set_value returns when priv->value already matches.
+ * The St.Adjustment.value setter does the same and returns before
+ * call_poll. The server peer notifies on every set, including the
+ * same value, so the echo does not die on the server.
+ *
+ * This is that setter only. Other generated setters send every write.
  *
  *   meson compile -C build tests/call-sync-repro/notify-proxy-setter-echo-gate
  *   timeout 5 ./build/tests/call-sync-repro/notify-proxy-setter-echo-gate
@@ -15,26 +18,15 @@
 class ServerPeer : GLib.Object, OLLMrpc.Live.Interface
 {
 	public uint64 rpc_lid { get; set construct; default = 0; }
-	private bool stored_visible = false;
-	private double stored_level = 0;
+	private double stored_value = 0;
 
-	public bool visible {
+	public double @value {
 		get {
-			return this.stored_visible;
+			return this.stored_value;
 		}
 		set {
-			this.stored_visible = value;
-			this.notify_property("visible");
-		}
-	}
-
-	public double level {
-		get {
-			return this.stored_level;
-		}
-		set {
-			this.stored_level = value;
-			this.notify_property("level");
+			this.stored_value = value;
+			this.notify_property("value");
 		}
 	}
 }
@@ -44,34 +36,20 @@ class ClientProxy : GLib.Object, OLLMrpc.Live.Interface
 	public static int outbound_sets = 0;
 	public static int depth = 0;
 	public static OLLMrpc.Client? rpc;
-	private bool stored_visible = false;
-	private double stored_level = 0;
+	private double stored_value = 0;
 
 	public uint64 rpc_lid { get; set construct; default = 0; }
 
-	public bool visible {
+	public double @value {
 		get {
-			return this.stored_visible;
+			return this.stored_value;
 		}
 		set {
-			if (this.stored_visible == value) {
+			if (this.stored_value == value) {
 				return;
 			}
-			this.stored_visible = value;
-			this.send("EchoGate.set_visible", OLLMrpc.args("b", value));
-		}
-	}
-
-	public double level {
-		get {
-			return this.stored_level;
-		}
-		set {
-			if (this.stored_level == value) {
-				return;
-			}
-			this.stored_level = value;
-			this.send("EchoGate.set_level", OLLMrpc.args("d", value));
+			this.stored_value = value;
+			this.send("EchoGate.set_value", OLLMrpc.args("d", value));
 		}
 	}
 
@@ -106,8 +84,7 @@ class EchoGate : GLib.Object
 		OLLMrpc.Request.add_class(
 			"EchoGate", typeof(EchoGate),
 			"make", "",
-			"set_visible", "",
-			"set_level", "",
+			"set_value", "",
 			null
 		);
 		OLLMrpc.Request.register_live("EchoGate", new EchoGate());
@@ -125,27 +102,14 @@ class EchoGate : GLib.Object
 		});
 	}
 
-	public void set_visible(OLLMrpc.Request request)
+	public void set_value(OLLMrpc.Request request)
 	{
 		if (EchoGate.peer == null || request.args.size < 1) {
 			request.connection.reply_error(
 				request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 			return;
 		}
-		EchoGate.peer.visible = request.args.get(0).get_boolean();
-		request.reply(new OLLMrpc.Response() {
-			id = request.id,
-		});
-	}
-
-	public void set_level(OLLMrpc.Request request)
-	{
-		if (EchoGate.peer == null || request.args.size < 1) {
-			request.connection.reply_error(
-				request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
-			return;
-		}
-		EchoGate.peer.level = request.args.get(0).get_double();
+		EchoGate.peer.@value = request.args.get(0).get_double();
 		request.reply(new OLLMrpc.Response() {
 			id = request.id,
 		});
@@ -259,20 +223,13 @@ int main(string[] args)
 	};
 	client.proxies.set((int) lid, proxy);
 
-	var got_visible = false;
-	var got_level = false;
+	var got_value = false;
 	client.notification.connect((notif) => {
-		if (notif.method == "notify::visible"
-				&& notif.args.size == 1
-				&& notif.args.get(0).holds(GLib.Type.BOOLEAN)
-				&& notif.args.get(0).get_boolean()) {
-			got_visible = true;
-		}
-		if (notif.method == "notify::level"
+		if (notif.method == "notify::value"
 				&& notif.args.size == 1
 				&& notif.args.get(0).holds(GLib.Type.DOUBLE)
 				&& notif.args.get(0).get_double() == 1.5) {
-			got_level = true;
+			got_value = true;
 		}
 	});
 
@@ -280,12 +237,7 @@ int main(string[] args)
 		client.call_poll(new OLLMrpc.Request() {
 			method = "RPC-Live-Subscribe.rpc_signal",
 			lease_id = lid,
-			args = OLLMrpc.args("s", "notify::visible"),
-		});
-		client.call_poll(new OLLMrpc.Request() {
-			method = "RPC-Live-Subscribe.rpc_signal",
-			lease_id = lid,
-			args = OLLMrpc.args("s", "notify::level"),
+			args = OLLMrpc.args("s", "notify::value"),
 		});
 	} catch (GLib.Error e) {
 		server.force_exit();
@@ -294,39 +246,29 @@ int main(string[] args)
 	}
 
 	ClientProxy.outbound_sets = 0;
-	proxy.visible = true;
-	if (!got_visible || ClientProxy.outbound_sets != 1) {
+	proxy.@value = 0;
+	if (ClientProxy.outbound_sets != 0) {
 		server.force_exit();
 		stderr.printf(
-			"FAIL notify-proxy-setter-echo-gate: visible notify=%s outbound=%d\n",
-			got_visible ? "yes" : "no",
-			ClientProxy.outbound_sets);
-		return 1;
-	}
-	proxy.visible = true;
-	if (ClientProxy.outbound_sets != 1) {
-		server.force_exit();
-		stderr.printf(
-			"FAIL notify-proxy-setter-echo-gate: same visible sent %d\n",
+			"FAIL notify-proxy-setter-echo-gate: stored value sent %d\n",
 			ClientProxy.outbound_sets);
 		return 1;
 	}
 
-	ClientProxy.outbound_sets = 0;
-	proxy.level = 1.5;
-	if (!got_level || ClientProxy.outbound_sets != 1) {
+	proxy.@value = 1.5;
+	if (!got_value || ClientProxy.outbound_sets != 1) {
 		server.force_exit();
 		stderr.printf(
-			"FAIL notify-proxy-setter-echo-gate: level notify=%s outbound=%d\n",
-			got_level ? "yes" : "no",
+			"FAIL notify-proxy-setter-echo-gate: value notify=%s outbound=%d\n",
+			got_value ? "yes" : "no",
 			ClientProxy.outbound_sets);
 		return 1;
 	}
-	proxy.level = 1.5;
+	proxy.@value = 1.5;
 	if (ClientProxy.outbound_sets != 1) {
 		server.force_exit();
 		stderr.printf(
-			"FAIL notify-proxy-setter-echo-gate: same level sent %d\n",
+			"FAIL notify-proxy-setter-echo-gate: same value sent %d\n",
 			ClientProxy.outbound_sets);
 		return 1;
 	}

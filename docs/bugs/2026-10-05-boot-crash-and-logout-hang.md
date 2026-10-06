@@ -47,10 +47,12 @@ generated client setter had no such field, so `set_property` sent
 `OLLMchat/docs/bugs/2026-10-06-notify-proxy-setter-echo.md` concludes
 this is not a libocrpc bug.
 
-The generated setter now keeps the last value (`priv_<name>` in
-`gi-stub-gen`) and returns before `call_poll` when it
-already matches. A changed value still goes through the setter once.
-The gate's server notifies on every set, including the same value:
+The client `St.Adjustment.value` setter, in `Adjustment.override.vala`,
+keeps the last value and returns before `call_poll` when it already
+matches. Stock `st_adjustment_set_value` is the setter that compares.
+Other generated setters do not. A changed value still goes through
+once. The gate's server notifies on every set, including the same
+value:
 
 ```text
 PASS notify-proxy-setter-echo-gate
@@ -183,8 +185,8 @@ back into `dispatch_message`.
 That is the 15:30 notify echo. A `notify::value` calls the proxy
 setter, the setter sends `St-Adjustment.set_value`, and the reply
 notify does it again until the stack overflows. libocrpc stays on
-`set_property`. The generated setter now returns before `call_poll`
-when the bits already match. Do not patch `workspace.js`.
+`set_property`. The `St.Adjustment.value` setter returns before
+`call_poll` when the bits already match. Do not patch `workspace.js`.
 
 Server 593932 trapped in the same second, `GLib.error` in
 `Connection.drain_readable` while parsing. The second client died
@@ -206,10 +208,10 @@ The client log at 10:08:59 is the same notify echo, now also in JS.
 `notify::value` is followed by `St-Adjustment.set_value`, and
 `workspace.js` `_updateBorderRadius` (connected at line 955 to that
 notify) logs `JS ERROR: too much recursion`. The client SIGSEGV is
-10:09:01. The OPC writeup concludes it is the consumer's generated setter.
-That setter now holds the value and returns before `call_poll` when
-the bits already match. `notify-proxy-setter-echo-gate` passes. Do
-not patch `workspace.js`.
+10:09:01. The OPC writeup concludes it is the consumer's setter. The
+`St.Adjustment.value` setter holds the value and returns before
+`call_poll` when the bits already match.
+`notify-proxy-setter-echo-gate` passes. Do not patch `workspace.js`.
 
 The crash screen did not appear because the server died with the
 client. At 10:09:01.924 `mutter-rpc.debug.log` has
@@ -218,3 +220,35 @@ and the kernel `trap int3` is that `GLib.error`. `on_crash()` runs
 from the client wait callback. An abort in `drain_readable` ends the
 compositor first, so the backdrop is never painted. A parse error now
 warns and stops the connection, the same way HUP already does.
+
+## Seen again — 2026-10-06 12:58 (VM)
+
+`alan@192.168.88.197`, host `alan-VirtualBox`. Session 3 from GDM at
+12:58:16. Installed that hour: `/usr/bin/gsr-client` and `/usr/bin/gsr-server`
+(mtime 12:44:34). `libocrpc1` `1.4.0-1`, `/usr/lib/x86_64-linux-gnu/libocrpc.so`
+510264 bytes, mtime 2026-10-02 08:00. The dev machine's `libocrpc.so` is the
+2026-10-05 build (2119776 bytes). `gsr-server` 2526 is still the compositor.
+No new file under `/var/crash/`. `coredumpctl` is not installed.
+
+`/usr/bin/yelp` 3229 started at 12:58:35. Its parent is now
+`systemd --user` because the client that launched it has exited.
+
+| PID | What the log still has | Death |
+| --- | --- | --- |
+| 2838 | Spawned 12:58:18. Last server recv 12:58:38.023: `Clutter-Actor.get_children` id 13141. | 12:58:38.336 `connection write error: live object MetaWindowWayland not in connection.lease_ids`. `window_created title=(null) frame=0,0 0x0` at 12:58:38.381. Kernel `trap int3` in `libglib-2.0.so.0.8400.1` at `0x73e0f`. |
+| 3362 | Crash-screen restart. Spawned 12:58:41 (`manual-restart=false` on 2838, so this was the Restart click). Last client line 12:58:50.893: `before-update` after `Clutter-Stage.schedule_update`. | 12:58:50.894 `malloc_consolidate(): unaligned fastbin chunk detected`. Server 12:58:52.102 `Broken pipe`. No second kernel trap. `client exited manual-restart=false` at 12:58:52.163, so the crash screen is up again and nothing respawned. |
+
+The first death is [`done/2026-10-03-new-window-kills-client.md`](done/2026-10-03-new-window-kills-client.md).
+A subscribed signal carries the new `Meta.Window` before
+`Meta.Display::window-created` exports it. This VM's `libocrpc` 1.4.0-1
+does not contain that export. The 1.4.0 changelog has no such entry.
+Do not patch the shell for this write. The library on this machine is
+the old package.
+
+The second death is a heap abort in the restarted client, one millisecond
+after `before-update`. The server did not throw `lease_ids` again; it
+wrote into a socket the client had already closed. Both clients logged
+`g_atomic_ref_count_dec: assertion 'old_value > 0' failed` through
+startup, and `mapped` not writable on `StEntry`, `StWidget`, and
+`WorkspacesDisplay`. Those criticals are still in the journal. They are
+not the line that names either death.

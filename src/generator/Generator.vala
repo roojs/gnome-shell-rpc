@@ -1423,80 +1423,6 @@ $(minted)				this.rpc_ctor_clear();
 					vt = vt + "?";
 				}
 
-				/*
-				 * Notify apply is set_property. Store before call_poll so
-				 * the same value coming back does not send the setter again.
-				 * Boxed records have no ==. Strings and objects are nullable
-				 * so the field can start unset.
-				 */
-				var echo = write_method || write_gprop;
-				var prop_ti = pi.get_type();
-				var prop_tag = prop_ti.get_tag();
-				GI.BaseInfo? prop_iface = null;
-				if (echo) {
-					switch (prop_tag) {
-						case GI.TypeTag.BOOLEAN:
-						case GI.TypeTag.INT8:
-						case GI.TypeTag.UINT8:
-						case GI.TypeTag.INT16:
-						case GI.TypeTag.UINT16:
-						case GI.TypeTag.INT32:
-						case GI.TypeTag.UINT32:
-						case GI.TypeTag.INT64:
-						case GI.TypeTag.UINT64:
-						case GI.TypeTag.UNICHAR:
-						case GI.TypeTag.UTF8:
-						case GI.TypeTag.FILENAME:
-						case GI.TypeTag.GTYPE:
-						case GI.TypeTag.FLOAT:
-						case GI.TypeTag.DOUBLE:
-							break;
-						case GI.TypeTag.INTERFACE:
-							prop_iface = prop_ti.get_interface();
-							if (prop_iface == null) {
-								echo = false;
-								break;
-							}
-							var kind = prop_iface.get_type();
-							echo = kind == GI.InfoType.ENUM
-								|| kind == GI.InfoType.FLAGS
-								|| kind == GI.InfoType.OBJECT
-								|| kind == GI.InfoType.INTERFACE;
-							break;
-						default:
-							echo = false;
-							break;
-					}
-				}
-				if (echo && write_gprop && construct_only) {
-					foreach (var arg_name in ctor_args) {
-						if (arg_name == pname
-								|| arg_name.replace("_", "-") == pname) {
-							echo = false;
-							break;
-						}
-					}
-				}
-				var echo_field = vala_name.replace("@", "");
-				if (echo) {
-					var field_vt = vt;
-					if (!vt.has_suffix("?")) {
-						if (prop_tag == GI.TypeTag.UTF8
-								|| prop_tag == GI.TypeTag.FILENAME) {
-							field_vt = vt + "?";
-						} else if (prop_iface != null) {
-							var kind = prop_iface.get_type();
-							if (kind == GI.InfoType.OBJECT
-									|| kind == GI.InfoType.INTERFACE) {
-								field_vt = vt + "?";
-							}
-						}
-					}
-					var field_init = field_vt.has_suffix("?") ? " = null" : "";
-					stream.puts(@"		private $(field_vt) priv_$(echo_field)$(field_init);
-");
-				}
-
 				stream.puts(@"		public $(vt) $(vala_name) {
 ");
 				if (read_method && getter != null) {
@@ -1551,13 +1477,6 @@ $(minted)				this.rpc_ctor_clear();
 ");
 					}
 					stream.puts("			set {\n");
-					if (echo) {
-						stream.puts(@"				if (this.priv_$(echo_field) == value) {
-					return;
-				}
-				this.priv_$(echo_field) = value;
-");
-					}
 					for (var a = 0; a < setter.get_n_args(); a++) {
 						var arg = setter.get_arg(a);
 						if (arg.is_skip()
@@ -1613,13 +1532,6 @@ $(minted)				this.rpc_ctor_clear();
 							stream.puts("			construct {\n");
 						} else {
 							stream.puts("			set {\n");
-						}
-						if (echo) {
-							stream.puts(@"				if (this.priv_$(echo_field) == value) {
-					return;
-				}
-				this.priv_$(echo_field) = value;
-");
 						}
 					if (gprop_L == "ay") {
 						this.emit_boxed_bytes(stream, "\t\t\t\t", "value", vt);

@@ -1,8 +1,12 @@
 		/**
-		 * Client-owned transitions for workspaces adjustment. Scalar props
-		 * RPC via generated get/set; lease minted here ({@code Adjustment.new}
-		 * denied — GIR ctor needs actor + six doubles, lease construct would
-		 * call {@code .new} with no args).
+		 * Client-owned transitions for workspaces adjustment. Other scalar
+		 * props RPC via generated get/set. {@code value} is owned here:
+		 * stock {@code st_adjustment_set_value} returns when
+		 * {@code priv->value} already matches, so it does not notify.
+		 * libocrpc applies that notify with {@code set_property}. Lease
+		 * minted here ({@code Adjustment.new} denied — GIR ctor needs actor
+		 * + six doubles, lease construct would call {@code .new} with no
+		 * args).
 		 *
 		 * Stock implements {@link Clutter.Animatable} (typelib from distro
 		 * GIR); generator emits it via {@code Adjustment.implements=…}.
@@ -13,6 +17,25 @@
 		 */
 		private Gee.HashMap<string, Clutter.Transition> transitions {
 			get; default = new Gee.HashMap<string, Clutter.Transition>();
+		}
+
+		private double priv_value;
+
+		public double @value {
+			get {
+				var response = Gsr.Client.Rpc.call_value(
+					"St-Adjustment.get_value", this);
+				return (double) response.retval.get_double();
+			}
+			set {
+				if (this.priv_value == value) {
+					return;
+				}
+				this.priv_value = value;
+				Gsr.Client.Rpc.call_value(
+					"St-Adjustment.set_value", this,
+					OLLMrpc.args("d", value));
+			}
 		}
 
 		construct {
