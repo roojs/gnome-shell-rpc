@@ -366,3 +366,13 @@ ActorIter.is_valid
 ActorIter.next
 ActorIter.prev
 ActorIter.remove
+
+# PERMANENT — a hand override owns this boxed type, so we do not
+# generate another one.
+Clutter.Event
+Clutter.Frame
+Clutter.PickContext
+Mtk.Region
+Meta.KeyBinding
+# Vala binds this as a class, so the struct assignment does not compile.
+Meta.BarrierEvent

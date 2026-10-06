@@ -72,6 +72,7 @@ namespace Gsr.Server.Clutter
 				device_type = (int) device.get_device_type();
 			}
 			fields.add(OLLMrpc.val("i", device_type));
+			fields.add(OLLMrpc.val("u", ev.get_time()));
 			return fields;
 		}
 
@@ -88,7 +89,7 @@ namespace Gsr.Server.Clutter
 			int index,
 			out int consumed
 		) {
-			consumed = 8;
+			consumed = 9;
 			return GLib.Value(typeof(global::Clutter.Event));
 		}
 	}

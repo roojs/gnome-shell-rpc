@@ -20,14 +20,10 @@ namespace Gsr.Server.Clutter
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();
 		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
-		OLLMrpc.Bin.TypeOverride.register(new ActorBoxOverride());
-		OLLMrpc.Bin.TypeOverride.register(new GraphenePointOverride());
 		OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());
 		OLLMrpc.Bin.TypeOverride.register(new PickContextOverride());
-		OLLMrpc.Bin.TypeOverride.register(new RectangleOverride());
 		OLLMrpc.Bin.TypeOverride.register(new RegionOverride());
-		OLLMrpc.Bin.TypeOverride.register(new GrapheneRectOverride());
-		OLLMrpc.Bin.TypeOverride.register(new GrapheneSizeOverride());
+		Gsr.Boxed.register_Clutter_boxed_types();
 		/* Clutter-Frame stays immediately after Gi.register in Server.start. */
 		// OLLMrpc.Bin.register("Clutter-Frame", typeof(global::Clutter.Frame));
 		OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Constraint));

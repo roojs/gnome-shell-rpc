@@ -139,6 +139,7 @@ namespace Gsr.Server.Clutter
 				device_type = (int) device.get_device_type();
 			}
 			fields.add(OLLMrpc.val("i", device_type));
+			fields.add(OLLMrpc.val("u", event.get_time()));
 			hook.emit(fields);
 			if (hook.reply_args.size < 1) {
 				return false;

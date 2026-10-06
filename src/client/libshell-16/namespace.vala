@@ -4,15 +4,12 @@ namespace Shell
 	public void register()
 	{
 		ClutterEventOverride.register();
-		ActorBoxOverride.register();
-		GraphenePointOverride.register();
 		InputDeviceOverride.register();
 		PickContextOverride.register();
-		BarrierEventOverride.register();
 		KeyBindingOverride.register();
-		RectangleOverride.register();
+		BarrierEventOverride.register();
 		RegionOverride.register();
-		GrapheneRectOverride.register();
-		GrapheneSizeOverride.register();
+		Gsr.Boxed.register_Clutter_boxed_types();
+		Gsr.Boxed.register_St_boxed_types();
 	}
 }

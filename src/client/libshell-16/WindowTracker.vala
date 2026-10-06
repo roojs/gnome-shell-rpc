@@ -162,6 +162,16 @@ namespace Shell
 
 		public App? get_window_app(Meta.Window metawin)
 		{
+			var app = this.window_to_app.lookup(metawin);
+			if (app != null) {
+				return app;
+			}
+			/* window-entered-monitor reaches the workspace before
+			 * Meta.Display::window-created is delivered here. Stock
+			 * associates on window-created; associate on the first ask
+			 * so the preview can still take an icon.
+			 */
+			this.track_window(metawin);
 			return this.window_to_app.lookup(metawin);
 		}
 

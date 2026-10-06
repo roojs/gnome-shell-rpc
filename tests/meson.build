@@ -1,3 +1,4 @@
+subdir('boxed-pack-gate')
 subdir('call-sync-repro')
 subdir('clicked-slot-emit-gate')
 subdir('gstrv-gir-gate')

@@ -154,6 +154,7 @@ namespace Gsr.Server.Clutter
 				device_type = (int) device.get_device_type();
 			}
 			args.add(OLLMrpc.val("i", device_type));
+			args.add(OLLMrpc.val("u", ev.get_time()));
 			return args;
 		}
 	}

@@ -181,6 +181,7 @@ namespace $(ns)
 			this.write_helper_vfunc_ids();
 			this.write_missing_summary(ns);
 			this.fail_skipped_properties();
+			new BoxedType(this).emit(ns, out_path);
 			GLib.print("emitted %d stub(s) → %s\n", emitted, out_path);
 		}
 

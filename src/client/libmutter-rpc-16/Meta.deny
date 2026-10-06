@@ -123,3 +123,9 @@ Plugin.manager_set_plugin_type noop
 # X11 GHashTable helpers for XIDs; gnome-shell JS never calls them.
 unsigned_long_equal noop
 unsigned_long_hash noop
+
+# PERMANENT — a hand override owns this boxed type, so we do not
+# generate another one.
+Meta.KeyBinding
+# Vala binds this as a class, so the struct assignment does not compile.
+Meta.BarrierEvent

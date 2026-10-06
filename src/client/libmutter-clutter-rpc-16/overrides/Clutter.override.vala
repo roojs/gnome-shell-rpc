@@ -195,6 +195,7 @@
 		public Actor? related;
 		public uint32 scroll_source;
 		public InputDevice? source_device;
+		public uint32 time;
 
 		public Event.local(
 			EventType type,
@@ -205,7 +206,8 @@
 			uint32 keyval = 0,
 			Actor? related = null,
 			ScrollSource scroll_source = ScrollSource.unknown,
-			InputDevice? source_device = null
+			InputDevice? source_device = null,
+			uint32 time = 0
 		) {
 			this.event_type = type;
 			this.x = x;
@@ -216,6 +218,7 @@
 			this.related = related;
 			this.scroll_source = (uint32) scroll_source;
 			this.source_device = source_device;
+			this.time = time;
 		}
 
 		public static Event from_local(
@@ -235,8 +238,9 @@
 		}
 
 		/**
-		 * Scroll source and source-device type packed after the event's
-		 * other fields. Device type {@code -1} means there is no device.
+		 * Scroll source, source-device type, then event time, packed after
+		 * the event's other fields. Device type {@code -1} means there is
+		 * no device. Time is {@code clutter_event_get_time}.
 		 */
 		public void read_scroll_tail(
 			Gee.ArrayList<GLib.Value?> fields,
@@ -246,16 +250,17 @@
 				return;
 			}
 			this.scroll_source = fields.get(index).get_uint();
-			if (fields.size <= index + 1) {
-				return;
+			if (fields.size > index + 1) {
+				var device_type = fields.get(index + 1).get_int();
+				if (device_type >= 0) {
+					var device = new InputDevice();
+					device.device_type = (InputDeviceType) device_type;
+					this.source_device = device;
+				}
 			}
-			var device_type = fields.get(index + 1).get_int();
-			if (device_type < 0) {
-				return;
+			if (fields.size > index + 2) {
+				this.time = fields.get(index + 2).get_uint();
 			}
-			var device = new InputDevice();
-			device.device_type = (InputDeviceType) device_type;
-			this.source_device = device;
 		}
 
 		/**
@@ -282,7 +287,8 @@
 			return new Event.local(
 				this.event_type, this.x, this.y, this.button,
 				this.state, this.keyval, this.related,
-				(ScrollSource) this.scroll_source, this.source_device);
+				(ScrollSource) this.scroll_source, this.source_device,
+				this.time);
 		}
 
 		[CCode (cname = "clutter_event_type")]
@@ -351,6 +357,15 @@
 		[CCode (cname = "clutter_event_get_device")]
 		public unowned InputDevice? get_device() {
 			return this.source_device;
+		}
+
+		/**
+		 * Stock {@code clutter_event_get_time}. Shell drag code reads this
+		 * from a button press. Zero when the packed event carried no time.
+		 */
+		[CCode (cname = "clutter_event_get_time")]
+		public uint32 get_time() {
+			return this.time;
 		}
 	}
 

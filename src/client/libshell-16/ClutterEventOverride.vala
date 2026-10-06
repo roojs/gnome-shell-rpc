@@ -83,6 +83,7 @@ namespace Shell
 				device_type = (int) device.device_type;
 			}
 			fields.add(OLLMrpc.val("i", device_type));
+			fields.add(OLLMrpc.val("u", ev.get_time()));
 			return fields;
 		}
 
@@ -99,7 +100,7 @@ namespace Shell
 			int index,
 			out int consumed
 		) {
-			consumed = 8;
+			consumed = 9;
 			var ev = Clutter.Event.from_local(
 				(Clutter.EventType) fields.get(index).get_int(),
 				(float) fields.get(index + 1).get_double(),

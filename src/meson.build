@@ -54,16 +54,12 @@ compositor_sources = files(
   'server/libmutter-clutter-16/Devices.vala',
   'server/libmutter-clutter-16/LayoutHooks.vala',
   'server/libmutter-clutter-16/ClutterEventOverride.vala',
-  'server/libmutter-clutter-16/ActorBoxOverride.vala',
-  'server/libmutter-clutter-16/GraphenePointOverride.vala',
   'server/libmutter-clutter-16/InputDeviceOverride.vala',
   'server/libmutter-clutter-16/PickContextOverride.vala',
-  'server/libmutter-clutter-16/RectangleOverride.vala',
   'server/libmutter-clutter-16/RegionOverride.vala',
-  'server/libmutter-clutter-16/GrapheneRectOverride.vala',
-  'server/libmutter-clutter-16/GrapheneSizeOverride.vala',
   'server/libmutter-clutter-16/shader-uniform-apply.c',
   'server/libst-16/namespace.vala',
+  'server/libst-16/BoxedTypeOverrides.vala',
   'server/libst-16/St.vala',
   'server/libst-16/ThemeContext.vala',
   'server/libst-16/Icon.vala',
@@ -192,6 +188,7 @@ gi_stub_gen = executable('gi-stub-gen',
     'generator/namespace.vala',
     'generator/HeaderConfig.vala',
     'generator/Generator.vala',
+    'generator/BoxedType.vala',
     'generator/HeaderGenerator.vala',
     'generator/Application.vala',
   ),
@@ -451,6 +448,18 @@ clutter_helper_vfunc_ids = custom_target('Clutter_helper_vfunc_ids.vala',
   ],
   input: [clutter_deny_file, clutter_overrides_file, batch_whitelist] + clutter_override_files,
   depends: [gi_stub_gen],
+  build_by_default: true,
+)
+# The Clutter emit writes this beside the stubs. Vala cannot take a
+# second output of that target, so copy it to its own output.
+clutter_boxed = custom_target('Clutter_boxed.vala',
+  input: clutter_generated,
+  output: 'Clutter_boxed.vala',
+  command: [
+    'cp',
+    meson.current_build_dir() / 'Clutter_generated_boxed.vala',
+    '@OUTPUT@',
+  ],
   build_by_default: true,
 )
 
@@ -798,6 +807,16 @@ st_generated = custom_target('St_generated.vala',
   depends: [gi_stub_gen],
   build_by_default: true,
 )
+st_boxed = custom_target('St_boxed.vala',
+  input: st_generated,
+  output: 'St_boxed.vala',
+  command: [
+    'cp',
+    meson.current_build_dir() / 'St_generated_boxed.vala',
+    '@OUTPUT@',
+  ],
+  build_by_default: true,
+)
 
 st_rpc_gir_name = 'st-rpc-16'
 st_rpc_lib = shared_library(
@@ -861,20 +880,17 @@ mutter_rpc_client_dep = declare_dependency(
 dependency('libsystemd')
 shell_gi_lib = shared_library(
   'shell-16',
+  clutter_boxed,
+  st_boxed,
   files(
     'client/libshell-16/namespace.vala',
     'client/libshell-16/Signals.vala',
     'client/libshell-16/ClutterEventOverride.vala',
-    'client/libshell-16/ActorBoxOverride.vala',
-    'client/libshell-16/GraphenePointOverride.vala',
     'client/libshell-16/InputDeviceOverride.vala',
     'client/libshell-16/PickContextOverride.vala',
-    'client/libshell-16/BarrierEventOverride.vala',
     'client/libshell-16/KeyBindingOverride.vala',
-    'client/libshell-16/RectangleOverride.vala',
+    'client/libshell-16/BarrierEventOverride.vala',
     'client/libshell-16/RegionOverride.vala',
-    'client/libshell-16/GrapheneRectOverride.vala',
-    'client/libshell-16/GrapheneSizeOverride.vala',
     'client/libshell-16/ActionMode.vala',
     'client/libshell-16/AppState.vala',
     'client/libshell-16/AppLaunchGpu.vala',
@@ -1354,6 +1370,7 @@ endif
 
 mutter_rpc = executable('gsr-server',
   compositor_sources,
+  clutter_boxed,
   clutter_helper_vfunc_ids,
   files(meson.project_source_root() / 'vapi' / 'gsr-clutter-event-key.c'),
   rpc_config,

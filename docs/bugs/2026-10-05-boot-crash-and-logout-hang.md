@@ -154,6 +154,9 @@ handed: `ClutterEventSequence`, `ClutterMargin`, `ClutterPaintVolume`,
 `ClutterPerspective`, `CoglColor`, `CoglFrameClosure`, `CoglMatrixEntry`,
 `GrapheneMatrix`, `GraphenePoint3D`, `StIconColors`, `StShadow`.
 
+The rest of that list, including the Graphene math records and
+`St.ShadowHelper`, is [`2026-10-06-uncovered-boxed-types.md`](2026-10-06-uncovered-boxed-types.md).
+
 ## Seen again — 2026-10-06 09:29
 
 Installed 09:29:18, including the five signal `TypeOverride`s.

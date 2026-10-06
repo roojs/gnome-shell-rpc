@@ -34,5 +34,6 @@ union _ClutterEvent
 		ClutterActor *related;
 		guint32 scroll_source;
 		ClutterInputDevice *source_device;
+		guint32 time;
 	};
 };
