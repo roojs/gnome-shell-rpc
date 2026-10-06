@@ -18,7 +18,7 @@ The guide from **Checklist for plans** through **LLM implementer guardrails** is
 - **1.1** is **✅** (user 2026-10-03) — [`done/1.1-installable-bootable-session.md`](plans/done/1.1-installable-bootable-session.md).
 - **0.8** is **✅** (user 2026-10-02) — [`done/0.8-init-complete-and-interaction.md`](plans/done/0.8-init-complete-and-interaction.md). **0.8.4** and **0.8.6** are **✅** in [`plans/done/`](plans/done/). **0.8.3** is **✔️** (H1 only, 2026-10-05) in [`plans/done/0.8.3-rpc-lid-hardening.md`](plans/done/0.8.3-rpc-lid-hardening.md).
 - **0.9** and **1.0** stay backlog and are not active.
-- **1.3** is written and not started — [`plans/1.3-boxed-type-generator.md`](plans/1.3-boxed-type-generator.md). Do not implement it until the user says to.
+- **1.3** is **✅** archived 2026-10-06 — [`plans/done/1.3-boxed-type-generator.md`](plans/done/1.3-boxed-type-generator.md).
 - Boot-through-`init.js` is **✔️** archived under [`done/0.7.7-thin-shell-bootstrap.md`](plans/done/0.7.7-thin-shell-bootstrap.md). Plans **0.1–0.7** live in [`plans/done/`](plans/done/) — reference only.
 - Treat stub completeness, header %, and full API parity as **means** — only pursue them when they unblock the **current** plan phase.
 - Put the **user goal** from the active plan at the **top of every new plan** (after the title). Do not bury it. With no active plan, do not start **0.9** or **1.0** until the user names the next one.

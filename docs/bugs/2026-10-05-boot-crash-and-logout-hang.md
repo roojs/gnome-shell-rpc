@@ -155,7 +155,7 @@ handed: `ClutterEventSequence`, `ClutterMargin`, `ClutterPaintVolume`,
 `GrapheneMatrix`, `GraphenePoint3D`, `StIconColors`, `StShadow`.
 
 The rest of that list, including the Graphene math records and
-`St.ShadowHelper`, is [`2026-10-06-uncovered-boxed-types.md`](2026-10-06-uncovered-boxed-types.md).
+`St.ShadowHelper`, is [`done/2026-10-06-uncovered-boxed-types.md`](done/2026-10-06-uncovered-boxed-types.md).
 
 ## Seen again — 2026-10-06 09:29
 

@@ -1,6 +1,6 @@
 # Uncovered boxed types
 
-**Status:** ⏳ open. Overrides are in the tree. The Ubuntu VM has not been given this build.
+**Status:** ✅ closed 2026-10-06. User asked to archive it. The generator and `tests/boxed-pack-gate` are in the tree. This build has not been installed on the Ubuntu VM.
 
 `Graphene.Size` on `notify::size` already has a `TypeOverride`. The same
 `unsupported bin value type` throw remains for every other boxed GType

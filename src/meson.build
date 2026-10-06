@@ -463,6 +463,24 @@ clutter_boxed = custom_target('Clutter_boxed.vala',
   build_by_default: true,
 )
 
+# Gsr.Boxed is its own namespace. Shell-16 writes a GIR, and a GIR
+# cannot hold a second top-level namespace, so this compiles alone.
+gsr_clutter_boxed_lib = static_library(
+  'gsr-clutter-boxed',
+  clutter_boxed,
+  dependencies: [
+    ocrpc_dep,
+    dependency('gee-0.8'),
+    dependency('graphene-gobject-1.0'),
+  ] + mutter_dep,
+  vala_args: mutter_vala_args + ocrpc_vala_args + [
+    '--pkg=gee-0.8',
+    '--pkg=graphene-gobject-1.0',
+  ],
+  vala_header: 'gsr-clutter-boxed.h',
+  vala_vapi: 'gsr-clutter-boxed.vapi',
+)
+
 # Client RPC base. Other client libs link this. It does not link them:
 # meta_register / st_register / shell hooks / prop-batch flush stay unresolved
 # until gsr-client loads every .so.
@@ -860,6 +878,29 @@ st_rpc_lib = shared_library(
   install_rpath: mutter_typelib_dir,
 )
 
+# Same split as the Clutter boxed library: St records stay out of the
+# Shell GIR compilation. The server has no St vapi, so it does not
+# link this.
+gsr_st_boxed_lib = static_library(
+  'gsr-st-boxed',
+  st_boxed,
+  dependencies: [
+    ocrpc_dep,
+    dependency('gee-0.8'),
+    dependency('graphene-gobject-1.0'),
+    dependency('gdk-pixbuf-2.0'),
+  ] + mutter_dep,
+  link_with: st_rpc_lib,
+  vala_args: mutter_vala_args + ocrpc_vala_args + [
+    '--pkg=gee-0.8',
+    '--pkg=graphene-gobject-1.0',
+    '--pkg=st-rpc-16',
+    '--vapidir', meson.current_build_dir(),
+  ],
+  vala_header: 'gsr-st-boxed.h',
+  vala_vapi: 'gsr-st-boxed.vapi',
+)
+
 mutter_rpc_client_dep = declare_dependency(
   link_with: [mutter_rpc_lib, st_rpc_lib],
   dependencies: [
@@ -880,8 +921,6 @@ mutter_rpc_client_dep = declare_dependency(
 dependency('libsystemd')
 shell_gi_lib = shared_library(
   'shell-16',
-  clutter_boxed,
-  st_boxed,
   files(
     'client/libshell-16/namespace.vala',
     'client/libshell-16/Signals.vala',
@@ -935,7 +974,12 @@ shell_gi_lib = shared_library(
     dependency('polkit-gobject-1'),
     dependency('gcr-4'),
     declare_dependency(
-      link_with: [mutter_rpc_lib, st_rpc_lib],
+      link_with: [
+        mutter_rpc_lib,
+        st_rpc_lib,
+        gsr_clutter_boxed_lib,
+        gsr_st_boxed_lib,
+      ],
       dependencies: [
         mutter_clutter_rpc_client_dep,
         dependency('mutter-mtk-16'),
@@ -974,6 +1018,8 @@ shell_gi_lib = shared_library(
     '--pkg=atk',
     '--pkg=pango',
     '--pkg=graphene-gobject-1.0',
+    '--pkg=gsr-clutter-boxed',
+    '--pkg=gsr-st-boxed',
     '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.project_build_root() / 'vapi',
@@ -1370,7 +1416,6 @@ endif
 
 mutter_rpc = executable('gsr-server',
   compositor_sources,
-  clutter_boxed,
   clutter_helper_vfunc_ids,
   files(meson.project_source_root() / 'vapi' / 'gsr-clutter-event-key.c'),
   rpc_config,
@@ -1379,8 +1424,16 @@ mutter_rpc = executable('gsr-server',
     mutter_dep,
     ocrpc_dep,
     dependency('gobject-introspection-1.0'),
+    dependency('gee-0.8'),
+    dependency('graphene-gobject-1.0'),
   ],
-  vala_args: mutter_rpc_vala_args,
+  link_with: gsr_clutter_boxed_lib,
+  vala_args: mutter_rpc_vala_args + [
+    '--pkg=gee-0.8',
+    '--pkg=graphene-gobject-1.0',
+    '--pkg=gsr-clutter-boxed',
+    '--vapidir', meson.current_build_dir(),
+  ],
   c_args: [
     '-I' + meson.project_source_root() / 'vapi',
   ],
