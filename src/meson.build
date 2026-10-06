@@ -467,6 +467,7 @@ clutter_boxed = custom_target('Clutter_boxed.vala',
 # cannot hold a second top-level namespace, so this compiles alone.
 gsr_clutter_boxed_lib = static_library(
   'gsr-clutter-boxed',
+  'boxed/namespace.vala',
   clutter_boxed,
   dependencies: [
     ocrpc_dep,
@@ -883,6 +884,7 @@ st_rpc_lib = shared_library(
 # link this.
 gsr_st_boxed_lib = static_library(
   'gsr-st-boxed',
+  'boxed/namespace.vala',
   st_boxed,
   dependencies: [
     ocrpc_dep,
