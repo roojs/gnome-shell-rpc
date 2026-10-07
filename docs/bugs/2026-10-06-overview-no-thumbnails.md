@@ -1,6 +1,6 @@
 # Window overview has no thumbnails
 
-**Status:** ⏳ open. Picker clicks are [`2026-10-06-picker-click-get-time.md`](2026-10-06-picker-click-get-time.md).
+**Status:** ⏳ open. Picker clicks are [`done/2026-10-06-picker-click-get-time.md`](done/2026-10-06-picker-click-get-time.md).
 
 `alan@192.168.88.197`, session 6, 14:03. Help (`/usr/bin/yelp` 6040) and Terminal (`gnome-terminal-server` 6314) were running. The window overview drew no thumbnails.
 
@@ -30,4 +30,8 @@ The client log has `window-entered-monitor` and the custom `Window.created` noti
 
 ## Fix
 
-`WindowTracker.get_window_app` associates the window on the first ask when `window-created` has not arrived yet. The preview can then call `create_icon_texture`. `gsr-client` rebuilds. Not proven on a new login yet.
+`WindowTracker.get_window_app` associates the window on the first ask when `window-created` has not arrived yet. The 2026-10-07 09:17 nest no longer logs `app is null`.
+
+The preview still never gets a clone. `windowPreview.js` calls `metaWindow.get_compositor_private()` before `create_icon_texture`. Every call that morning returned `-32602` with an empty message (`Meta-Window.get_compositor_private`, ids 20002 onward). Typelib dispatch refuses the return because the GIR type is bare `GObject`, even when the live object is a window actor already aliased as `Meta-WindowActor`.
+
+`Meta-Window.get_compositor_private` is now a hand method. It returns the compositor private object under the nearest registered type, so the overview can clone it. Not proven on a new login yet.

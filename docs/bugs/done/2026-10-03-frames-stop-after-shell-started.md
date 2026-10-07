@@ -1,6 +1,6 @@
 # Frames stop after “GNOME Shell started”
 
-**Status:** ⏳ open. User 2026-10-03. Debug session looked hung. The client log goes quiet. The main loop is still running. `before-update` stops.
+**Status:** ✅ closed 2026-10-07. User: assume fixed.
 
 **Plan:** [`../plans/done/1.2-teardown-and-restart.md`](../plans/done/1.2-teardown-and-restart.md) is archived. This is a separate boot hang.
 
@@ -26,7 +26,7 @@ Same second, on the session log:
 
 No `JS ERROR`. No `too much recursion`. No following “Error registering session with GDM”. Client debug log ends on the `add_child` reply. Mutter keeps running: a burst of `has no handler with id` (already archived, session survived it before), then pointer motion at 09:15:04. That motion does not show up as `captured-event` on the client. The session was closed about 09:15:11.
 
-`has no handler` is [`done/2026-09-25-warning-unsubscribe-handler-not-on-instance.md`](done/2026-09-25-warning-unsubscribe-handler-not-on-instance.md). It is not this stop.
+`has no handler` is [`2026-09-25-warning-unsubscribe-handler-not-on-instance.md`](2026-09-25-warning-unsubscribe-handler-not-on-instance.md). It is not this stop.
 
 ## What is stuck
 
@@ -64,7 +64,7 @@ The 09:14 client log going quiet is this. After the last animation frame there i
 
 ## Rejected
 
-**🚫** Clamping the `-12` minimum height inside Clutter / St / libocrpc. That was tried on [`done/2026-09-25-box-layout-negative-min-height.md`](done/2026-09-25-box-layout-negative-min-height.md). The empty Quick Settings grid really is `(0 - 1) * 12`. Clamping hides the frame that observed it.
+**🚫** Clamping the `-12` minimum height inside Clutter / St / libocrpc. That was tried on [`2026-09-25-box-layout-negative-min-height.md`](2026-09-25-box-layout-negative-min-height.md). The empty Quick Settings grid really is `(0 - 1) * 12`. Clamping hides the frame that observed it.
 
 A gjs-embed smoke that does not go through `ui/init.js` skips `begin_shell_startup` (`src/client/ShellApplication.vala` only calls it for `init.js`). That boot dies in about 2 seconds:
 
@@ -79,7 +79,7 @@ That is the old exposure, not this hang. Do not “fix” it by clamping.
 These already exist and do not name this stall:
 
 - `tests/gjs-embed/style-reenter-smoke.js` — SquareBin `style-changed` re-entry. Passes. Not the 15:09 full-shell recursion.
-- `tests/gjs-embed/dash-hover-style-smoke.js` — app-grid `_redisplay` → `BaseIcon.vfunc_style_changed`. Written for the 2026-10-02 recursion crash in [`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md). That crash is `too much recursion`, then SIGSEGV. This log has neither.
+- `tests/gjs-embed/dash-hover-style-smoke.js` — app-grid `_redisplay` → `BaseIcon.vfunc_style_changed`. Written for the 2026-10-02 recursion crash in [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). That crash is `too much recursion`, then SIGSEGV. This log has neither.
 
 ## Not done
 

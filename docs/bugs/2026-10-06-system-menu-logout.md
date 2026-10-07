@@ -1,6 +1,6 @@
 # System-menu Log Out does not end the session
 
-**Status:** ⏳ open. The picker click failure is [`2026-10-06-picker-click-get-time.md`](2026-10-06-picker-click-get-time.md).
+**Status:** ⏳ open. The picker click failure is [`done/2026-10-06-picker-click-get-time.md`](done/2026-10-06-picker-click-get-time.md).
 
 `alan@192.168.88.197`, session 6, still `active` at 14:08. The user opened the system menu and chose Log Out. The session stayed up, and the desktop did not come back.
 
@@ -20,3 +20,9 @@ The power button did receive the click. `Gjs_status_system_ShutdownItem` is the 
 The picker bug throws inside `dnd.js` `_onButtonPress` before a normal click finishes. This menu item got past `clicked` and `get_current_event` and closed. Different path.
 
 `mapped` is not writable on `ShutdownItem`, and `pressed` is not writable on `ClutterClickAction`. The menu still opened and closed after those.
+
+## 2026-10-06 18:29 — disconnected client, different cause
+
+The `alan2` session 230 Log Out attempt is not another clean reproduction of the failure above. At 18:24:19 the RPC connection had already been stopped by an unregistered `MetaSurfaceActorWayland` result. The client stayed alive but every later server operation failed with `not connected`. Opening the system menu at 18:29:30 reached `Clutter-Stage.grab`, which also failed for that reason. There is no later `clicked` notification or Logout call in the client log. The session remained online.
+
+That disconnect is the RPC bug [`2026-10-07-unregistered-runtime-parent.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-10-07-unregistered-runtime-parent.md).

@@ -1,6 +1,6 @@
 # Greeter login opens the crash screen
 
-**Status:** ⏳ open. User 2026-10-05 09:10. The desktop came up and Log Out returned to GDM. Starting an app still killed the shell. The journal has the trap and not the abort string.
+**Status:** ✅ closed 2026-10-07. User: assume fixed.
 
 **Plan:** installed greeter session from [`../plans/done/1.1-installable-bootable-session.md`](../plans/done/1.1-installable-bootable-session.md). The screen itself is `on_crash()` from [`../plans/done/1.2-teardown-and-restart.md`](../plans/done/1.2-teardown-and-restart.md).
 

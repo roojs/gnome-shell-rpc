@@ -1,6 +1,6 @@
 # Greeter login stays on a black screen
 
-**Status:** ⏳ open. User 2026-10-03. Logged in as `alan2` from GDM, session **GNOME Shell RPC**. The VT stayed black.
+**Status:** ✅ closed 2026-10-07. User: assume fixed.
 
 **Plan:** [`../plans/done/1.2-teardown-and-restart.md`](../plans/done/1.2-teardown-and-restart.md) is archived. This is the installed greeter session from [`../plans/done/1.1-installable-bootable-session.md`](../plans/done/1.1-installable-bootable-session.md).
 

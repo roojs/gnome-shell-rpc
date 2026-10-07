@@ -2,7 +2,7 @@
 
 **Status:** ⏳ open. User 2026-10-05. The crash-screen Log Out failure was split out 2026-10-06 to [`2026-10-06-crash-screen-logout.md`](2026-10-06-crash-screen-logout.md).
 
-Earlier logins: [`2026-10-03-greeter-login-black-screen.md`](2026-10-03-greeter-login-black-screen.md), [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md).
+Earlier logins: [`done/2026-10-03-greeter-login-black-screen.md`](done/2026-10-03-greeter-login-black-screen.md), [`done/2026-10-04-greeter-crash-screen.md`](done/2026-10-04-greeter-crash-screen.md).
 
 ## Boot crash
 

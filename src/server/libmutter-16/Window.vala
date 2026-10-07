@@ -1,7 +1,8 @@
 /**
  * Delivers {@link global::Meta.Window} Override RPC (plan 0.5.6 B3).
  *
- * Wire prefix ''Gsr-Mutter-Window''. Lease is the window.
+ * Wire prefix ''Gsr-Mutter-Window'', plus
+ * ''Meta-Window.get_compositor_private''. Lease is the window.
  * {@link global::Meta.WindowForeachFunc} continue is the bool on
  * {@link OLLMrpc.Live.Hook.reply_args} after {@code RPC-Live-Callback.reply}.
  */
@@ -20,6 +21,55 @@ namespace Gsr.Server.Meta
 			);
 			OLLMrpc.Request.register_live("Gsr-Mutter-Window",
 				 new Window());
+			OLLMrpc.Request.add_class(
+				"Meta-Window", typeof(Window),
+				"get_compositor_private", "",
+				null
+			);
+			OLLMrpc.Request.register_live("Meta-Window", new Window());
+		}
+
+		/**
+		 * ''Meta-Window.get_compositor_private'' — compositor wrapper for
+		 * the leased window.
+		 *
+		 * Stock returns the window actor. The overview clones that actor
+		 * for the workspace thumbnail. A null wrapper replies with no
+		 * return value.
+		 *
+		 * @param request inbound RPC; {@code lease_id} is the window
+		 */
+		public void get_compositor_private(OLLMrpc.Request request)
+		{
+			var window = (global::Meta.Window) request.connection.leases.get(
+				(int) request.lease_id);
+			var priv = window.get_compositor_private();
+			if (priv == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
+			}
+			var wire = priv.get_type();
+			while (wire != GLib.Type.INVALID && wire != typeof(GLib.Object)
+					&& (OLLMrpc.Bin.gtype_to_alias == null
+						|| !OLLMrpc.Bin.gtype_to_alias.has_key(wire))) {
+				wire = wire.parent();
+			}
+			if (wire == GLib.Type.INVALID || wire == typeof(GLib.Object)
+					|| OLLMrpc.Bin.gtype_to_alias == null
+					|| !OLLMrpc.Bin.gtype_to_alias.has_key(wire)) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			request.connection.export(priv);
+			var packed = GLib.Value(wire);
+			packed.set_object(priv);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = packed,
+			});
 		}
 
 		public void foreach_transient(

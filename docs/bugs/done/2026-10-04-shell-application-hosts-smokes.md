@@ -1,10 +1,10 @@
 # Shell boot hosts the smokes
 
-**Status:** ⏳ open. User 2026-10-04. `Gsr.Client.Application.command_line` in `src/client/Application.vala` is the greeter and nested shell. The same function also runs smoke scripts and debug probes.
+**Status:** ✅ closed 2026-10-07. User: assume fixed.
 
-**Plan:** [`../plans/done/1.2.4-shell-boot.md`](../plans/done/1.2.4-shell-boot.md) is archived. This bug stays open.
+**Plan:** [`../plans/done/1.2.4-shell-boot.md`](../plans/done/1.2.4-shell-boot.md) is archived.
 
-Separate from [`done/2026-10-04-terminal-launch-slow.md`](done/2026-10-04-terminal-launch-slow.md) and [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md). Those are failures seen through this boot. This bug is the boot itself.
+Separate from [`2026-10-04-terminal-launch-slow.md`](2026-10-04-terminal-launch-slow.md) and [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md). Those are failures seen through this boot. This bug is the boot itself.
 
 ## What the shell boot is
 

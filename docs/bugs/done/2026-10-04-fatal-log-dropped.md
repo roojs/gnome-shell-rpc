@@ -1,6 +1,6 @@
 # A crash abort never reaches the journal
 
-**Status:** ⏳ open. 2026-10-04. The 11:02 `alan2` greeter login aborted in glib and left no message. [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md).
+**Status:** ✅ closed 2026-10-07. User: assume fixed. The 11:02 `alan2` greeter login aborted in glib and left no message. [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md).
 
 ## Seen
 

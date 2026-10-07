@@ -236,6 +236,37 @@ Shape: `Gate.make` exports Peer → client calls `Gate.echo` with wire arg
 → [`docs/bugs/done/2026-09-14-ffi-o-lease-resolve.md`](../../docs/bugs/done/2026-09-14-ffi-o-lease-resolve.md).
 Helpers (`Gsr-Mutter-WaylandClient`, Background, pad/grab) use GObject `"o"`.
 
+## runtime-parent-schema-gate
+
+Shape: `OLLMrpc.val("o", obj)` stamps the runtime type. An unregistered
+private subclass of a registered parent must cross as that parent. An
+exact runtime alias on a second object must still win. This is the event
+filter pack of `MetaSurfaceActorWayland`, which `declared-object-type-gate`
+does not cover because that gate already puts the public type on the
+`GValue`.
+
+```bash
+meson compile -C build runtime-parent-schema-gate
+timeout 5 ./build/tests/call-sync-repro/runtime-parent-schema-gate
+```
+
+| Run | Result |
+| --- | ------ |
+| 2026-10-07 | **FAIL** — `Unregistered declared class type schema: GateUnregistered`, then `Client: disconnected` |
+
+→ [`OLLMchat/docs/bugs/2026-10-07-unregistered-runtime-parent.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-10-07-unregistered-runtime-parent.md).
+
+## declared-object-type-gate
+
+Shape: arm one exports an unregistered private subclass in a `GLib.Value` whose declared public GType is registered. Arm two exports an exactly aliased private subclass in a value declared as a broader registered base. The client must use the declared public type for arm one, preserve the exact runtime alias for arm two, and complete a later ping.
+
+| Run | Result |
+| --- | ------ |
+| 2026-10-06 before OPC fix | **FAIL** — `StreamValue` discards `Value.type()`, writes the unregistered runtime leaf, and disconnects |
+| 2026-10-06 after OPC fix | **FAIL** — the declared-type arm passes, but `StreamValue` discards the exact runtime alias and decodes the second result as broad `GateBase`: `exact GatePublic alias lost to declared GateBase` |
+
+→ [`OLLMchat/docs/bugs/2026-10-06-declared-object-wire-type.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-10-06-declared-object-wire-type.md).
+
 ## hook-o-gate
 
 Shape: `Gate.make` returns lease `"t"` only (Gsr-Clutter-Actor.create; no

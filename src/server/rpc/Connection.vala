@@ -58,7 +58,84 @@ namespace Gsr.Server.Rpc
 			base.stop();
 			this.stopped();
 		}
-
+		// PROVISIONAL - BAD ERROR HANDLING IN HERE
+		/* 
+		public override void write(
+			GLib.Object gobject,
+			OLLMrpc.Live.Buffer? buffer = null
+		)
+		{
+			if (!this.channel_open || this.bin == null) {
+				return;
+			}
+			var serializable = gobject as OLLMrpc.Bin.Serializable;
+			if (serializable == null) {
+				GLib.warning("connection write: not bin Serializable");
+				return;
+			}
+			if (this.buffer_stream != null && buffer != null
+					&& this.buffer_stream.socket != null) {
+				try {
+					buffer.send(this.buffer_stream.socket);
+				} catch (GLib.Error e) {
+					GLib.warning("connection write error: %s", e.message);
+					this.stop();
+					return;
+				}
+			}
+			try {
+				this.bin.write(serializable);
+			} catch (GLib.Error e) {
+				GLib.warning("connection write error: %s", e.message);
+				this.stop();
+				return;
+			}
+			while (this.channel_open) {
+				if (this.input_pending()) {
+					this.drain_readable();
+					continue;
+				}
+				var ready = GLib.IOCondition.OUT;
+				try {
+					ready = this.stream.get_socket().condition_check(
+						GLib.IOCondition.OUT | GLib.IOCondition.ERR | GLib.IOCondition.HUP);
+				} catch (GLib.Error e) {
+					GLib.warning("connection write error: %s", e.message);
+					this.stop();
+					return;
+				}
+				if ((ready & (GLib.IOCondition.ERR | GLib.IOCondition.HUP)) != 0) {
+					this.stop();
+					return;
+				}
+				if ((ready & GLib.IOCondition.OUT) != 0) {
+					try {
+						this.bin.out_stream.flush();
+					} catch (GLib.Error e) {
+						GLib.warning("connection write error: %s", e.message);
+						this.stop();
+					}
+					return;
+				}
+				var poll_source = GLib.PollFD();
+				poll_source.fd = this.channel.unix_get_fd();
+				poll_source.events =
+					GLib.IOCondition.IN | GLib.IOCondition.OUT | GLib.IOCondition.ERR | GLib.IOCondition.HUP;
+				var poll_fds = new GLib.PollFD[] { poll_source };
+				if (GLib.poll(poll_fds, -1) <= 0) {
+					return;
+				}
+				if ((poll_fds[0].revents & GLib.IOCondition.ERR) != 0
+						|| (poll_fds[0].revents & GLib.IOCondition.HUP) != 0) {
+					this.stop();
+					return;
+				}
+				if ((poll_fds[0].revents & GLib.IOCondition.IN) != 0) {
+					this.drain_readable();
+				}
+			}
+		}
+*/
 		public override void emit_wait_poll()
 		{
 			if (!this.channel_open || this.channel == null || this.bin == null) {

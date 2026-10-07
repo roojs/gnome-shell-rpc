@@ -320,6 +320,42 @@ executable('ffi-o-lease-gate',
   install: false,
 )
 
+# val("o") stamps the runtime type. An unregistered private subclass must
+# still cross as its nearest registered parent.
+executable('runtime-parent-schema-gate',
+  [
+    'runtime-parent-schema-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+# A live private subclass must cross as the registered public type declared
+# by its GValue (Clutter.Actor return holding MetaSurfaceActorWayland).
+executable('declared-object-type-gate',
+  [
+    'declared-object-type-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # measure_event tiddu (not typo tiidu) coords stay double across bin.
 executable('event-tiidu-gate',
   'event-tiidu-gate.vala',

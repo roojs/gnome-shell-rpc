@@ -4,7 +4,7 @@
 
 **Plan:** none yet. [`../../plans/done/1.2-teardown-and-restart.md`](../../plans/done/1.2-teardown-and-restart.md) is done. This is not part of it.
 
-Separate from [`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md). That one counted the calls. The timings below are from it. This bug is why a Terminal click takes so long. Also separate from [`../2026-10-03-frames-stop-after-shell-started.md`](../2026-10-03-frames-stop-after-shell-started.md): frames stopping after boot would freeze the overview-hide animation, but that is not yet shown to be this delay.
+Separate from [`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md). That one counted the calls. The timings below are from it. This bug is why a Terminal click takes so long. Also separate from [`2026-10-03-frames-stop-after-shell-started.md`](2026-10-03-frames-stop-after-shell-started.md): frames stopping after boot would freeze the overview-hide animation, but that is not yet shown to be this delay.
 
 ## Launch path
 
