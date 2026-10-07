@@ -382,6 +382,26 @@ executable('event-tiidu-gate',
   install: false,
 )
 
+# Headless stage: a reactive child gets press and release, including
+# under a stage grab.
+executable('button-release-deliver-gate',
+  'button-release-deliver-gate.c',
+  dependencies: [libmutter_dep],
+  install: false,
+)
+
+# Unset boolean return must not stop a true-handled signal chain.
+executable('button-release-chain-gate',
+  [
+    'button-release-chain-gate.vala',
+    'button-release-chain-signal.c',
+  ],
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Null GObject in Notification.args must round-trip (calendar close).
 executable('null-object-arg-gate',
   'null-object-arg-gate.vala',

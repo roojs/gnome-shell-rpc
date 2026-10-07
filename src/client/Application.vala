@@ -132,6 +132,25 @@ namespace Gsr.Client
 				return 1;
 			}
 			this.prepare_host();
+			try {
+				var result = GLib.Bus.get_sync(GLib.BusType.SESSION).call_sync(
+					"org.freedesktop.DBus",
+					"/org/freedesktop/DBus",
+					"org.freedesktop.DBus",
+					"RequestName",
+					new GLib.Variant("(su)", "org.gnome.Shell",
+						(uint) (GLib.BusNameOwnerFlags.ALLOW_REPLACEMENT
+							| GLib.BusNameOwnerFlags.DO_NOT_QUEUE)),
+					new GLib.VariantType("(u)"),
+					GLib.DBusCallFlags.NONE,
+					-1,
+					null).get_child_value(0).get_uint32();
+				if (result != 1 && result != 4) {
+					GLib.warning("org.gnome.Shell not owned, reply %u", result);
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("org.gnome.Shell: %s", e.message);
+			}
 
 			var ctx = this.open_context({ "resource:///org/gnome/shell" });
 			Gsr.Client.Rpc.call_value("Server-Bootstrap.begin_shell_startup");

@@ -73,12 +73,6 @@ namespace Gsr.Server.Clutter
 			}
 			fields.add(OLLMrpc.val("i", device_type));
 			fields.add(OLLMrpc.val("u", ev.get_time()));
-			var et = ev.get_type();
-			if (et == global::Clutter.EventType.BUTTON_PRESS
-					|| et == global::Clutter.EventType.BUTTON_RELEASE) {
-				GLib.debug("type=%d button=%u time=%u",
-					(int) et, button, ev.get_time());
-			}
 			return fields;
 		}
 

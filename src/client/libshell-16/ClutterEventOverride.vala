@@ -110,11 +110,6 @@ namespace Shell
 				fields.get(index + 4).get_uint(),
 				Clutter.Event.actor_from_value(fields.get(index + 5)));
 			ev.read_scroll_tail(fields, index + 6);
-			if (ev.type() == Clutter.EventType.button_press
-					|| ev.type() == Clutter.EventType.button_release) {
-				GLib.debug("type=%d button=%u time=%u",
-					(int) ev.type(), ev.get_button(), ev.get_time());
-			}
 			if (ClutterEventOverride.held == null) {
 				ClutterEventOverride.held = new Gee.ArrayList<void*>();
 			}
