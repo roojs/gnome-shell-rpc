@@ -36,6 +36,12 @@ The preview still never gets a clone. `windowPreview.js` calls `metaWindow.get_c
 
 Returning the live window actor and cloning it killed Weston at 09:31 (Xwayland `Broken pipe`, session SIGKILL). That path is not coming back.
 
-`get_compositor_private` is a client-side actor. It does not call the server and it does not lease the window actor. The picture is `Gsr-Mutter-Window.preview_actor`: the server paints the window into a separate actor, and `WindowPreviewLayout` parents that actor.
+`get_compositor_private` returns one stand-in per window (`Meta.WindowActor` with `meta_window` set). The picture is painted into that actor by `Gsr-Mutter-Window.preview_actor`, and the overview clones the stand-in. The live window actor stays on the stage.
 
-2026-10-07 10:03: `preview_actor` id 26625 replied. The session then hung the same way as [`2026-10-06-destroy-reenter-hang.md`](done/2026-10-06-destroy-reenter-hang.md). Server recv stops on `Clutter-Actor.destroy` id 27745. Client continues with `unsubscribe` and more `destroy` through id 27762. Both `mutter-rpc.sock` send queues were full (213504) with data still in the receive queues. `Gsr.Server.Rpc.Connection.write` now drains IN while the send buffer is full, instead of flushing OUT only. Not proven on a new login yet.
+2026-10-07 10:20: the empty actor from the previous stand-in had no `meta_window`, so leaving the overview threw `TypeError: win is undefined` in `workspaceThumbnail.js` `_isMyWindow`. `preview_actor` ran once, in the same second the window was still `frame=0,0 0x0`, and `size-changed` was never subscribed, so the paint was not repeated after the window had a buffer.
+
+## 2026-10-07 10:31
+
+The overview no longer crashes. There is still no picture of the windows.
+
+The bottom footer app select does not raise the window that was clicked. Help and Terminal were both open. Clicking Terminal in that footer left Help on top when the overview returned to the desktop.

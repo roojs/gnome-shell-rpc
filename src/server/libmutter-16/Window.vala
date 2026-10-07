@@ -16,7 +16,7 @@ namespace Gsr.Server.Meta
 				"foreach_transient", "t",
 				"foreach_ancestor", "t",
 				"begin_grab_op", "uosiubff",
-				"preview_actor", "",
+				"preview_actor", "o",
 				null
 			);
 			OLLMrpc.Request.register_live("Gsr-Mutter-Window", new Window());
@@ -25,16 +25,18 @@ namespace Gsr.Server.Meta
 		/**
 		 * ''Gsr-Mutter-Window.preview_actor'' — overview picture of the window.
 		 *
-		 * Paints the window into a new actor. The overview parents that
-		 * actor. The window actor itself is not leased.
+		 * Paints the window into the stand-in the client already holds.
+		 * The live window actor is not leased.
 		 *
 		 * @param request inbound RPC; {@code lease_id} is the window
+		 * @param peek overview actor to paint into
 		 */
-		public void preview_actor(OLLMrpc.Request request)
-		{
+		public void preview_actor(
+			OLLMrpc.Request request,
+			global::Clutter.Actor peek
+		) {
 			var window = (global::Meta.Window) request.connection.leases.get(
 				(int) request.lease_id);
-			var peek = new global::Clutter.Actor();
 			var priv = window.get_compositor_private() as global::Meta.WindowActor;
 			if (priv != null) {
 				try {
@@ -50,10 +52,8 @@ namespace Gsr.Server.Meta
 			if (rect.width > 0 && rect.height > 0) {
 				peek.set_size(rect.width, rect.height);
 			}
-			request.connection.export(peek);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = OLLMrpc.val("o", peek),
 			});
 		}
 

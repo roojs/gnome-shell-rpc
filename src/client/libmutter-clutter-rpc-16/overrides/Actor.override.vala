@@ -71,6 +71,7 @@
 				case "Meta-BackgroundActor": // leaf Helper
 				case "Clutter-Clone": // Clone.override new(source)
 					return;
+				case "Meta-WindowActor": // no Meta-WindowActor.new
 				case "St-Widget":
 					this.create_with_overrides();
 					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());

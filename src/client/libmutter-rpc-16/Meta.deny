@@ -93,6 +93,8 @@ restart
 is_restart
 # Local actor. Do not lease the compositor's window actor.
 Window.get_compositor_private
+# Hand getter: stand-in stores the window; a leased actor still RPCs.
+WindowActor.meta_window
 Window.foreach_transient
 Window.foreach_ancestor
 Window.begin_grab_op

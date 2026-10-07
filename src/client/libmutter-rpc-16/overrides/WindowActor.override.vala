@@ -1,3 +1,25 @@
+		/**
+		 * Set by {@link Window.get_compositor_private} on the overview
+		 * stand-in. A leased window actor leaves this unset and the
+		 * getter calls the server.
+		 */
+		internal Window? bound_meta_window;
+
+		public Window? meta_window {
+			[CCode (cname = "meta_window_actor_get_meta_window")]
+			get {
+				if (this.bound_meta_window != null) {
+					return this.bound_meta_window;
+				}
+				var response = Gsr.Client.Rpc.call_value(
+					"Meta-WindowActor.get_meta_window", this);
+				if (response.retval.type() == GLib.Type.INVALID) {
+					return null;
+				}
+				return (Window) response.retval.get_object();
+			}
+		}
+
 		public Clutter.Content? paint_to_content(Mtk.Rectangle? clip) throws GLib.Error
 		{
 			var has_clip = clip != null;

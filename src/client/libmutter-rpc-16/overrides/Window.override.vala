@@ -1,11 +1,30 @@
 		/**
-		 * Stock returns the compositor's window actor. Leasing that actor
-		 * and cloning it killed the nested display. Callers only need a
-		 * non-null actor to subscribe to, so this one is local.
+		 * Stock returns the compositor's window actor. Leasing that
+		 * actor and cloning it killed the nested display. This stand-in
+		 * is one actor per window, with {@code meta_window} set, and
+		 * the picture is painted into it. The live window actor stays
+		 * on the stage.
 		 */
+		private WindowActor? compositor_peek;
+
 		public GLib.Object? get_compositor_private()
 		{
-			return new Clutter.Actor();
+			if (this.compositor_peek != null) {
+				return this.compositor_peek;
+			}
+			var peek = new WindowActor();
+			peek.bound_meta_window = this;
+			this.compositor_peek = peek;
+			Gsr.Client.Rpc.ensure_signal_subscribe(this, "size-changed");
+			this.signal_size_changed.connect(() => {
+				Gsr.Client.Rpc.call_value(
+					"Gsr-Mutter-Window.preview_actor", this,
+					OLLMrpc.args("o", peek));
+			});
+			Gsr.Client.Rpc.call_value(
+				"Gsr-Mutter-Window.preview_actor", this,
+				OLLMrpc.args("o", peek));
+			return peek;
 		}
 
 		public void foreach_transient(WindowForeachFunc func)

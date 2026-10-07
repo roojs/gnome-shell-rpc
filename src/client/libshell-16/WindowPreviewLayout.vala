@@ -4,8 +4,9 @@
  *
  * Client-local {@link Clutter.LayoutManager} ({@code rpc_lid} stays 0):
  * measure/allocate run here; each tracked window is a
- * {@link WindowEntry} (painted actor from
- * {@code Gsr-Mutter-Window.preview_actor}).
+ * {@link WindowEntry}. The child is a {@link Clutter.Clone} of
+ * {@link Meta.Window.get_compositor_private} (the painted stand-in,
+ * not the live window actor).
  */
 namespace Shell
 {
@@ -29,23 +30,11 @@ namespace Shell
 			{
 				this.layout = layout;
 				this.window = window;
-				var first = Gsr.Client.Rpc.call_value(
-					"Gsr-Mutter-Window.preview_actor", window);
-				this.actor_copy = (Clutter.Actor) first.retval.get_object();
+				var source = (Clutter.Actor) window.get_compositor_private();
+				this.actor_copy = new Clutter.Clone(source);
+				Gsr.Client.Rpc.ensure_signal_subscribe(window, "size-changed");
+				Gsr.Client.Rpc.ensure_signal_subscribe(window, "position-changed");
 				this.size_changed_id = window.signal_size_changed.connect(() => {
-					var again = Gsr.Client.Rpc.call_value(
-						"Gsr-Mutter-Window.preview_actor", window);
-					var next = (Clutter.Actor) again.retval.get_object();
-					var parent = this.actor_copy.get_parent();
-					if (parent != null) {
-						parent.replace_child(this.actor_copy, next);
-					}
-					this.actor_copy.disconnect(this.destroy_id);
-					this.actor_copy.destroy();
-					this.actor_copy = next;
-					this.destroy_id = next.signal_destroy.connect(() => {
-						layout.remove_window(window);
-					});
 					layout.windows_changed();
 				});
 				this.position_changed_id = window.signal_position_changed.connect(() => {
