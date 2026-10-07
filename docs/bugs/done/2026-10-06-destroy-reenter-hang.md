@@ -1,6 +1,6 @@
 # Actor destroy hangs the nested shell
 
-**Status:** ✅ closed 2026-10-07. User: assume fixed.
+**Status:** ⏳ open. Reproduced 2026-10-07 10:03. The write override was commented out, so the flush still waits on OUT only.
 
 Weston debug session, 2026-10-06 20:12. `libocrpc.so` installed 20:11:12. `build/src/gsr-server` 20:11:53, `build/src/gsr-client` 20:11:58. Started with `./scripts/weston-gsr-session.sh --debug`. Server pid 15393, client pid 15426. The cursor trails and the window stops painting. Both processes stay up. There is no `Unregistered declared class type schema` and no end-of-stream in this run.
 

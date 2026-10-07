@@ -1,3 +1,13 @@
+		/**
+		 * Stock returns the compositor's window actor. Leasing that actor
+		 * and cloning it killed the nested display. Callers only need a
+		 * non-null actor to subscribe to, so this one is local.
+		 */
+		public GLib.Object? get_compositor_private()
+		{
+			return new Clutter.Actor();
+		}
+
 		public void foreach_transient(WindowForeachFunc func)
 		{
 			var callback_id = Gsr.Client.Rpc.callback_bind((call) => {

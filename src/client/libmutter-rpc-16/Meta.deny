@@ -91,6 +91,8 @@ keybindings_set_custom_handler
 # Hand: Meta.override.vala → Server-Rpc-SpawnClient. Must not call mutter meta_restart.
 restart
 is_restart
+# Local actor. Do not lease the compositor's window actor.
+Window.get_compositor_private
 Window.foreach_transient
 Window.foreach_ancestor
 Window.begin_grab_op

@@ -4,25 +4,24 @@
  *
  * Client-local {@link Clutter.LayoutManager} ({@code rpc_lid} stays 0):
  * measure/allocate run here; each tracked window is a
- * {@link WindowEntry} (Vala constructor, leased {@link Clutter.Clone}).
+ * {@link WindowEntry} (painted actor from
+ * {@code Gsr-Mutter-Window.preview_actor}).
  */
 namespace Shell
 {
 	public class WindowPreviewLayout : Clutter.LayoutManager
 	{
 		/**
-		 * One overview peek: leased clone of the window actor, plus the
-		 * signal wiring that keeps layout in sync.
+		 * One overview peek: a painted actor, plus the signal wiring that
+		 * keeps layout in sync.
 		 */
 		private class WindowEntry
 		{
 			public Meta.Window window { get; private set; }
 			public Clutter.Actor actor_copy { get; private set; }
 
-			private Clutter.Actor window_actor;
 			private ulong size_changed_id;
 			private ulong position_changed_id;
-			private ulong window_actor_destroy_id;
 			private ulong destroy_id;
 			private weak WindowPreviewLayout layout;
 
@@ -30,16 +29,27 @@ namespace Shell
 			{
 				this.layout = layout;
 				this.window = window;
-				this.window_actor = (Clutter.Actor) window.get_compositor_private();
-				this.actor_copy = new Clutter.Clone(this.window_actor);
+				var first = Gsr.Client.Rpc.call_value(
+					"Gsr-Mutter-Window.preview_actor", window);
+				this.actor_copy = (Clutter.Actor) first.retval.get_object();
 				this.size_changed_id = window.signal_size_changed.connect(() => {
+					var again = Gsr.Client.Rpc.call_value(
+						"Gsr-Mutter-Window.preview_actor", window);
+					var next = (Clutter.Actor) again.retval.get_object();
+					var parent = this.actor_copy.get_parent();
+					if (parent != null) {
+						parent.replace_child(this.actor_copy, next);
+					}
+					this.actor_copy.disconnect(this.destroy_id);
+					this.actor_copy.destroy();
+					this.actor_copy = next;
+					this.destroy_id = next.signal_destroy.connect(() => {
+						layout.remove_window(window);
+					});
 					layout.windows_changed();
 				});
 				this.position_changed_id = window.signal_position_changed.connect(() => {
 					layout.windows_changed();
-				});
-				this.window_actor_destroy_id = this.window_actor.signal_destroy.connect(() => {
-					this.actor_copy.signal_destroy();
 				});
 				this.destroy_id = this.actor_copy.signal_destroy.connect(() => {
 					layout.remove_window(window);
@@ -50,7 +60,6 @@ namespace Shell
 			{
 				this.window.disconnect(this.size_changed_id);
 				this.window.disconnect(this.position_changed_id);
-				this.window_actor.disconnect(this.window_actor_destroy_id);
 				this.actor_copy.disconnect(this.destroy_id);
 			}
 		}

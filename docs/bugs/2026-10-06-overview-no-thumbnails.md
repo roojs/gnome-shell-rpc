@@ -34,4 +34,8 @@ The client log has `window-entered-monitor` and the custom `Window.created` noti
 
 The preview still never gets a clone. `windowPreview.js` calls `metaWindow.get_compositor_private()` before `create_icon_texture`. Every call that morning returned `-32602` with an empty message (`Meta-Window.get_compositor_private`, ids 20002 onward). Typelib dispatch refuses the return because the GIR type is bare `GObject`, even when the live object is a window actor already aliased as `Meta-WindowActor`.
 
-`Meta-Window.get_compositor_private` is now a hand method. It returns the compositor private object under the nearest registered type, so the overview can clone it. Not proven on a new login yet.
+Returning the live window actor and cloning it killed Weston at 09:31 (Xwayland `Broken pipe`, session SIGKILL). That path is not coming back.
+
+`get_compositor_private` is a client-side actor. It does not call the server and it does not lease the window actor. The picture is `Gsr-Mutter-Window.preview_actor`: the server paints the window into a separate actor, and `WindowPreviewLayout` parents that actor.
+
+2026-10-07 10:03: `preview_actor` id 26625 replied. The session then hung the same way as [`2026-10-06-destroy-reenter-hang.md`](done/2026-10-06-destroy-reenter-hang.md). Server recv stops on `Clutter-Actor.destroy` id 27745. Client continues with `unsubscribe` and more `destroy` through id 27762. Both `mutter-rpc.sock` send queues were full (213504) with data still in the receive queues. `Gsr.Server.Rpc.Connection.write` now drains IN while the send buffer is full, instead of flushing OUT only. Not proven on a new login yet.

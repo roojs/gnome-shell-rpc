@@ -58,8 +58,18 @@ namespace Gsr.Server.Rpc
 			base.stop();
 			this.stopped();
 		}
-		// PROVISIONAL - BAD ERROR HANDLING IN HERE
-		/* 
+		/**
+		 * Flush without an OUT-only wait.
+		 *
+		 * {@code clutter_actor_destroy} emits {@code destroy} on this
+		 * stack, and {@link Subscription.emit} writes each notification
+		 * before {@code request.reply}. The client handles that
+		 * notification inside the still-open {@code call_poll} and
+		 * writes nested {@code unsubscribe} / {@code destroy} calls.
+		 * Both sockets are nonblocking. A flush that polls for OUT
+		 * only fills both send buffers and leaves the nested bytes
+		 * unread. Drain IN first, and treat a short flush as retry.
+		 */
 		public override void write(
 			GLib.Object gobject,
 			OLLMrpc.Live.Buffer? buffer = null
@@ -112,8 +122,12 @@ namespace Gsr.Server.Rpc
 					try {
 						this.bin.out_stream.flush();
 					} catch (GLib.Error e) {
+						if (e is GLib.IOError.WOULD_BLOCK) {
+							continue;
+						}
 						GLib.warning("connection write error: %s", e.message);
 						this.stop();
+						return;
 					}
 					return;
 				}
@@ -135,7 +149,6 @@ namespace Gsr.Server.Rpc
 				}
 			}
 		}
-*/
 		public override void emit_wait_poll()
 		{
 			if (!this.channel_open || this.channel == null || this.bin == null) {
