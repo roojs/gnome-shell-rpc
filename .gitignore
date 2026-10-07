@@ -15,9 +15,3 @@
 /PubLayout.c
 /pub_layout.c
 /tactor.c
-# Upstream gnome-session sources do not belong at the repo root.
-/gnome-session-*/
-/gnome-session_*.dsc
-/gnome-session_*.orig.tar.*
-/gnome-session_*.debian.tar.*
-/gnome-session_*.diff.gz

@@ -1,6 +1,6 @@
 # System-menu Log Out does not end the session
 
-**Status:** ⏳ open. ✔️ 2026-10-07: `command_line` claims `org.gnome.Shell`. GDM Log Out is not verified yet. The picker click failure is [`done/2026-10-06-picker-click-get-time.md`](done/2026-10-06-picker-click-get-time.md).
+**Status:** ✅ closed 2026-10-07. User: Log Out from the system menu is reasonably reliable. The client claims `org.gnome.Shell` in `command_line`. The picker click failure is [`2026-10-06-picker-click-get-time.md`](2026-10-06-picker-click-get-time.md).
 
 `alan@192.168.88.197`, session 6, still `active` at 14:08. The user opened the system menu and chose Log Out. The session stayed up, and the desktop did not come back.
 
@@ -103,8 +103,6 @@ Stock `gnome-shell` `src/main.c` `shell_dbus_acquire_name` takes `org.gnome.Shel
 
 ## To verify
 
-⏳ GDM `gsr` login, system menu, Log Out. `NameHasOwner` `org.gnome.Shell` is true and the owner pid is `gsr-client`. `gnome-session-manager@gsr.service` does not stay at `QUERY_END_SESSION`.
+✅ 2026-10-07. User: Log Out from the system menu is reasonably reliable.
 
-⏳ The end-session dialog is requested. logind records `Session N logged out` only after that dialog is confirmed. Confirming it still depends on the click ([`2026-10-07-picker-click-no-clicked.md`](2026-10-07-picker-click-no-clicked.md)).
-
-⏳ If `org.gnome.Shell` is already owned when the client starts, the client logs the warning and does not become the owner.
+⏳ If `org.gnome.Shell` is already owned when the client starts, the client logs the warning and does not become the owner. That case was not the login they tried.

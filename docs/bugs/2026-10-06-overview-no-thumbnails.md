@@ -2,6 +2,8 @@
 
 **Status:** ⏳ open. Picker clicks are [`done/2026-10-06-picker-click-get-time.md`](done/2026-10-06-picker-click-get-time.md).
 
+**Working rule for this bug:** no status theatre — do not stop to narrate, summarise, or ask to continue. Keep proving until the bar moves or a real stop condition hits.
+
 `alan@192.168.88.197`, session 6, 14:03. Help (`/usr/bin/yelp` 6040) and Terminal (`gnome-terminal-server` 6314) were running. The window overview drew no thumbnails.
 
 Both windows were created with no title and no size. Server:
@@ -45,3 +47,27 @@ Returning the live window actor and cloning it killed Weston at 09:31 (Xwayland 
 The overview no longer crashes. There is still no picture of the windows.
 
 The bottom footer app select does not raise the window that was clicked. Help and Terminal were both open. Clicking Terminal in that footer left Help on top when the overview returned to the desktop.
+
+## 2026-10-07 17:50 gedit
+
+ℹ️ The window under test is gedit, one process on `wayland-mutter-gsr`. Not gnome-terminal, and not the host gedit (that one stays on `DISPLAY=:0`). The weston-terminal beside the stage is only the debug log.
+
+✔️ Nested debug session, `gsr-server` 3116041, `gsr-client` 3116070. `READY=1` at 17:49:32. gedit 3116646 started 17:50:06 with `GDK_BACKEND=wayland`, `WAYLAND_DISPLAY=wayland-mutter-gsr`, and the nested session bus. `DISPLAY` was unset so it did not open on the host.
+
+✔️ Server, 17:50:08.147: `window_created title=(null) frame=0,0 0x0`. One compositor window actor. Then `notify::title` twice, each `property 'title' of object class 'MetaWindow' is not writable`. Then `size-changed`, and `Gsr-Mutter-Window.preview_actor` at 17:50:08.156 and again at 17:50:08.230. No `preview_actor:` warning. No `app is null`.
+
+✔️ Client order is still `window-entered-monitor`, then `Window.created`. No `method=window-created`.
+
+✔️ Activities click at 17:51:55 hit `panelActivities`. `WindowPreview` measured `nat=1546` by `nat=1034`. `preview_actor` ran once more (id 29901). `Clutter-Grab.dismiss` followed in the same second. The stage stayed on the wallpaper. gedit's window was not drawn on it. The overview did not stay up.
+
+## Repro (user, by hand)
+
+Boot the nested debug session, open the app picker, type `gedit`, start it, gedit running, back to the app picker. No preview. That is the whole repro. Window under test is gedit, not a terminal.
+
+## 2026-10-07 18:02 thumbnail-smoke.js (not yet run)
+
+ℹ️ Repro script written: `tests/gjs-embed/thumbnail-smoke.js`. Boots product `main.start`, launches `gedit --new-window` on the nested display via Gio (same env shape as `wayland-launch-smoke`), waits for a Meta NORMAL window with a real frame, checks `get_window_app` non-null, shows the overview in-process, waits for the `preview_actor` repaint, then asserts the `get_compositor_private()` stand-in has non-null content and a non-zero `WindowPreview` exists. Pass is `thumbnail-smoke: ok`, fail is `thumbnail-smoke: miss <reason>`. No product code changes from that file. The fix that makes it pass is what gets ported into `src/`.
+
+✔️ `build/src/gsr-smoke` exists, so `GI_META_SMOKE=thumbnail-smoke` resolves.
+
+❌ The 18:02 session restart never booted: Weston failed with `failed to create egl surface` / `Enabling output "screen0" failed`, exit 1. The smoke has not printed a verdict yet. Next step is one thing only: rerun the session with the smoke and read the `miss` line.
