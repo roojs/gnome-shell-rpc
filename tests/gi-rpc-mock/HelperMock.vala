@@ -464,11 +464,16 @@ namespace Gsr.GiRpcMock
 					break;
 
 				case "Gsr-Shell-BlurEffect":
-					if (name == "create") {
-						this.reply_args_lease(request, "Shell-BlurEffect");
-						return true;
+					switch (name) {
+						case "create":
+							this.reply_args_lease(request, "Clutter-Effect");
+							return true;
+						case "sync_radius":
+						case "sync_brightness":
+						case "sync_mode":
+							this.reply_void(request);
+							return true;
 					}
-					/* Props: stock Shell-BlurEffect.set_property — not Helper. */
 					break;
 
 				case "Gsr-Shell-InvertLightnessEffect":

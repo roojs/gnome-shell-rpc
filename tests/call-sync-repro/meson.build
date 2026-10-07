@@ -356,6 +356,23 @@ executable('declared-object-type-gate',
   install: false,
 )
 
+# get_effect of a leaf registered as Shell-BlurEffect. Client has no such alias.
+executable('shell-blur-alias-gate',
+  [
+    'shell-blur-alias-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # measure_event tiddu (not typo tiidu) coords stay double across bin.
 executable('event-tiidu-gate',
   'event-tiidu-gate.vala',

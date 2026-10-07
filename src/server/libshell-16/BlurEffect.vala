@@ -32,8 +32,9 @@ namespace Gsr.Server.Shell
 		private int priv_mode = 0;
 
 		/**
-		 * GObject props — client syncs via stock {@code Shell-BlurEffect.set_property}
-		 * (no Helper setters).
+		 * GObject props. Client setters call {@code Gsr-Shell-BlurEffect.sync_radius},
+		 * {@code sync_brightness}, and {@code sync_mode}. The property setters
+		 * stay {@code set_radius} and the rest; an RPC with those names redefines them.
 		 */
 		public int radius {
 			get {
@@ -96,10 +97,16 @@ namespace Gsr.Server.Shell
 
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.register("Shell-BlurEffect", typeof(BlurEffect));
+			/* No Bin name. get_effect is declared Clutter.Effect, and an
+			 * unregistered peer encodes as that. Aliasing this GType to
+			 * Clutter-Effect would claim the peer is that stub.
+			 */
 			OLLMrpc.Request.add_class(
 				"Gsr-Shell-BlurEffect", typeof(BlurEffect),
 				"create", "",
+				"sync_radius", "i",
+				"sync_brightness", "f",
+				"sync_mode", "i",
 				null
 			);
 		}
@@ -311,6 +318,36 @@ namespace Gsr.Server.Shell
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("t", handle),
+			});
+		}
+
+		public void sync_radius(OLLMrpc.Request request, int radius)
+		{
+			var effect = (BlurEffect) request.connection.leases.get(
+				(int) request.lease_id);
+			effect.radius = radius;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		public void sync_brightness(OLLMrpc.Request request, float brightness)
+		{
+			var effect = (BlurEffect) request.connection.leases.get(
+				(int) request.lease_id);
+			effect.brightness = brightness;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		public void sync_mode(OLLMrpc.Request request, int mode)
+		{
+			var effect = (BlurEffect) request.connection.leases.get(
+				(int) request.lease_id);
+			effect.mode = mode;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
 			});
 		}
 	}

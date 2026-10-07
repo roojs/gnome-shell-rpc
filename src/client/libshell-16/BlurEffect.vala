@@ -2,7 +2,8 @@
  * Owned {@code Shell.BlurEffect} — stock {@code shell-blur-effect} surface.
  *
  * Paint runs on the compositor via {@code Gsr-Shell-BlurEffect.create} (lease).
- * Radius / brightness / mode sync with stock {@code Shell-BlurEffect.set_property}.
+ * Radius, brightness, and mode sync with {@code Gsr-Shell-BlurEffect.sync_radius},
+ * {@code sync_brightness}, and {@code sync_mode}.
  */
 namespace Shell
 {
@@ -47,8 +48,8 @@ namespace Shell
 			set construct {
 				this.priv_radius = value;
 				if (this.mint_done) {
-					Gsr.Client.Rpc.call_value("Shell-BlurEffect.set_property", this,
-						OLLMrpc.args("si", "radius", this.priv_radius));
+					Gsr.Client.Rpc.call_value("Gsr-Shell-BlurEffect.sync_radius", this,
+						OLLMrpc.args("i", this.priv_radius));
 				}
 			}
 		}
@@ -60,8 +61,8 @@ namespace Shell
 			set construct {
 				this.priv_brightness = value;
 				if (this.mint_done) {
-					Gsr.Client.Rpc.call_value("Shell-BlurEffect.set_property", this,
-						OLLMrpc.args("sf", "brightness", this.priv_brightness));
+					Gsr.Client.Rpc.call_value("Gsr-Shell-BlurEffect.sync_brightness", this,
+						OLLMrpc.args("f", this.priv_brightness));
 				}
 			}
 		}
@@ -73,8 +74,8 @@ namespace Shell
 			set construct {
 				this.priv_mode = value;
 				if (this.mint_done) {
-					Gsr.Client.Rpc.call_value("Shell-BlurEffect.set_property", this,
-						OLLMrpc.args("si", "mode", (int) this.priv_mode));
+					Gsr.Client.Rpc.call_value("Gsr-Shell-BlurEffect.sync_mode", this,
+						OLLMrpc.args("i", (int) this.priv_mode));
 				}
 			}
 		}
@@ -86,18 +87,19 @@ namespace Shell
 			}
 			var response = Gsr.Client.Rpc.call_value("Gsr-Shell-BlurEffect.create");
 			this.rpc_lid = response.args.get(0).get_uint64();
+			Gsr.Client.Rpc.register_handle(this);
 			if (this.priv_name != null && this.priv_name.length > 0) {
 				Gsr.Client.Rpc.call_value("Clutter-ActorMeta.set_name", this,
 					OLLMrpc.args("s", this.priv_name));
 			}
 			Gsr.Client.Rpc.call_value("Clutter-ActorMeta.set_enabled", this,
 				OLLMrpc.args("b", this.priv_enabled));
-			Gsr.Client.Rpc.call_value("Shell-BlurEffect.set_property", this,
-				OLLMrpc.args("si", "radius", this.priv_radius));
-			Gsr.Client.Rpc.call_value("Shell-BlurEffect.set_property", this,
-				OLLMrpc.args("sf", "brightness", this.priv_brightness));
-			Gsr.Client.Rpc.call_value("Shell-BlurEffect.set_property", this,
-				OLLMrpc.args("si", "mode", (int) this.priv_mode));
+			Gsr.Client.Rpc.call_value("Gsr-Shell-BlurEffect.sync_radius", this,
+				OLLMrpc.args("i", this.priv_radius));
+			Gsr.Client.Rpc.call_value("Gsr-Shell-BlurEffect.sync_brightness", this,
+				OLLMrpc.args("f", this.priv_brightness));
+			Gsr.Client.Rpc.call_value("Gsr-Shell-BlurEffect.sync_mode", this,
+				OLLMrpc.args("i", (int) this.priv_mode));
 			this.mint_done = true;
 		}
 	}

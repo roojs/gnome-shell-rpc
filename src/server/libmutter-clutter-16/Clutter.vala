@@ -155,6 +155,11 @@ namespace Gsr.Server.Clutter
 			}
 			args.add(OLLMrpc.val("i", device_type));
 			args.add(OLLMrpc.val("u", ev.get_time()));
+			if (et == global::Clutter.EventType.BUTTON_PRESS
+					|| et == global::Clutter.EventType.BUTTON_RELEASE) {
+				GLib.debug("type=%d button=%u time=%u",
+					(int) et, button, ev.get_time());
+			}
 			return args;
 		}
 	}

@@ -1,6 +1,6 @@
 # Application picker clicks throw on event time
 
-**Status:** ✅ closed 2026-10-07. User: assume fixed. The empty window overview is [`../2026-10-06-overview-no-thumbnails.md`](../2026-10-06-overview-no-thumbnails.md). Log Out is [`../2026-10-06-system-menu-logout.md`](../2026-10-06-system-menu-logout.md).
+**Status:** ✅ closed 2026-10-07. User: assume fixed. The 14:31 login on 2026-10-07 does not log this throw. Presses still do not become clicks: [`../2026-10-07-picker-click-no-clicked.md`](../2026-10-07-picker-click-no-clicked.md). The empty window overview is [`../2026-10-06-overview-no-thumbnails.md`](../2026-10-06-overview-no-thumbnails.md). Log Out is [`../2026-10-06-system-menu-logout.md`](../2026-10-06-system-menu-logout.md).
 
 `alan@192.168.88.197`, host `alan-VirtualBox`. Session 6 from GDM at 14:03:19. `gsr-client --debug` 5781. The user could type, delete, and search in the application picker. Clicks on the picker did nothing. The system menu still opened.
 
