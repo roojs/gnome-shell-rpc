@@ -130,6 +130,7 @@ pkill -9 -f 'weston.*wayland-gsr'
 
 | Doc | What |
 | --- | ---- |
+| [`docs/debugging.md`](docs/debugging.md) | **LLM instructions for a fix:** read logs, reproduce, shrink, fix the repro, then land |
 | [`docs/weston-nested-test-env.md`](docs/weston-nested-test-env.md) | **Default nested prove** (Weston in X11) |
 | [`docs/build.md`](docs/build.md) | Prerequisites, meson/ninja, install |
 | [`docs/libmutter-rpc-for-gnome-shell-js.md`](docs/libmutter-rpc-for-gnome-shell-js.md) | Point gnome-shell JS at `libmutter-rpc` |

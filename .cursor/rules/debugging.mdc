@@ -1,0 +1,10 @@
+---
+description: When fixing a bug or told to start with the debugging rules, read all of docs/debugging.md and follow it
+alwaysApply: true
+---
+
+# Debugging instructions for LLMs
+
+When the user asks you to fix a failure, or says to start with the debugging rules, read `docs/debugging.md` in full and follow that file. This rule is not the procedure. Do not act from this rule alone.
+
+When that file says proposal, it means proposed code: `#### Remove` / `#### Replace with` / `#### Add` fences, as in `docs/guide-to-writing-plans.md`.

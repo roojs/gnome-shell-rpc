@@ -9,4 +9,13 @@ namespace St {
 		/* Class slot @ StWidgetClass.style_changed (st-widget-peer.h). */
 		public virtual void style_changed ();
 	}
+
+	[CCode (cname = "StDrawingArea", type_id = "st_drawing_area_get_type ()", cheader_filename = "st-widget-peer.h")]
+	public class DrawingArea : Widget {
+		[CCode (has_construct_function = false)]
+		protected DrawingArea ();
+
+		public unowned Cairo.Context get_context ();
+		public signal void repaint ();
+	}
 }

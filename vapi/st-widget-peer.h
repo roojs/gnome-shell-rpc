@@ -35,4 +35,24 @@ struct _StWidgetClass {
 
 GType st_widget_get_type (void);
 
+#include <cairo.h>
+
+typedef struct _StDrawingArea StDrawingArea;
+typedef struct _StDrawingAreaClass StDrawingAreaClass;
+
+/* Match G_DECLARE_DERIVABLE_TYPE (st-drawing-area.h). Private data
+ * stays in libst. The class slot is the repaint vfunc. */
+struct _StDrawingArea {
+	StWidget parent_instance;
+};
+
+struct _StDrawingAreaClass {
+	StWidgetClass parent_class;
+
+	void (*repaint) (StDrawingArea *area);
+};
+
+GType st_drawing_area_get_type (void);
+cairo_t *st_drawing_area_get_context (StDrawingArea *area);
+
 G_END_DECLS

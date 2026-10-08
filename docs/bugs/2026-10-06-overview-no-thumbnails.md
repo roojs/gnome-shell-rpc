@@ -1,6 +1,6 @@
 # Window overview has no thumbnails
 
-**Status:** ⏳ open. Picker clicks are [`done/2026-10-06-picker-click-get-time.md`](done/2026-10-06-picker-click-get-time.md).
+**Status:** ⏳ open. Picker clicks are [`done/2026-10-06-picker-click-get-time.md`](done/2026-10-06-picker-click-get-time.md). Dash launches that never start, clicks on a running dash icon that do not switch to that app, and flaky workspace 1–5 selection are [`2026-10-08-dash-and-workspace-switch.md`](2026-10-08-dash-and-workspace-switch.md).
 
 **Working rule for this bug:** no status theatre — do not stop to narrate, summarise, or ask to continue. Keep proving until the bar moves or a real stop condition hits.
 
