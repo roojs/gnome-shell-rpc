@@ -388,4 +388,4 @@ No `Gsr-St-DrawingArea.paint` in that log. `watch_repaint` had already replied (
 
 2026-10-08 10:25. Private smoke `bash /tmp/gsr-da-smoke-run.sh` after the preferred-size peer was compiled. Client: `drawing-area-smoke: on stage size=480x64`, then `drawing-area-smoke: miss no-repaint`. Server: preferred width 480, preferred height 64, `queue_repaint`, no `paint`. `Clutter-Actor.add_child` of the drawing area: `invalid (NULL) pointer instance`.
 
-2026-10-08 10:42. User looked at quick settings. The volume row is still a blank space. Recorded as not fixed. No further work.
+2026-10-08 10:42. User looked at quick settings. The volume row is still a blank space. Recorded as not fixed.
