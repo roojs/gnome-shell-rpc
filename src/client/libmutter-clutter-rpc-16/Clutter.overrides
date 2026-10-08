@@ -23,6 +23,11 @@ PickContext emit=opaque-as-class
 ActorBox emit=struct-methods
 ActorIter emit=struct-methods
 
+# Stock implements Clutter.Content (same namespace, bare name).
+# Without it, decoding a painted TextureContent into a Content GValue
+# fails g_value_set_object and every overview stand-in reads null.
+TextureContent implements=Content
+
 # Denied layout slots → *_vfunc at stock Class offset; fallthrough body in
 # Actor.override.vala (*_vfunc_fallback). Skip empty generator stub.
 Actor.allocate vfunc_fallback=hand

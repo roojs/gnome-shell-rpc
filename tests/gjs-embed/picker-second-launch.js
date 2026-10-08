@@ -279,12 +279,20 @@ async function pointerClickIcon(stage, globalObj, icon) {
 	let press = 0;
 	let release = 0;
 	let clicked = false;
+	let pressX = null;
+	let pressY = null;
 	const onEvent = (_actor, event) => {
 		const t = event.type();
-		if (t === Clutter.EventType.BUTTON_PRESS)
+		if (t === Clutter.EventType.BUTTON_PRESS) {
 			press++;
-		else if (t === Clutter.EventType.BUTTON_RELEASE)
+			if (pressX == null) {
+				const coords = event.get_coords();
+				pressX = coords[0];
+				pressY = coords[1];
+			}
+		} else if (t === Clutter.EventType.BUTTON_RELEASE) {
 			release++;
+		}
 		return Clutter.EVENT_PROPAGATE;
 	};
 	const hid = stage.connect('captured-event', onEvent);
@@ -306,6 +314,18 @@ async function pointerClickIcon(stage, globalObj, icon) {
 		icon.disconnect(cid);
 		throw e;
 	}
+	await delay(400);
+	if (pressX != null && (Math.abs(pressX - cx) > 2 || Math.abs(pressY - cy) > 2)) {
+		const nx = cx + (cx - pressX);
+		const ny = cy + (cy - pressY);
+		smokeLog('press-at ' + pressX + ',' + pressY + ' retry @' + nx + ',' + ny);
+		press = 0;
+		release = 0;
+		clicked = false;
+		pressX = null;
+		pressY = null;
+		globalObj.pointer_click(nx, ny);
+	}
 	await delay(700);
 	stage.disconnect(hid);
 	icon.disconnect(cid);
@@ -316,7 +336,7 @@ async function pointerClickIcon(stage, globalObj, icon) {
 	} catch (e) {
 		boxLine = formatError(e);
 	}
-	smokeLog(`click id=${icon.app.get_id()} @${cx.toFixed(0)},${cy.toFixed(0)} press=${press} release=${release} clicked=${clicked} pick=${picked} box=${boxLine}`);
+	smokeLog(`click id=${icon.app.get_id()} @${cx.toFixed(0)},${cy.toFixed(0)} press=${press} release=${release} clicked=${clicked} pick=${picked} at=${pressX},${pressY} box=${boxLine}`);
 	return {press, release, clicked, picked};
 }
 
@@ -379,6 +399,27 @@ async function run(main) {
 	const hideDeadline = GLib.get_monotonic_time() + 4000 * 1000;
 	while (main.overview.visible && GLib.get_monotonic_time() < hideDeadline)
 		await delay(200);
+
+	const group = main.layoutManager?.overviewGroup;
+	let centerName = 'none';
+	try {
+		const actor = stage.get_actor_at_pos(
+			Clutter.PickMode.REACTIVE,
+			Math.floor(stage.width / 2),
+			Math.floor(stage.height / 2));
+		centerName = actor?.name || actorChain(actor);
+	} catch (e) {
+		centerName = formatError(e);
+	}
+	smokeLog('after-launch1 overview.visible=' + main.overview.visible
+		+ ' group.visible=' + (group?.visible ?? 'none')
+		+ ' group.mapped=' + (group?.mapped ?? 'none')
+		+ ' group.reactive=' + (group?.reactive ?? 'none')
+		+ ' center=' + centerName);
+	if (!main.overview.visible && group != null && (group.visible || group.mapped)) {
+		finishMiss('overviewGroup-still-up');
+		return;
+	}
 
 	icons = await waitGrid(main, appDisplay, stage);
 	const secondIcon = icons.find(icon => icon.app.get_id() === second.app.get_id()) ?? second;

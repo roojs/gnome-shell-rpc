@@ -93,6 +93,10 @@ restart
 is_restart
 # Local actor. Do not lease the compositor's window actor.
 Window.get_compositor_private
+# Hand: server packs handle pairs (Compositor.vala); override hydrates live
+# actor proxies bound to their windows. Generated decode expects an
+# ArrayList retval the server never sets, so it silently yields no actors.
+Compositor.get_window_actors
 # Hand getter: stand-in stores the window; a leased actor still RPCs.
 WindowActor.meta_window
 Window.foreach_transient

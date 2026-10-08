@@ -344,6 +344,7 @@ meta_override_files = files(
   'client/libmutter-rpc-16/overrides/ShapedTexture.override.vala',
   'client/libmutter-rpc-16/overrides/WaylandCompositor.override.vala',
   'client/libmutter-rpc-16/overrides/WaylandClient.override.vala',
+  'client/libmutter-rpc-16/overrides/Compositor.override.vala',
 )
 
 meta_window_generated = custom_target('Meta_window_generated.vala',
@@ -415,6 +416,7 @@ clutter_override_files = files(
   'client/libmutter-clutter-rpc-16/overrides/Text.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/InputDevice.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/ShaderEffect.override.vala',
+  'client/libmutter-clutter-rpc-16/overrides/TextureContent.override.vala',
 )
 # Two single-output emits — Meson 1.7 Vala cannot compile CustomTargetIndex
 # (clutter_generated[0] / [1]) as a source.

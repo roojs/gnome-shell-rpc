@@ -8,6 +8,7 @@ namespace St {
 
 		/* Class slot @ StWidgetClass.style_changed (st-widget-peer.h). */
 		public virtual void style_changed ();
+		public unowned string? get_style_class_name ();
 	}
 
 	[CCode (cname = "StDrawingArea", type_id = "st_drawing_area_get_type ()", cheader_filename = "st-widget-peer.h")]

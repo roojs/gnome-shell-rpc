@@ -108,8 +108,18 @@ else
 	echo "weston-gsr-session: panel button starts the shell (window fills Weston)"
 fi
 
+# EGL on the host X window can refuse (NVIDIA) while pixman still works.
+# GSR_WESTON_PIXMAN=1 runs the parent compositor on pixman; mutter nested
+# still renders the shell and the thumbnails itself. Record it in the bug
+# when a run uses it — it is a parent-renderer deviation, not product path.
+PIXMAN=()
+if [[ "${GSR_WESTON_PIXMAN:-0}" == "1" ]]; then
+	PIXMAN=(--use-pixman)
+fi
+
 exec weston \
 	--backend=x11-backend.so \
+	"${PIXMAN[@]}" \
 	--width="$WIDTH" \
 	--height="$HEIGHT" \
 	--socket="$SOCK" \

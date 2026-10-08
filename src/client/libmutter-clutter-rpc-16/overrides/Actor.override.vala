@@ -753,6 +753,9 @@
 	 * GIR pivot-point getter uses float OUTs — generator skips the property
 	 * and we deny get/set_pivot_point (Vala would emit duplicate C symbols for
 	 * the property accessors). Inline RPC for GJS construct literals.
+	 * The setter owns a moved-aside C name: the stock
+	 * {@code clutter_actor_set_pivot_point} symbol below is the real
+	 * (double, double) method stock JS calls.
 	 */
 	public Graphene.Point pivot_point {
 		get {
@@ -764,11 +767,27 @@
 			point.init(x, y);
 			return point;
 		}
+		[CCode (cname = "gsr_clutter_actor_set_pivot_point_point")]
 		set {
 			Gsr.Client.Rpc.call_value(
 				"Clutter-Actor.set_pivot_point", this,
 				OLLMrpc.args("ff", (double) value.x, (double) value.y));
 		}
+	}
+	/**
+	 * Stock {@code clutter_actor_set_pivot_point} (double, double) form.
+	 * The typelib declares it (real Clutter signature) but the only C
+	 * symbol was the Point property setter above, so stock callers like
+	 * the app-picker launch animation crashed (or RPC'd garbage). This
+	 * owns the stock C name; GJS property sets still reach the setter
+	 * through the GObject property.
+	 */
+	[CCode (cname = "clutter_actor_set_pivot_point")]
+	public void set_pivot_point(double pivot_x, double pivot_y)
+	{
+		Gsr.Client.Rpc.call_value(
+			"Clutter-Actor.set_pivot_point", this,
+			OLLMrpc.args("ff", pivot_x, pivot_y));
 	}
 	/**
 	 * Box for {@link allocation}. Setting it notifies {@code allocation}.

@@ -34,6 +34,7 @@ struct _StWidgetClass {
 };
 
 GType st_widget_get_type (void);
+const char *st_widget_get_style_class_name (StWidget *actor);
 
 #include <cairo.h>
 

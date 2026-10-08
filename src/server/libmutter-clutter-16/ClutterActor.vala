@@ -355,6 +355,12 @@ namespace Gsr.Server.Clutter
 		public override bool event(global::Clutter.Event clutter_event)
 		{
 			var hook = this.vfuncs.get(ActorVfuncIds.event_id);
+			GLib.debug("type=%d actor=%s name=%s style=%s hook=%d",
+				(int) clutter_event.get_type(),
+				this.client_type_name != null ? this.client_type_name : "?",
+				this.name != null ? this.name : "",
+				this.get_style_class_name() != null ? this.get_style_class_name() : "",
+				hook != null ? 1 : 0);
 			if (hook == null) {
 				/* Parent ClutterActorClass.event is NULL on global::St.Widget —
 				 * Vala base.event would call through 0 (motion SIGSEGV). */
@@ -369,6 +375,12 @@ namespace Gsr.Server.Clutter
 		public override bool captured_event(global::Clutter.Event clutter_event)
 		{
 			var hook = this.vfuncs.get(ActorVfuncIds.captured_event_id);
+			GLib.debug("type=%d actor=%s name=%s style=%s hook=%d",
+				(int) clutter_event.get_type(),
+				this.client_type_name != null ? this.client_type_name : "?",
+				this.name != null ? this.name : "",
+				this.get_style_class_name() != null ? this.get_style_class_name() : "",
+				hook != null ? 1 : 0);
 			if (hook == null) {
 				return false;
 			}
