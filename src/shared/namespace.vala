@@ -18,6 +18,7 @@ namespace Gsr.Shared
 	public void rpc_register()
 	{
 		Rectangle.rpc_register();
+		ClutterEventState.rpc_register();
 		Window.rpc_register();
 		Workspace.rpc_register();
 	}

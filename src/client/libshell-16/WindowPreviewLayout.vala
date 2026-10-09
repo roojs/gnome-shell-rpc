@@ -3,10 +3,10 @@
  * {@code shell-window-preview-layout.c}.
  *
  * Client-local {@link Clutter.LayoutManager} ({@code rpc_lid} stays 0):
- * measure/allocate run here; each tracked window is a
- * {@link WindowEntry}. The child is a {@link Clutter.Clone} of
- * {@link Meta.Window.get_compositor_private} (the painted stand-in,
- * not the live window actor).
+ * measure/allocate run here; each tracked window is a picture actor
+ * holding the stand-in's content. The live window actor stays on the
+ * stage. A {@link Clutter.Clone} of the stand-in does not paint: the
+ * stand-in is not realized.
  */
 namespace Shell
 {
@@ -31,10 +31,21 @@ namespace Shell
 				this.layout = layout;
 				this.window = window;
 				var source = (Clutter.Actor) window.get_compositor_private();
-				this.actor_copy = new Clutter.Clone(source);
+				/*
+				 * Stock code clones the live window actor. That actor is
+				 * on the stage, so the clone can paint it. Our stand-in
+				 * is not, and Clutter.Clone skips paint unless the source
+				 * is realized. A child that holds the same content is in
+				 * the overview tree, so it realizes and paints.
+				 */
+				var picture = new Clutter.Actor();
+				picture.content = source.content;
+				this.actor_copy = picture;
 				Gsr.Client.Rpc.ensure_signal_subscribe(window, "size-changed");
 				Gsr.Client.Rpc.ensure_signal_subscribe(window, "position-changed");
 				this.size_changed_id = window.signal_size_changed.connect(() => {
+					var src = (Clutter.Actor) window.get_compositor_private();
+					picture.content = src.content;
 					layout.windows_changed();
 				});
 				this.position_changed_id = window.signal_position_changed.connect(() => {
@@ -110,14 +121,11 @@ namespace Shell
 
 				Mtk.Rectangle buffer_rect;
 				entry.window.get_buffer_rect(out buffer_rect);
-				float child_nat_width, child_nat_height, unused_min_w, unused_min_h;
-				child.get_preferred_size(out unused_min_w, out unused_min_h,
-					out child_nat_width, out child_nat_height);
 
 				var child_box = Clutter.ActorBox();
 				child_box.set_origin((float) buffer_rect.x - this.priv_bounding_box.x1,
 					(float) buffer_rect.y - this.priv_bounding_box.y1);
-				child_box.set_size(child_nat_width, child_nat_height);
+				child_box.set_size((float) buffer_rect.width, (float) buffer_rect.height);
 				child_box.x1 *= scale_x;
 				child_box.x2 *= scale_x;
 				child_box.y1 *= scale_y;

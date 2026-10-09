@@ -343,7 +343,7 @@ namespace Gsr.Server.Clutter
 		/**
 		 * Emit a GIR union when {@code Type emit=union-as-class} +
 		 * {@code wire_as=gobject} (RPC Handle). Clutter only has {@code Event};
-		 * that one is denied and hand-written Compact in Clutter.override.vala.
+		 * that one is denied and hand-written Compact in Event.vala.
 		 */
 		private int emit_union_as_object(
 			GLib.FileStream stream,

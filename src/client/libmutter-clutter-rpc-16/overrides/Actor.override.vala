@@ -809,12 +809,20 @@
 	ActorBox allocation_priv = ActorBox();
 
 	/**
-	 * GIR property is read-only. {@code notify::allocation-relay} writes
-	 * {@link allocation_relay}. The store is {@link relay_allocation}.
+	 * The GIR property is read-only. A server {@code notify::allocation}
+	 * is applied with {@code set_property}, which a getter-only property
+	 * rejects, so the client box stayed empty and a slider click mapped
+	 * every x to the end of a zero-width bar. The setter stores that
+	 * box. It does not call {@code set_allocation}: the server already
+	 * has it. {@link relay_allocation} is still the JS method.
 	 */
 	public ActorBox allocation {
 		get {
 			return this.allocation_priv;
+		}
+		[CCode (cname = "gsr_clutter_actor_note_allocation")]
+		set {
+			this.allocation_priv = value;
 		}
 	}
 

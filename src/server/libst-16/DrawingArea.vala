@@ -19,8 +19,7 @@ namespace Gsr.Server.St
 				"paint", "uuux",
 				null
 			);
-			OLLMrpc.Request.register_live(
-				"Gsr-St-DrawingArea", new DrawingArea());
+			OLLMrpc.Request.register_live("Gsr-St-DrawingArea", new DrawingArea());
 		}
 
 		/**

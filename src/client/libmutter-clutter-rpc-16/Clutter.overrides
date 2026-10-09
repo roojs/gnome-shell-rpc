@@ -10,7 +10,7 @@ Namespace emit_iface_slots=1
 # the typelib's own.
 Namespace boxed=Cogl-16,Graphene-1.0,Mtk-16,Meta-16
 
-# Event (sole Clutter GIR union) — denied; Compact in Clutter.override.vala.
+# Event (sole Clutter GIR union) — denied; Compact in Event.vala.
 # Frame (opaque boxed) — denied; Compact in Clutter.override.vala.
 
 # Opaque boxed records (size 0) → class + methods for St C ABI.

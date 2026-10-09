@@ -58,6 +58,9 @@
 		public void set_initial_value(GLib.Value value)
 		{
 			this.mirror_value(true, value);
+			if (this.send_actor_box(true, value)) {
+				return;
+			}
 			Gsr.Client.Rpc.call_value(
 				"Clutter-Interval.set_initial", this,
 				OLLMrpc.args("V", value));
@@ -66,9 +69,37 @@
 		public void set_final_value(GLib.Value value)
 		{
 			this.mirror_value(false, value);
+			if (this.send_actor_box(false, value)) {
+				return;
+			}
 			Gsr.Client.Rpc.call_value(
 				"Clutter-Interval.set_final", this,
 				OLLMrpc.args("V", value));
+		}
+
+		/**
+		 * Bin GValue rejects {@code ClutterActorBox}. Pack the struct
+		 * the same way {@code Actor.allocate} packs a box.
+		 */
+		private bool send_actor_box(bool is_initial, GLib.Value value)
+		{
+			if (value.type().name() != "ClutterActorBox") {
+				return false;
+			}
+			unowned Clutter.ActorBox* boxp =
+				(Clutter.ActorBox*) value.get_boxed();
+			if (boxp == null) {
+				return false;
+			}
+			uint8[] data = new uint8[sizeof(Clutter.ActorBox)];
+			*((Clutter.ActorBox*) data) = *boxp;
+			Gsr.Client.Rpc.call_value(
+				is_initial
+					? "Gsr-Clutter-Interval.set_initial_box"
+					: "Gsr-Clutter-Interval.set_final_box",
+				null,
+				OLLMrpc.args("tay", this.rpc_lid, new GLib.Bytes(data)));
+			return true;
 		}
 
 		public void get_initial_value(out GLib.Value value)

@@ -126,7 +126,7 @@ function findPreviews(actor, depth, out) {
 		} catch (e) {
 			size = '(size-threw)';
 		}
-		out.push({title: String(mw), size});
+		out.push({title: String(mw), size, actor});
 		return out;
 	}
 	if (name === 'Workspace') {
@@ -147,6 +147,35 @@ function findPreviews(actor, depth, out) {
 	for (const child of children)
 		findPreviews(child, depth + 1, out);
 	return out;
+}
+
+/**
+ * True when some actor under the preview holds content and is in the
+ * stage tree. A Clutter.Clone of the offstage stand-in does not.
+ * @param {object} actor
+ * @param {number} depth
+ * @returns {boolean}
+ */
+function descendantPaints(actor, depth) {
+	if (actor == null || depth > 8)
+		return false;
+	try {
+		if (actor.content != null && actor.has_allocation())
+			return true;
+	} catch (e) {
+		/* keep walking */
+	}
+	let children = [];
+	try {
+		children = actor.get_children ? actor.get_children() : [];
+	} catch (e) {
+		children = [];
+	}
+	for (const child of children) {
+		if (descendantPaints(child, depth + 1))
+			return true;
+	}
+	return false;
 }
 
 /**
@@ -364,6 +393,20 @@ async function runThumbnailProve(main) {
 	smokeLog('compositor-private-after-paint=' + privAfter);
 	if (privAfter.indexOf('content=set') !== 0)
 		throw new Error('miss paint (stand-in has no painted content)');
+
+	const foundEarly = findPreviews(globalObj.stage, 0, []);
+	let painted = false;
+	for (const row of foundEarly) {
+		if (row.actor == null)
+			continue;
+		if (descendantPaints(row.actor, 0)) {
+			painted = true;
+			break;
+		}
+	}
+	smokeLog('preview-paints=' + painted);
+	if (!painted)
+		throw new Error('miss paint-actor (overview preview has no allocated content)');
 
 	const found = findPreviews(globalObj.stage, 0, []);
 	const previews = found.filter(p => p.size !== '');

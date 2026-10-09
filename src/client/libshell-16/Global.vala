@@ -86,6 +86,16 @@ namespace Shell
 		}
 
 		/**
+		 * Nested prove — one discrete wheel notch at stage coords.
+		 * Not stock Shell; {@code Gsr-Clutter-Actor.pointer_scroll} only.
+		 */
+		public void pointer_scroll(float x, float y, Clutter.ScrollDirection direction)
+		{
+			Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.pointer_scroll",
+				null, OLLMrpc.args("ddu", (double) x, (double) y, (uint) direction));
+		}
+
+		/**
 		 * Nested B3 prove — fire BUTTON_PRESS Live.Hook on {@code actor}
 		 * (Gsr-Clutter-Actor peer). Not stock Shell.
 		 */

@@ -319,7 +319,7 @@ Clone.set_source
 BindingPool.install_closure
 BindingPool.override_closure
 
-# Hand-written in Clutter.override.vala (sole Clutter GIR union → Compact).
+# Hand-written in Event.vala (sole Clutter GIR union → Compact).
 Event
 EventSequence
 

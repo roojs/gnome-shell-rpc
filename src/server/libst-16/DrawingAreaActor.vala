@@ -15,6 +15,14 @@ namespace Gsr.Server.St
 		}
 		public string? client_type_name;
 
+		public static void rpc_register()
+		{
+			/* Child of add_child must be in the alias map. Stock
+			   StDrawingArea already is. This peer is a second GType. */
+			OLLMrpc.Bin.register_alias(
+				"St-DrawingArea", typeof(DrawingAreaActor));
+		}
+
 		public override void get_preferred_width(
 			float for_height,
 			out float min_width_p,
