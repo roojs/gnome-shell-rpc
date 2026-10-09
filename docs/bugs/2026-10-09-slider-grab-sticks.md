@@ -1,8 +1,8 @@
 # Volume grab still owns the pointer when the microphone slider is used
 
-**Status:** Open. Product code is unchanged. `src/client/libshell-16/Signals.vala` matches git HEAD.
+**Status:** Open. Product code is unchanged. `src/client/libshell-16/Signals.vala` matches git HEAD. The code below is for discussion. It is not applied.
 
-After a click on the volume slider, the next click still belongs to that slider. Dragging the microphone slider moves the volume slider.
+After a click on the volume slider, the next click still belongs to that slider. Dragging the microphone slider moves the volume slider. Output and input are separate sliders.
 
 The small program that shows this is `tests/gjs-embed/slider-grab-smoke.js`. It puts two sliders on the stage, clicks the left one, then clicks the right one.
 
@@ -10,13 +10,15 @@ The small program that shows this is `tests/gjs-embed/slider-grab-smoke.js`. It 
 GI_META_SMOKE=slider-grab-smoke ./scripts/weston-gsr-prove.sh
 ```
 
-2026-10-09 15:39, product code unchanged. The log is `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`. The run printed `slider-grab-smoke: miss left=0.5 right=0.2`.
-
-## What the log shows
+## What is wrong
 
 Gnome Shell's slider, on mouse down, calls `global.stage.grab(this)` and stores the result in `this._grab`. On mouse up it calls `this._grab.dismiss()`, which releases the pointer. In a normal session that grab call returns before the mouse-up handler runs, so the handler still has the grab and can dismiss it.
 
-In this run the mouse-up handler ran while the grab call was still waiting for its answer. `this._grab` was still empty, so the handler ended the drag and did not call dismiss. The grab call then returned, and the slider stored a grab that nothing dismisses. The second click was delivered to the left slider. The right slider stayed at 0.2.
+Here the mouse-up handler runs while that grab call is still waiting for its answer. `this._grab` is still empty, so the handler ends the drag and does not call dismiss. The grab call then returns, and the slider stores a grab that nothing dismisses. The next click is delivered to the volume slider.
+
+The mouse-up is already on the socket because the press and the release are both written before the press handler returns. The grab call reads the socket while it waits, and the client emits that release as soon as it is read.
+
+2026-10-09 15:39, product code unchanged. The log is `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`. The run printed `slider-grab-smoke: miss left=0.5 right=0.2`. The right slider stayed at 0.2.
 
 The client log, in order:
 
@@ -29,53 +31,162 @@ The server received `Clutter-Stage.grab` id=120 after that release had already b
 
 ## Proposed fix
 
-Not applied. `Shell.Signals` re-emits a notification as soon as the grab call reads it. An input event is a notification whose arguments include `Gsr.Shared.ClutterEventState`. That is the mark from Clutter's event dispatch. No signal name is checked.
+Not applied. The RPC library stores a bool the caller set. It does not mention Clutter. This server sets that bool when the signal it is subscribing takes a Clutter event. The client only reads the bool.
 
-While one of those is being handled, the next one waits. Replies and hook callbacks are not notifications of that shape, so they still run. `slider-grab-smoke` passes when the left press stores the grab, the left release then clears it, and the right press is the right slider.
+A notification without the bool is still emitted immediately. Replies are not notifications. The count is only how many marked handlers are on the stack. Mouse-up waits until the press handler returns, which is after the slider has stored the grab. The hold list is created the first time something waits.
 
-### 1. `src/client/libshell-16/Signals.vala` — fields on `Signals`
+### 1. `OLLMchat/libocrpc/Notification.vala` — the bool on the message
 
-**Why:** The wait needs a count and a list. The count is the situation. The list is the input events that arrived during it.
+**Why:** The writer puts the mark on the message. The library does not decide what the mark means.
 
-**Where:** After `notification_hooked`.
+**Where:** On `Notification`, after `action_label`.
 
 **Depends on:** none.
 
-#### Add — after `private static bool notification_hooked = false;`
-
-The count, the list, and the drain flag.
+#### Add — after `public string action_label`
 
 ```vala
 		/**
-		 * Input-event emissions currently inside {@link emit}.
+		 * True when the writer asked for this notification to be
+		 * delivered one at a time.
 		 *
-		 * A notification that carries {@link Gsr.Shared.ClutterEventState}
-		 * is an input event. While this count is non-zero, another such
-		 * notification waits in {@link held_events}.
+		 * Copied from {@link Live.Subscription.ordered}. False
+		 * unless that caller set it.
+		 */
+		public bool ordered { get; set; default = false; }
+```
+
+### 2. `OLLMchat/libocrpc/Live/Subscription.vala` — copy the caller's bool
+
+**Why:** `emit` creates the notification. It copies the bool the caller stored on this subscription. It does not look at the signal or the arguments.
+
+**Where:** Field on `Subscription`, and the `write` in `emit`.
+
+**Depends on:** §1.
+
+##### Part 1 — field
+
+#### Add — after `public ulong hid`
+
+```vala
+		/**
+		 * Copied onto each notification this subscription writes.
+		 *
+		 * The caller sets it before {@link connect}. This class
+		 * does not.
+		 */
+		public bool ordered { get; set; default = false; }
+```
+
+##### Part 2 — the write
+
+#### Remove
+
+```vala
+			subscription.connection.write(new Notification() {
+				method = subscription.method,
+				id = subscription.id,
+				args = packed
+			});
+```
+
+#### Replace with
+
+```vala
+			subscription.connection.write(new Notification() {
+				method = subscription.method,
+				id = subscription.id,
+				args = packed,
+				ordered = subscription.ordered
+			});
+```
+
+### 3. `src/server/libmutter-clutter-16/ClutterActor.vala` — `add_signals()`
+
+**Why:** This is the code that subscribes the signal, so this is where the bool is set. A signal whose argument is a Clutter event is one-at-a-time. Anything else stays false.
+
+**Where:** The `new OLLMrpc.Live.Subscription` inside the name loop.
+
+**Depends on:** §2.
+
+#### Remove
+
+```vala
+			for (var i = 0; i < names.length; i++) {
+				var subscription = new OLLMrpc.Live.Subscription() {
+					connection = request.connection,
+					method = names[i],
+					id = (int) request.lease_id
+				};
+```
+
+#### Replace with
+
+```vala
+			var obj = request.connection.leases.get((int) request.lease_id);
+			for (var i = 0; i < names.length; i++) {
+				var ordered = false;
+				if (obj != null && !names[i].has_prefix("notify::")) {
+					var signal_id = GLib.Signal.lookup(names[i], obj.get_type());
+					if (signal_id != 0) {
+						GLib.SignalQuery query;
+						GLib.Signal.query(signal_id, out query);
+						if (query.n_params > 0
+								&& query.param_types[0].name() == "ClutterEvent") {
+							ordered = true;
+						}
+					}
+				}
+				var subscription = new OLLMrpc.Live.Subscription() {
+					connection = request.connection,
+					method = names[i],
+					id = (int) request.lease_id,
+					ordered = ordered
+				};
+```
+
+### 4. `src/client/libshell-16/Signals.vala` — fields on `Signals`
+
+**Why:** Marked notifications that arrive during another marked one have to wait. The list is created on first use. The count is only those marked handlers.
+
+**Where:** After `notification_hooked`.
+
+**Depends on:** §1.
+
+#### Add — after `private static bool notification_hooked = false;`
+
+```vala
+		/**
+		 * Marked handlers currently inside {@link emit}.
+		 *
+		 * While this is non-zero, another notification with
+		 * {@link OLLMrpc.Notification.ordered} waits in
+		 * {@link held_events}. Other notifications are emitted
+		 * immediately.
 		 */
 		private static int event_depth = 0;
 
 		/**
-		 * Input events that arrived during {@link event_depth}.
+		 * Marked notifications that arrived during {@link event_depth}.
 		 *
-		 * Run when the outer event emission returns.
+		 * Null until the first one waits. Run when the outer marked
+		 * handler returns.
 		 */
-		private static Gee.ArrayList<OLLMrpc.Notification> held_events
-			= new Gee.ArrayList<OLLMrpc.Notification>();
+		private static Gee.ArrayList<OLLMrpc.Notification>? held_events;
 
 		/**
-		 * True while the outer event emission is running {@link held_events}.
+		 * True while the outer marked handler is running {@link held_events}.
 		 */
 		private static bool draining_events = false;
 ```
 
-### 2. `src/client/libshell-16/Signals.vala` — `connect()` notification handler
+### 5. `src/client/libshell-16/Signals.vala` — `connect()` notification handler
 
-**Why:** This is where a socket read becomes a signal. An input event that arrives during another input event is stored. Anything else is still emitted now.
+**Why:** A marked notification that arrives during another marked one is stored. Anything else is emitted now.
 
 **Where:** The `notification.connect` callback, after the lease check, before `Signals.emit`.
 
-**Depends on:** §1.
+**Depends on:** §4.
 
 #### Remove
 
@@ -93,72 +204,51 @@ The count, the list, and the drain flag.
 					if (!Gsr.Client.Rpc.client.proxies.has_key(notif.id)) {
 						return;
 					}
-					if (Signals.event_depth > 0
-							&& Signals.event_args(notif.args)) {
+					if (notif.ordered && Signals.event_depth > 0) {
+						if (Signals.held_events == null) {
+							Signals.held_events = new Gee.ArrayList<OLLMrpc.Notification>();
+						}
 						Signals.held_events.add(notif);
 						return;
 					}
 					var target = Gsr.Client.Rpc.client.proxies.get(notif.id);
-					Signals.emit(target, notif.method, notif.args);
+					Signals.emit(target, notif.method, notif.args, notif.ordered);
 ```
 
-### 3. `src/client/libshell-16/Signals.vala` — `event_args()`
+### 6. `src/client/libshell-16/Signals.vala` — `emit()`
 
-**Why:** The group is "this notification carries a Clutter event", not a method name.
+**Why:** The count covers the marked handler, including the grab call and the assignment after it returns. Mouse-up that was waiting runs after this call returns. Unmarked signals do not touch the count.
 
-**Where:** New method, immediately above `emit()`.
+**Where:** The `emit` signature, the start of the body, the parse-failure return, and the line after `release_params`.
 
-**Depends on:** none.
+**Depends on:** §4 and §5.
 
-#### Add — immediately above `private static void emit(`
+##### Part 1 — signature and count
 
-True when any argument is a `Gsr.Shared.ClutterEventState`.
+#### Remove
 
 ```vala
-		/**
-		 * True when ''args'' carries one {@link Gsr.Shared.ClutterEventState}.
-		 *
-		 * That object is what the server writes for an input event.
-		 *
-		 * @param args notification arguments
-		 * @return true when one argument is that object
-		 */
-		private static bool event_args(Gee.ArrayList<GLib.Value?> args)
-		{
-			if (args == null) {
-				return false;
-			}
-			foreach (var arg in args) {
-				if (arg == null || !arg.holds(typeof(GLib.Object))) {
-					continue;
-				}
-				if (arg.get_object() is Gsr.Shared.ClutterEventState) {
-					return true;
-				}
-			}
-			return false;
-		}
+		private static void emit(
+			GLib.Object obj,
+			string signal_name,
+			Gee.ArrayList<GLib.Value?> args
+		) {
+			uint signal_id = 0;
 ```
 
-### 4. `src/client/libshell-16/Signals.vala` — `emit()`
-
-**Why:** The count covers the handler. Mouse-up that was waiting runs after this call returns, which is after the slider has stored the grab. No `try`.
-
-**Where:** Start of `emit()`, the parse-failure return, and the line after `release_params`.
-
-**Depends on:** §1 and §3.
-
-##### Part 1 — count
-
-#### Add — first lines inside `emit()`, before `uint signal_id`
-
-Raise the count for an input event.
+#### Replace with
 
 ```vala
-			var input = Signals.event_args(args);
-			if (input) {
+		private static void emit(
+			GLib.Object obj,
+			string signal_name,
+			Gee.ArrayList<GLib.Value?> args,
+			bool ordered
+		) {
+			if (ordered) {
 				Signals.event_depth++;
 			}
+			uint signal_id = 0;
 ```
 
 ##### Part 2 — parse failure
@@ -177,7 +267,7 @@ Raise the count for an input event.
 ```vala
 			if (!GLib.Signal.parse_name(signal_name, obj.get_type(), out signal_id, out detail, false)
 					|| signal_id == 0) {
-				if (input) {
+				if (ordered) {
 					Signals.event_depth--;
 				}
 				return;
@@ -197,11 +287,12 @@ Raise the count for an input event.
 
 ```vala
 			OLLMrpc.Bin.TypeOverride.release_params(query.param_types);
-			if (!input) {
+			if (!ordered) {
 				return;
 			}
 			Signals.event_depth--;
-			if (Signals.event_depth > 0 || Signals.draining_events) {
+			if (Signals.event_depth > 0 || Signals.draining_events
+					|| Signals.held_events == null) {
 				return;
 			}
 			Signals.draining_events = true;
@@ -217,7 +308,7 @@ Raise the count for an input event.
 					continue;
 				}
 				var target = Gsr.Client.Rpc.client.proxies.get(notif.id);
-				Signals.emit(target, notif.method, notif.args);
+				Signals.emit(target, notif.method, notif.args, notif.ordered);
 			}
 			Signals.draining_events = false;
 		}
@@ -234,3 +325,7 @@ Raise the count for an input event.
 2026-10-09 15:51. Moved the right slider to x=280 and ran the smoke again without rebuilding. The binary was still the 15:44 one. The second click did land at x=390 and the right slider's press and release ran, but only after the smoke had already printed `miss`. This run does not count as product code unchanged.
 
 2026-10-09 15:53. Rebuilt another hold inside `Signals.emit`. The left slider stored the grab and then dismissed it, and the right slider did the same. Values ended at left=0.5 and right=0.5. The smoke still printed `miss` because it recorded the left value before the press handler had updated it (`leftAfter=0.2`). Editing the shared signal code was rejected. `Signals.vala` is restored to git HEAD.
+
+2026-10-09 16:53. Removed the written proposal. It had the client detect a Clutter event in the notification, a static list created in the field declaration, a process-wide hold on signals, and a Clutter event check inside the RPC library. All of that was rejected. Product code was not changed.
+
+2026-10-09 16:55. Put a discussion draft back in the bug. The RPC library only copies a bool the caller set. This server sets that bool for a signal whose argument is a Clutter event. The client only reads the bool. Not applied.
