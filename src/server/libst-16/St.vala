@@ -15,11 +15,11 @@ namespace Gsr.Server.St
 		public static void rpc_register()
 		{
 			var helper = new St();
-			OLLMrpc.Request.add_class("St-Widget", typeof(St), "new", "", null);
+			OLLMrpc.Request.add_class("St-Widget", typeof(St), "new", "");
 			OLLMrpc.Request.register_live("St-Widget", helper);
-			OLLMrpc.Request.add_class("St-DrawingArea", typeof(St), "new", "", null);
+			OLLMrpc.Request.add_class("St-DrawingArea", typeof(St), "new", "");
 			OLLMrpc.Request.register_live("St-DrawingArea", helper);
-			OLLMrpc.Request.add_class("St-Viewport", typeof(St), "new", "", null);
+			OLLMrpc.Request.add_class("St-Viewport", typeof(St), "new", "");
 			OLLMrpc.Request.register_live("St-Viewport", helper);
 		}
 

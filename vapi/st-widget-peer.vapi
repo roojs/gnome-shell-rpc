@@ -17,6 +17,7 @@ namespace St {
 		protected DrawingArea ();
 
 		public unowned Cairo.Context get_context ();
+		public void queue_repaint ();
 		public signal void repaint ();
 	}
 }

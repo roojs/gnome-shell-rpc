@@ -123,8 +123,10 @@ Entry.get_clutter_text
 
 # DrawingArea.override — cairo.Context is not marshallable. Local
 # ImageSurface for GJS repaint handlers (stock is only valid during that
-# emission).
+# emission). queue_repaint goes to Gsr-St-DrawingArea so a call during
+# the emission is deferred instead of re-entering stock.
 DrawingArea.get_context
+DrawingArea.queue_repaint
 
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new

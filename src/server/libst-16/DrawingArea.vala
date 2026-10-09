@@ -17,7 +17,7 @@ namespace Gsr.Server.St
 				"add_hooks", "Sv",
 				"watch_repaint", "t",
 				"paint", "uuux",
-				null
+				"queue_repaint", ""
 			);
 			OLLMrpc.Request.register_live("Gsr-St-DrawingArea", new DrawingArea());
 		}
@@ -103,7 +103,9 @@ namespace Gsr.Server.St
 			var hook = request.connection.callbacks.get((int) hook_id);
 			DrawingArea.repaint_hooks.set(lid, hook);
 			area.repaint.connect(() => {
+				area.set_data("gsr-repaint-busy", area);
 				hook.emit(OLLMrpc.args("t", hook.connection.export(area)));
+				area.set_data("gsr-repaint-busy", null);
 			});
 			request.reply(new OLLMrpc.Response());
 		}
@@ -150,6 +152,36 @@ namespace Gsr.Server.St
 			cr.set_source_surface(src, 0, 0);
 			cr.paint();
 			cr.set_source_rgba(0, 0, 0, 0);
+			request.reply(new OLLMrpc.Response());
+		}
+
+		/**
+		 * ''Gsr-St-DrawingArea.queue_repaint'' — stock
+		 * {@code st_drawing_area_queue_repaint} emits {@code repaint}
+		 * before it returns, and drops the cairo buffer first. A call
+		 * that arrives while that emission is still on the stack
+		 * clears {@code in_repaint} under the outer hook.
+		 * {@code get_context} then returns NULL and the compositor
+		 * dies. A call during the emission is ignored. The draw
+		 * already on the stack reads the current value.
+		 *
+		 * @param request inbound call on the leased drawing area
+		 */
+		public void queue_repaint(OLLMrpc.Request request)
+		{
+			var area = request.connection.leases.get((int) request.lease_id)
+				as global::St.DrawingArea;
+			if (area == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			if (area.get_data<void*>("gsr-repaint-busy") != null) {
+				GLib.debug("repaint already running, skipped");
+				request.reply(new OLLMrpc.Response());
+				return;
+			}
+			area.queue_repaint();
 			request.reply(new OLLMrpc.Response());
 		}
 	}

@@ -55,5 +55,6 @@ struct _StDrawingAreaClass {
 
 GType st_drawing_area_get_type (void);
 cairo_t *st_drawing_area_get_context (StDrawingArea *area);
+void st_drawing_area_queue_repaint (StDrawingArea *area);
 
 G_END_DECLS

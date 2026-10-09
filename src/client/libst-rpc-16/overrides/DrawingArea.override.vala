@@ -19,6 +19,15 @@
 			return new Cairo.Context(this.repaint_surface);
 		}
 
+		/**
+		 * Stock {@code queue_repaint} emits before it returns. The
+		 * server method ignores a call that arrives during that emission.
+		 */
+		public void queue_repaint()
+		{
+			Gsr.Client.Rpc.call_value("Gsr-St-DrawingArea.queue_repaint", this);
+		}
+
 		construct {
 			if (this.rpc_lid == 0) {
 				var subclass = this is DrawingArea
