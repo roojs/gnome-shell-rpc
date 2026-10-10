@@ -1,46 +1,30 @@
 # Window overview has no thumbnails
 
-**Status:** ⏳ open. Paused 2026-10-09 09:51 at the user's request. Uncommitted. Last hand look is the 08:18 screenshot: selected top workspace tab has a tiny picture, the main card is the mountain wallpaper, Help's life ring is cut across the dash. That hold (`gsr-server` 237656) was killed by the first prove after it. No later hand look.
+**Status:** ⏳ open. The card clones the live window actor again. The last hand look (2026-10-09 08:18) was the old stand-in clone and showed the mountain wallpaper. No later look.
 
-**Where the code is:** `WindowPreviewLayout` builds a plain `Clutter.Actor`, copies the stand-in's `content` onto it, and `allocate_vfunc` sizes that child from the window buffer rect. The stand-in stays offstage. `preview_actor` still copies `paint_to_content` onto the stand-in and `set_size`s it from the buffer rect. The live window actor stays on the stage. Cloning that live actor killed Weston on 2026-10-07 09:31 and stays out.
+## What the shell does
 
-`Clutter.Interval.set_final` / `set_initial` still send a `GValue` for ordinary types. A `ClutterActorBox` goes as the raw struct on `Gsr-Clutter-Interval.set_final_box` / `set_initial_box` (`Interval.override.vala`, `src/server/libmutter-clutter-16/Interval.vala`). `workspace.js` calls `get_interval().set_final(childBox)` while the overview is laying out windows.
+Two pictures.
 
-`tests/gjs-embed/thumbnail-smoke.js` fails unless some descendant of a `WindowPreview` has content and `has_allocation()`. `scripts/nested-weston-prove.sh` `SMOKE_OK_PAT` now includes `thumbnail-smoke: ok`. That pattern line has not been rerun.
+The top workspace tab clones the live window actor (`workspaceThumbnail.js` `WindowClone`). That actor is on the stage. The tab shows a tiny picture.
 
-**Last prove** (09:48, `GSR_NESTED_TIMEOUT=70`, command under Reproduction):
+The big card is `windowPreview.js`. `get_compositor_private()` returns the live `Meta.WindowActor`. `WindowPreviewLayout.add_window` returns a `Clutter.Clone` of that actor and adds it on top of the wallpaper. `allocate` sizes the clone from its preferred size, then scales that box into the card (`shell-window-preview-layout.c`). The clone paints by drawing its source. A source that is not parented to a toplevel is not realized, and the clone skips the paint (`clutter-clone.c`).
 
-```text
-09:49:13.811 thumbnail-smoke: preview-paints=true
-09:49:14.595 thumbnail-smoke: phase1-ok
-09:49:14.939 Gsr-Clutter-Interval.set_final_box id=23496
-09:49:15.348 thumbnail-smoke: phase2 windows-normal=2
-09:49:18.744 thumbnail-smoke: phase2 found=14 … [Untitled Document 1 - gedit 254x180] [Untitled Document 2 - gedit 254x180]
-09:49:18.744 thumbnail-smoke: ok
-nested-weston-prove: stop (timeout) after 70s
-```
+## What is in the tree
 
-Exit 137 is the prove kill after the 70s wall. The smoke had already printed `ok`. The prove kept waiting because `thumbnail-smoke: ok` was not yet in `SMOKE_OK_PAT`.
+`Window.get_compositor_private` returns that live actor lease. `preview_actor` is gone. `WindowPreviewLayout` builds `new Clutter.Clone(source)` of it and allocates with the stock preferred-size box, then the scale. `WindowPreview.allocate_vfunc` clamps each child to the preview's content box (`shell_window_preview_allocate` / `clutter_actor_allocate_available_size`, height-for-width). A client-local layout manager also gets `set_allocation` on that box, because `Actor.allocate` keeps that case off the server.
 
-That `ok` means the script saw allocated content on a preview and a second gedit preview while the overview stayed up. It is not a read of the framebuffer. The hand bar is still the 08:18 screenshot: the main card shows the window, the top tabs still show theirs, the life-ring zoom is gone, and the nest stays up.
+The 2026-10-07 09:31 note that cloning the live actor killed Weston has no stack and no core. The 10:03 and 10:36 proves did not kill Weston. They printed `thumbnail-smoke: ok`.
 
-**Diagnosis that is still true:**
+## Where it stands
 
-Top tabs are `workspaceThumbnail.js` `WindowClone`, a `Clutter.Clone` of a live window actor from `global.get_window_actors()`, scaled to at most 5% (`MAX_THUMBNAIL_SCALE`). Those actors are on the stage, so the tab can paint.
+The clone's source is the live gedit actor. 10:36: `clone-size=800x568` while the `WindowPreview` is `478×340`. 10:47, before the clamp: `preview-allocate box 800.0x568.0 bound 800.0x568.0 scale 1.000 1.000 nat 800.0x568.0 out 800.0x568.0`. The layout scaled by 1 because the container it was given was already the full window. `St.Widget` allocates a child at its preferred size. Stock `Shell.WindowPreview` does not. It clamps the window container to the slot, and the layout scale is slot ÷ window.
 
-Main previews are `windowPreview.js` `WindowPreview` → `get_compositor_private()` → `Shell.WindowPreviewLayout.add_window`. Mutter `clutter-clone.c` paints a `Clutter.Clone` only when the source is realized. The stand-in has no parent, so a clone of it stays blank even when `content=set` and the preview measures about 478×340. That is why the 08:18 main card was wallpaper while the tab had a picture.
+That clamp is in the tree. It has not been measured on a window yet. Two boots at 11:03 died in `main.js` (`global.stage.context is null`) before any preview. A hold started at 11:04 reached `READY=1` with this library. The smoke does not read pixels. JavaScript `source ===` is still false when the source window's title and size match.
 
-Parenting the stand-in (`GsrServerClutterActor`) under the stage made `has_allocation` true and then stuck phase 2. That experiment is reverted.
+The 08:18 wallpaper was a clone of an offstage stand-in. That path is not what this tree runs.
 
-`workspace.js` `set_final(childBox)` sent `ClutterActorBox` as a bin `GValue`. The wire answered `unsupported bin value type 'ClutterActorBox'`, the error was uncaught, and the next `Gsr-Clutter-Actor.allocate_public` stayed unanswered until the prove kill. Phase 2 then logged `miss phase2 (second window never appeared)` only as the socket died. The bytes methods above are the path that let 09:49 reach `thumbnail-smoke: ok`. libocrpc was not edited.
-
-Earlier fixes that are still in the tree: `WindowTracker.get_window_app` associates on the first ask (`app is null` is gone); `get_compositor_private` returns the stand-in; `TextureContent` implements `Content`; `get_window_actors` ships handle pairs and `Compositor.override.vala` hydrates them; `Actor.override.vala` owns `set_pivot_point(double, double)`.
-
-Help's life ring is `iconGrid.js` `zoomOutActorAtPos`: a clone, `set_pivot_point(0.5, 0.5)`, ease scale to 3 and opacity to 0 over 250ms, then `destroy()`. At 08:18:18 the destroy RPC replied about 330ms later. The screenshot still shows the ring across the dash. No failing assertion for that yet.
-
-`property 'realized' of object class 'Gjs_ui_windowPreview_WindowPreview' is not writable` (08:18:23, 19 times) and `Can't update stage views actor unnamed [ClutterActor] is on because it needs an allocation` (08:18:24) are still in that hold's log.
-
-Dash launches that never start, clicks on a running dash icon, and flaky workspace 1–5 selection are [`2026-10-08-dash-and-workspace-switch.md`](2026-10-08-dash-and-workspace-switch.md).
+Help's life ring on that screenshot is the dash zoom clone (`iconGrid.js` `zoomOutActorAtPos`). Dash launches and workspace 1–5 are [`2026-10-08-dash-and-workspace-switch.md`](2026-10-08-dash-and-workspace-switch.md).
 
 **Reproduction:**
 
@@ -48,11 +32,11 @@ Dash launches that never start, clicks on a running dash icon, and flaky workspa
 GI_META_SMOKE=thumbnail-smoke \
 GI_META_SMOKE_CMD='gedit --new-window' \
 GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1 \
-GSR_NESTED_TIMEOUT=70 \
+GSR_NESTED_TIMEOUT=40 \
 ./scripts/agent-nested-smoke-prove.sh
 ```
 
-Pass on the script is `thumbnail-smoke: ok` and `nested-weston-prove: stop (smoke-ok)`. The 09:49 run has the first line. The stop line is still `stop (timeout)` until the `SMOKE_OK_PAT` change is rerun. Fail is `thumbnail-smoke: miss <reason>`. The hand bar is a look at the overview after that pass.
+`thumbnail-smoke: ok` is the script. Fail is `thumbnail-smoke: miss <reason>`. The hand bar is still a look at the card.
 
 ## LLM efforts
 
@@ -173,3 +157,17 @@ One boot at 09:30 died in 4s: `thumbnail-smoke: miss TypeError: global.stage.con
 `Interval.set_final_value` / `set_initial_value` now send `ClutterActorBox` as `ay` bytes on `Gsr-Clutter-Interval.set_final_box` / `set_initial_box`. 09:49 run: `set_final_box` id 23496, `phase2 windows-normal=2`, both previews `254×180`, `thumbnail-smoke: ok` at 09:49:18.744, `done` at 09:49:18.745. Prove line: `stop (timeout) after 70s`. `SMOKE_OK_PAT` in `scripts/nested-weston-prove.sh` gained `thumbnail-smoke: ok` after that run. Not rerun.
 
 Paused here. Hand look of the main card, the top tabs, and the life-ring zoom is still the 08:18 screenshot.
+
+### 2026-10-10 live actor clone
+
+`get_compositor_private` returns the live actor. `WindowPreviewLayout` clones it. `preview_actor` is gone.
+
+10:03, `GSR_NESTED_TIMEOUT=70`: `compositor-private=live 800x568`, `preview-clone … same-source=0 source-other=1 clone-allocated=1 other=800x568 "Untitled Document 1 - gedit" hit=true`, `phase1-ok`, `phase2` two previews, `thumbnail-smoke: ok`. Weston stayed up until the prove kill.
+
+10:36, same command with timeout 40, smoke now logs `clone-size`. `clone-size=800x568`, preview widget `478.2×339.5`, then phase 2 `254×180` each. `thumbnail-smoke: ok`.
+
+10:47, `GLib.debug` in `WindowPreviewLayout.allocate_vfunc`: `preview-allocate box 800.0x568.0 bound 800.0x568.0 scale 1.000 1.000 nat 800.0x568.0 out 800.0x568.0` (twice). The layout never scaled. The container's allocation was the window size. Stock `shell_window_preview_allocate` clamps children with `clutter_actor_allocate_available_size`. This `WindowPreview` had no `allocate_vfunc`, so `St.Widget` gave the container its preferred size.
+
+`WindowPreview.allocate_vfunc` now does that clamp (height-for-width) and `set_allocation` when the child's layout manager is client-local.
+
+11:03 two proves: `thumbnail-smoke: miss TypeError: global.stage.context is null` at `main.js` (`global.stage.context.get_backend()`), before any preview. Same miss as 09:30. Exit 0 after about 4s. A hold from 11:04 (`nested-weston-hold.sh`, weston pid 373374) reached `READY=1` at 11:04:47 with this library. No window, so the clamp is not measured. The hold is still up. No further prove.

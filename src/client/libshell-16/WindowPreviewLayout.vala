@@ -3,18 +3,17 @@
  * {@code shell-window-preview-layout.c}.
  *
  * Client-local {@link Clutter.LayoutManager} ({@code rpc_lid} stays 0):
- * measure/allocate run here; each tracked window is a picture actor
- * holding the stand-in's content. The live window actor stays on the
- * stage. A {@link Clutter.Clone} of the stand-in does not paint: the
- * stand-in is not realized.
+ * measure/allocate run here. Each tracked window is a
+ * {@link Clutter.Clone} of {@code meta_window_get_compositor_private},
+ * the same live actor the top workspace tabs clone.
  */
 namespace Shell
 {
 	public class WindowPreviewLayout : Clutter.LayoutManager
 	{
 		/**
-		 * One overview peek: a painted actor, plus the signal wiring that
-		 * keeps layout in sync.
+		 * One overview clone of the live window actor, plus the signal
+		 * wiring that keeps layout in sync.
 		 */
 		private class WindowEntry
 		{
@@ -23,33 +22,29 @@ namespace Shell
 
 			private ulong size_changed_id;
 			private ulong position_changed_id;
+			private ulong source_destroy_id;
 			private ulong destroy_id;
 			private weak WindowPreviewLayout layout;
+			private Clutter.Actor source;
 
 			public WindowEntry(WindowPreviewLayout layout, Meta.Window window)
 			{
 				this.layout = layout;
 				this.window = window;
-				var source = (Clutter.Actor) window.get_compositor_private();
-				/*
-				 * Stock code clones the live window actor. That actor is
-				 * on the stage, so the clone can paint it. Our stand-in
-				 * is not, and Clutter.Clone skips paint unless the source
-				 * is realized. A child that holds the same content is in
-				 * the overview tree, so it realizes and paints.
-				 */
-				var picture = new Clutter.Actor();
-				picture.content = source.content;
-				this.actor_copy = picture;
+				this.source = (Clutter.Actor) window.get_compositor_private();
+				var clone = new Clutter.Clone(this.source);
+				this.actor_copy = clone;
 				Gsr.Client.Rpc.ensure_signal_subscribe(window, "size-changed");
 				Gsr.Client.Rpc.ensure_signal_subscribe(window, "position-changed");
+				Gsr.Client.Rpc.ensure_signal_subscribe(this.source, "destroy");
 				this.size_changed_id = window.signal_size_changed.connect(() => {
-					var src = (Clutter.Actor) window.get_compositor_private();
-					picture.content = src.content;
 					layout.windows_changed();
 				});
 				this.position_changed_id = window.signal_position_changed.connect(() => {
 					layout.windows_changed();
+				});
+				this.source_destroy_id = this.source.signal_destroy.connect(() => {
+					clone.destroy();
 				});
 				this.destroy_id = this.actor_copy.signal_destroy.connect(() => {
 					layout.remove_window(window);
@@ -60,6 +55,7 @@ namespace Shell
 			{
 				this.window.disconnect(this.size_changed_id);
 				this.window.disconnect(this.position_changed_id);
+				this.source.disconnect(this.source_destroy_id);
 				this.actor_copy.disconnect(this.destroy_id);
 			}
 		}
@@ -121,15 +117,25 @@ namespace Shell
 
 				Mtk.Rectangle buffer_rect;
 				entry.window.get_buffer_rect(out buffer_rect);
+				float child_nat_width, child_nat_height, unused_min_w, unused_min_h;
+				child.get_preferred_size(out unused_min_w, out unused_min_h,
+					out child_nat_width, out child_nat_height);
 
 				var child_box = Clutter.ActorBox();
 				child_box.set_origin((float) buffer_rect.x - this.priv_bounding_box.x1,
 					(float) buffer_rect.y - this.priv_bounding_box.y1);
-				child_box.set_size((float) buffer_rect.width, (float) buffer_rect.height);
+				child_box.set_size(child_nat_width, child_nat_height);
 				child_box.x1 *= scale_x;
 				child_box.x2 *= scale_x;
 				child_box.y1 *= scale_y;
 				child_box.y2 *= scale_y;
+				GLib.debug("preview-allocate box %.1fx%.1f bound %.1fx%.1f scale %.3f %.3f nat %.1fx%.1f out %.1f,%.1f %.1fx%.1f",
+					box.get_width(), box.get_height(),
+					bounding_box_width, bounding_box_height,
+					scale_x, scale_y,
+					child_nat_width, child_nat_height,
+					child_box.x1, child_box.y1,
+					child_box.get_width(), child_box.get_height());
 				child.allocate(child_box);
 			}
 		}

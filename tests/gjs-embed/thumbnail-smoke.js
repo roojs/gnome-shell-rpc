@@ -6,8 +6,8 @@
  * checks the window actually has a painted picture behind it:
  *   - Meta NORMAL window appears with a real frame
  *   - WindowTracker has an app for it (no `app is null`)
- *   - get_compositor_private() stand-in has non-null content after paint
- *   - a WindowPreview actor exists under the overview with non-zero size
+ *   - get_compositor_private() is the live window actor
+ *   - the overview card holds a Clone of that actor with an allocation
  *
  * Pass: `thumbnail-smoke: ok`
  * Fail: `thumbnail-smoke: miss <reason>` naming the first missing step.
@@ -78,20 +78,14 @@ function normalWindows(display) {
 }
 
 /**
- * Best-effort content check on the compositor-private stand-in.
  * @param {object} actor
  * @returns {string}
  */
-function contentState(actor) {
+function actorState(actor) {
 	try {
-		const c = actor.content;
-		if (c == null)
-			return 'content=null';
-		const w = actor.width;
-		const h = actor.height;
-		return 'content=set ' + w + 'x' + h;
+		return 'live ' + actor.width + 'x' + actor.height;
 	} catch (e) {
-		return 'content-threw ' + formatError(e);
+		return 'live-threw ' + formatError(e);
 	}
 }
 
@@ -150,20 +144,58 @@ function findPreviews(actor, depth, out) {
 }
 
 /**
- * True when some actor under the preview holds content and is in the
- * stage tree. A Clutter.Clone of the offstage stand-in does not.
+ * Counts clones under the preview. Stock paints with a Clone whose
+ * source is the live window actor.
  * @param {object} actor
+ * @param {object} source
  * @param {number} depth
- * @returns {boolean}
+ * @param {{clones: number, same: number, allocated: number, hit: boolean}} acc
  */
-function descendantPaints(actor, depth) {
+function inspectClones(actor, source, title, depth, acc) {
 	if (actor == null || depth > 8)
-		return false;
+		return;
+	let name = '';
 	try {
-		if (actor.content != null && actor.has_allocation())
-			return true;
+		name = actor.constructor != null ? String(actor.constructor.name) : '';
 	} catch (e) {
-		/* keep walking */
+		name = '';
+	}
+	if (name.indexOf('Clone') >= 0) {
+		acc.clones++;
+		try {
+			let matched = actor.source === source;
+			if (actor.source == null)
+				acc.sourceNull++;
+			else if (matched)
+				acc.same++;
+			else {
+				acc.sourceOther++;
+				try {
+					acc.otherSize = actor.source.width + 'x' + actor.source.height;
+				} catch (e) {
+					acc.otherSize = 'size-threw';
+				}
+				try {
+					const mw = actor.source.meta_window;
+					acc.otherTitle = mw != null ? String(mw.get_title()) : 'no-window';
+				} catch (e) {
+					acc.otherTitle = 'title-threw';
+				}
+				matched = acc.otherTitle === title;
+			}
+			if (actor.has_allocation()) {
+				acc.cloneAllocated++;
+				try {
+					acc.cloneSize = actor.width + 'x' + actor.height;
+				} catch (e) {
+					acc.cloneSize = 'size-threw';
+				}
+				if (matched && acc.cloneSize !== '0x0' && acc.cloneSize !== 'size-threw')
+					acc.hit = true;
+			}
+		} catch (e) {
+			acc.sourceThrew++;
+		}
 	}
 	let children = [];
 	try {
@@ -171,11 +203,8 @@ function descendantPaints(actor, depth) {
 	} catch (e) {
 		children = [];
 	}
-	for (const child of children) {
-		if (descendantPaints(child, depth + 1))
-			return true;
-	}
-	return false;
+	for (const child of children)
+		inspectClones(child, source, title, depth + 1, acc);
 }
 
 /**
@@ -369,7 +398,9 @@ async function runThumbnailProve(main) {
 	} catch (e) {
 		throw new Error('miss actor (get_compositor_private threw ' + formatError(e) + ')');
 	}
-	smokeLog('compositor-private=' + (priv == null ? 'null' : contentState(priv)));
+	smokeLog('compositor-private=' + (priv == null ? 'null' : actorState(priv)));
+	if (priv == null)
+		throw new Error('miss actor (get_compositor_private returned null)');
 
 	smokeLog('show overview');
 	main.overview.show();
@@ -380,33 +411,31 @@ async function runThumbnailProve(main) {
 	if (!main.overview.visible)
 		throw new Error('miss overview (never visible)');
 
-	// Let size-changed + preview_actor repaint land.
 	await delay(PAINT_WAIT_MS);
 
-	let privAfter = '(gone)';
-	try {
-		const p2 = win.get_compositor_private();
-		privAfter = p2 == null ? 'null' : contentState(p2);
-	} catch (e) {
-		privAfter = '(threw ' + formatError(e) + ')';
-	}
-	smokeLog('compositor-private-after-paint=' + privAfter);
-	if (privAfter.indexOf('content=set') !== 0)
-		throw new Error('miss paint (stand-in has no painted content)');
-
 	const foundEarly = findPreviews(globalObj.stage, 0, []);
-	let painted = false;
+	const acc = {clones: 0, same: 0, allocated: 0, hit: false,
+		sourceNull: 0, sourceOther: 0, sourceThrew: 0, cloneAllocated: 0,
+		otherSize: '', otherTitle: '', cloneSize: ''};
+	let nPreviews = 0;
 	for (const row of foundEarly) {
 		if (row.actor == null)
 			continue;
-		if (descendantPaints(row.actor, 0)) {
-			painted = true;
-			break;
-		}
+		nPreviews++;
+		inspectClones(row.actor, priv, title, 0, acc);
 	}
-	smokeLog('preview-paints=' + painted);
-	if (!painted)
-		throw new Error('miss paint-actor (overview preview has no allocated content)');
+	smokeLog('preview-clone previews=' + nPreviews
+		+ ' clones=' + acc.clones
+		+ ' same-source=' + acc.same
+		+ ' source-null=' + acc.sourceNull
+		+ ' source-other=' + acc.sourceOther
+		+ ' source-threw=' + acc.sourceThrew
+		+ ' clone-allocated=' + acc.cloneAllocated
+		+ ' clone-size=' + acc.cloneSize
+		+ ' other=' + acc.otherSize + ' "' + acc.otherTitle + '"'
+		+ ' hit=' + acc.hit);
+	if (!acc.hit)
+		throw new Error('miss clone (overview preview has no allocated clone of the live actor)');
 
 	const found = findPreviews(globalObj.stage, 0, []);
 	const previews = found.filter(p => p.size !== '');
@@ -524,7 +553,7 @@ async function runThumbnailProve(main) {
 	try {
 		newWin.get_compositor_private();
 	} catch (e) {
-		throw new Error('miss phase2 (stand-in threw '
+		throw new Error('miss phase2 (get_compositor_private threw '
 			+ formatError(e) + ')');
 	}
 	await delay(PAINT_WAIT_MS);

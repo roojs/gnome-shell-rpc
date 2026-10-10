@@ -155,7 +155,8 @@ namespace Gsr.Server.Clutter
 		 *
 		 * ''Subscription.connect'' writes no reply. This method
 		 * replies once after the list. An empty name or a missing
-		 * lease is ''-32602'' and no success reply.
+		 * lease is ''-32602'' and no success reply. A name in the
+		 * switch sets {@link OLLMrpc.Live.Subscription.blocking}.
 		 *
 		 * @param request inbound RPC
 		 * @param names signal or ''notify::'' property
@@ -168,6 +169,25 @@ namespace Gsr.Server.Clutter
 					method = names[i],
 					id = (int) request.lease_id
 				};
+				switch (names[i]) {
+					case "button-press-event":
+					case "button-release-event":
+					case "captured-event":
+					case "enter-event":
+					case "event":
+					case "key-press-event":
+					case "key-release-event":
+					case "leave-event":
+					case "motion-event":
+					case "scroll-event":
+					case "touch-event":
+					case "long-press":
+						subscription.blocking = true;
+						break;
+
+					default:
+						break;
+				}
 				if (!subscription.connect()) {
 					request.connection.reply_error(request,
 						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);

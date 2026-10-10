@@ -28,7 +28,7 @@ For the other half of the boundary, see [Server-side signals](signals-server.md)
 | **client signal** | A named GObject signal registered on a client proxy or a client-only GJS object. |
 | **client class closure / class slot** | A default handler slot on the client GObject class, exposed to GJS as `vfunc_*` where GI describes it as a virtual function. |
 | **client subscription record** | `Shell.Signals.subs[lease id][signal name]` → our handler id. The server was asked to forward that name. `refs` counts local connects that share the name. `gjs_ids` maps the GJS handler id to ours. |
-| **client callback handler** | A handler in `GiStub.Runtime.handlers` for a synchronous server invocation. |
+| **client callback handler** | A handler in `Gsr.Client.Rpc.handlers` for a synchronous server invocation. |
 
 ## Three distinct signal locations
 
@@ -125,8 +125,7 @@ const Example = GObject.registerClass({
 ```text
 Vala public signal -> local
 GJS Signals entry  -> local
-GJS metadata scan  -> not implemented
-automatic RPC      -> not implemented
+server subscribe   -> only a name that exists on the leased peer
 ```
 
 ## Client-side name collisions
@@ -174,9 +173,9 @@ callable method with the same stock name
 
 A virtual signal would be the class closure and would also move every
 later field, including `allocate`. The signal and the slot are therefore
-separate. Emitting the signal runs `connect()` handlers. It does not load
-the plain virtual, which is where GJS writes `vfunc_*`. That gap is why
-a `clicked` notification does not run `AppIcon.vfunc_clicked`.
+separate. `Shell.Signals.emit` runs `connect()` handlers with
+`g_signal_emitv`, then calls the plain virtual when this object's class
+replaced that slot. That call is how `vfunc_clicked` runs.
 
 ```text
 Vala signal:        signal_clicked
@@ -194,15 +193,15 @@ and GObject expose `clicked`, `style-changed`, detailed
 `captured-event::touchpad`, and both the `Clutter.Text.activate()` method and
 `activate` signal under their stock names.
 
-That structural proof is not an end-to-end delivery proof. Prefixing a
-signal does not itself request a server subscription. Two separate client
-paths do:
+Prefixing a signal does not itself request a server subscription. Icon
+launch runs `vfunc_clicked` through the path below. Two client paths
+request the subscription:
 
 ```text
 GJS .connect('clicked', handler)
   -> signals.js wrap
   -> Shell.Signals.connect
-  -> RPC-Live-Subscribe.rpc_signal
+  -> Gsr-Clutter-Actor.add_signals
 
 Helper-Actor.create returned, type has signal "clicked"
   -> Runtime.ensure_signal_subscribe(actor, "clicked")
@@ -210,8 +209,8 @@ Helper-Actor.create returned, type has signal "clicked"
 ```
 
 `vfunc_clicked` is the plain virtual on the client class. It is not a
-helper hook. The notification re-emits `clicked` and does not call that
-virtual.
+helper hook. The notification re-emits `clicked`, and `Shell.Signals.emit`
+then calls that virtual when the leaf class replaced the slot.
 
 `style-changed` still has a temporary split. Notification delivery inside a
 synchronous `show()` RPC re-entered GJS and crashed, so the generated `style`
@@ -238,7 +237,7 @@ proxy.connect('stopped', handler);
 GJS .connect() / .connect_after() / .connect_object()
   -> original GObject.prototype.* (GJS handler id unchanged)
   -> Shell.Signals.connect(obj, name, gjs_handler_id)
-       leased -> RPC-Live-Subscribe.rpc_signal (first of that name)
+       leased -> Gsr-Clutter-Actor.add_signals (string array; one name is still an array)
        else   -> 0, local handler only
 
 GJS .disconnect(id)
@@ -246,7 +245,7 @@ GJS .disconnect(id)
   -> original GObject.prototype.disconnect
 ```
 
-`src/shell-js/signals.js` is `resource:///org/gnome/shell-rpc/signals.js`. The host evals it and `Signals.install()` before `init.js`. Vala `.connect()` still needs `Runtime.ensure_signal_subscribe`.
+`src/client/gresource/signals.js` is `resource:///org/gnome/shell-rpc/signals.js`. The host evals it and `Signals.install()` before `init.js`. Vala `.connect()` still needs `Gsr.Client.Rpc.ensure_signal_subscribe`.
 
 ## Proxy identity and lease ids
 
@@ -268,16 +267,17 @@ call_value(method, proxy, args)
 The explicit client entry points are:
 
 ```vala
-GiStub.Runtime.ensure_signal_subscribe(object, signal_name);
+Gsr.Client.Rpc.ensure_signal_subscribe(object, signal_name);
 Shell.Signals.connect(object, signal_name, gjs_handler_id);
 ```
 
 ```text
 ensure_signal_subscribe(object, signal_name)
+  -> Shell.Signals.connect
   -> require object.rpc_lid != 0
   -> Client.proxies[rpc_lid] = object
-  -> dedupe Runtime.signal_subs[rpc_lid][signal_name]
-  -> synchronous RPC-Live-Subscribe.rpc_signal
+  -> dedupe Shell.Signals.subs[rpc_lid][signal_name]
+  -> Gsr-Clutter-Actor.add_signals
   -> record local subscription after success
 ```
 
@@ -295,7 +295,7 @@ Current Vala-only manual call sites (GJS `.connect()` uses the wrap):
 | `Meta.Laters` stage setup | `before-update` |
 | Actor lease construct | `style-changed` when present |
 
-GJS `.connect()` / `.connect_after()` / `.connect_object()` go through `src/shell-js/signals.js`.
+GJS `.connect()` / `.connect_after()` / `.connect_object()` go through `src/client/gresource/signals.js`.
 
 ## Receiving and dispatching a server notification
 
@@ -304,23 +304,24 @@ The client half of the generic flow is:
 ```text
 OLLMrpc.Notification { id, method, args }
   -> OLLMrpc.Client.notification
-  -> GiStub.Runtime subscription/proxy checks
+  -> Shell.Signals subscription/proxy checks
   -> g_signal_emitv() on the client proxy
   -> local GJS/Vala handlers
+  -> plain virtual, when the leaf class replaced that slot
 ```
 
 The preceding server half is documented in [Server-side signals](signals-server.md#forwarding-a-server-signal).
 
-`GiStub.Runtime` accepts a notification only when:
+`Shell.Signals` accepts a notification only when:
 
 - `OLLMrpc.Client.proxies` contains `notification.id`; and
-- `Runtime.signal_subs[id]` contains `notification.method`.
+- `Shell.Signals.subs[id]` contains `notification.method`.
 
 It then looks up the local signal metadata with `GLib.Signal.parse_name()`, constructs one `GValue` for the proxy plus one for each declared parameter, transforms the received values to the declared types, and calls `g_signal_emitv()`.
 
 Named signal arguments are carried in `Notification.args`. `Shell.Signals.emit` calls `OLLMrpc.Bin.TypeOverride.fill_params`, which walks the signal's parameter types. A registered type consumes the field count from its override. Any other parameter consumes one field. The `subscribe-signal-args-gate` and `subscribe-boxed-signal-arg-gate` cover scalar and registered boxed arguments.
 
-`Clutter.Event` is registered from `GiStub.Runtime.register` (`Shell.ClutterEventOverride`). Those five fields are rebuilt with `Clutter.Event.from_local`. There is no signal-name check and no `Clutter.get_current_event()` fallback.
+`Clutter.Event` is one `Gsr.Shared.ClutterEventState` (`Shell.ClutterEventOverride`). `unpack` builds the compact event with `apply_state`. Getters read that state.
 
 Current limitations are:
 
@@ -335,7 +336,7 @@ server notify::property
   -> Notification.message = property converted to string
   -> OLLMrpc.Client sets property on existing proxy
   -> local GObject notify handler may run
-  -> GiStub.Runtime receives client.notification
+  -> Shell.Signals receives client.notification
 ```
 
 The generic runtime notification handler still requires an explicit `signal_subs` entry before it will perform its own by-name re-emission. This means `notify::` currently has a property-update path and a possible explicit signal path, rather than one fully unified contract.
@@ -378,54 +379,48 @@ proxy.connect('signal', handlerC);
 ```
 
 ```text
-one Notification
+one Notification, reply_id == 0
   -> one local GObject emission
   -> handlerA / handlerB / handlerC
-  -> results discarded
+  -> bool discarded
+
+one Notification, reply_id != 0
+  -> Shell.Signals.emit
+  -> BOOLEAN return stored; any other return type passes null to emitv
+  -> RPC-Live-Callback.reply(reply_id, bool)
 ```
 
-```vala
-Runtime.signal_emitv(
-    values,
-    signal_id,
-    detail,
-    null // no return-value storage
-);
-```
-
-```text
-Notification result field -> absent
-reply to server           -> absent
-```
-
-The generic subscription mechanism is therefore only sound for notification-style signals whose server behavior does not depend on a client return value.
+A `reply_id` of 0 is the delivery when the server does not read the handler result. A non-zero `reply_id` is the blocking subscribe: [Blocking signal subscribe](bugs/2026-10-10-blocking-signal-subscribe.md).
 
 Operations requiring a result use the separate synchronous callback path:
 
 ```text
 OLLMrpc.Live.Invoke { callback id, reply id, args }
-  -> GiStub.Runtime callback handler
+  -> Gsr.Client.Rpc callback handler
   -> RPC-Live-Callback.reply(reply id, return/out values)
 ```
 
-`GiStub.Runtime.callback_bind()` allocates one callback id and stores one client handler. Each invocation has a separate reply id, so nested invocation replies can be correlated.
+`Gsr.Client.Rpc.callback_bind()` allocates one callback id and stores one client handler. Each invocation has a separate reply id, so nested invocation replies can be correlated.
 
 This path carries boolean event results, preferred-size out values, allocation chain decisions, and callback errors. It models one class-slot override or callback, not a list of ordinary signal listeners.
 
-## Client-side gaps
+## What the signal bridge does
 
 ```text
-connect-driven subscription         -> implemented (GJS wrap)
-Vala signal source prefix           -> implemented
-generated signal/class closure      -> structurally implemented; live delivery unproved
-virtual-signal subscription policy  -> absent
-generic signal return transport     -> absent
-client-to-server signal emit        -> absent
-disconnect/subscription accounting  -> implemented (GJS wrap + Shell.Signals refs)
-subscribe during reply construction -> unsafe
-unified notify:: handling           -> absent
-per-type manual exceptions          -> present
+connect-driven subscription         -> Shell.Signals via signals.js
+Vala signal source prefix           -> signal_* , GObject name stock
+class slot                          -> plain virtual; Shell.Signals.emit calls it when the leaf replaced the slot
+overridden-signal subscribe         -> Actor.signal_overrides
+disconnect                          -> client refcount, then RPC-Live-Subscribe.unsubscribe
+notify::                            -> typed value in Notification.args
+Clutter.Event argument              -> one ClutterEventState
 ```
+
+A local `emit` stays on the client object. The server object changes through an RPC method, which may then emit.
+
+Event signals on the `add_signals` hand list (`leave-event`, the other button and key events, `long-press`) set `Subscription.blocking`. The server waits, and the client sends the handler bool on `RPC-Live-Callback.reply` before that wait ends. [Blocking signal subscribe](bugs/2026-10-10-blocking-signal-subscribe.md). `event` and `captured-event` are on that list and also already wait as `relay=1` hooks.
+
+`Widget.set_style` still emits `style-changed` locally after the RPC reply (`local_emit_after` in `St.overrides`). Subscribing that signal from inside `show()` re-entered GJS.
 
 ## Client debugging checklist
 
@@ -436,10 +431,10 @@ per-type manual exceptions          -> present
 4. Does Client.proxies[rpc_lid] contain that proxy?
 5. Did ensure_signal_subscribe() run after lease creation?
 6. Did Notification { id, method, args } arrive?
-7. Does Runtime.signal_subs[id] contain method?
+7. Does Shell.Signals.subs[id] contain method?
 8. Does the client GType contain a compatible signal?
 9. Is the generated Vala member named signal_* but its C/GObject name stock?
-10. Is this a virtual signal whose class closure occupies the stock field?
+10. Did the leaf replace the plain virtual for this signal?
 11. Is the consumer connect(), or actually a vfunc_* override?
 12. Does the operation require a return value?
 ```
@@ -448,14 +443,12 @@ per-type manual exceptions          -> present
 
 | Concern | Source |
 | --- | --- |
-| GIR signal and class-slot generation | `src/gi-stub-gen/Generator.vala` |
-| Enable class-slot generation | `src/gi-stub-gen/St.overrides`, `src/gi-stub-gen/Clutter.overrides` |
-| Proxy registration, subscribe, receive, emit | `src/gi-stub/Runtime.vala` |
-| GJS-visible subscribe (not stock Shell) | `src/shell-gi/Signals.vala` |
-| GJS connect wrap (host eval before init.js) | `src/shell-js/signals.js` |
-| Lease ids in normal RPC calls | `src/namespace.vala` |
-| Vfunc capability detection | `src/gi-stub/VfuncRelay.vala` |
-| Actor client relays | `src/gi-stub/overrides-clutter/Actor.override.vala` |
-| Current style class-slot bridge | `src/gi-stub/overrides-st/Widget.override.vala` |
+| GIR signal and class-slot generation | `src/generator/Generator.vala` |
+| Enable class-slot generation | `src/client/libst-rpc-16/St.overrides`, `src/client/libmutter-clutter-rpc-16/Clutter.overrides` |
+| Subscribe, receive, re-emit | `src/client/libshell-16/Signals.vala` |
+| GJS connect wrap (host eval before init.js) | `src/client/gresource/signals.js` |
+| Lease ids and callback bind | `src/client/rpc/namespace.vala` |
+| Actor `signal_overrides` | `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala` |
+| Event wire | `src/client/libshell-16/ClutterEventOverride.vala`, `src/shared/ClutterEventState.vala` |
 | Client `notify::` property update | libocrpc `Client.vala` |
 | Named argument gates | `tests/call-sync-repro/subscribe-signal-args-gate.vala`, `subscribe-boxed-signal-arg-gate.vala` |

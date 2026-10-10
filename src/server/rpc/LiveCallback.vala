@@ -100,9 +100,22 @@ namespace Gsr.Server
 			 * (OLLMrpc.Live.Hook.complete). */
 			foreach (var id in request.connection.callbacks.keys) {
 				var row = request.connection.callbacks.get(id);
-				if (!row.complete(correlation, values)) {
+				if (row.complete(correlation, values)) {
+					if (error_code != 0) {
+						request.connection.reply_error(request, error_code);
+						return;
+					}
+					request.reply(new OLLMrpc.Response());
+					return;
+				}
+				if (row.reply_id != correlation) {
 					continue;
 				}
+				row.reply_args.clear();
+				foreach (var arg in values) {
+					row.reply_args.add(arg);
+				}
+				row.replied = true;
 				if (error_code != 0) {
 					request.connection.reply_error(request, error_code);
 					return;

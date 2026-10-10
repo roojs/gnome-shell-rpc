@@ -4,7 +4,7 @@
  * {@code connect} does not {@code g_signal_connect}. Local handlers are
  * attached by the GJS wrap ({@code orig.connect}) or by Vala stubs. This
  * class records the name, tells the server
- * {@code RPC-Live-Subscribe.rpc_signal}, and re-emits on Notification.
+ * {@code Gsr-Clutter-Actor.add_signals}, and re-emits on Notification.
  *
  * Two different ints:
  *
@@ -25,7 +25,7 @@ namespace Shell
 		/**
 		 * Per lease: signal name → our handler id ({@link next_handler_id}).
 		 *
-		 * First connect of a name sends ''RPC-Live-Subscribe.rpc_signal''.
+		 * First connect of a name sends ''Gsr-Clutter-Actor.add_signals''.
 		 * Notifications re-emit when {@code has_key(notif.method)}.
 		 * Created on the first {@link connect}.
 		 FIXME = SIGNALS SHOULD BE ID BASED ON THE WIRE - NOT STRINGS (AFTER REGISTRAITON)
@@ -52,8 +52,8 @@ namespace Shell
 		 * Signal names an actor has collected and not sent yet.
 		 *
 		 * Empty on a later {@link connect}. That connect clears the
-		 * list. More than one name is one ''Gsr-Clutter-Actor.add_signals''.
-		 * One name is ''RPC-Live-Subscribe.rpc_signal''.
+		 * list. Every connect sends that array as
+		 * ''Gsr-Clutter-Actor.add_signals''. One name is still an array.
 		 */
 		[CCode (cname = "shell_signals_pending_signals")]
 		public static string[] pending_signals = {};
@@ -137,9 +137,8 @@ namespace Shell
 		 * Subscribe ''signal_name'' on the peer, or every name in
 		 * {@link pending_signals} when that list is not empty.
 		 *
-		 * The list is cleared first. More than one name is one
-		 * ''Gsr-Clutter-Actor.add_signals''. One name is
-		 * ''RPC-Live-Subscribe.rpc_signal''. A name already in
+		 * The list is cleared first. The array, one name or many, is
+		 * one ''Gsr-Clutter-Actor.add_signals''. A name already in
 		 * {@link subs} only bumps {@link refs}.
 		 *
 		 * @param obj leased stub
@@ -188,13 +187,7 @@ namespace Shell
 				Signals.pending_signals = {};
 			}
 			Gsr.Client.Rpc.client.proxies.set(lid, obj);
-			if (signal_names.length > 1) {
-				Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_signals", obj,
-					OLLMrpc.args("S", signal_names));
-			} else {
-				Gsr.Client.Rpc.call_value("RPC-Live-Subscribe.rpc_signal", obj,
-					OLLMrpc.args("s", signal_names[0]));
-			}
+			Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_signals", obj, OLLMrpc.args("S", signal_names));
 			if (!Signals.notification_hooked) {
 				Signals.notification_hooked = true;
 				Gsr.Client.Rpc.client.notification.connect((notif) => {
@@ -206,7 +199,13 @@ namespace Shell
 						return;
 					}
 					var target = Gsr.Client.Rpc.client.proxies.get(notif.id);
-					Signals.emit(target, notif.method, notif.args);
+					if (notif.reply_id == 0) {
+						Signals.emit(target, notif.method, notif.args);
+					} else {
+						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("tb", (uint64) notif.reply_id,
+								Signals.emit(target, notif.method, notif.args)));
+					}
 				});
 			}
 			var hid = 0;
@@ -286,7 +285,7 @@ namespace Shell
 			table.unset(signal_name);
 		}
 
-		private static void emit(
+		private static bool emit(
 			GLib.Object obj,
 			string signal_name,
 			Gee.ArrayList<GLib.Value?> args
@@ -295,7 +294,7 @@ namespace Shell
 			GLib.Quark detail = 0;
 			if (!GLib.Signal.parse_name(signal_name, obj.get_type(), out signal_id, out detail, false)
 					|| signal_id == 0) {
-				return;
+				return false;
 			}
 			GLib.SignalQuery query;
 			GLib.Signal.query(signal_id, out query);
@@ -320,7 +319,12 @@ namespace Shell
 				}
 				vals[i + 1].set_boxed(new Clutter.Frame());
 			}
-			Signals.emitv(vals, signal_id, detail, null);
+			var ret = GLib.Value(GLib.Type.BOOLEAN);
+			if (query.return_type == GLib.Type.BOOLEAN) {
+				Signals.emitv(vals, signal_id, detail, &ret);
+			} else {
+				Signals.emitv(vals, signal_id, detail, null);
+			}
 			/*
 			 * Never skip a signal by name here. g_signal_new was
 			 * passed 0, so emitv does not call the class method.
@@ -376,6 +380,7 @@ namespace Shell
 				closure.sink();
 			}
 			OLLMrpc.Bin.TypeOverride.release_params(query.param_types);
+			return query.return_type == GLib.Type.BOOLEAN && ret.get_boolean();
 		}
 	}
 }

@@ -64,6 +64,8 @@ Request.lease_id = <server object lease>
 Request.args     = ["stopped"]
 ```
 
+`Shell.Signals.connect` does not use that method. It sends `Gsr-Clutter-Actor.add_signals` with a string array, including when the array has one name. Direct `rpc_signal` callers still hit the path below, and those subscriptions are not blocking.
+
 The server validates:
 
 ```vala
@@ -137,24 +139,23 @@ captured-event::touchpad
 
 ```vala
 subscription.hid = obj.notify[property_name].connect((pspec) => {
-    var current = GLib.Value(typeof(string));
+    var current = GLib.Value(pspec.value_type);
     obj.get_property(pspec.name, ref current);
-
+    var packed = new Gee.ArrayList<GLib.Value?>();
+    packed.add(current);
+    var helper = OLLMrpc.Bin.TypeOverride.lookup(pspec.value_type);
+    if (helper != null) {
+        packed = helper.pack(current);
+    }
     connection.write(new Notification() {
         method = "notify::" + pspec.name,
         id = lease_id,
-        message = current.get_string() ?? "",
+        args = packed,
     });
 });
 ```
 
-Current limitations:
-
-```text
-property value -> converted to string
-Notification.args -> empty
-Notification.message -> property text
-```
+The property value is the notification argument. A registered type uses its `TypeOverride.pack`.
 
 ## Forwarding a server signal
 
@@ -179,7 +180,7 @@ connection.write(new Notification() {
 });
 ```
 
-`Clutter.Event` is registered from the compositor as `GnomeShellRpc.Rpc.Helper.ClutterEventOverride`. One event becomes five fields: type, x, y, button, key symbol (`idduu`). The button is read only for button and pad-button events. The key symbol is read only for key press and key release.
+`Clutter.Event` is one `Gsr.Shared.ClutterEventState` (`Gsr.Server.Clutter.ClutterEventOverride`). The pack sets the fields that event type stores.
 
 Wire shape:
 
@@ -231,25 +232,9 @@ public static void emit(
 )
 ```
 
-The current implementation ignores `return_value`.
+`Subscription.emit` writes the notification and returns when `blocking` is false or `return_value` is null. `Gsr.Server.Clutter.Actor.add_signals` sets `blocking` for the hand list (button, key, enter, leave, motion, scroll, touch, `event`, `captured-event`, `long-press`). That wait sets `Notification.reply_id`. The client emits locally, and for a `BOOLEAN` signal sends the handler bool on `RPC-Live-Callback.reply`. `LiveCallback.reply` marks the mailbox `replied` when `Hook.complete` has no frame for that id. `emit` then writes `return_value`.
 
-The client also discards local results:
-
-```vala
-Runtime.signal_emitv(
-    values,
-    signal_id,
-    detail,
-    null // no return-value storage
-);
-```
-
-Therefore:
-
-```text
-void notification signal          -> supported shape
-non-void signal affecting server  -> unsupported shape
-```
+A notification with `reply_id` 0 is the delivery for a signal whose result the server does not read. Direct `RPC-Live-Subscribe.rpc_signal` subscriptions stay on that path. [Blocking signal subscribe](bugs/2026-10-10-blocking-signal-subscribe.md). `event` and `captured-event` are on the hand list and also already wait as `relay=1` hooks.
 
 ## Multiple client handlers
 
@@ -442,40 +427,20 @@ class closure   -> correct GObject class-slot dispatch
 event vfunc     -> synchronous server reply
 ```
 
-`Helper-Actor` owns vfunc hooks. Some client Actor relays additionally emit local signals.
+`Gsr-Clutter-Actor` owns the vfunc hooks. A `clicked` notification runs `connect` handlers and, when the leaf class replaced the slot, `vfunc_clicked`. See [Client-side signals](signals-client.md#client-side-name-collisions).
 
-Adding a server subscription can make this run:
+## What is in place
 
-```js
-button.connect('clicked', handler);
-```
+The client counts `.connect()` calls and sends `unsubscribe` when the last one drops. The server keeps one handler per lease and name. `notify::` carries the typed value. A client `emit` does not emit the server object.
 
-without making this run:
-
-```js
-vfunc_clicked(button) {
-    // class closure
-}
-```
-
-That is the current `signal_prefer` class-closure bug, documented in [Client-side signals](signals-client.md#client-side-name-collisions).
-
-## Server-side gaps
-
-```text
-subscription refcounts       -> absent
-client disconnect tracking   -> absent
-generic signal return values -> absent
-client-to-server signal emit -> absent
-notify:: typed values        -> absent; current value is a string
-```
+Event-signal handlers still run from a notification, so the bool never comes back. `event` and `captured-event` already do, on the vfunc hooks.
 
 Manual and bespoke paths currently coexist:
 
 ```text
 generic RPC-Live-Subscribe
 bespoke Window notifications
-Helper-Actor vfunc hooks
+Gsr-Clutter-Actor vfunc hooks
 client-local signal re-emission
 ```
 
@@ -498,10 +463,11 @@ client-local signal re-emission
 
 | Concern | Source |
 | --- | --- |
-| Server registration and bespoke notifications | `src/rpc/Server.vala` |
-| Server Actor peer and vfunc hooks | `src/rpc/helper/ClutterActor.vala` |
-| Hook argument/result handling | `src/rpc/helper/LayoutHooks.vala` |
-| Callback registration and replies | `src/rpc/LiveCallback.vala` |
+| Server registration and bespoke notifications | `src/server/rpc/Server.vala` |
+| Server Actor peer, `add_signals` | `src/server/libmutter-clutter-16/ClutterActor.vala` |
+| Vfunc hook emit | `src/server/libmutter-clutter-16/LayoutHooks.vala` |
+| Callback registration and replies | `src/server/rpc/LiveCallback.vala` |
+| Event pack | `src/server/libmutter-clutter-16/ClutterEventOverride.vala` |
 | Generic subscribe implementation | libocrpc `Live/Subscribe.vala`, `Live/Subscription.vala` |
 | Connection subscription storage and cleanup | libocrpc `Transport/Connection.vala`, `Live/Remote.vala` |
 | Notification wire type | libocrpc `Notification.vala` |

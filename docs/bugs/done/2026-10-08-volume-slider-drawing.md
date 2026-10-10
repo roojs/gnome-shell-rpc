@@ -1,16 +1,12 @@
 # Volume slider paints, click and drag do not change it
 
-**Status:** The bar paints. A click or a drag does not change the volume. User, 2026-10-09, after restarting the nest onto the binary that registers `DrawingAreaActor` as `St-DrawingArea`.
+**Status:** ✅ closed 2026-10-10. User: the volume slider works. Paint, click, and drag are in. The menu expander that sits on the opened volume list is [Menu expander overlap](../2026-10-10-menu-expander-overlap.md).
 
-The interactive client log is gone. `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log` was opened again at 08:37:06 by `GI_META_SMOKE=thumbnail-smoke` and ends at 08:37:17 with `miss allocation`. No `gsr-server` was running when this was read.
+`Slider.startDragging` (`vendor/gnome-shell/js/ui/slider.js`) runs on `button-press-event`. It reads `event.get_event_sequence()`, calls `global.stage.grab(this)`, then `_moveHandle`, which assigns `this.value`. Volume listens to `notify::value`. The handler bool has to finish before Clutter ends the emission. That subscribe path is [Blocking signal subscribe](../2026-10-10-blocking-signal-subscribe.md).
 
-`Slider.startDragging` (`vendor/gnome-shell/js/ui/slider.js`) is the click path. It calls `event.get_event_sequence()`, then `global.stage.grab(this)`, then `_moveHandle`, which assigns `this.value`. Volume listens to `notify::value` (`js/ui/status/volume.js` `_sliderChanged`). The compact `Clutter.Event` in `Clutter.override.vala` has `get_device` and no `get_event_sequence`. `Clutter-Stage.grab` is a client call; `ClutterStage.rpc_register` only lists `get_view_at` and `paint_to_buffer`.
+## Applied paint hook
 
-Reproduction: `tests/gjs-embed/slider-click-smoke.js`. Not yet run.
-
-## Proposal
-
-Applied in `src/`. The bar now paints. The open failure is click and drag. See the status at the top.
+Applied in `src/`. The bar paints. The open failure is click and drag. See the status at the top.
 
 `BarLevel` and `Slider` stay as they are. One `get_context` call per emission shares one local `Cairo.ImageSurface`, because the bar and the handle each call `get_context`. The hook reads that surface after `vfunc_repaint` returns. `cr.$dispose()` still runs in the shell.
 
@@ -399,3 +395,9 @@ Exit 0. `signal repaint` and the `repaint` vfunc both saw `surface=480x64` with 
 2026-10-09 08:30. `DrawingArea.rpc_register` registers `typeof(DrawingAreaActor)` as alias `St-DrawingArea`. Rebuilt `src/gsr-server`. Private `bash /tmp/gsr-da-smoke-run.sh` did not touch pid 237656. First run: `client repaint surface=480x1`, `miss surface=480x1`, and `Gsr-St-DrawingArea.paint` was called. Second run, with an allocate log, box `1,0 480x64`, `ok surface=480x64`. Removed that log. Third run: `drawing-area-smoke: ok surface=480x64`, `Gsr-St-DrawingArea.paint` at 08:33:45 and 08:33:47, no `in_repaint` assertion.
 
 2026-10-09 08:50. `GI_META_SMOKE=slider-click-smoke`, private nest `wayland-mutter-gsr-slider`, log `/tmp/gsr-slider-click.log`. `slider-click-smoke: miss presses=0 value=0.2 handler=unset seq=unset`. Both actors were reactive and sized (`probe size=200x40`, `slider size=400x40`). `Gsr-Clutter-Actor.pointer_click` id=75 and id=82 replied. Server `mutter-rpc.debug.log`: the click asked at stage 140,60 arrived as window event `x:102.00, y:1.00`; the click asked at 240,140 arrived as `x:202.00, y:81.00`. No `button-press-event` notification on the client. The press missed both actors.
+
+2026-10-10. Withdrew the `action` / `no_hooks` / `watch_signal` / `add_signals` proposal. The generated declaration for `leave-event` is what has to carry the mark. No `src/` edit.
+
+2026-10-10. The subscribe proposal moved to [Blocking signal subscribe](../2026-10-10-blocking-signal-subscribe.md). This file keeps the paint hook and the 08:50 coordinate miss.
+
+2026-10-10. User: the volume slider works. Closed. No further `src/` edit. The expander drawn over the opened volume list and the logout list is [Menu expander overlap](../2026-10-10-menu-expander-overlap.md).

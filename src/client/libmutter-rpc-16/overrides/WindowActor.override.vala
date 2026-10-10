@@ -1,7 +1,8 @@
 		/**
-		 * Set by {@link Window.get_compositor_private} on the overview
-		 * stand-in. A leased window actor leaves this unset and the
-		 * getter calls the server.
+		 * Set when hydrating a leased window actor
+		 * ({@link Window.get_compositor_private},
+		 * {@link Compositor.get_window_actors}). Unset means the getter
+		 * calls the server.
 		 */
 		internal Window? bound_meta_window;
 

@@ -16,44 +16,30 @@ namespace Gsr.Server.Meta
 				"foreach_transient", "t",
 				"foreach_ancestor", "t",
 				"begin_grab_op", "uosiubff",
-				"preview_actor", "o",
+				"get_compositor_private", "",
 				null
 			);
 			OLLMrpc.Request.register_live("Gsr-Mutter-Window", new Window());
 		}
 
 		/**
-		 * ''Gsr-Mutter-Window.preview_actor'' — overview picture of the window.
-		 *
-		 * Paints the window into the stand-in the client already holds.
-		 * The live window actor is not leased.
-		 *
-		 * @param request inbound RPC; {@code lease_id} is the window
-		 * @param peek overview actor to paint into
+		 * ''Gsr-Mutter-Window.get_compositor_private'' — lease of the
+		 * live {@link global::Meta.WindowActor}. Same object
+		 * {@link Gsr.Server.Meta.Compositor.get_window_actors} exports.
 		 */
-		public void preview_actor(
-			OLLMrpc.Request request,
-			global::Clutter.Actor peek
-		) {
+		public void get_compositor_private(OLLMrpc.Request request)
+		{
 			var window = (global::Meta.Window) request.connection.leases.get(
 				(int) request.lease_id);
-			var priv = window.get_compositor_private() as global::Meta.WindowActor;
+			var priv = window.get_compositor_private()
+				as global::Meta.WindowActor;
+			uint64 lid = 0;
 			if (priv != null) {
-				try {
-					var content = priv.paint_to_content(null);
-					if (content != null) {
-						peek.content = content;
-					}
-				} catch (GLib.Error e) {
-					GLib.warning("preview_actor: %s", e.message);
-				}
-			}
-			var rect = window.get_buffer_rect();
-			if (rect.width > 0 && rect.height > 0) {
-				peek.set_size(rect.width, rect.height);
+				lid = request.connection.export(priv);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
+				args = OLLMrpc.args("t", lid),
 			});
 		}
 
