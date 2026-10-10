@@ -18,9 +18,11 @@ The 2026-10-07 09:31 note that cloning the live actor killed Weston has no stack
 
 ## Where it stands
 
-The clone's source is the live gedit actor. 10:36: `clone-size=800x568` while the `WindowPreview` is `478×340`. 10:47, before the clamp: `preview-allocate box 800.0x568.0 bound 800.0x568.0 scale 1.000 1.000 nat 800.0x568.0 out 800.0x568.0`. The layout scaled by 1 because the container it was given was already the full window. `St.Widget` allocates a child at its preferred size. Stock `Shell.WindowPreview` does not. It clamps the window container to the slot, and the layout scale is slot ÷ window.
+The clone's source is the live gedit actor. Before the clamp, 10:47 logged `preview-allocate box 800.0x568.0 … scale 1.000 … out 800.0x568.0` while the `WindowPreview` was `478×340`. `St.Widget` had given the window container its preferred size (the full window).
 
-That clamp is in the tree. It has not been measured on a window yet. Two boots at 11:03 died in `main.js` (`global.stage.context is null`) before any preview. A hold started at 11:04 reached `READY=1` with this library. The smoke does not read pixels. JavaScript `source ===` is still false when the source window's title and size match.
+11:38, with the clamp: the slot settles at `478×340` and the clone is allocated `478×340` (`scale 0.598`). With two windows the slot and the clone are `254×180`. `thumbnail-smoke: ok`. Content box origin is `0,0`. JavaScript `source ===` is still false; the source window title and size match gedit.
+
+A hand look the same morning (Weston stayed up, two apps): the top tabs show their pictures, the big cards are still wrong. That session's client log was truncated at 11:32 (`Unable to open display ':3'`). The smoke does not read pixels. When the card appears, `property 'realized' of 'Gjs_ui_windowPreview_WindowPreview' is not writable`.
 
 The 08:18 wallpaper was a clone of an offstage stand-in. That path is not what this tree runs.
 
@@ -170,4 +172,8 @@ Paused here. Hand look of the main card, the top tabs, and the life-ring zoom is
 
 `WindowPreview.allocate_vfunc` now does that clamp (height-for-width) and `set_allocation` when the child's layout manager is client-local.
 
-11:03 two proves: `thumbnail-smoke: miss TypeError: global.stage.context is null` at `main.js` (`global.stage.context.get_backend()`), before any preview. Same miss as 09:30. Exit 0 after about 4s. A hold from 11:04 (`nested-weston-hold.sh`, weston pid 373374) reached `READY=1` at 11:04:47 with this library. No window, so the clamp is not measured. The hold is still up. No further prove.
+11:03 two proves: `thumbnail-smoke: miss TypeError: global.stage.context is null` at `main.js` (`global.stage.context.get_backend()`), before any preview. Same miss as 09:30. Exit 0 after about 4s. A hold from 11:04 (`nested-weston-hold.sh`, weston pid 373374) reached `READY=1` at 11:04:47 with this library.
+
+Hand look after that hold: Weston stayed up, two apps started, top tabs showed pictures, big cards still wrong. Client and mutter debug logs were truncated at 11:32 (`Failed to setup: Unable to open display ':3'`). No `preview-allocate` from that look survived.
+
+11:38 prove, same smoke command: `preview-slot` content `478×340`, `preview-allocate … scale 0.598 … out 0.0,0.0 478.0x340.0`, smoke `clone-size=478x340`. Phase 2: slot and clone `254×180`, `thumbnail-smoke: ok`. `realized` is not writable on `Gjs_ui_windowPreview_WindowPreview` at 11:38:00.419 (and again as the second window's card appears).
