@@ -1,12 +1,12 @@
 # Blocking signal subscribe
 
-**Status:** Applied in this tree and built. `Shell.Signals.connect` always calls `Gsr-Clutter-Actor.add_signals`. `add_signals` sets `Subscription.blocking` for the hand list. `LiveCallback.reply` marks the mailbox when `reply_id` matches and `Hook.complete` does not. `Shell.Signals.emit` returns the handler bool for a `BOOLEAN` signal, and the notification handler sends it on `RPC-Live-Callback.reply` when `reply_id` is non-zero. `emitv`'s fourth argument is `void*`, so that call passes `&ret` for a boolean return and `null` otherwise. `GLib.Value` cannot be inited from `G_TYPE_NONE`.
+**Status:** ✅ closed 2026-10-10. User: this is done. Applied in this tree and built. `Shell.Signals.connect` always calls `Gsr-Clutter-Actor.add_signals`. `add_signals` sets `Subscription.blocking` for the hand list. `LiveCallback.reply` marks the mailbox when `reply_id` matches and `Hook.complete` does not. `Shell.Signals.emit` returns the handler bool for a `BOOLEAN` signal, and the notification handler sends it on `RPC-Live-Callback.reply` when `reply_id` is non-zero. `emitv`'s fourth argument is `void*`, so that call passes `&ret` for a boolean return and `null` otherwise. `GLib.Value` cannot be inited from `G_TYPE_NONE`.
 
 `Shell.Signals.connect` sends every name through `Gsr-Clutter-Actor.add_signals`, one array, including a single name. `add_signals` is hand-written. A hand list there sets `blocking` on `OLLMrpc.Live.Subscription` when that object is created. When `blocking` is set, `emit` waits the way `OLLMrpc.Live.Hook.emit` waits, and the client sends the handler bool back on `RPC-Live-Callback.reply` before that wait ends. `rpc_signal` is not on this path. The `action` / `no_hooks` / `watch_signal` writeup is withdrawn.
 
-`Subscription.blocking` and `Notification.reply_id` are [Subscription.emit drops the handler bool](../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md). The client reply is in this tree.
+`Subscription.blocking` and `Notification.reply_id` are [Subscription.emit drops the handler bool](../../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md). The client reply is in this tree.
 
-The volume click that needs this is [Volume slider](done/2026-10-08-volume-slider-drawing.md). The 08:50 `slider-click-smoke` miss (`presses=0`) is a pointer miss on that bug, not this one.
+The volume click that needs this is [Volume slider](2026-10-08-volume-slider-drawing.md). The 08:50 `slider-click-smoke` miss (`presses=0`) is a pointer miss on that bug, not this one.
 
 ## Proposed changes
 
@@ -99,7 +99,7 @@ The volume click that needs this is [Volume slider](done/2026-10-08-volume-slide
 
 **Where:** `add_signals`, the loop that builds each `Subscription`.
 
-**Depends on:** `blocking` on `OLLMrpc.Live.Subscription` in [Subscription.emit drops the handler bool](../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md).
+**Depends on:** `blocking` on `OLLMrpc.Live.Subscription` in [Subscription.emit drops the handler bool](../../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md).
 
 #### Remove
 
@@ -157,7 +157,7 @@ The volume click that needs this is [Volume slider](done/2026-10-08-volume-slide
 				}
 ```
 
-`Subscription.emit` and `Notification.reply_id` are [Subscription.emit drops the handler bool](../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md). `Hook.complete` returns false for that wait, because it has no frame. The next edit marks the mailbox replied.
+`Subscription.emit` and `Notification.reply_id` are [Subscription.emit drops the handler bool](../../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md). `Hook.complete` returns false for that wait, because it has no frame. The next edit marks the mailbox replied.
 
 ### 3. `src/server/rpc/LiveCallback.vala` — `reply` completes the mailbox
 
@@ -165,7 +165,7 @@ The volume click that needs this is [Volume slider](done/2026-10-08-volume-slide
 
 **Where:** `reply`, the loop over `callbacks`.
 
-**Depends on:** the mailbox in [Subscription.emit drops the handler bool](../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md).
+**Depends on:** the mailbox in [Subscription.emit drops the handler bool](../../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md).
 
 #### Remove
 
@@ -206,7 +206,7 @@ The volume click that needs this is [Volume slider](done/2026-10-08-volume-slide
 
 **Where:** the `notification.connect` handler inside `connect`, and `emit`.
 
-**Depends on:** `Notification.reply_id` in [Subscription.emit drops the handler bool](../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md).
+**Depends on:** `Notification.reply_id` in [Subscription.emit drops the handler bool](../../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md).
 
 #### Remove
 
@@ -291,7 +291,7 @@ The vfunc `closure.invoke` above stays. The bool is the one `emitv` collected.
 
 ## LLM efforts
 
-2026-10-10. Split out of [Volume slider](done/2026-10-08-volume-slider-drawing.md). The slider bug keeps the paint hook and the 08:50 coordinate miss. This file is the subscribe proposal: one `add_signals` path, a hand list in that method, and a `blocking` property on `OLLMrpc.Live.Subscription` set when the subscription is created. No `src/` edit.
+2026-10-10. Split out of [Volume slider](2026-10-08-volume-slider-drawing.md). The slider bug keeps the paint hook and the 08:50 coordinate miss. This file is the subscribe proposal: one `add_signals` path, a hand list in that method, and a `blocking` property on `OLLMrpc.Live.Subscription` set when the subscription is created. No `src/` edit.
 
 2026-10-10. Replaced the subscribe sketch with the three edits above. No `src/` edit.
 
@@ -299,6 +299,8 @@ The vfunc `closure.invoke` above stays. The bool is the one `emitv` collected.
 
 2026-10-10. Proposal code: no single-use locals (`blocking`, `correlation`, `stop`). `add_signals` is one `call_value`. The reply call wraps only because the nested `emit` does not fit on that line. No `src/` edit.
 
-2026-10-10. `Subscription` and `Notification` moved to the OLLMchat bug [Subscription.emit drops the handler bool](../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md). The RPC-1.12 plan file is deleted. No `src/` edit.
+2026-10-10. `Subscription` and `Notification` moved to the OLLMchat bug [Subscription.emit drops the handler bool](../../../../OLLMchat/docs/bugs/2026-10-10-subscription-emit-drops-handler-bool.md). The RPC-1.12 plan file is deleted. No `src/` edit.
 
 2026-10-10. Applied the four hunks. `emitv` is bound as `void*`, so `ref ret` does not compile, and a void signal is not a `GValue`. Boolean returns pass `&ret`. The tree builds against the installed libocrpc that already has `Subscription.blocking` and `Notification.reply_id`.
+
+2026-10-10. User: this is done. Closed. The volume slider that depends on the handler bool is already closed.

@@ -64,9 +64,10 @@ namespace Shell
 			float origin_x, origin_y, available_width, available_height;
 			content_box.get_origin(out origin_x, out origin_y);
 			content_box.get_size(out available_width, out available_height);
-			GLib.debug("preview-slot box %.1f,%.1f %.1fx%.1f content %.1f,%.1f %.1fx%.1f",
+			GLib.debug("preview-slot box %.1f,%.1f %.1fx%.1f content %.1f,%.1f %.1fx%.1f opacity=%u mapped=%s",
 				box.x1, box.y1, box.get_width(), box.get_height(),
-				origin_x, origin_y, available_width, available_height);
+				origin_x, origin_y, available_width, available_height,
+				this.opacity, this.mapped ? "yes" : "no");
 			for (var child = this.first_child; child != null; child = child.get_next_sibling()) {
 				float min_width, natural_width, min_height, natural_height;
 				child.get_preferred_width(available_height, out min_width, out natural_width);
@@ -78,7 +79,20 @@ namespace Shell
 				child_box.set_size(width, height);
 				var layout = child.layout_manager;
 				if (layout != null && layout.rpc_lid == 0) {
-					child.relay_allocation(child_box);
+					/*
+					 * The local layout has a relaying peer on the server.
+					 * Enter the child's real allocate vfunc there so Clutter
+					 * accepts set_allocation, then let that manager relay its
+					 * child allocation back here. Calling relay_allocation
+					 * outside the child's allocate vfunc is rejected and
+					 * leaves its transform as NaN.
+					 */
+					uint8[] data = new uint8[sizeof(Clutter.ActorBox)];
+					*((Clutter.ActorBox*) data) = child_box;
+					Gsr.Client.Rpc.call_value(
+						"Clutter-Actor.allocate", child,
+						OLLMrpc.args("ay", new GLib.Bytes(data)));
+					continue;
 				}
 				child.allocate(child_box);
 			}

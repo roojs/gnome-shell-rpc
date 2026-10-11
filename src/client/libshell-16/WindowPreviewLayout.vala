@@ -34,6 +34,15 @@ namespace Shell
 				this.source = (Clutter.Actor) window.get_compositor_private();
 				var clone = new Clutter.Clone(this.source);
 				this.actor_copy = clone;
+				uint64 server_lid = 0;
+				var got = Gsr.Client.Rpc.call_value(
+					"Clutter-Clone.get_source", clone);
+				var got_obj = got.retval.get_object() as OLLMrpc.Live.Interface;
+				if (got_obj != null) {
+					server_lid = got_obj.rpc_lid;
+				}
+				GLib.debug("preview-clone-source local=%" + "llu server=%" + "llu",
+					((OLLMrpc.Live.Interface) this.source).rpc_lid, server_lid);
 				Gsr.Client.Rpc.ensure_signal_subscribe(window, "size-changed");
 				Gsr.Client.Rpc.ensure_signal_subscribe(window, "position-changed");
 				Gsr.Client.Rpc.ensure_signal_subscribe(this.source, "destroy");
@@ -137,6 +146,15 @@ namespace Shell
 					child_box.x1, child_box.y1,
 					child_box.get_width(), child_box.get_height());
 				child.allocate(child_box);
+				var server_w = Gsr.Client.Rpc.call_value("Clutter-Actor.get_width", child);
+				var server_h = Gsr.Client.Rpc.call_value("Clutter-Actor.get_height", child);
+				var server_mapped = Gsr.Client.Rpc.call_value("Clutter-Actor.is_mapped", child);
+				var server_alloc = Gsr.Client.Rpc.call_value("Clutter-Actor.has_allocation", child);
+				GLib.debug("preview-clone-geom server %.1fx%.1f mapped=%s has-alloc=%s",
+					(float) server_w.retval.get_float(),
+					(float) server_h.retval.get_float(),
+					server_mapped.retval.get_boolean() ? "yes" : "no",
+					server_alloc.retval.get_boolean() ? "yes" : "no");
 			}
 		}
 

@@ -2,7 +2,7 @@
 
 **Status:** ✅ closed 2026-10-10. User: the volume slider works. Paint, click, and drag are in. The menu expander that sits on the opened volume list is [Menu expander overlap](../2026-10-10-menu-expander-overlap.md).
 
-`Slider.startDragging` (`vendor/gnome-shell/js/ui/slider.js`) runs on `button-press-event`. It reads `event.get_event_sequence()`, calls `global.stage.grab(this)`, then `_moveHandle`, which assigns `this.value`. Volume listens to `notify::value`. The handler bool has to finish before Clutter ends the emission. That subscribe path is [Blocking signal subscribe](../2026-10-10-blocking-signal-subscribe.md).
+`Slider.startDragging` (`vendor/gnome-shell/js/ui/slider.js`) runs on `button-press-event`. It reads `event.get_event_sequence()`, calls `global.stage.grab(this)`, then `_moveHandle`, which assigns `this.value`. Volume listens to `notify::value`. The handler bool has to finish before Clutter ends the emission. That subscribe path is [Blocking signal subscribe](2026-10-10-blocking-signal-subscribe.md).
 
 ## Applied paint hook
 
@@ -398,6 +398,6 @@ Exit 0. `signal repaint` and the `repaint` vfunc both saw `surface=480x64` with 
 
 2026-10-10. Withdrew the `action` / `no_hooks` / `watch_signal` / `add_signals` proposal. The generated declaration for `leave-event` is what has to carry the mark. No `src/` edit.
 
-2026-10-10. The subscribe proposal moved to [Blocking signal subscribe](../2026-10-10-blocking-signal-subscribe.md). This file keeps the paint hook and the 08:50 coordinate miss.
+2026-10-10. The subscribe proposal moved to [Blocking signal subscribe](2026-10-10-blocking-signal-subscribe.md). This file keeps the paint hook and the 08:50 coordinate miss.
 
 2026-10-10. User: the volume slider works. Closed. No further `src/` edit. The expander drawn over the opened volume list and the logout list is [Menu expander overlap](../2026-10-10-menu-expander-overlap.md).

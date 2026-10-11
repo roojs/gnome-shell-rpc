@@ -9,6 +9,34 @@ namespace Gsr.Server.Meta
 {
 	public class Window : GLib.Object
 	{
+		[CCode (cname = "meta_shaped_texture_get_texture",
+			cheader_filename = "meta/meta-shaped-texture.h")]
+		private static extern void* shaped_buffer (global::Meta.ShapedTexture stex);
+
+		[CCode (cname = "meta_multi_texture_get_n_planes",
+			cheader_filename = "meta/meta-multi-texture.h")]
+		private static extern int texture_planes (void* multi);
+
+		[CCode (cname = "meta_multi_texture_get_plane",
+			cheader_filename = "meta/meta-multi-texture.h")]
+		private static extern void* texture_plane (void* multi, int index);
+
+		[CCode (cname = "gsr_texture_read",
+			cheader_filename = "server/libmutter-16/texture-read.h")]
+		private static extern int texture_read (void* texture, [CCode (array_length = false)] uint8[] data, uint rowstride);
+
+		[CCode (cname = "gsr_texture_readable",
+			cheader_filename = "server/libmutter-16/texture-read.h")]
+		private static extern bool texture_readable (void* texture);
+
+		[CCode (cname = "gsr_texture_width",
+			cheader_filename = "server/libmutter-16/texture-read.h")]
+		private static extern int texture_width (void* texture);
+
+		[CCode (cname = "gsr_texture_height",
+			cheader_filename = "server/libmutter-16/texture-read.h")]
+		private static extern int texture_height (void* texture);
+
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
@@ -36,6 +64,54 @@ namespace Gsr.Server.Meta
 			uint64 lid = 0;
 			if (priv != null) {
 				lid = request.connection.export(priv);
+				var parent = priv.get_parent();
+				var child = priv.get_first_child();
+				var stex = priv.get_texture();
+				string image = "no-buffer";
+				var multi = stex != null ? Window.shaped_buffer(stex) : null;
+				if (multi != null) {
+					int planes = Window.texture_planes(multi);
+					var plane = planes > 0 ? Window.texture_plane(multi, 0) : null;
+					if (plane == null) {
+						image = "planes=%d".printf(planes);
+					} else {
+						int tex_w = Window.texture_width(plane);
+						int tex_h = Window.texture_height(plane);
+						bool readable = Window.texture_readable(plane);
+						int bytes = 0;
+						string ink = "unread";
+						if (tex_w > 0 && tex_h > 0 && tex_w <= 4096 && tex_h <= 4096) {
+							var data = new uint8[tex_w * tex_h * 4];
+							bytes = Window.texture_read(plane, data, (uint) (tex_w * 4));
+							ink = "blank";
+							int limit = bytes < data.length ? bytes : data.length;
+							for (int i = 0; i < limit; i++) {
+								if (data[i] != 0) {
+									ink = "pixels";
+									break;
+								}
+							}
+							if (bytes <= 0) {
+								ink = "fail";
+							}
+						}
+						image = "planes=%d readable=%s %dx%d bytes=%d %s".printf(
+							planes, readable ? "yes" : "no", tex_w, tex_h, bytes, ink);
+					}
+				}
+				GLib.debug("compositor-private visible=%s mapped=%s realized=%s parent-mapped=%s children=%d stex=%s buffer=%s image=%s child-opacity=%u child-visible=%s child=%.0fx%.0f",
+					priv.visible ? "yes" : "no",
+					priv.mapped ? "yes" : "no",
+					priv.realized ? "yes" : "no",
+					parent != null && parent.mapped ? "yes" : "no",
+					(int) priv.get_n_children(),
+					stex != null ? "yes" : "no",
+					stex != null && Window.shaped_buffer(stex) != null ? "yes" : "no",
+					image,
+					child != null ? child.opacity : 0,
+					child != null && child.visible ? "yes" : "no",
+					child != null ? child.width : -1,
+					child != null ? child.height : -1);
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

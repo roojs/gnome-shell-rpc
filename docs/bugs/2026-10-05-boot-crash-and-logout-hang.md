@@ -1,6 +1,6 @@
 # Boot crash
 
-**Status:** ⏳ open. User 2026-10-05. The crash-screen Log Out failure was split out 2026-10-06 to [`2026-10-06-crash-screen-logout.md`](2026-10-06-crash-screen-logout.md).
+**Status:** ⏳ open. User 2026-10-05. The crash-screen Log Out failure was split out 2026-10-06 to [`done/2026-10-06-crash-screen-logout.md`](done/2026-10-06-crash-screen-logout.md), closed 2026-10-10.
 
 Earlier logins: [`done/2026-10-03-greeter-login-black-screen.md`](done/2026-10-03-greeter-login-black-screen.md), [`done/2026-10-04-greeter-crash-screen.md`](done/2026-10-04-greeter-crash-screen.md).
 
@@ -69,7 +69,7 @@ Do not skip `set_property` in `Client.vala`. Do not patch
 entered the running state at 08:22:55, before either client died.
 
 Two clients, then the crash screen. The Log Out that followed is in
-[`2026-10-06-crash-screen-logout.md`](2026-10-06-crash-screen-logout.md).
+[`done/2026-10-06-crash-screen-logout.md`](done/2026-10-06-crash-screen-logout.md).
 
 | PID | What the journal still has | Trap |
 | --- | --- | --- |

@@ -104,7 +104,16 @@ namespace Gsr.Server
 
 		public override void map(global::Meta.WindowActor actor)
 		{
+			var parent = actor.get_parent();
+			GLib.debug("plugin-map before visible=%s mapped=%s parent=%s parent-mapped=%s",
+				actor.visible ? "yes" : "no",
+				actor.mapped ? "yes" : "no",
+				parent != null ? (parent.name ?? "(unnamed)") : "(none)",
+				parent != null && parent.mapped ? "yes" : "no");
 			actor.show();
+			GLib.debug("plugin-map after visible=%s mapped=%s",
+				actor.visible ? "yes" : "no",
+				actor.mapped ? "yes" : "no");
 			this.map_completed(actor);
 		}
 

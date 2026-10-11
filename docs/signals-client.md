@@ -390,7 +390,7 @@ one Notification, reply_id != 0
   -> RPC-Live-Callback.reply(reply_id, bool)
 ```
 
-A `reply_id` of 0 is the delivery when the server does not read the handler result. A non-zero `reply_id` is the blocking subscribe: [Blocking signal subscribe](bugs/2026-10-10-blocking-signal-subscribe.md).
+A `reply_id` of 0 is the delivery when the server does not read the handler result. A non-zero `reply_id` is the blocking subscribe: [Blocking signal subscribe](bugs/done/2026-10-10-blocking-signal-subscribe.md).
 
 Operations requiring a result use the separate synchronous callback path:
 
@@ -418,7 +418,7 @@ Clutter.Event argument              -> one ClutterEventState
 
 A local `emit` stays on the client object. The server object changes through an RPC method, which may then emit.
 
-Event signals on the `add_signals` hand list (`leave-event`, the other button and key events, `long-press`) set `Subscription.blocking`. The server waits, and the client sends the handler bool on `RPC-Live-Callback.reply` before that wait ends. [Blocking signal subscribe](bugs/2026-10-10-blocking-signal-subscribe.md). `event` and `captured-event` are on that list and also already wait as `relay=1` hooks.
+Event signals on the `add_signals` hand list (`leave-event`, the other button and key events, `long-press`) set `Subscription.blocking`. The server waits, and the client sends the handler bool on `RPC-Live-Callback.reply` before that wait ends. [Blocking signal subscribe](bugs/done/2026-10-10-blocking-signal-subscribe.md). `event` and `captured-event` are on that list and also already wait as `relay=1` hooks.
 
 `Widget.set_style` still emits `style-changed` locally after the RPC reply (`local_emit_after` in `St.overrides`). Subscribing that signal from inside `show()` re-entered GJS.
 

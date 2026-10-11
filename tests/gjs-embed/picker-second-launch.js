@@ -1,6 +1,6 @@
 /**
  * Second picker launch leaves the shell dead —
- * docs/bugs/2026-10-07-picker-click-no-clicked.md
+ * docs/bugs/done/2026-10-07-picker-click-no-clicked.md
  *
  * Boots product main.start, opens the app grid, pointer-clicks two stopped
  * app icons (each launch must take), opens the grid again, and pointer-clicks

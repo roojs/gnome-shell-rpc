@@ -234,7 +234,7 @@ public static void emit(
 
 `Subscription.emit` writes the notification and returns when `blocking` is false or `return_value` is null. `Gsr.Server.Clutter.Actor.add_signals` sets `blocking` for the hand list (button, key, enter, leave, motion, scroll, touch, `event`, `captured-event`, `long-press`). That wait sets `Notification.reply_id`. The client emits locally, and for a `BOOLEAN` signal sends the handler bool on `RPC-Live-Callback.reply`. `LiveCallback.reply` marks the mailbox `replied` when `Hook.complete` has no frame for that id. `emit` then writes `return_value`.
 
-A notification with `reply_id` 0 is the delivery for a signal whose result the server does not read. Direct `RPC-Live-Subscribe.rpc_signal` subscriptions stay on that path. [Blocking signal subscribe](bugs/2026-10-10-blocking-signal-subscribe.md). `event` and `captured-event` are on the hand list and also already wait as `relay=1` hooks.
+A notification with `reply_id` 0 is the delivery for a signal whose result the server does not read. Direct `RPC-Live-Subscribe.rpc_signal` subscriptions stay on that path. [Blocking signal subscribe](bugs/done/2026-10-10-blocking-signal-subscribe.md). `event` and `captured-event` are on the hand list and also already wait as `relay=1` hooks.
 
 ## Multiple client handlers
 

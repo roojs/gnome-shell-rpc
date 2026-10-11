@@ -1,32 +1,245 @@
 # Window overview has no thumbnails
 
-**Status:** ⏳ open. The card clones the live window actor again. The last hand look (2026-10-09 08:18) was the old stand-in clone and showed the mountain wallpaper. No later look.
+**Status:** ⏳ open. On a normal desktop the window thumbnail shows gedit. Here it shows the mountain wallpaper.
 
-## What the shell does
+## Steps
 
-Two pictures.
+### 1. Before Activities, the gedit window is visible on the desktop
 
-The top workspace tab clones the live window actor (`workspaceThumbnail.js` `WindowClone`). That actor is on the stage. The tab shows a tiny picture.
+On a normal desktop the gedit window is visible on the desktop.
 
-The big card is `windowPreview.js`. `get_compositor_private()` returns the live `Meta.WindowActor`. `WindowPreviewLayout.add_window` returns a `Clutter.Clone` of that actor and adds it on top of the wallpaper. `allocate` sizes the clone from its preferred size, then scales that box into the card (`shell-window-preview-layout.c`). The clone paints by drawing its source. A source that is not parented to a toplevel is not realized, and the clone skips the paint (`clutter-clone.c`).
+Here it works as expected.
 
-## What is in the tree
+### 2. The window thumbnail is of that same window
 
-`Window.get_compositor_private` returns that live actor lease. `preview_actor` is gone. `WindowPreviewLayout` builds `new Clutter.Clone(source)` of it and allocates with the stock preferred-size box, then the scale. `WindowPreview.allocate_vfunc` clamps each child to the preview's content box (`shell_window_preview_allocate` / `clutter_actor_allocate_available_size`, height-for-width). A client-local layout manager also gets `set_allocation` on that box, because `Actor.allocate` keeps that case off the server.
+On a normal desktop the window thumbnail is of the gedit window that is visible on the desktop.
 
-The 2026-10-07 09:31 note that cloning the live actor killed Weston has no stack and no core. The 10:03 and 10:36 proves did not kill Weston. They printed `thumbnail-smoke: ok`.
+Here it works as expected.
 
-## Where it stands
+### 3. Activities makes the gedit window no longer visible on the desktop
 
-The clone's source is the live gedit actor. Before the clamp, 10:47 logged `preview-allocate box 800.0x568.0 … scale 1.000 … out 800.0x568.0` while the `WindowPreview` was `478×340`. `St.Widget` had given the window container its preferred size (the full window).
+On a normal desktop the gedit window is no longer visible on the desktop. It stays in place, still 800 by 568.
 
-11:38, with the clamp: the slot settles at `478×340` and the clone is allocated `478×340` (`scale 0.598`). With two windows the slot and the clone are `254×180`. `thumbnail-smoke: ok`. Content box origin is `0,0`. JavaScript `source ===` is still false; the source window title and size match gedit.
+Here it works as expected.
 
-A hand look the same morning (Weston stayed up, two apps): the top tabs show their pictures, the big cards are still wrong. That session's client log was truncated at 11:32 (`Unable to open display ':3'`). The smoke does not read pixels. When the card appears, `property 'realized' of 'Gjs_ui_windowPreview_WindowPreview' is not writable`.
+### 4. The window thumbnail is visible, and smaller than the window
 
-The 08:18 wallpaper was a clone of an offstage stand-in. That path is not what this tree runs.
+On a normal desktop one window makes a thumbnail about 478 by 340. Two windows make thumbnails about 254 by 180. The window thumbnail is fully visible.
 
-Help's life ring on that screenshot is the dash zoom clone (`iconGrid.js` `zoomOutActorAtPos`). Dash launches and workspace 1–5 are [`2026-10-08-dash-and-workspace-switch.md`](2026-10-08-dash-and-workspace-switch.md).
+Here it works as expected.
+
+### 5. The gedit window still holds its picture
+
+On a normal desktop the gedit window still holds a picture of gedit, 800 by 568, and that picture is not blank.
+
+Here it works as expected.
+
+### 6.1 Clone the gedit window and allocate the thumbnail
+
+On a normal desktop these calls build the window thumbnail from the gedit window, at the thumbnail size.
+
+Here it works as expected.
+
+- ✔️ Client `src/client/libshell-16/WindowPreviewLayout.vala` `window.get_compositor_private()`
+  - RPC `Gsr-Mutter-Window.get_compositor_private`
+    - Server `src/server/libmutter-16/Window.vala` `get_compositor_private`
+      - Return window-actor lid
+- ✔️ Client `new Clutter.Clone(source)`
+  - RPC `Clutter-Clone.new`
+    - Server GI `Clutter.Clone.new`
+      - Return clone lid
+- ✔️ Client `child.allocate(child_box)`
+  - RPC `Clutter-Actor.allocate`
+    - Server GI `clutter_actor_allocate`
+      - Return empty
+
+### 6.2 Surface size on that window actor
+
+This is the first call in 6.1.
+
+**Client** `src/client/libshell-16/WindowPreviewLayout.vala`
+
+```vala
+this.source = (Clutter.Actor) window.get_compositor_private();
+```
+
+**Client** `src/client/libmutter-rpc-16/overrides/Window.override.vala`
+
+```vala
+public GLib.Object? get_compositor_private()
+{
+    var response = Gsr.Client.Rpc.call_value(
+        "Gsr-Mutter-Window.get_compositor_private", this);
+    if (response.args.size < 1) {
+        return null;
+    }
+    var actor_lid = response.args.get(0).get_uint64();
+    if (actor_lid == 0) {
+        return null;
+    }
+    if (Gsr.Client.Rpc.client.proxies.has_key((int) actor_lid)) {
+        var existing = Gsr.Client.Rpc.client.proxies.get(
+            (int) actor_lid) as WindowActor;
+        if (existing != null) {
+            if (existing.bound_meta_window == null) {
+                existing.bound_meta_window = this;
+            }
+            return existing;
+        }
+    }
+    var actor = new WindowActor();
+    actor.rpc_lid = actor_lid;
+    actor.bound_meta_window = this;
+    Gsr.Client.Rpc.register_handle(actor);
+    return actor;
+}
+```
+
+**RPC** `Gsr-Mutter-Window.get_compositor_private`
+
+**Server** `src/server/libmutter-16/Window.vala`
+
+```vala
+public void get_compositor_private(OLLMrpc.Request request)
+{
+    var window = (global::Meta.Window) request.connection.leases.get(
+        (int) request.lease_id);
+    var priv = window.get_compositor_private()
+        as global::Meta.WindowActor; // the gedit window's actor. This is an object.
+    uint64 lid = 0;
+    if (priv != null) {
+        lid = request.connection.export(priv);
+        // First Clutter child of the window actor: the Wayland surface container.
+        // The gedit surface is inside it. This function does not set its size.
+        var child = priv.get_first_child();
+        child != null ? child.width : -1
+        child != null ? child.height : -1
+    }
+    request.reply(new OLLMrpc.Response() {
+        id = request.id,
+        args = OLLMrpc.args("t", lid),
+    });
+}
+```
+
+- ✔️ Return `t` lid. Client `Window.override.vala` reads that lid.
+- 🚫 `child.width` and `child.height` are 0. `get_compositor_private` reads them. It does not set them.
+
+**`meta_window_actor_sync_actor_geometry`** in `meta-window-actor.c`. `actor` is the window actor, the same object as `priv` above. It is not `child`.
+
+```c
+meta_window_get_buffer_rect (priv->window, &actor_rect);
+if (changes & META_WINDOW_ACTOR_CHANGE_SIZE)
+  clutter_actor_set_size (actor, actor_rect.width, actor_rect.height);
+META_WINDOW_ACTOR_GET_CLASS (self)->sync_geometry (self);
+```
+
+On a normal desktop this sets the window actor from the gedit window's buffer rect, 800 by 568.
+
+Here it works as expected.
+
+**`clutter_actor_real_queue_relayout`** in `clutter-actor.c`
+
+```c
+priv->needs_allocation = TRUE;
+```
+
+**`clutter_stage_maybe_relayout`** in `clutter-stage.c`
+
+```c
+clutter_actor_allocate_preferred_size (queued_actor, x, y);
+```
+
+**`clutter_actor_allocate`** in `clutter-actor.c`
+
+```c
+if (!CLUTTER_ACTOR_IS_TOPLEVEL (self) &&
+    !clutter_actor_is_mapped (self) &&
+    !clutter_actor_has_mapped_clones (self))
+  return;
+```
+
+On a normal desktop a mapped actor is given a box.
+
+Here it does not work as expected. The window actor and the surface container are unmapped, so this return runs and no box is stored.
+
+**`clutter_actor_get_width`** in `clutter-actor.c`
+
+```c
+if (priv->needs_allocation)
+  {
+    gfloat natural_width = 0;
+
+    if (priv->request_mode == CLUTTER_REQUEST_HEIGHT_FOR_WIDTH)
+      clutter_actor_get_preferred_width (self, -1, NULL, &natural_width);
+    else if (priv->request_mode == CLUTTER_REQUEST_WIDTH_FOR_HEIGHT)
+      {
+        gfloat natural_height = 0;
+
+        clutter_actor_get_preferred_height (self, -1, NULL, &natural_height);
+        clutter_actor_get_preferred_width (self, natural_height,
+                                           NULL, &natural_width);
+      }
+    else if (priv->request_mode == CLUTTER_REQUEST_CONTENT_SIZE &&
+             priv->content != NULL)
+      clutter_content_get_preferred_size (priv->content, &natural_width, NULL);
+
+    return natural_width;
+  }
+else
+  return priv->allocation.x2 - priv->allocation.x1;
+```
+
+On a normal desktop `needs_allocation` is clear and this returns the stored box.
+
+Here it does not work as expected. `needs_allocation` is set, so this returns `natural_width`, which is 0.
+
+**`clutter_actor_real_allocate`** in `clutter-actor.c`
+
+```c
+clutter_actor_set_allocation_internal (self, box);
+if (priv->n_children != 0 &&
+    priv->layout_manager != NULL)
+  clutter_layout_manager_allocate (priv->layout_manager, self, &children_box);
+```
+
+On a normal desktop a layout manager allocates the children.
+
+Here it does not work as expected. The window actor has no layout manager, so `child` is not given `box`.
+
+**`do_sync_geometry`** in `meta-window-actor-wayland.c`
+
+```c
+if (!clutter_actor_is_mapped (CLUTTER_ACTOR (actor)))
+  return FALSE;
+clutter_actor_set_position (surface_container,
+                            (child_actor_width - surfaces_width) / 2,
+                            (child_actor_height - surfaces_height) / 2);
+```
+
+On a normal desktop the window actor is mapped, and this sets the container's position.
+
+Here it does not work as expected. The window actor is unmapped, so this returns before `set_position`. `set_position` does not set the container's size.
+
+### 7. The orange outline on the selected workspace tab
+
+```js
+const thumbnailFullHeight = Math.round(portholeHeight * this._scale);
+const thumbnailWidth = Math.round(thumbnailFullHeight * ratio);
+const thumbnailHeight = thumbnailFullHeight * this._expandFraction;
+```
+
+```js
+childBox.x1 = indicatorX1 - indicatorLeftFullBorder;
+childBox.x2 = indicatorX2 + indicatorRightFullBorder;
+childBox.y1 -= indicatorTopFullBorder;
+childBox.y2 += indicatorBottomFullBorder;
+this._indicator.allocate(childBox);
+```
+
+On a normal desktop the outline is the size of the workspace tab, and the tab shows a tiny gedit.
+
+Here it does not work as expected. The inside of the tab is blank. While `_scale` is still 0 the outline is only the border, which is the dot from the early looks. In the 20:58 picture the outline is 29 by 22 pixels.
 
 **Reproduction:**
 
@@ -38,7 +251,7 @@ GSR_NESTED_TIMEOUT=40 \
 ./scripts/agent-nested-smoke-prove.sh
 ```
 
-`thumbnail-smoke: ok` is the script. Fail is `thumbnail-smoke: miss <reason>`. The hand bar is still a look at the card.
+The script printing `thumbnail-smoke: ok` only means the window thumbnail was built. It does not mean the window thumbnail shows gedit. The check is looking at the window thumbnail.
 
 ## LLM efforts
 
@@ -177,3 +390,247 @@ Paused here. Hand look of the main card, the top tabs, and the life-ring zoom is
 Hand look after that hold: Weston stayed up, two apps started, top tabs showed pictures, big cards still wrong. Client and mutter debug logs were truncated at 11:32 (`Failed to setup: Unable to open display ':3'`). No `preview-allocate` from that look survived.
 
 11:38 prove, same smoke command: `preview-slot` content `478×340`, `preview-allocate … scale 0.598 … out 0.0,0.0 478.0x340.0`, smoke `clone-size=478x340`. Phase 2: slot and clone `254×180`, `thumbnail-smoke: ok`. `realized` is not writable on `Gjs_ui_windowPreview_WindowPreview` at 11:38:00.419 (and again as the second window's card appears).
+
+16:55 capture of the Weston window during overview: the main card is the mountain wallpaper. 17:16, once the clone exists: `clone-opacity=255 clone-mapped=true source-realized=true source-mapped=false`. 18:05 server: `Window.vala` `compositor-private mapped=no realized=yes`. `clutter_actor_paint` returns on an unmapped actor, so the clone is empty.
+
+### 2026-10-10 18:28 map effect
+
+`Plugin.map` calls `actor.show()`. The actor is created with `show-on-set-parent` false, so it starts hidden. 18:28:21 `plugin-map after visible=yes mapped=yes` with the parent mapped. 18:28:22 `compositor-private visible=yes mapped=yes realized=yes parent-mapped=yes children=1`. Overview then hides the window group. 18:28:23 `visible=yes mapped=no parent-mapped=no`. `preview-allocate out 0.0,0.0 478.0x340.0`. `clutter_clone_paint` maps an unmapped source for the paint via `enable_paint_unmapped`. The unmapped flag is not why that paint returns. `clutter_clone_allocate` scales the source into the clone box.
+
+19:38 and 19:42: mutter `g_error` in `clutter-box-layout.c` on minimum height `-12`, `mutter exited ec=133` during `main.start`, no preview. Same abort as [`done/2026-09-25-box-layout-negative-min-height.md`](done/2026-09-25-box-layout-negative-min-height.md). The `context is null` miss is the client after that abort.
+
+20:04 capture (`/tmp/gsr-overview.png`, Weston window `90177541`): overview is up, the main card is the mountain wallpaper, the top tab is an orange mark, gedit has a dash dot. `plugin-map after visible=yes mapped=yes` at 20:04:24, `compositor-private … mapped=yes … children=1` at 20:04:26, then `mapped=no parent-mapped=no` at 20:04:28 when the overview hid the window group. `preview-allocate out 0.0,0.0 713.0x535.0`.
+
+### 2026-10-10 20:58 clone is the card, paint unread
+
+`meta_shaped_texture_get_clip_region` is not in the public header and not in `libmutter-16.so`, so the clip was not logged. `Clutter-Actor.get_width` / `is_mapped` / `has_allocation` on the clone after `allocate`: `preview-clone-geom server 478.0x340.0 mapped=yes has-alloc=yes`, then `254.0x180.0`. `get_source` lids match. `buffer=yes` after unmap. Preview `opacity=255 mapped=yes`. Same run's Weston window is the wallpaper card. The blank is not a missing clone, a zero box, an unmapped clone, or a missing buffer.
+
+### 2026-10-10 21:20 the image is blank
+
+`get_compositor_private` calls `Meta.WindowActor.get_image`. 21:20:45, window still mapped: `image=800x568 blank`, `child-opacity=255`, `child-visible=yes`, `buffer=yes`. The next 14 reads, including after the overview unmapped the window group, are the same blank `800×568`. `meta_shaped_texture_get_image` copies the texture with `cogl_texture_get_data` and ignores the byte count it returns, so a failed read is also a zero surface. The copy we got is zero.
+
+### 2026-10-11 08:43 the texture has the pixels
+
+Direct `cogl_texture_get_data` on plane 0, overview up, actor unmapped: `planes=1 readable=yes 800x568 bytes=1817600 pixels`, `child-opacity=255 child-visible=yes child=800x568`. `1817600` is `800×568×4`. The zero surface from `get_image` is that helper ignoring the byte count, not an empty texture. The card is still the wallpaper. The draw in `meta_shaped_texture_paint_content` is the step that does not show.
+
+### 2026-10-11 10:48 baseline before paint/stacking probe
+
+Command:
+
+```bash
+GI_META_SMOKE=thumbnail-smoke GI_META_SMOKE_CMD='gedit --new-window' \
+GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1 GSR_NESTED_TIMEOUT=70 \
+./scripts/agent-nested-smoke-prove.sh
+```
+
+The existing structural gate passed: phase 1 clone `478×340`, phase 2 two
+clones `254×180`, `thumbnail-smoke: ok`, and prove `stop (smoke-ok) after
+17s`. This still does not test rendered pixels. Next reproduction-only probe
+will capture the overview before and after hiding its workspace background,
+and log that workspace's child order. No product file changed.
+
+### 2026-10-11 11:12 stacking probe did not reach the reproduction
+
+The same command with the reproduction-only capture/hide probe failed during
+`main.start`: `thumbnail-smoke: miss TypeError: global.stage.context is null`.
+This is the already-recorded startup abort symptom, before any window or
+overview probe. It says nothing about stacking; retry required.
+
+### 2026-10-11 11:13 stacking/occlusion refuted
+
+Retry reached the probe. The active Workspace peer reports
+`workspace-stack background=0 container=1 children=2`, matching stock order:
+background below the preview container. Stage captures are
+`/tmp/thumbnail-overview-before.png` and
+`/tmp/thumbnail-overview-no-background.png`.
+
+The first capture shows the mountain wallpaper in the main card. The second
+hides that workspace's background and shows only the shell's dark overview
+behind the same empty card area. Gedit does not appear. Therefore the preview
+is transparent, not painted underneath the workspace background. The run
+continued through phase 2 and printed `thumbnail-smoke: ok`; this confirms
+again that `ok` is structural, not a pixel verdict.
+
+### 2026-10-11 11:18 source-depth probe did not reach the reproduction
+
+First run of the reproduction-only clone-source depth probe failed during
+`main.start` with `global.stage.context is null`, before window creation.
+This is another instance of the separate startup abort and gives no
+source-paint result.
+
+### 2026-10-11 11:18 window actor subtree is also transparent
+
+Retry captured the same allocated overview clone while changing its source
+from the live `Meta.WindowActor` to each of its first two descendants. Both
+descendants report `800×568`, visible, and unmapped. Captures:
+
+- `/tmp/thumbnail-overview-source-depth-1.png`
+- `/tmp/thumbnail-overview-source-depth-2.png`
+
+Both remain fully transparent with the workspace background hidden. The
+failure is therefore not confined to the `Meta.WindowActor` wrapper's own
+paint method; cloning the surface-container path also fails. The structural
+smoke still reached `ok`.
+
+### 2026-10-11 11:19 known-good panel source is also transparent
+
+With the workspace background hidden, the reproduction changed the same
+allocated preview clone's source to `main.panel`, waited 500 ms, and captured
+`/tmp/thumbnail-overview-panel-source.png`. The real panel remains visible at
+the top of the frame, but no panel image appears in the clone's card.
+
+This refutes a window-texture-specific failure: the existing preview
+`Clutter.Clone` does not show a known-painted St source either. Next probe
+places an independent panel clone directly on the stage to separate a general
+`Clutter.Clone` paint failure from the preview tree or its clipping.
+
+### 2026-10-11 11:25 independent stage clone paints
+
+`/tmp/thumbnail-overview-stage-clone.png` shows a separately constructed
+`Clutter.Clone` of `main.panel`, sized `400×200` and parented directly to the
+stage. It visibly paints the panel (stretched, as expected). Therefore
+`Clutter.Clone` construction and paint work generally. The same panel source
+is transparent through the existing preview clone, narrowing the failure to
+that clone or its preview ancestry/allocation/clip path.
+
+Next probe uses the live window actor as a direct stage-clone source. That
+separates a window-source paint failure from the preview ancestry.
+
+### 2026-10-11 11:26 stage-window probe did not reach the reproduction
+
+The first run again hit the separate `global.stage.context is null` startup
+abort before creating a window. No stage-window clone result; retry required.
+
+### 2026-10-11 11:35 live window paints through a stage clone
+
+Retry capture `/tmp/thumbnail-overview-stage-window-clone.png` visibly shows
+gedit's file chooser through an independent clone of the exact live
+`Meta.WindowActor`, parented directly to the stage. This refutes both a
+window-source paint failure and a general clone failure.
+
+The failure is now bounded to the overview preview scene path: the same live
+window source paints from a stage clone, while the stock preview clone remains
+transparent. Next probe places a solid actor in the same
+`window_container`; that tests whether the preview subtree itself is clipped
+or misplaced, independent of cloning.
+
+### 2026-10-11 11:47 solid preview child is also invisible
+
+The reproduction added an opaque red `Clutter.Actor` (`400×284`) to the
+affected `WindowPreview.window_container` and captured
+`/tmp/thumbnail-overview-solid-child.png` with the workspace background
+hidden. No red pixels appear. In the same run both direct stage clones still
+paint.
+
+This refutes the clone as the immediate failing actor. The whole preview
+subtree is not reaching the visible frame, despite the preview and clone
+reporting mapped allocations. Next probe records the preview-to-stage ancestor
+chain, including paint opacity and transformed geometry.
+
+### 2026-10-11 11:49 ancestor probe did not reach the reproduction
+
+The first ancestor-chain run hit the separate
+`global.stage.context is null` startup abort before window creation. No
+ancestor result; retry required.
+
+Second ancestor-chain attempt at 11:50 hit the same startup abort, also before
+window creation. Retry still required.
+
+Third attempt at 11:51 hit the same startup abort before window creation.
+Fourth attempt at 11:56 hit it again. The ancestor probe remains unrun.
+
+### 2026-10-11 11:56 ancestor chain with pixman parent
+
+Running the same reproduction with `GSR_WESTON_PIXMAN=1` avoided the startup
+abort. From `WindowPreview` through its Workspace, WorkspacesView,
+WorkspacesDisplay, ControlsManager, OverviewActor, overview group, and
+`UiActor`, every ancestor is visible, mapped, effective paint opacity 255, and
+has nonzero transformed geometry. The preview itself is transformed to
+`160.375,126.398 478.203×339.527`, inside the `800×600` overview.
+
+`MetaStage.get_transformed_size()` alone reported `70.695×53.019` despite
+stage `width×height=800×600`; direct stage clones paint, so that anomalous
+getter does not explain only the preview subtree. There is no zero-sized or
+transparent ancestor. Next probe starts the same chain at the clone, adding
+its `window_container` transform to the evidence.
+
+### 2026-10-11 11:59 clone-chain probe missed the window
+
+The first pixman-parent clone-chain run reached launch but no Meta NORMAL
+window appeared before the smoke deadline: `miss window`. It did not reach
+the overview; retry required.
+
+The 13:04 retry with a 15-second window deadline hit the separate
+`global.stage.context is null` startup abort before launch.
+
+### 2026-10-11 13:09 first bad transform found
+
+Pixman-parent retry reached the clone chain. `WindowPreview` is sane at
+`160.375,126.398 478.203×339.527`. Its immediate child
+`window_container` reports nonzero `800×568`, mapped and paint opacity 255,
+but `get_transformed_position()` and `get_transformed_size()` both return
+`NaN`. The clone below it is likewise `NaN`. Every ancestor above the
+`WindowPreview` remains finite.
+
+This is the first property that directly explains the invisible subtree:
+Clutter cannot place or cull descendants whose model-view transform contains
+NaN. Setting `WindowPreview.offscreen_redirect` from
+`AUTOMATIC_FOR_OPACITY` (`1`) to `NEVER` did not change the blank capture
+(`/tmp/thumbnail-overview-no-offscreen.png`), so offscreen redirect is
+refuted.
+
+The likely source is now the `windowContainer` transform inputs, especially
+its construct-time pivot point or scale. Next reproduction-only probe rewrites
+those stock values and checks whether the transform and picture become finite.
+
+### 2026-10-11 13:21 transform-reset probe did not reach reproduction
+
+The first pivot/scale reset run hit `global.stage.context is null` during
+startup. It produced no transform result; retry required.
+
+### 2026-10-11 13:50 invalid allocation relay is the cause
+
+Successful retry reports `window_container pivot=0.5,0 scale=1,1`. Rewriting
+the pivot to `0.5,0.5`, then forcing scale through `0.999` back to `1`, leaves
+the container and clone transforms `NaN`; both captures remain blank. Pivot,
+scale, and offscreen redirect are not the cause.
+
+The same run's mutter log names the failure:
+
+```text
+Clutter-Actor.set_allocation
+The clutter_actor_set_allocation() function can only be called from within
+the implementation of the ClutterActor::allocate() virtual function.
+```
+
+This is `WindowPreview.allocate_vfunc` calling `child.relay_allocation()` for
+the client-local `WindowPreviewLayout`. The nested
+`window_container` is not inside its own server-side allocate vfunc, so Clutter
+rejects the allocation. Then client `Actor.allocate()` sees the local layout
+manager and runs only `layout.allocate_vfunc()`; it never invokes the
+container's server allocate path. The container retains its full-window
+`800×600` allocation while its clone has the card allocation, and its
+model-view transform becomes `NaN`.
+
+Next reproduction-only trial temporarily detaches the local layout manager,
+uses the cached intended box through the real server allocate path, and checks
+whether the transform and gedit pixels appear. Product code remains unchanged.
+
+### 2026-10-11 13:56 real server allocation makes gedit visible
+
+The reproduction-only trial detached `WindowPreviewLayout`, called the
+container's real server allocate path, and captured
+`/tmp/thumbnail-overview-after-server-allocate.png`.
+
+After that call, the clone transform becomes finite:
+`160.375,126.398 478×340`, and the capture visibly shows gedit in the main
+overview card. Before the call, the same clone and source were `NaN` and
+transparent. This proves allocation—not texture capture or cloning—is the
+remaining cause.
+
+The cached test box happened to be zero, so the container reports `0×0`, but
+the already allocated clone still paints because the container does not clip.
+The product landing must send the actual `child_box` through the server
+`Clutter-Actor.allocate` call while the server-side proxy layout manager is
+still attached; that sets the container allocation and relays child allocation
+normally. This is a minor change in `WindowPreview.allocate_vfunc`.
