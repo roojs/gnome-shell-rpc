@@ -1,14 +1,13 @@
 namespace Gsr.Server
 {
 	/**
-	 * Inhibits compositor frames during split-process shell startup.
+	 * Covers the stage during split-process shell startup.
 	 *
-	 * A notice covers the stage and is presented before the clocks
-	 * stop, so the frozen frame is that notice. The shell client takes
-	 * the lock before evaluating stock init.js. The owning connection
-	 * releases it through global::Meta.Context.notify_ready, which
-	 * removes the notice first. Frame clocks retain pending updates
-	 * while inhibited.
+	 * The notice stays the top actor until the owning connection
+	 * releases the lock through global::Meta.Context.notify_ready.
+	 * The frame clocks keep running. Inhibiting one from the frame
+	 * that presented the notice leaves virtio scanning that frame
+	 * out after the actor is gone.
 	 *
 	 * == Example ==
 	 *
@@ -22,8 +21,7 @@ namespace Gsr.Server
 	{
 		private global::Clutter.Actor stage;
 		/**
-		 * Notice covering the stage while startup frames are inhibited.
-		 * Removed before the clocks resume.
+		 * Notice covering the stage until {@link release}.
 		 */
 		private global::Clutter.Actor splash {
 			get; set; default = new global::Clutter.Actor() {
@@ -34,14 +32,7 @@ namespace Gsr.Server
 		 * True while {@link splash} is a child of the stage.
 		 */
 		private bool splash_on_stage = false;
-		private Gee.HashSet<global::Clutter.FrameClock> clocks = new Gee.HashSet<global::Clutter.FrameClock>();
-		private ulong stage_views_changed_id;
 		private ulong connection_stopped_id;
-		private ulong presented_id;
-
-		[CCode (cname = "clutter_stage_view_get_frame_clock",
-			cheader_filename = "clutter/clutter.h")]
-		private static extern global::Clutter.FrameClock frame_clock(global::Clutter.StageView view);
 
 		/**
 		 * Connection that currently owns the lock.
@@ -49,9 +40,9 @@ namespace Gsr.Server
 		public Gsr.Server.Rpc.Connection? connection { get; private set; }
 
 		/**
-		 * Create a frame lock for the display's stage.
+		 * Create the startup notice for the display's stage.
 		 *
-		 * @param display compositor display whose stage clocks are locked
+		 * @param display compositor display whose stage shows the notice
 		 */
 		public StartupFrameLock(global::Meta.Display display)
 		{
@@ -72,17 +63,11 @@ namespace Gsr.Server
 		}
 
 		/**
-		 * Show the startup notice on the next frame, then inhibit every
-		 * stage-view frame clock. The notice stays up until {@link release}.
+		 * Raise the startup notice and keep it up until {@link release}.
 		 *
 		 * {@link begin} runs inside the startup RPC. Do not pump the main
-		 * loop to wait for that frame. A nested iteration runs the frame
-		 * clock on this stack and the next schedule_update segfaults.
-		 * Do not inhibit from {@code after-update}: that signal is still
-		 * inside the dispatch, so inhibit clears the ready time and does
-		 * not record a pending reschedule. The clock then stays on the
-		 * notice. Inhibit from {@code presented}, once that frame is on
-		 * screen and before mutter returns the clock to idle.
+		 * loop to wait for the notice frame. A nested iteration runs the
+		 * frame clock on this stack and the next schedule_update segfaults.
 		 *
 		 * @param connection startup connection that owns the lock
 		 * @return true when the lock was taken
@@ -120,52 +105,13 @@ namespace Gsr.Server
 					return;
 				}
 				GLib.debug("startup notice painted");
-				this.presented_id = GLib.Signal.connect(
-					stage,
-					"presented",
-					(GLib.Callback) StartupFrameLock.notice_presented,
-					this);
 			});
 			stage.schedule_update();
 			return true;
 		}
 
 		/**
-		 * {@code ClutterStage::presented} is skipped by introspection.
-		 * It runs from the frame callback before
-		 * {@code clutter_frame_clock_notify_presented} returns the clock
-		 * to idle.
-		 */
-		private static void notice_presented(
-			global::Clutter.Stage stage,
-			global::Clutter.StageView view,
-			void* frame_info,
-			StartupFrameLock self)
-		{
-			self.inhibit_painted_notice();
-		}
-
-		private void inhibit_painted_notice()
-		{
-			if (this.presented_id != 0) {
-				GLib.SignalHandler.disconnect(this.stage, this.presented_id);
-				this.presented_id = 0;
-			}
-			if (this.connection == null) {
-				return;
-			}
-			this.stage_views_changed_id = this.stage.stage_views_changed.connect(
-				this.reconcile_views);
-			this.reconcile_views();
-			if (this.clocks.size == 0) {
-				this.release_internal();
-				return;
-			}
-			GLib.debug("startup clocks inhibited");
-		}
-
-		/**
-		 * Uninhibit clocks when called by the owning connection.
+		 * Remove the notice when called by the owning connection.
 		 *
 		 * @param connection connection requesting release
 		 * @return true when inactive or released by the owner
@@ -182,25 +128,6 @@ namespace Gsr.Server
 			return true;
 		}
 
-		private void reconcile_views()
-		{
-			var current = new Gee.HashSet<global::Clutter.FrameClock>();
-			foreach (var view in this.stage.peek_stage_views()) {
-				var clock = StartupFrameLock.frame_clock(view);
-				current.add(clock);
-				if (!this.clocks.contains(clock)) {
-					clock.inhibit();
-				}
-			}
-
-			foreach (var clock in this.clocks) {
-				if (!current.contains(clock)) {
-					clock.uninhibit();
-				}
-			}
-			this.clocks = current;
-		}
-
 		private void release_internal()
 		{
 			if (this.splash_on_stage) {
@@ -208,22 +135,10 @@ namespace Gsr.Server
 				this.splash_on_stage = false;
 				GLib.debug("startup notice removed");
 			}
-			if (this.presented_id != 0) {
-				GLib.SignalHandler.disconnect(this.stage, this.presented_id);
-				this.presented_id = 0;
-			}
-			if (this.stage_views_changed_id != 0) {
-				this.stage.disconnect(this.stage_views_changed_id);
-				this.stage_views_changed_id = 0;
-			}
 			if (this.connection != null && this.connection_stopped_id != 0) {
 				this.connection.disconnect(this.connection_stopped_id);
 				this.connection_stopped_id = 0;
 			}
-			foreach (var clock in this.clocks) {
-				clock.uninhibit();
-			}
-			this.clocks.clear();
 			this.connection = null;
 			((global::Clutter.Stage) this.stage).schedule_update();
 		}

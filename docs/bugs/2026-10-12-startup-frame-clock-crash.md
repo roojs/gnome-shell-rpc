@@ -1,6 +1,6 @@
 # Startup notice, then gsr-server crashes
 
-**Status:** ⏳ open. The nested `MainContext.iteration` in `begin` was the crash. The 14:12 guest build then hung on the notice: inhibit ran inside `after-update`, still in frame dispatch, so the clock never presented another frame after `startup notice removed`. Clocks are now inhibited from `ClutterStage::presented`, and `release` calls `schedule_update`. Not on the guest yet. Weston 14:40:26 `startup notice painted`, same millisecond `startup clocks inhibited`, 14:40:29 `startup notice removed`, alive until the timeout (`EXIT:124`), no new core.
+**Status:** ⏳ open. The nested `MainContext.iteration` in `begin` was the crash. Inhibiting the frame clock still leaves the Ubuntu guest on the notice: the 14:43 guest build logged `startup clocks inhibited` at 14:45:10 and `startup notice removed` at 14:45:14, and `virsh screenshot ubuntu25.10` at 14:47 and 14:48 is the same 1280×800 frame, the title on the dark background. `gsr-server` and `gsr-client` stayed up; `St-Label.set_text` was still arriving at 14:48:00. The notice is now only a covering actor. The clocks are not stopped. Weston 14:50:14 `startup notice painted`, 14:50:18 `startup notice removed`, no `startup clocks inhibited`, alive until the timeout (`EXIT:124`), no new core. That binary is not on the guest.
 
 ```bash
 GSR_WESTON_PIXMAN=1 timeout --foreground -k 5 30 ./scripts/weston-gsr-session.sh --debug
@@ -39,3 +39,9 @@ Failure line: `gsr-server: segfault` about one second after `startup notice remo
 The 14:12 guest binaries are that second rebuild. Log: 14:12:56 `startup notice painted`, 14:13:00 `READY=1` and `startup notice removed`, client still handling RPC at 14:14. The scanout stayed on the title. `clutter_frame_clock_inhibit` during `DISPATCHED_ONE` does not set `pending_reschedule`, and it sets the source ready time to `-1`. `after-update` is inside that dispatch. An idle was the wrong place to move the inhibit. `presented` runs from the frame callback before `clutter_frame_clock_notify_presented` returns the clock to idle. `release` schedules an update after uninhibit.
 
 `GSR_WESTON_PIXMAN=1 timeout --foreground -k 5 15 ./scripts/weston-gsr-session.sh --debug`. Painted 14:40:26.306, `startup clocks inhibited` 14:40:26.307, removed 14:40:29.195. RPC still running at 14:40:40 when the timeout stopped Weston (`EXIT:124`). Newest `gsr-server` core is still the 14:00:59 segfault from the nested-iteration build.
+
+### 2026-10-12 guest still on the title
+
+Guest `/usr/bin/gsr-server` 14:43:47, 2100568 bytes, contains `startup clocks inhibited`. Session started 14:45:09, server pid 6218, client pid 6549. Log: painted 14:45:10.692, clocks inhibited 14:45:10.692, `Meta-Context.notify_ready` and notice removed 14:45:14.856. `virsh screenshot ubuntu25.10 /tmp/ubuntu-gsr.ppm` at 14:47 and again at 14:48: both 9635-byte PNGs, `cmp` identical, title still on screen. Both processes in `do_poll`. `St-Label.set_text` at 14:48:00. No new core.
+
+Stopped inhibiting. The notice stays the top actor until `notify_ready`, and `release` still calls `schedule_update`. `GSR_WESTON_PIXMAN=1 timeout --foreground -k 5 15 ./scripts/weston-gsr-session.sh --debug`: painted 14:50:14.345, removed 14:50:18.002, no inhibit line, RPC still running at the timeout (`EXIT:124`). No new core.
