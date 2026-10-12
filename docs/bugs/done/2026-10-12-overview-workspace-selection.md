@@ -1,23 +1,17 @@
 # Overview workspace selection does not switch workspace
 
-**Status:** ⏳ open, fix in tree. In the overview, one click on the workspace sitting to the right should slide that workspace into the middle and leave the overview open. The 11:50 log showed `Meta.Workspace.activate` and `active-workspace-changed`, and no `switch-workspace`, so the scroll adjustment stayed put. A second click then hid the overview onto that desktop.
+**Status:** ✅ closed 2026-10-12. Signed off on Weston. One click on the workspace at the right slides it into the middle and leaves the overview open.
 
-The client now subscribes to `Meta.WorkspaceManager::workspace-switched` and re-emits `Shell.WM::switch-workspace`, which is what `WorkspacesDisplay` eases. `workspace-select-smoke` passed: `before=0 after=1 target=1 switch=true active=1` (`workspace-select-smoke: ok` at 12:15:14 in `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`).
+**Cause:** The click called `Meta.Workspace.activate`, and mutter switched the active workspace, but `Gsr.Server.Plugin` does not implement `switch_workspace`. Mutter finished the switch without emitting `Shell.WM::switch-workspace`. `WorkspacesDisplay` only eases the middle view from that signal, so the old workspace stayed in the center. A second click saw `metaWorkspace.active` and hid the overview onto that desktop.
 
-The 11:50 nested log names it. `org.gnome.ShellRpc.debug.log` line `11:50:46.170496` is `Meta-Workspace.activate` after `Clutter-ClickAction.get_button` (the `Workspace` click in `workspace.js`, not the thumbnail strip). `active-workspace-changed` follows. There is no `switch-workspace` notification and no `St.Adjustment` `notify::value` until the next click at `11:50:48.443802`. That second `activate` does not emit `active-workspace-changed` (the workspace is already active). `notify::value` starts at `11:50:49.140777`, which is the overview closing.
+**Fix:** `Shell.Global` subscribes to `Meta.WorkspaceManager::workspace-switched` and re-emits `Shell.WM::switch-workspace`. `Shell.WM.completed_switch_workspace` does not forward to the leased plugin.
 
-`Gsr.Server.Plugin` does not implement `switch_workspace`. Mutter therefore finishes the switch inside `activate` and never emits `Shell.WM::switch-workspace`. `WorkspacesDisplay._activeWorkspaceChanged` is what eases the scroll adjustment, and it never runs. The first click changes the active workspace with the old one still in the middle. The second click takes the `metaWorkspace.active` path and calls `Main.overview.hide()`.
-
-## Reproduction
-
-Hand test, nested session, log `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log` (11:50). Open Activities, click the workspace on the right once: the middle view stays. Click it again: the overview closes onto that workspace.
+**Proof:** Weston `workspace-select-smoke`. `before=0 after=1 target=1 switch=true active=1`. `workspace-select-smoke: ok`. `nested-weston-prove: stop (smoke-ok) after 8s` at 12:17.
 
 ```bash
-GSR_NESTED_TIMEOUT=70 GI_META_SMOKE=workspace-select-smoke \
+GSR_NESTED_TIMEOUT=40 GI_META_SMOKE=workspace-select-smoke \
   ./scripts/agent-nested-smoke-prove.sh
 ```
-
-Pass line: `workspace-select-smoke: ok`. Latest prove: `nested-weston-prove: stop (smoke-ok) after 8s` at 12:17, with `before=0 after=1 target=1 switch=true active=1`.
 
 ## Debug-code cleanup ledger
 
@@ -56,3 +50,7 @@ After that rebuild: `before=0 after=1 target=1 switch=true active=1` and `worksp
 ### 2026-10-12 12:17 prove stops on ok
 
 Same command with `GSR_NESTED_TIMEOUT=40`. `before=0 after=1 target=1 switch=true active=1`, `workspace-select-smoke: ok`, then `nested-weston-prove: stop (smoke-ok) after 8s`.
+
+### 2026-10-12 12:52 signed off
+
+User: it works on Weston, and that is enough to close it for now. Moved to `docs/bugs/done/`.

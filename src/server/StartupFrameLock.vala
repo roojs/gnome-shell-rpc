@@ -3,9 +3,12 @@ namespace Gsr.Server
 	/**
 	 * Inhibits compositor frames during split-process shell startup.
 	 *
-	 * The shell client takes the lock before evaluating stock init.js.
-	 * The owning connection releases it through global::Meta.Context.notify_ready.
-	 * Frame clocks retain pending updates while inhibited.
+	 * A notice covers the stage and is presented before the clocks
+	 * stop, so the frozen frame is that notice. The shell client takes
+	 * the lock before evaluating stock init.js. The owning connection
+	 * releases it through global::Meta.Context.notify_ready, which
+	 * removes the notice first. Frame clocks retain pending updates
+	 * while inhibited.
 	 *
 	 * == Example ==
 	 *
@@ -18,6 +21,19 @@ namespace Gsr.Server
 	public class StartupFrameLock : GLib.Object
 	{
 		private global::Clutter.Actor stage;
+		/**
+		 * Notice covering the stage while startup frames are inhibited.
+		 * Removed before the clocks resume.
+		 */
+		private global::Clutter.Actor splash {
+			get; set; default = new global::Clutter.Actor() {
+				background_color = global::Cogl.Color.from_4f(0.16f, 0.16f, 0.18f, 1.0f),
+			};
+		}
+		/**
+		 * True while {@link splash} is a child of the stage.
+		 */
+		private bool splash_on_stage = false;
 		private Gee.HashSet<global::Clutter.FrameClock> clocks = new Gee.HashSet<global::Clutter.FrameClock>();
 		private ulong stage_views_changed_id;
 		private ulong connection_stopped_id;
@@ -39,10 +55,25 @@ namespace Gsr.Server
 		public StartupFrameLock(global::Meta.Display display)
 		{
 			this.stage = display.get_context().get_backend().get_stage();
+			this.splash.add_constraint(new global::Clutter.BindConstraint(
+				this.stage, global::Clutter.BindCoordinate.SIZE, 0));
+			var label = new global::Clutter.Text() {
+				text = "Starting GNOME Shell",
+				font_name = "Sans Bold 17",
+				color = global::Cogl.Color.from_4f(1.0f, 1.0f, 1.0f, 1.0f),
+				selectable = false,
+			};
+			label.add_constraint(new global::Clutter.AlignConstraint(
+				this.splash, global::Clutter.AlignAxis.BOTH, 0.5f));
+			this.splash.add_child(label);
+			this.stage.insert_child_above(this.splash, null);
+			this.splash_on_stage = true;
 		}
 
 		/**
-		 * Inhibit every current stage-view frame clock.
+		 * Present the startup notice, then inhibit every current
+		 * stage-view frame clock. The notice stays on the frozen frame
+		 * until {@link release}.
 		 *
 		 * @param connection startup connection that owns the lock
 		 * @return true when the lock was taken
@@ -51,6 +82,37 @@ namespace Gsr.Server
 		{
 			if (this.connection != null) {
 				return false;
+			}
+
+			if (!this.splash_on_stage) {
+				this.stage.insert_child_above(this.splash, null);
+				this.splash_on_stage = true;
+			}
+			this.stage.set_child_above_sibling(this.splash, null);
+			this.splash.queue_redraw();
+
+			/* Inhibit keeps the last presented frame. Present the notice
+			 * first, or that frame is still empty. */
+			var stage = (global::Clutter.Stage) this.stage;
+			var views_left = (int) stage.peek_stage_views().length();
+			if (views_left > 0) {
+				var paint_id = stage.after_update.connect(() => {
+					views_left--;
+				});
+				stage.schedule_update();
+				var deadline = GLib.get_monotonic_time() + 500000;
+				while (views_left > 0 && GLib.get_monotonic_time() < deadline) {
+					if (!GLib.MainContext.default().iteration(true)) {
+						break;
+					}
+				}
+				stage.disconnect(paint_id);
+				if (views_left > 0) {
+					GLib.warning("startup notice was not painted");
+				}
+				if (views_left <= 0) {
+					GLib.debug("startup notice painted");
+				}
 			}
 
 			this.connection = connection;
@@ -109,6 +171,11 @@ namespace Gsr.Server
 
 		private void release_internal()
 		{
+			if (this.splash_on_stage) {
+				this.stage.remove_child(this.splash);
+				this.splash_on_stage = false;
+				GLib.debug("startup notice removed");
+			}
 			if (this.stage_views_changed_id != 0) {
 				this.stage.disconnect(this.stage_views_changed_id);
 				this.stage_views_changed_id = 0;
