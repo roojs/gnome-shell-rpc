@@ -71,9 +71,12 @@ namespace Gsr.Server
 		}
 
 		/**
-		 * Present the startup notice, then inhibit every current
-		 * stage-view frame clock. The notice stays on the frozen frame
-		 * until {@link release}.
+		 * Show the startup notice on the next frame, then inhibit every
+		 * stage-view frame clock. The notice stays up until {@link release}.
+		 *
+		 * {@link begin} runs inside the startup RPC. Do not pump the main
+		 * loop to wait for that frame. A nested iteration runs the frame
+		 * clock on this stack and the next schedule_update segfaults.
 		 *
 		 * @param connection startup connection that owns the lock
 		 * @return true when the lock was taken
@@ -91,28 +94,10 @@ namespace Gsr.Server
 			this.stage.set_child_above_sibling(this.splash, null);
 			this.splash.queue_redraw();
 
-			/* Inhibit keeps the last presented frame. Present the notice
-			 * first, or that frame is still empty. */
 			var stage = (global::Clutter.Stage) this.stage;
-			var views_left = (int) stage.peek_stage_views().length();
-			if (views_left > 0) {
-				var paint_id = stage.after_update.connect(() => {
-					views_left--;
-				});
-				stage.schedule_update();
-				var deadline = GLib.get_monotonic_time() + 500000;
-				while (views_left > 0 && GLib.get_monotonic_time() < deadline) {
-					if (!GLib.MainContext.default().iteration(true)) {
-						break;
-					}
-				}
-				stage.disconnect(paint_id);
-				if (views_left > 0) {
-					GLib.warning("startup notice was not painted");
-				}
-				if (views_left <= 0) {
-					GLib.debug("startup notice painted");
-				}
+			if (stage.peek_stage_views().length() == 0) {
+				this.release_internal();
+				return false;
 			}
 
 			this.connection = connection;
@@ -121,14 +106,22 @@ namespace Gsr.Server
 					this.release_internal();
 				}
 			});
-			this.stage_views_changed_id = this.stage.stage_views_changed.connect(
-				this.reconcile_views);
-			this.reconcile_views();
 
-			if (this.clocks.size == 0) {
-				this.release_internal();
-				return false;
-			}
+			ulong paint_id = 0;
+			paint_id = stage.after_update.connect(() => {
+				stage.disconnect(paint_id);
+				if (this.connection != connection) {
+					return;
+				}
+				GLib.debug("startup notice painted");
+				this.stage_views_changed_id = this.stage.stage_views_changed.connect(
+					this.reconcile_views);
+				this.reconcile_views();
+				if (this.clocks.size == 0) {
+					this.release_internal();
+				}
+			});
+			stage.schedule_update();
 			return true;
 		}
 
