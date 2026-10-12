@@ -37,6 +37,7 @@ namespace Gsr.Server
 		private Gee.HashSet<global::Clutter.FrameClock> clocks = new Gee.HashSet<global::Clutter.FrameClock>();
 		private ulong stage_views_changed_id;
 		private ulong connection_stopped_id;
+		private ulong presented_id;
 
 		[CCode (cname = "clutter_stage_view_get_frame_clock",
 			cheader_filename = "clutter/clutter.h")]
@@ -77,6 +78,11 @@ namespace Gsr.Server
 		 * {@link begin} runs inside the startup RPC. Do not pump the main
 		 * loop to wait for that frame. A nested iteration runs the frame
 		 * clock on this stack and the next schedule_update segfaults.
+		 * Do not inhibit from {@code after-update}: that signal is still
+		 * inside the dispatch, so inhibit clears the ready time and does
+		 * not record a pending reschedule. The clock then stays on the
+		 * notice. Inhibit from {@code presented}, once that frame is on
+		 * screen and before mutter returns the clock to idle.
 		 *
 		 * @param connection startup connection that owns the lock
 		 * @return true when the lock was taken
@@ -114,15 +120,48 @@ namespace Gsr.Server
 					return;
 				}
 				GLib.debug("startup notice painted");
-				this.stage_views_changed_id = this.stage.stage_views_changed.connect(
-					this.reconcile_views);
-				this.reconcile_views();
-				if (this.clocks.size == 0) {
-					this.release_internal();
-				}
+				this.presented_id = GLib.Signal.connect(
+					stage,
+					"presented",
+					(GLib.Callback) StartupFrameLock.notice_presented,
+					this);
 			});
 			stage.schedule_update();
 			return true;
+		}
+
+		/**
+		 * {@code ClutterStage::presented} is skipped by introspection.
+		 * It runs from the frame callback before
+		 * {@code clutter_frame_clock_notify_presented} returns the clock
+		 * to idle.
+		 */
+		private static void notice_presented(
+			global::Clutter.Stage stage,
+			global::Clutter.StageView view,
+			void* frame_info,
+			StartupFrameLock self)
+		{
+			self.inhibit_painted_notice();
+		}
+
+		private void inhibit_painted_notice()
+		{
+			if (this.presented_id != 0) {
+				GLib.SignalHandler.disconnect(this.stage, this.presented_id);
+				this.presented_id = 0;
+			}
+			if (this.connection == null) {
+				return;
+			}
+			this.stage_views_changed_id = this.stage.stage_views_changed.connect(
+				this.reconcile_views);
+			this.reconcile_views();
+			if (this.clocks.size == 0) {
+				this.release_internal();
+				return;
+			}
+			GLib.debug("startup clocks inhibited");
 		}
 
 		/**
@@ -169,6 +208,10 @@ namespace Gsr.Server
 				this.splash_on_stage = false;
 				GLib.debug("startup notice removed");
 			}
+			if (this.presented_id != 0) {
+				GLib.SignalHandler.disconnect(this.stage, this.presented_id);
+				this.presented_id = 0;
+			}
 			if (this.stage_views_changed_id != 0) {
 				this.stage.disconnect(this.stage_views_changed_id);
 				this.stage_views_changed_id = 0;
@@ -182,6 +225,7 @@ namespace Gsr.Server
 			}
 			this.clocks.clear();
 			this.connection = null;
+			((global::Clutter.Stage) this.stage).schedule_update();
 		}
 	}
 }

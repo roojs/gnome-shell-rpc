@@ -1,6 +1,6 @@
 # Startup notice, then gsr-server crashes
 
-**Status:** ⏳ open, fix in `StartupFrameLock.begin` not yet on the guest. The nested `MainContext.iteration` in `begin` was the crash. Without it, Weston stays up: `startup notice painted` at 14:10:51, `startup notice removed` at 14:10:54, no core, timeout at 14:11:19 (`EXIT:124`).
+**Status:** ⏳ open. The nested `MainContext.iteration` in `begin` was the crash. The 14:12 guest build then hung on the notice: inhibit ran inside `after-update`, still in frame dispatch, so the clock never presented another frame after `startup notice removed`. Clocks are now inhibited from `ClutterStage::presented`, and `release` calls `schedule_update`. Not on the guest yet. Weston 14:40:26 `startup notice painted`, same millisecond `startup clocks inhibited`, 14:40:29 `startup notice removed`, alive until the timeout (`EXIT:124`), no new core.
 
 ```bash
 GSR_WESTON_PIXMAN=1 timeout --foreground -k 5 30 ./scripts/weston-gsr-session.sh --debug
@@ -33,3 +33,9 @@ Failure line: `gsr-server: segfault` about one second after `startup notice remo
 ### 2026-10-12 drop the nested iteration
 
 `begin` was pumping `MainContext.iteration` while still inside the startup RPC. Removed that wait. First rebuild (inhibit immediately): notice removed at 14:09:09, no core, alive until the 30s timeout. Second rebuild (inhibit from `after_update`, so the notice still paints): painted 14:10:51, removed 14:10:54, no core, alive until 14:11:19.
+
+### 2026-10-12 guest hang, then presented
+
+The 14:12 guest binaries are that second rebuild. Log: 14:12:56 `startup notice painted`, 14:13:00 `READY=1` and `startup notice removed`, client still handling RPC at 14:14. The scanout stayed on the title. `clutter_frame_clock_inhibit` during `DISPATCHED_ONE` does not set `pending_reschedule`, and it sets the source ready time to `-1`. `after-update` is inside that dispatch. An idle was the wrong place to move the inhibit. `presented` runs from the frame callback before `clutter_frame_clock_notify_presented` returns the clock to idle. `release` schedules an update after uninhibit.
+
+`GSR_WESTON_PIXMAN=1 timeout --foreground -k 5 15 ./scripts/weston-gsr-session.sh --debug`. Painted 14:40:26.306, `startup clocks inhibited` 14:40:26.307, removed 14:40:29.195. RPC still running at 14:40:40 when the timeout stopped Weston (`EXIT:124`). Newest `gsr-server` core is still the 14:00:59 segfault from the nested-iteration build.
