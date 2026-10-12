@@ -41,9 +41,16 @@ namespace Shell
 			this.plugin.size_change_completed(actor);
 		}
 
+		/**
+		 * Stock JS calls this when a workspace switch effect finishes.
+		 *
+		 * The compositor has already finished the switch. The server
+		 * plugin does not implement {@code switch_workspace}, so mutter
+		 * does not wait. This {@code plugin} is a leased stand-in, and
+		 * forwarding completed runs switch accounting on that stand-in.
+		 */
 		public void completed_switch_workspace()
 		{
-			this.plugin.switch_workspace_completed();
 		}
 
 		public void completed_unminimize(Meta.WindowActor actor)

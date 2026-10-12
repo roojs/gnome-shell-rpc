@@ -157,6 +157,17 @@ namespace Shell
 			this.window_group = this.compositor.get_window_group();
 			this.top_window_group = this.compositor.get_top_window_group();
 			this.window_manager = new WM(new Meta.Plugin());
+			/* Mutter finishes the switch without Shell.WM::switch-workspace
+			 * (server plugin has no switch_workspace vfunc). Overview
+			 * scroll listens for that signal. workspace-switched still
+			 * carries from, to, and direction. Vala connect is local;
+			 * Signals.connect is what subscribes on the peer. */
+			this.workspace_manager.signal_workspace_switched.connect(
+				(from, to, direction) => {
+					this.window_manager.switch_workspace(
+						from, to, (int) direction);
+				});
+			Signals.connect(this.workspace_manager, "workspace-switched");
 			this.refresh_screen_size();
 			this.stage.notify["width"].connect(this.on_stage_size_changed);
 			this.stage.notify["height"].connect(this.on_stage_size_changed);

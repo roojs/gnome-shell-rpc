@@ -109,18 +109,69 @@ else
 fi
 
 # EGL on the host X window can refuse (NVIDIA) while pixman still works.
-# GSR_WESTON_PIXMAN=1 runs the parent compositor on pixman; mutter nested
-# still renders the shell and the thumbnails itself. Record it in the bug
-# when a run uses it — it is a parent-renderer deviation, not product path.
-PIXMAN=()
-if [[ "${GSR_WESTON_PIXMAN:-0}" == "1" ]]; then
-	PIXMAN=(--use-pixman)
+# GSR_WESTON_PIXMAN=1 forces pixman. GSR_WESTON_PIXMAN=0 keeps GL and
+# does not retry. Unset: try GL, and if the output dies with
+# "failed to create egl surface", start again with pixman.
+# Mutter nested still renders the shell itself. Pixman is a parent-renderer
+# deviation — the retry line below is the record.
+WESTON_ARGS=(
+	--backend=x11-backend.so
+	--width="$WIDTH"
+	--height="$HEIGHT"
+	--socket="$SOCK"
+	--config="$INI"
+)
+
+if [[ "${GSR_WESTON_PIXMAN:-}" == "1" ]]; then
+	echo "weston-gsr-session: parent renderer pixman (GSR_WESTON_PIXMAN=1)" >&2
+	exec weston --use-pixman "${WESTON_ARGS[@]}"
 fi
 
-exec weston \
-	--backend=x11-backend.so \
-	"${PIXMAN[@]}" \
-	--width="$WIDTH" \
-	--height="$HEIGHT" \
-	--socket="$SOCK" \
-	--config="$INI"
+if [[ "${GSR_WESTON_PIXMAN:-}" == "0" ]]; then
+	exec weston "${WESTON_ARGS[@]}"
+fi
+
+GL_LOG="$INI_DIR/weston-gl.err"
+wpid=
+tpid=
+cleanup_weston() {
+	[[ -n "${tpid}" ]] && kill "$tpid" 2>/dev/null || true
+	[[ -n "${wpid}" ]] && kill "$wpid" 2>/dev/null || true
+}
+trap cleanup_weston TERM INT
+
+weston "${WESTON_ARGS[@]}" >"$GL_LOG" 2>&1 &
+wpid=$!
+survived=0
+for _ in $(seq 1 20); do
+	if ! kill -0 "$wpid" 2>/dev/null; then
+		break
+	fi
+	survived=1
+	sleep 0.1
+done
+
+if [[ "$survived" == "1" ]] && kill -0 "$wpid" 2>/dev/null; then
+	tail -n +1 -f "$GL_LOG" >&2 &
+	tpid=$!
+	set +e
+	wait "$wpid"
+	ec=$?
+	set -e
+	kill "$tpid" 2>/dev/null || true
+	wait "$tpid" 2>/dev/null || true
+	exit "$ec"
+fi
+
+set +e
+wait "$wpid"
+ec=$?
+set -e
+cat "$GL_LOG" >&2
+if [[ "$ec" -le 128 ]] && grep -q "failed to create egl surface" "$GL_LOG"; then
+	echo "weston-gsr-session: GL renderer failed to create an EGL surface at ${WIDTH}x${HEIGHT}; retrying with --use-pixman" >&2
+	rm -f "$RT/$SOCK" "$RT/${SOCK}.lock"
+	trap - TERM INT
+	exec weston --use-pixman "${WESTON_ARGS[@]}"
+fi
+exit "$ec"
