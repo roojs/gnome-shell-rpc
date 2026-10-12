@@ -1,6 +1,6 @@
 # Shell-BlurEffect alias drops the client
 
-**Status:** ✅ closed 2026-10-07. User: later logins have not hit this. Confirmed again 2026-10-10. `shell-blur-alias-gate` prints `PASS`. The second picker launch is [`2026-10-07-picker-click-no-clicked.md`](2026-10-07-picker-click-no-clicked.md), closed 2026-10-10. Still open: [`../2026-10-06-overview-no-thumbnails.md`](../2026-10-06-overview-no-thumbnails.md).
+**Status:** ✅ closed 2026-10-07. User: later logins have not hit this. Confirmed again 2026-10-10. `shell-blur-alias-gate` prints `PASS`. The second picker launch is [`2026-10-07-picker-click-no-clicked.md`](2026-10-07-picker-click-no-clicked.md), closed 2026-10-10. The empty window overview is [`2026-10-06-overview-no-thumbnails.md`](2026-10-06-overview-no-thumbnails.md), closed 2026-10-12.
 
 ## Problem
 

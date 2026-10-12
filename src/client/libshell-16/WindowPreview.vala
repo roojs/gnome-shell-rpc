@@ -64,10 +64,6 @@ namespace Shell
 			float origin_x, origin_y, available_width, available_height;
 			content_box.get_origin(out origin_x, out origin_y);
 			content_box.get_size(out available_width, out available_height);
-			GLib.debug("preview-slot box %.1f,%.1f %.1fx%.1f content %.1f,%.1f %.1fx%.1f opacity=%u mapped=%s",
-				box.x1, box.y1, box.get_width(), box.get_height(),
-				origin_x, origin_y, available_width, available_height,
-				this.opacity, this.mapped ? "yes" : "no");
 			for (var child = this.first_child; child != null; child = child.get_next_sibling()) {
 				float min_width, natural_width, min_height, natural_height;
 				child.get_preferred_width(available_height, out min_width, out natural_width);

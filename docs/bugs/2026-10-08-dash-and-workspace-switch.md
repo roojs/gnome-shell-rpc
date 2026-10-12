@@ -4,9 +4,9 @@
 
 That session stayed up. It was not crashing and it was not hanging.
 
-2026-10-09: the user says Weston crashes often after the thumbnail changes. The tiny picture in the top workspace tabs, the missing main window previews, and those crashes are [`2026-10-06-overview-no-thumbnails.md`](2026-10-06-overview-no-thumbnails.md).
+2026-10-09: the user says Weston crashes often after the thumbnail changes. The tiny picture in the top workspace tabs, the missing main window previews, and those crashes are [`done/2026-10-06-overview-no-thumbnails.md`](done/2026-10-06-overview-no-thumbnails.md).
 
-Windows missing from the overview are [`2026-10-06-overview-no-thumbnails.md`](2026-10-06-overview-no-thumbnails.md). That file stays that bug. The shell going dead after a second picker launch is [`done/2026-10-07-picker-click-no-clicked.md`](done/2026-10-07-picker-click-no-clicked.md), closed 2026-10-10.
+Windows missing from the overview are [`done/2026-10-06-overview-no-thumbnails.md`](done/2026-10-06-overview-no-thumbnails.md). That file stays that bug. The shell going dead after a second picker launch is [`done/2026-10-07-picker-click-no-clicked.md`](done/2026-10-07-picker-click-no-clicked.md), closed 2026-10-10.
 
 ## What happened
 

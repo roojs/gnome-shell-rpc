@@ -1,5 +1,5 @@
 /**
- * Overview thumbnail repro — docs/bugs/2026-10-06-overview-no-thumbnails.md
+ * Overview thumbnail repro — docs/bugs/done/2026-10-06-overview-no-thumbnails.md
  *
  * Boots product main.start, launches one normal client window (gedit on the
  * nested mutter display, not a terminal), shows the overview in-process, then
@@ -25,7 +25,7 @@ imports.gi.versions.Meta = '16';
 imports.gi.versions.Shell = '16';
 imports.gi.versions.Clutter = '16';
 
-const { Gio, GLib, Meta, Shell, Clutter, Cogl } = imports.gi;
+const { Gio, GLib, Meta, Shell, Clutter } = imports.gi;
 
 import 'resource:///org/gnome/shell/ui/environment.js';
 import {formatError} from 'resource:///org/gnome/shell/misc/errorUtils.js';
@@ -53,58 +53,6 @@ function delay(ms) {
 			return GLib.SOURCE_REMOVE;
 		});
 	});
-}
-
-/**
- * Capture what the compositor actually painted, not just actor state.
- * @param {string} path
- */
-async function captureStage(path) {
-	const stream = Gio.File.new_for_path(path).replace(
-		null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
-	try {
-		const shooter = new Shell.Screenshot();
-		await shooter.screenshot(false, stream);
-		smokeLog('capture=' + path);
-	} finally {
-		stream.close(null);
-	}
-}
-
-/**
- * Log effective geometry/opacity from a preview up to the stage.
- * @param {object} actor
- */
-function logActorChain(actor) {
-	for (let depth = 0; actor != null && depth < 16; depth++) {
-		let transformedPosition = '?';
-		let transformedSize = '?';
-		let paintOpacity = '?';
-		try {
-			const [x, y] = actor.get_transformed_position();
-			transformedPosition = x + ',' + y;
-		} catch (e) {
-			transformedPosition = '(threw)';
-		}
-		try {
-			const [width, height] = actor.get_transformed_size();
-			transformedSize = width + 'x' + height;
-		} catch (e) {
-			transformedSize = '(threw)';
-		}
-		try {
-			paintOpacity = String(actor.get_paint_opacity());
-		} catch (e) {
-			paintOpacity = '(threw)';
-		}
-		smokeLog('ancestor=' + depth
-			+ ' type=' + actor.constructor.name
-			+ ' size=' + actor.width + 'x' + actor.height
-			+ ' transformed=' + transformedPosition + ' ' + transformedSize
-			+ ' opacity=' + actor.opacity + '/' + paintOpacity
-			+ ' visible=' + actor.visible + ' mapped=' + actor.mapped);
-		actor = actor.get_parent();
-	}
 }
 
 /**
@@ -241,14 +189,6 @@ function inspectClones(actor, source, title, depth, acc) {
 					acc.cloneSize = actor.width + 'x' + actor.height;
 				} catch (e) {
 					acc.cloneSize = 'size-threw';
-				}
-				try {
-					acc.paint = 'clone-opacity=' + actor.opacity
-						+ ' clone-mapped=' + actor.mapped
-						+ ' source-realized=' + actor.source.realized
-						+ ' source-mapped=' + actor.source.mapped;
-				} catch (e) {
-					acc.paint = 'paint-threw';
 				}
 				if (matched && acc.cloneSize !== '0x0' && acc.cloneSize !== 'size-threw') {
 					acc.hit = true;
@@ -478,7 +418,7 @@ async function runThumbnailProve(main) {
 	const foundEarly = findPreviews(globalObj.stage, 0, []);
 	const acc = {clones: 0, same: 0, allocated: 0, hit: false,
 		sourceNull: 0, sourceOther: 0, sourceThrew: 0, cloneAllocated: 0,
-		otherSize: '', otherTitle: '', cloneSize: '', paint: ''};
+		otherSize: '', otherTitle: '', cloneSize: ''};
 	let nPreviews = 0;
 	for (const row of foundEarly) {
 		if (row.actor == null)
@@ -494,115 +434,18 @@ async function runThumbnailProve(main) {
 		+ ' source-threw=' + acc.sourceThrew
 		+ ' clone-allocated=' + acc.cloneAllocated
 		+ ' clone-size=' + acc.cloneSize
-		+ ' ' + acc.paint
 		+ ' other=' + acc.otherSize + ' "' + acc.otherTitle + '"'
 		+ ' hit=' + acc.hit);
 	if (!acc.hit)
 		throw new Error('miss clone (overview preview has no allocated clone of the live actor)');
 
-	const paintedWorkspace = foundEarly.find(row =>
-		row.ref != null && row.ref._windows != null &&
-		row.ref._windows.length > 0)?.ref;
-	if (paintedWorkspace == null)
-		throw new Error('miss stacking (could not locate workspace holding preview)');
-	const workspaceChildren = paintedWorkspace.get_children();
-	const backgroundIndex = workspaceChildren.indexOf(paintedWorkspace._background);
-	const containerIndex = workspaceChildren.indexOf(paintedWorkspace._container);
-	smokeLog('workspace-stack background=' + backgroundIndex
-		+ ' container=' + containerIndex
-		+ ' children=' + workspaceChildren.length);
-	await captureStage('/tmp/thumbnail-overview-before.png');
-	paintedWorkspace._background.hide();
-	await delay(500);
-	await captureStage('/tmp/thumbnail-overview-no-background.png');
-	const previewActor = foundEarly.find(row => row.actor != null)?.actor;
-	smokeLog('ancestor-chain=preview');
-	logActorChain(previewActor);
-	smokeLog('ancestor-chain=clone');
-	logActorChain(acc.cloneActor);
-	const windowContainer = previewActor.window_container;
-	let [pivotX, pivotY] = windowContainer.get_pivot_point();
-	smokeLog('container-transform pivot=' + pivotX + ',' + pivotY
-		+ ' scale=' + windowContainer.scale_x + ',' + windowContainer.scale_y);
-	windowContainer.set_pivot_point(0.5, 0.5);
-	await delay(500);
-	smokeLog('ancestor-chain=clone-after-pivot');
-	logActorChain(acc.cloneActor);
-	await captureStage('/tmp/thumbnail-overview-after-pivot.png');
-	windowContainer.set_scale(0.999, 0.999);
-	windowContainer.set_scale(1, 1);
-	await delay(500);
-	smokeLog('ancestor-chain=clone-after-scale');
-	logActorChain(acc.cloneActor);
-	await captureStage('/tmp/thumbnail-overview-after-scale.png');
-	const intendedContainerBox = windowContainer.allocation;
-	const localPreviewLayout = windowContainer.layout_manager;
-	windowContainer.layout_manager = null;
-	windowContainer.allocate(intendedContainerBox);
-	await delay(500);
-	smokeLog('ancestor-chain=clone-after-server-allocate');
-	logActorChain(acc.cloneActor);
-	await captureStage('/tmp/thumbnail-overview-after-server-allocate.png');
-	windowContainer.layout_manager = localPreviewLayout;
-	const originalRedirect = previewActor.offscreen_redirect;
-	smokeLog('preview-offscreen=' + originalRedirect);
-	previewActor.offscreen_redirect = Clutter.OffscreenRedirect.NEVER;
-	await delay(500);
-	await captureStage('/tmp/thumbnail-overview-no-offscreen.png');
-	previewActor.offscreen_redirect = originalRedirect;
-	const solid = new Clutter.Actor({
-		background_color: new Cogl.Color({
-			red: 255,
-			green: 0,
-			blue: 0,
-			alpha: 255,
-		}),
-	});
-	solid.set_size(400, 284);
-	previewActor.window_container.add_child(solid);
-	await delay(500);
-	await captureStage('/tmp/thumbnail-overview-solid-child.png');
-	solid.destroy();
-	const originalSource = acc.cloneActor.source;
-	acc.cloneActor.source = main.panel;
-	await delay(500);
-	await captureStage('/tmp/thumbnail-overview-panel-source.png');
-	acc.cloneActor.source = originalSource;
-	const stageClone = new Clutter.Clone({source: main.panel});
-	stageClone.set_position(600, 300);
-	stageClone.set_size(400, 200);
-	globalObj.stage.add_child(stageClone);
-	await delay(500);
-	await captureStage('/tmp/thumbnail-overview-stage-clone.png');
-	stageClone.destroy();
-	const stageWindowClone = new Clutter.Clone({source: originalSource});
-	stageWindowClone.set_position(600, 300);
-	stageWindowClone.set_size(400, 284);
-	globalObj.stage.add_child(stageWindowClone);
-	await delay(500);
-	await captureStage('/tmp/thumbnail-overview-stage-window-clone.png');
-	stageWindowClone.destroy();
-	let sourceChild = originalSource.get_first_child();
-	for (let depth = 1; depth <= 2 && sourceChild != null; depth++) {
-		let sourceName = '?';
-		try {
-			sourceName = sourceChild.constructor.name;
-		} catch (e) {
-			sourceName = '(type-threw)';
-		}
-		smokeLog('source-depth=' + depth + ' type=' + sourceName
-			+ ' size=' + sourceChild.width + 'x' + sourceChild.height
-			+ ' visible=' + sourceChild.visible
-			+ ' mapped=' + sourceChild.mapped);
-		acc.cloneActor.source = sourceChild;
-		await delay(500);
-		await captureStage('/tmp/thumbnail-overview-source-depth-'
-			+ depth + '.png');
-		sourceChild = sourceChild.get_first_child();
-	}
-	acc.cloneActor.source = originalSource;
-	paintedWorkspace._background.show();
-	await delay(200);
+	const [cloneX, cloneY] = acc.cloneActor.get_transformed_position();
+	const [cloneWidth, cloneHeight] = acc.cloneActor.get_transformed_size();
+	smokeLog('clone-transform=' + cloneX + ',' + cloneY
+		+ ' ' + cloneWidth + 'x' + cloneHeight);
+	if (![cloneX, cloneY, cloneWidth, cloneHeight].every(Number.isFinite)
+			|| cloneWidth <= 0 || cloneHeight <= 0)
+		throw new Error('miss clone-transform (preview clone has non-finite geometry)');
 
 	const found = findPreviews(globalObj.stage, 0, []);
 	const previews = found.filter(p => p.size !== '');

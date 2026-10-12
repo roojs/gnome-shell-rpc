@@ -1,6 +1,42 @@
 # Window overview has no thumbnails
 
-**Status:** ⏳ open. On a normal desktop the window thumbnail shows gedit. Here it shows the mountain wallpaper.
+**Status:** ✅ closed 2026-10-12. Archived. The main overview card now shows gedit.
+
+**Cause:** `WindowPreview.allocate_vfunc` used `child.relay_allocation()` on the `window_container` even though the server actor was not inside its own `ClutterActor::allocate` vfunc. Clutter rejected `set_allocation`; the container and clone acquired `NaN` transformed geometry and painted nothing.
+
+**Fix:** For a child with a client-local layout manager, `WindowPreview.allocate_vfunc` now sends the intended box through the server `Clutter-Actor.allocate` path. The server-side proxy layout manager then relays child allocation normally.
+
+**Proof:** `/tmp/thumbnail-overview-before.png` from the landed build visibly shows gedit in the main card. The clean gate reports finite clone geometry (`160.375,126.398 478×340`), two-window phase 2, and `thumbnail-smoke: ok`.
+
+```bash
+GI_META_SMOKE=thumbnail-smoke GI_META_SMOKE_CMD='gedit --new-window' \
+GI_META_SMOKE_WAIT_MS=15000 GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1 \
+GSR_WESTON_PIXMAN=1 GSR_NESTED_TIMEOUT=90 \
+./scripts/agent-nested-smoke-prove.sh
+```
+
+## Debug-code cleanup ledger
+
+Any further diagnostic code for this bug must be added to this ledger before it is added to the tree.
+
+### Removed in the current working tree
+
+- [x] `src/client/libshell-16/WindowPreview.vala`: removed the `preview-slot` `GLib.debug` allocation/opacity/mapped log. Kept the allocation fix below it.
+- [x] `src/client/libshell-16/WindowPreviewLayout.vala`: removed the `preview-clone-source` RPC and log, the `preview-allocate` geometry log, and the `preview-clone-geom` server RPCs and log.
+- [x] `src/server/Plugin.vala`: removed the `plugin-map before` and `plugin-map after` logs. Kept `actor.show()`; that is product behavior, not a diagnostic.
+- [x] `src/server/libmutter-16/Window.vala`: removed the texture-inspection C bindings and the `get_compositor_private` actor/texture/pixel inspection block. Kept exporting and returning the compositor actor.
+- [x] `src/server/libmutter-16/texture-read.h`: deleted the diagnostic-only texture download header after removing its callers.
+- [x] `tests/gjs-embed/thumbnail-smoke.js`: removed the paint-state-only `acc.paint` collection and output. Kept `acc.cloneActor`, the finite transformed-geometry assertion, the normal preview checks, and phase 2 as the permanent regression gate.
+
+### Already removed in the current working tree
+
+- [x] `tests/gjs-embed/thumbnail-smoke.js`: removed `captureStage`, `logActorChain`, background hiding, pivot/scale rewrites, forced server allocation, offscreen redirect changes, solid-child injection, source replacement, and independent stage-clone probes.
+- [x] `tests/gjs-embed/thumbnail-smoke.js`: removed its temporary `Cogl` import.
+
+### Permanent test plumbing
+
+- `tests/gjs-embed/thumbnail-smoke.js`: the finite, positive clone-transform assertion is the regression check for this bug and is not debug cleanup.
+- `scripts/nested-weston-prove.sh`: recognizing `thumbnail-smoke: ok` is smoke-runner plumbing and is not debug cleanup.
 
 ## Steps
 
@@ -397,7 +433,7 @@ Hand look after that hold: Weston stayed up, two apps started, top tabs showed p
 
 `Plugin.map` calls `actor.show()`. The actor is created with `show-on-set-parent` false, so it starts hidden. 18:28:21 `plugin-map after visible=yes mapped=yes` with the parent mapped. 18:28:22 `compositor-private visible=yes mapped=yes realized=yes parent-mapped=yes children=1`. Overview then hides the window group. 18:28:23 `visible=yes mapped=no parent-mapped=no`. `preview-allocate out 0.0,0.0 478.0x340.0`. `clutter_clone_paint` maps an unmapped source for the paint via `enable_paint_unmapped`. The unmapped flag is not why that paint returns. `clutter_clone_allocate` scales the source into the clone box.
 
-19:38 and 19:42: mutter `g_error` in `clutter-box-layout.c` on minimum height `-12`, `mutter exited ec=133` during `main.start`, no preview. Same abort as [`done/2026-09-25-box-layout-negative-min-height.md`](done/2026-09-25-box-layout-negative-min-height.md). The `context is null` miss is the client after that abort.
+19:38 and 19:42: mutter `g_error` in `clutter-box-layout.c` on minimum height `-12`, `mutter exited ec=133` during `main.start`, no preview. Same abort as [`2026-09-25-box-layout-negative-min-height.md`](2026-09-25-box-layout-negative-min-height.md). The `context is null` miss is the client after that abort.
 
 20:04 capture (`/tmp/gsr-overview.png`, Weston window `90177541`): overview is up, the main card is the mountain wallpaper, the top tab is an orange mark, gedit has a dash dot. `plugin-map after visible=yes mapped=yes` at 20:04:24, `compositor-private … mapped=yes … children=1` at 20:04:26, then `mapped=no parent-mapped=no` at 20:04:28 when the overview hid the window group. `preview-allocate out 0.0,0.0 713.0x535.0`.
 
@@ -423,177 +459,94 @@ GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1 GSR_NESTED_TIMEOUT=70 \
 ./scripts/agent-nested-smoke-prove.sh
 ```
 
-The existing structural gate passed: phase 1 clone `478×340`, phase 2 two
-clones `254×180`, `thumbnail-smoke: ok`, and prove `stop (smoke-ok) after
-17s`. This still does not test rendered pixels. Next reproduction-only probe
-will capture the overview before and after hiding its workspace background,
-and log that workspace's child order. No product file changed.
+The existing structural gate passed: phase 1 clone `478×340`, phase 2 two clones `254×180`, `thumbnail-smoke: ok`, and prove `stop (smoke-ok) after 17s`. This still does not test rendered pixels. Next reproduction-only probe will capture the overview before and after hiding its workspace background, and log that workspace's child order. No product file changed.
 
 ### 2026-10-11 11:12 stacking probe did not reach the reproduction
 
-The same command with the reproduction-only capture/hide probe failed during
-`main.start`: `thumbnail-smoke: miss TypeError: global.stage.context is null`.
-This is the already-recorded startup abort symptom, before any window or
-overview probe. It says nothing about stacking; retry required.
+The same command with the reproduction-only capture/hide probe failed during `main.start`: `thumbnail-smoke: miss TypeError: global.stage.context is null`. This is the already-recorded startup abort symptom, before any window or overview probe. It says nothing about stacking; retry required.
 
 ### 2026-10-11 11:13 stacking/occlusion refuted
 
-Retry reached the probe. The active Workspace peer reports
-`workspace-stack background=0 container=1 children=2`, matching stock order:
-background below the preview container. Stage captures are
-`/tmp/thumbnail-overview-before.png` and
-`/tmp/thumbnail-overview-no-background.png`.
+Retry reached the probe. The active Workspace peer reports `workspace-stack background=0 container=1 children=2`, matching stock order: background below the preview container. Stage captures are `/tmp/thumbnail-overview-before.png` and `/tmp/thumbnail-overview-no-background.png`.
 
-The first capture shows the mountain wallpaper in the main card. The second
-hides that workspace's background and shows only the shell's dark overview
-behind the same empty card area. Gedit does not appear. Therefore the preview
-is transparent, not painted underneath the workspace background. The run
-continued through phase 2 and printed `thumbnail-smoke: ok`; this confirms
-again that `ok` is structural, not a pixel verdict.
+The first capture shows the mountain wallpaper in the main card. The second hides that workspace's background and shows only the shell's dark overview behind the same empty card area. Gedit does not appear. Therefore the preview is transparent, not painted underneath the workspace background. The run continued through phase 2 and printed `thumbnail-smoke: ok`; this confirms again that `ok` is structural, not a pixel verdict.
 
 ### 2026-10-11 11:18 source-depth probe did not reach the reproduction
 
-First run of the reproduction-only clone-source depth probe failed during
-`main.start` with `global.stage.context is null`, before window creation.
-This is another instance of the separate startup abort and gives no
-source-paint result.
+First run of the reproduction-only clone-source depth probe failed during `main.start` with `global.stage.context is null`, before window creation. This is another instance of the separate startup abort and gives no source-paint result.
 
 ### 2026-10-11 11:18 window actor subtree is also transparent
 
-Retry captured the same allocated overview clone while changing its source
-from the live `Meta.WindowActor` to each of its first two descendants. Both
-descendants report `800×568`, visible, and unmapped. Captures:
+Retry captured the same allocated overview clone while changing its source from the live `Meta.WindowActor` to each of its first two descendants. Both descendants report `800×568`, visible, and unmapped. Captures:
 
 - `/tmp/thumbnail-overview-source-depth-1.png`
 - `/tmp/thumbnail-overview-source-depth-2.png`
 
-Both remain fully transparent with the workspace background hidden. The
-failure is therefore not confined to the `Meta.WindowActor` wrapper's own
-paint method; cloning the surface-container path also fails. The structural
-smoke still reached `ok`.
+Both remain fully transparent with the workspace background hidden. The failure is therefore not confined to the `Meta.WindowActor` wrapper's own paint method; cloning the surface-container path also fails. The structural smoke still reached `ok`.
 
 ### 2026-10-11 11:19 known-good panel source is also transparent
 
-With the workspace background hidden, the reproduction changed the same
-allocated preview clone's source to `main.panel`, waited 500 ms, and captured
-`/tmp/thumbnail-overview-panel-source.png`. The real panel remains visible at
-the top of the frame, but no panel image appears in the clone's card.
+With the workspace background hidden, the reproduction changed the same allocated preview clone's source to `main.panel`, waited 500 ms, and captured `/tmp/thumbnail-overview-panel-source.png`. The real panel remains visible at the top of the frame, but no panel image appears in the clone's card.
 
-This refutes a window-texture-specific failure: the existing preview
-`Clutter.Clone` does not show a known-painted St source either. Next probe
-places an independent panel clone directly on the stage to separate a general
-`Clutter.Clone` paint failure from the preview tree or its clipping.
+This refutes a window-texture-specific failure: the existing preview `Clutter.Clone` does not show a known-painted St source either. Next probe places an independent panel clone directly on the stage to separate a general `Clutter.Clone` paint failure from the preview tree or its clipping.
 
 ### 2026-10-11 11:25 independent stage clone paints
 
-`/tmp/thumbnail-overview-stage-clone.png` shows a separately constructed
-`Clutter.Clone` of `main.panel`, sized `400×200` and parented directly to the
-stage. It visibly paints the panel (stretched, as expected). Therefore
-`Clutter.Clone` construction and paint work generally. The same panel source
-is transparent through the existing preview clone, narrowing the failure to
-that clone or its preview ancestry/allocation/clip path.
+`/tmp/thumbnail-overview-stage-clone.png` shows a separately constructed `Clutter.Clone` of `main.panel`, sized `400×200` and parented directly to the stage. It visibly paints the panel (stretched, as expected). Therefore `Clutter.Clone` construction and paint work generally. The same panel source is transparent through the existing preview clone, narrowing the failure to that clone or its preview ancestry/allocation/clip path.
 
-Next probe uses the live window actor as a direct stage-clone source. That
-separates a window-source paint failure from the preview ancestry.
+Next probe uses the live window actor as a direct stage-clone source. That separates a window-source paint failure from the preview ancestry.
 
 ### 2026-10-11 11:26 stage-window probe did not reach the reproduction
 
-The first run again hit the separate `global.stage.context is null` startup
-abort before creating a window. No stage-window clone result; retry required.
+The first run again hit the separate `global.stage.context is null` startup abort before creating a window. No stage-window clone result; retry required.
 
 ### 2026-10-11 11:35 live window paints through a stage clone
 
-Retry capture `/tmp/thumbnail-overview-stage-window-clone.png` visibly shows
-gedit's file chooser through an independent clone of the exact live
-`Meta.WindowActor`, parented directly to the stage. This refutes both a
-window-source paint failure and a general clone failure.
+Retry capture `/tmp/thumbnail-overview-stage-window-clone.png` visibly shows gedit's file chooser through an independent clone of the exact live `Meta.WindowActor`, parented directly to the stage. This refutes both a window-source paint failure and a general clone failure.
 
-The failure is now bounded to the overview preview scene path: the same live
-window source paints from a stage clone, while the stock preview clone remains
-transparent. Next probe places a solid actor in the same
-`window_container`; that tests whether the preview subtree itself is clipped
-or misplaced, independent of cloning.
+The failure is now bounded to the overview preview scene path: the same live window source paints from a stage clone, while the stock preview clone remains transparent. Next probe places a solid actor in the same `window_container`; that tests whether the preview subtree itself is clipped or misplaced, independent of cloning.
 
 ### 2026-10-11 11:47 solid preview child is also invisible
 
-The reproduction added an opaque red `Clutter.Actor` (`400×284`) to the
-affected `WindowPreview.window_container` and captured
-`/tmp/thumbnail-overview-solid-child.png` with the workspace background
-hidden. No red pixels appear. In the same run both direct stage clones still
-paint.
+The reproduction added an opaque red `Clutter.Actor` (`400×284`) to the affected `WindowPreview.window_container` and captured `/tmp/thumbnail-overview-solid-child.png` with the workspace background hidden. No red pixels appear. In the same run both direct stage clones still paint.
 
-This refutes the clone as the immediate failing actor. The whole preview
-subtree is not reaching the visible frame, despite the preview and clone
-reporting mapped allocations. Next probe records the preview-to-stage ancestor
-chain, including paint opacity and transformed geometry.
+This refutes the clone as the immediate failing actor. The whole preview subtree is not reaching the visible frame, despite the preview and clone reporting mapped allocations. Next probe records the preview-to-stage ancestor chain, including paint opacity and transformed geometry.
 
 ### 2026-10-11 11:49 ancestor probe did not reach the reproduction
 
-The first ancestor-chain run hit the separate
-`global.stage.context is null` startup abort before window creation. No
-ancestor result; retry required.
+The first ancestor-chain run hit the separate `global.stage.context is null` startup abort before window creation. No ancestor result; retry required.
 
-Second ancestor-chain attempt at 11:50 hit the same startup abort, also before
-window creation. Retry still required.
+Second ancestor-chain attempt at 11:50 hit the same startup abort, also before window creation. Retry still required.
 
-Third attempt at 11:51 hit the same startup abort before window creation.
-Fourth attempt at 11:56 hit it again. The ancestor probe remains unrun.
+Third attempt at 11:51 hit the same startup abort before window creation. Fourth attempt at 11:56 hit it again. The ancestor probe remains unrun.
 
 ### 2026-10-11 11:56 ancestor chain with pixman parent
 
-Running the same reproduction with `GSR_WESTON_PIXMAN=1` avoided the startup
-abort. From `WindowPreview` through its Workspace, WorkspacesView,
-WorkspacesDisplay, ControlsManager, OverviewActor, overview group, and
-`UiActor`, every ancestor is visible, mapped, effective paint opacity 255, and
-has nonzero transformed geometry. The preview itself is transformed to
-`160.375,126.398 478.203×339.527`, inside the `800×600` overview.
+Running the same reproduction with `GSR_WESTON_PIXMAN=1` avoided the startup abort. From `WindowPreview` through its Workspace, WorkspacesView, WorkspacesDisplay, ControlsManager, OverviewActor, overview group, and `UiActor`, every ancestor is visible, mapped, effective paint opacity 255, and has nonzero transformed geometry. The preview itself is transformed to `160.375,126.398 478.203×339.527`, inside the `800×600` overview.
 
-`MetaStage.get_transformed_size()` alone reported `70.695×53.019` despite
-stage `width×height=800×600`; direct stage clones paint, so that anomalous
-getter does not explain only the preview subtree. There is no zero-sized or
-transparent ancestor. Next probe starts the same chain at the clone, adding
-its `window_container` transform to the evidence.
+`MetaStage.get_transformed_size()` alone reported `70.695×53.019` despite stage `width×height=800×600`; direct stage clones paint, so that anomalous getter does not explain only the preview subtree. There is no zero-sized or transparent ancestor. Next probe starts the same chain at the clone, adding its `window_container` transform to the evidence.
 
 ### 2026-10-11 11:59 clone-chain probe missed the window
 
-The first pixman-parent clone-chain run reached launch but no Meta NORMAL
-window appeared before the smoke deadline: `miss window`. It did not reach
-the overview; retry required.
+The first pixman-parent clone-chain run reached launch but no Meta NORMAL window appeared before the smoke deadline: `miss window`. It did not reach the overview; retry required.
 
-The 13:04 retry with a 15-second window deadline hit the separate
-`global.stage.context is null` startup abort before launch.
+The 13:04 retry with a 15-second window deadline hit the separate `global.stage.context is null` startup abort before launch.
 
 ### 2026-10-11 13:09 first bad transform found
 
-Pixman-parent retry reached the clone chain. `WindowPreview` is sane at
-`160.375,126.398 478.203×339.527`. Its immediate child
-`window_container` reports nonzero `800×568`, mapped and paint opacity 255,
-but `get_transformed_position()` and `get_transformed_size()` both return
-`NaN`. The clone below it is likewise `NaN`. Every ancestor above the
-`WindowPreview` remains finite.
+Pixman-parent retry reached the clone chain. `WindowPreview` is sane at `160.375,126.398 478.203×339.527`. Its immediate child `window_container` reports nonzero `800×568`, mapped and paint opacity 255, but `get_transformed_position()` and `get_transformed_size()` both return `NaN`. The clone below it is likewise `NaN`. Every ancestor above the `WindowPreview` remains finite.
 
-This is the first property that directly explains the invisible subtree:
-Clutter cannot place or cull descendants whose model-view transform contains
-NaN. Setting `WindowPreview.offscreen_redirect` from
-`AUTOMATIC_FOR_OPACITY` (`1`) to `NEVER` did not change the blank capture
-(`/tmp/thumbnail-overview-no-offscreen.png`), so offscreen redirect is
-refuted.
+This is the first property that directly explains the invisible subtree: Clutter cannot place or cull descendants whose model-view transform contains NaN. Setting `WindowPreview.offscreen_redirect` from `AUTOMATIC_FOR_OPACITY` (`1`) to `NEVER` did not change the blank capture (`/tmp/thumbnail-overview-no-offscreen.png`), so offscreen redirect is refuted.
 
-The likely source is now the `windowContainer` transform inputs, especially
-its construct-time pivot point or scale. Next reproduction-only probe rewrites
-those stock values and checks whether the transform and picture become finite.
+The likely source is now the `windowContainer` transform inputs, especially its construct-time pivot point or scale. Next reproduction-only probe rewrites those stock values and checks whether the transform and picture become finite.
 
 ### 2026-10-11 13:21 transform-reset probe did not reach reproduction
 
-The first pivot/scale reset run hit `global.stage.context is null` during
-startup. It produced no transform result; retry required.
+The first pivot/scale reset run hit `global.stage.context is null` during startup. It produced no transform result; retry required.
 
 ### 2026-10-11 13:50 invalid allocation relay is the cause
 
-Successful retry reports `window_container pivot=0.5,0 scale=1,1`. Rewriting
-the pivot to `0.5,0.5`, then forcing scale through `0.999` back to `1`, leaves
-the container and clone transforms `NaN`; both captures remain blank. Pivot,
-scale, and offscreen redirect are not the cause.
+Successful retry reports `window_container pivot=0.5,0 scale=1,1`. Rewriting the pivot to `0.5,0.5`, then forcing scale through `0.999` back to `1`, leaves the container and clone transforms `NaN`; both captures remain blank. Pivot, scale, and offscreen redirect are not the cause.
 
 The same run's mutter log names the failure:
 
@@ -603,34 +556,56 @@ The clutter_actor_set_allocation() function can only be called from within
 the implementation of the ClutterActor::allocate() virtual function.
 ```
 
-This is `WindowPreview.allocate_vfunc` calling `child.relay_allocation()` for
-the client-local `WindowPreviewLayout`. The nested
-`window_container` is not inside its own server-side allocate vfunc, so Clutter
-rejects the allocation. Then client `Actor.allocate()` sees the local layout
-manager and runs only `layout.allocate_vfunc()`; it never invokes the
-container's server allocate path. The container retains its full-window
-`800×600` allocation while its clone has the card allocation, and its
-model-view transform becomes `NaN`.
+This is `WindowPreview.allocate_vfunc` calling `child.relay_allocation()` for the client-local `WindowPreviewLayout`. The nested `window_container` is not inside its own server-side allocate vfunc, so Clutter rejects the allocation. Then client `Actor.allocate()` sees the local layout manager and runs only `layout.allocate_vfunc()`; it never invokes the container's server allocate path. The container retains its full-window `800×600` allocation while its clone has the card allocation, and its model-view transform becomes `NaN`.
 
-Next reproduction-only trial temporarily detaches the local layout manager,
-uses the cached intended box through the real server allocate path, and checks
-whether the transform and gedit pixels appear. Product code remains unchanged.
+Next reproduction-only trial temporarily detaches the local layout manager, uses the cached intended box through the real server allocate path, and checks whether the transform and gedit pixels appear. Product code remains unchanged.
 
 ### 2026-10-11 13:56 real server allocation makes gedit visible
 
-The reproduction-only trial detached `WindowPreviewLayout`, called the
-container's real server allocate path, and captured
-`/tmp/thumbnail-overview-after-server-allocate.png`.
+The reproduction-only trial detached `WindowPreviewLayout`, called the container's real server allocate path, and captured `/tmp/thumbnail-overview-after-server-allocate.png`.
 
-After that call, the clone transform becomes finite:
-`160.375,126.398 478×340`, and the capture visibly shows gedit in the main
-overview card. Before the call, the same clone and source were `NaN` and
-transparent. This proves allocation—not texture capture or cloning—is the
-remaining cause.
+After that call, the clone transform becomes finite: `160.375,126.398 478×340`, and the capture visibly shows gedit in the main overview card. Before the call, the same clone and source were `NaN` and transparent. This proves allocation—not texture capture or cloning—is the remaining cause.
 
-The cached test box happened to be zero, so the container reports `0×0`, but
-the already allocated clone still paints because the container does not clip.
-The product landing must send the actual `child_box` through the server
-`Clutter-Actor.allocate` call while the server-side proxy layout manager is
-still attached; that sets the container allocation and relays child allocation
-normally. This is a minor change in `WindowPreview.allocate_vfunc`.
+The cached test box happened to be zero, so the container reports `0×0`, but the already allocated clone still paints because the container does not clip. The product landing must send the actual `child_box` through the server `Clutter-Actor.allocate` call while the server-side proxy layout manager is still attached; that sets the container allocation and relays child allocation normally. This is a minor change in `WindowPreview.allocate_vfunc`.
+
+### 2026-10-11 14:02 landed allocation fix
+
+`WindowPreview.allocate_vfunc` now sends `child_box` through `Clutter-Actor.allocate` when the child has a client-local layout manager, instead of calling the illegal out-of-vfunc `set_allocation`. Build passed.
+
+The first landed prove shows the clone transform finite before any reproduction-side workaround: `160.375,126.398 478×340`. Its baseline capture `/tmp/thumbnail-overview-before.png` visibly shows gedit in the main card. Phase 2 also reached `thumbnail-smoke: ok`.
+
+The smoke was then cleaned: all temporary background/source/solid-actor mutations were removed, and its permanent gate now fails on non-finite or zero transformed clone geometry. The first clean rerun hit the separate `global.stage.context is null` startup abort before window creation; clean gate retry required.
+
+Second clean rerun also hit the same startup abort before window creation.
+
+### 2026-10-12 09:13 clean landed gate passed
+
+The cleaned smoke passed without any reproduction-side actor mutation: clone transform `160.375,126.398 478×340`, phase 2 found both `254×180` previews, and `thumbnail-smoke: ok`. This closes the thumbnail bug; the intermittent `global.stage.context is null` startup abort remains separate.
+
+### 2026-10-12 09:22 default-renderer confirmation did not reach the reproduction
+
+The clean command without `GSR_WESTON_PIXMAN=1` failed during startup with `thumbnail-smoke: miss TypeError: global.stage.context is null`; Mutter exited `133` after four seconds. No window or overview was created, so this run says nothing about the thumbnail fix. The pixman-parent clean gate remains the completed proof.
+
+### 2026-10-12 09:25 default-renderer confirmation passed
+
+The immediate retry without `GSR_WESTON_PIXMAN=1` reached the full clean reproduction: clone transform `160.375,126.398 478×340`, both phase-2 previews `254×180`, `thumbnail-smoke: ok`, and `stop (smoke-ok) after 16s`. This confirms the landed allocation fix on the normal GL renderer as well as the pixman-parent gate.
+
+### 2026-10-12 09:29 diagnostic cleanup built
+
+Removed every remaining item in the debug-code cleanup ledger, including the diagnostic-only texture download header, while retaining the allocation fix and permanent finite-transform assertion. `meson compile -C build` passed and the edited files have no linter errors. A post-cleanup smoke prove is next.
+
+### 2026-10-12 09:30 first post-cleanup prove did not reach the reproduction
+
+The first normal-renderer post-cleanup prove hit the separate startup abort again: `thumbnail-smoke: miss TypeError: global.stage.context is null`, with Mutter exiting `133` after three seconds. No thumbnail code ran. The next cleanup proof uses the pixman parent to avoid this unrelated startup failure.
+
+### 2026-10-12 09:31 first pixman post-cleanup prove did not reach the reproduction
+
+The pixman-parent attempt also hit `global.stage.context is null` during startup, with Mutter exiting `133` after four seconds. It did not create a window or exercise the cleaned thumbnail path; retry required.
+
+### 2026-10-12 09:34 post-cleanup prove passed
+
+The pixman-parent retry passed with all tracked diagnostic code removed: clone transform `160.375,126.398 478×340`, both phase-2 previews `254×180`, `thumbnail-smoke: ok`, and `stop (smoke-ok) after 18s` with prove exit `0`. The allocation fix and permanent regression assertion therefore pass independently of the removed diagnostics.
+
+### 2026-10-12 09:39 closed
+
+Closed after the normal-renderer and post-cleanup pixman-parent passes. Thumbnail dragging, workspace selection, and the applications picker are separate behaviors and have separate bug reports.
