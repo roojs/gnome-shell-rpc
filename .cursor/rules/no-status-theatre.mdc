@@ -13,8 +13,7 @@ until the bar moves or you hit one of the stop conditions below.
 
 1. **You actually need the user’s help** — a decision only they can make,
    credentials, a machine/session you cannot reach, or explicit approval the
-   plan forbids you from assuming. Say what you need in one short ask, then
-   wait.
+   plan forbids you from assuming. The message is one line: `Can you review <bug file>` or `Can you review the proposal in <bug file>`. The bug file holds the account. Then wait.
 2. **OPC / libocrpc is the problem** — and only then: write a **FAIL-backed**
    bug (gate under `tests/call-sync-repro/` that **FAIL**s, plus the bug doc),
    **do not edit OLLMchat from this tree**, and **stop**. That is the **only**

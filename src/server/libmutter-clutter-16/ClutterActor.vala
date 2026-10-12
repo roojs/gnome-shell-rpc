@@ -173,6 +173,7 @@ namespace Gsr.Server.Clutter
 					case "button-press-event":
 					case "button-release-event":
 					case "captured-event":
+					case "clicked":
 					case "enter-event":
 					case "event":
 					case "key-press-event":
@@ -438,9 +439,14 @@ namespace Gsr.Server.Clutter
 				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR);
 				return;
 			}
+			/*
+			 * 0 is CLUTTER_CURRENT_TIME. The seat stamps monotonic now.
+			 * A literal 1µs or 2µs is already in the past, so the
+			 * press and release never reach the actor under (x, y).
+			 */
 			virt.notify_absolute_motion(0, x, y);
-			virt.notify_button(1, global::Clutter.Button.PRIMARY, global::Clutter.ButtonState.PRESSED);
-			virt.notify_button(2, global::Clutter.Button.PRIMARY, global::Clutter.ButtonState.RELEASED);
+			virt.notify_button(0, global::Clutter.Button.PRIMARY, global::Clutter.ButtonState.PRESSED);
+			virt.notify_button(0, global::Clutter.Button.PRIMARY, global::Clutter.ButtonState.RELEASED);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

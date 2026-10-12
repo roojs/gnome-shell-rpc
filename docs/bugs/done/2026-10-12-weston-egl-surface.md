@@ -1,6 +1,12 @@
 # Weston session dies creating the EGL surface
 
-**Status:** ✅ session starts again. `timeout --foreground -k 2 16 ./scripts/weston-gsr-session.sh --debug` on 2026-10-12 11:36 HKT: GL still logs `failed to create egl surface`, then `retrying with --use-pixman`, then `Using Pixman renderer` and `Output 'screen0' enabled` at 1280×800. Autolaunch reached `weston-terminal pid=991893 xdisplay=:1`. The script text did not regress. Bare Weston fails the same way.
+**Status:** ✅ closed 2026-10-12. Signed off. The session starts. GL at 1280×800 still logs `failed to create egl surface`; the script retries with `--use-pixman` and the output comes up.
+
+**Cause:** Weston 14.0.1 on this GT 1030 fails `failed to create egl surface` at 1280×800. The same size with `--use-pixman` enables `screen0`. Smaller GL sizes also enable it. Bare Weston fails the same way.
+
+**Fix:** Unset `GSR_WESTON_PIXMAN` tries GL and, on that EGL line, restarts the session with `--use-pixman`. `GSR_WESTON_PIXMAN=0` stays fail-fast. `GSR_WESTON_PIXMAN=1` skips GL.
+
+**Proof:** `timeout --foreground -k 2 16 ./scripts/weston-gsr-session.sh --debug` on 2026-10-12 11:36 HKT. `retrying with --use-pixman`, `Using Pixman renderer`, `Output 'screen0' enabled` at 1280×800, autolaunch reached `weston-terminal pid=991893 xdisplay=:1`.
 
 `weston --backend=x11-backend.so --width=1280 --height=800` (no config) exits with `failed to create egl surface`. The same command at 800×480 and at 1024×400 enables `screen0`. `--use-pixman` at 1280×800 enables `screen0`. Host: Weston 14.0.1, NVIDIA GeForce GT 1030 / 570.195.03, `DISPLAY=:0`, X screen 5120×2160, about 190MB of 2048MB VRAM free. `scripts/weston-gsr-session.sh` last changed in `305d443` (2026-10-08), which only added opt-in `GSR_WESTON_PIXMAN=1`. Default size has been 1280×800 since the script was added. The 2026-10-09 prove log did start a nest, so this GL size limit showed up after that.
 
@@ -44,3 +50,7 @@ Failure line: `failed to create egl surface`.
 ### 2026-10-12 land
 
 `scripts/weston-gsr-session.sh`: unset `GSR_WESTON_PIXMAN` tries GL, and on `failed to create egl surface` execs the same session with `--use-pixman`. First retry died with `exec: weston_cmd: not found` (exec of a shell function). Second run, 11:36, stayed up: pixman output enabled, Xwayland `:1`, weston-terminal launched. Timeout ended the nest.
+
+### 2026-10-12 signed off
+
+User closed this with the startup-frame bug. Session starts via the pixman retry.

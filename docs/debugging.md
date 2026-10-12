@@ -16,6 +16,15 @@ The top is the current account. Rewrite it when the facts change. It holds what 
 
 Suggestions, next tries, and the trial log stay out of the top. They go in `## LLM efforts` at the bottom. Append there as each run finishes: what was tried, the command, and what the log or the gate actually did. Do not rewrite that section into a summary.
 
+## What you send
+
+One line, and only when you stop. The bug file is the rest. Do not paste the log, the diagnosis, or the next step into chat.
+
+- `Can you review docs/bugs/<file>.md`
+- `Can you review the proposal in docs/bugs/<file>.md`
+
+The second line is only for a stage 6 major change. The `alan2` copy request in stage 2 is the one ask that is not a review.
+
 ---
 
 ## 2. Read the logs that already exist
@@ -99,7 +108,7 @@ Try each idea on the reproduction: the gate, the smoke, or a copy of the failing
 ## 6. Land
 
 - **Minor change.** Copy that proven change into the primary code, rebuild, and rerun the stage 3 command. The stage 3 marker is the bar. The top of the bug file records that landing.
-- **Major architectural change.** Write the proposal in the top of the bug file, then tell the user it is in the bug report. Wait. Do not apply it.
+- **Major architectural change.** Write the proposal in the top of the bug file. Send `Can you review the proposal in docs/bugs/<file>.md`. Wait. Do not apply it.
 
   A proposal is proposed code, in the form in [`guide-to-writing-plans.md`](guide-to-writing-plans.md) under **Code proposals section**. Each edit is a numbered `###` with the file path, the function or region, **Why**, **Where**, and **Depends on**, then **`#### Remove`** / **`#### Replace with`** / **`#### Add`** fences. The fences are verbatim hunks. An implementer applies them. Say what the reproduction proved in the lines above the fences. Do not leave the change as a description of what the code should do.
 

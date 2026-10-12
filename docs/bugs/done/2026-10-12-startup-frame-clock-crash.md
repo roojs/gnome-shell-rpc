@@ -1,6 +1,12 @@
 # Startup notice, then gsr-server crashes
 
-**Status:** ⏳ open. The nested `MainContext.iteration` in `begin` was the crash. Inhibiting the frame clock still leaves the Ubuntu guest on the notice: the 14:43 guest build logged `startup clocks inhibited` at 14:45:10 and `startup notice removed` at 14:45:14, and `virsh screenshot ubuntu25.10` at 14:47 and 14:48 is the same 1280×800 frame, the title on the dark background. `gsr-server` and `gsr-client` stayed up; `St-Label.set_text` was still arriving at 14:48:00. The notice is now only a covering actor. The clocks are not stopped. Weston 14:50:14 `startup notice painted`, 14:50:18 `startup notice removed`, no `startup clocks inhibited`, alive until the timeout (`EXIT:124`), no new core. That binary is not on the guest.
+**Status:** ✅ closed 2026-10-12. Signed off on the Ubuntu guest. The session gets past the startup notice.
+
+**Cause:** `StartupFrameLock.begin` pumped `MainContext.iteration` inside the startup RPC. That ran the frame clock on that stack, and the next `schedule_update` segfaulted. Inhibiting the clock from the notice frame then left virtio scanning that frame out after the actor was removed.
+
+**Fix:** Do not pump the main loop, and do not inhibit the frame clocks. The notice stays the top actor until `Meta.Context.notify_ready`. `release` removes it and calls `schedule_update`.
+
+**Proof:** Weston 14:50:14 `startup notice painted`, 14:50:18 `startup notice removed`, no inhibit line, no new core, alive until the timeout (`EXIT:124`). Guest signed off after that build.
 
 ```bash
 GSR_WESTON_PIXMAN=1 timeout --foreground -k 5 30 ./scripts/weston-gsr-session.sh --debug
@@ -45,3 +51,7 @@ The 14:12 guest binaries are that second rebuild. Log: 14:12:56 `startup notice 
 Guest `/usr/bin/gsr-server` 14:43:47, 2100568 bytes, contains `startup clocks inhibited`. Session started 14:45:09, server pid 6218, client pid 6549. Log: painted 14:45:10.692, clocks inhibited 14:45:10.692, `Meta-Context.notify_ready` and notice removed 14:45:14.856. `virsh screenshot ubuntu25.10 /tmp/ubuntu-gsr.ppm` at 14:47 and again at 14:48: both 9635-byte PNGs, `cmp` identical, title still on screen. Both processes in `do_poll`. `St-Label.set_text` at 14:48:00. No new core.
 
 Stopped inhibiting. The notice stays the top actor until `notify_ready`, and `release` still calls `schedule_update`. `GSR_WESTON_PIXMAN=1 timeout --foreground -k 5 15 ./scripts/weston-gsr-session.sh --debug`: painted 14:50:14.345, removed 14:50:18.002, no inhibit line, RPC still running at the timeout (`EXIT:124`). No new core.
+
+### 2026-10-12 signed off
+
+User closed this with the Weston EGL bug. The Ubuntu session gets past the notice.

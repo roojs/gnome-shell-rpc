@@ -96,6 +96,20 @@ function main() {
 	const [minH, natH] = grid.get_preferred_height(182);
 	smokeLog(`preferred height min=${minH} nat=${natH} (stock empty-rows formula)`);
 
+	const box = new St.BoxLayout({
+		name: 'qs-smoke-box',
+		vertical: true,
+	});
+	stage.remove_child(grid);
+	box.add_child(grid);
+	stage.add_child(box);
+	box.show();
+	const alloc = new Clutter.ActorBox();
+	alloc.init_rect(0, 0, 182, 32);
+	smokeLog('allocate box 182x32');
+	box.allocate(alloc);
+	smokeLog('allocate returned');
+
 	if (minH < 0 || natH < 0) {
 		smokeLog(`FAIL negative-preferred want>=0 got min=${minH} nat=${natH}`);
 		smokeLog('FAIL');

@@ -5,9 +5,10 @@ namespace Gsr.Server
 	 *
 	 * The notice stays the top actor until the owning connection
 	 * releases the lock through global::Meta.Context.notify_ready.
-	 * The frame clocks keep running. Inhibiting one from the frame
-	 * that presented the notice leaves virtio scanning that frame
-	 * out after the actor is gone.
+	 * {@link begin} inhibits the current stage-view clocks from the
+	 * startup RPC. {@link release} uninhibits them, then schedules
+	 * an update. Do not inhibit from the frame that presented the
+	 * notice: virtio keeps scanning that frame after the actor is gone.
 	 *
 	 * == Example ==
 	 *
@@ -33,6 +34,10 @@ namespace Gsr.Server
 		 */
 		private bool splash_on_stage = false;
 		private ulong connection_stopped_id;
+		private global::Clutter.FrameClock[] clocks = {};
+
+		[CCode (cname = "clutter_stage_view_get_frame_clock", cheader_filename = "clutter/clutter.h")]
+		private static extern unowned global::Clutter.FrameClock view_frame_clock(global::Clutter.StageView view);
 
 		/**
 		 * Connection that currently owns the lock.
@@ -98,6 +103,12 @@ namespace Gsr.Server
 				}
 			});
 
+			foreach (var view in stage.peek_stage_views()) {
+				var clock = view_frame_clock(view);
+				clock.inhibit();
+				this.clocks += clock;
+			}
+
 			ulong paint_id = 0;
 			paint_id = stage.after_update.connect(() => {
 				stage.disconnect(paint_id);
@@ -140,6 +151,10 @@ namespace Gsr.Server
 				this.connection_stopped_id = 0;
 			}
 			this.connection = null;
+			foreach (var clock in this.clocks) {
+				clock.uninhibit();
+			}
+			this.clocks = {};
 			((global::Clutter.Stage) this.stage).schedule_update();
 		}
 	}
