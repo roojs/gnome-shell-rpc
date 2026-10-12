@@ -91,7 +91,9 @@ keybindings_set_custom_handler
 # Hand: Meta.override.vala → Server-Rpc-SpawnClient. Must not call mutter meta_restart.
 restart
 is_restart
-# Local actor. Do not lease the compositor's window actor.
+# Hand: Window.override.vala returns the live actor lease. Same object
+# Compositor.get_window_actors already exports. Generated decode is denied
+# because this override owns the body.
 Window.get_compositor_private
 # Hand: server packs handle pairs (Compositor.vala); override hydrates live
 # actor proxies bound to their windows. Generated decode expects an

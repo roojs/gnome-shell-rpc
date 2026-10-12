@@ -1,6 +1,6 @@
 # Second app from the picker leaves the shell dead
 
-**Status:** Open. VirtualBox, 2026-10-08 14:46. `gsr-server --debug` 39711, `gsr-client --debug` 40489.
+**Status:** ✅ closed 2026-10-10. User: a second launch from the picker no longer leaves the shell dead. The 2026-10-08 VirtualBox session was `gsr-server --debug` 39711, `gsr-client --debug` 40489.
 
 **What:** A launch from the picker works. After that, typing still works, and the date menu and the power menu still open. Other clicks do nothing.
 
@@ -44,9 +44,9 @@ This is the bug. Do not get distracted by anything else in this file.
 
 ℹ️ Earlier notes below are background from the same day. They are not the task. Do not stop after re-deriving them.
 
-ℹ️ The `clutter_event_get_time` throw is [`done/2026-10-06-picker-click-get-time.md`](done/2026-10-06-picker-click-get-time.md). That throw is not this login.
+ℹ️ The `clutter_event_get_time` throw is [`2026-10-06-picker-click-get-time.md`](2026-10-06-picker-click-get-time.md). That throw is not this login.
 
-ℹ️ 14:39:05 `client exited` is [`done/2026-10-07-blur-effect-alias.md`](done/2026-10-07-blur-effect-alias.md). It is not this click.
+ℹ️ 14:39:05 `client exited` is [`2026-10-07-blur-effect-alias.md`](2026-10-07-blur-effect-alias.md). It is not this click.
 
 ## Background
 
@@ -219,3 +219,5 @@ Mutter’s own line for that click is `button press : ... x:232.00, y:461.00`, n
 The smoke retries a click when `get_coords()` is not the requested point. This run never clicked. `prime page=800x315` at 15:04:32, then `nested-weston-prove: mutter exited ec=1 after 119s`. Weston logged `An output named 'screen0' already exists` and segfaulted (exit 139).
 
 Same command again at 15:05. `grid-state value=2` at 15:06:14. At 15:07:21 the socket is already gone (`St-Icon.new id=171645: not connected`). `pick-icons=0`. `picker-second-launch: miss need two stopped icons`. `nested-weston-prove: stop (timeout) after 120s`. No click.
+
+2026-10-10. User: a second app from the picker no longer leaves the shell dead. Closed.

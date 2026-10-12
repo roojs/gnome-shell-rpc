@@ -303,6 +303,11 @@
 			if (signal_name == "repaint") {
 				continue;
 			}
+			/* Relay already runs this vfunc. A second emit
+			 * toggles PanelMenu shut on the opening click. */
+			if (signal_name == "event" || signal_name == "captured-event") {
+				continue;
+			}
 			names.add(signal_name);
 		}
 	}

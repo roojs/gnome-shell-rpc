@@ -1,30 +1,34 @@
 		/**
-		 * Stock returns the compositor's window actor. Leasing that
-		 * actor and cloning it killed the nested display. This stand-in
-		 * is one actor per window, with {@code meta_window} set, and
-		 * the picture is painted into it. The live window actor stays
-		 * on the stage.
+		 * Stock {@code meta_window_get_compositor_private}: the live
+		 * window actor. Same lease {@code Compositor.get_window_actors}
+		 * already exports. Reuse that proxy when the overview has it.
 		 */
-		private WindowActor? compositor_peek;
-
 		public GLib.Object? get_compositor_private()
 		{
-			if (this.compositor_peek != null) {
-				return this.compositor_peek;
+			var response = Gsr.Client.Rpc.call_value(
+				"Gsr-Mutter-Window.get_compositor_private", this);
+			if (response.args.size < 1) {
+				return null;
 			}
-			var peek = new WindowActor();
-			peek.bound_meta_window = this;
-			this.compositor_peek = peek;
-			Gsr.Client.Rpc.ensure_signal_subscribe(this, "size-changed");
-			this.signal_size_changed.connect(() => {
-				Gsr.Client.Rpc.call_value(
-					"Gsr-Mutter-Window.preview_actor", this,
-					OLLMrpc.args("o", peek));
-			});
-			Gsr.Client.Rpc.call_value(
-				"Gsr-Mutter-Window.preview_actor", this,
-				OLLMrpc.args("o", peek));
-			return peek;
+			var actor_lid = response.args.get(0).get_uint64();
+			if (actor_lid == 0) {
+				return null;
+			}
+			if (Gsr.Client.Rpc.client.proxies.has_key((int) actor_lid)) {
+				var existing = Gsr.Client.Rpc.client.proxies.get(
+					(int) actor_lid) as WindowActor;
+				if (existing != null) {
+					if (existing.bound_meta_window == null) {
+						existing.bound_meta_window = this;
+					}
+					return existing;
+				}
+			}
+			var actor = new WindowActor();
+			actor.rpc_lid = actor_lid;
+			actor.bound_meta_window = this;
+			Gsr.Client.Rpc.register_handle(actor);
+			return actor;
 		}
 
 		public void foreach_transient(WindowForeachFunc func)
