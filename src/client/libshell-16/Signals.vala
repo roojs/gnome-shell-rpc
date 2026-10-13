@@ -49,6 +49,23 @@ namespace Shell
 		private static bool notification_hooked = false;
 
 		/**
+		 * How many {@link emit} calls are still running.
+		 *
+		 * A one-way notification that arrives while this is
+		 * above zero waits in {@link held_notifs}.
+		 */
+		private static int emit_depth = 0;
+
+		/**
+		 * One-way notifications that arrived during {@link emit}.
+		 *
+		 * Created with the other tables on the first {@link connect}.
+		 * Delivered when the outermost {@link emit} returns. A
+		 * notification the server is waiting for is not queued.
+		 */
+		private static Gee.ArrayList<OLLMrpc.Notification>? held_notifs;
+
+		/**
 		 * Signal names an actor has collected and not sent yet.
 		 *
 		 * Empty on a later {@link connect}. That connect clears the
@@ -146,6 +163,23 @@ namespace Shell
 		 * @param gjs_handler_id GJS handler id, or 0 from Vala
 		 * @return our handler id, or 0 when the peer has no lease
 		 */
+		/**
+		 * Create the static tables once.
+		 *
+		 * Called from {@link connect} before those tables are
+		 * used. Later calls return.
+		 */
+		private static void init()
+		{
+			if (Signals.subs != null) {
+				return;
+			}
+			Signals.subs = new Gee.HashMap<int, Gee.HashMap<string, int>>();
+			Signals.refs = new Gee.HashMap<int, int>();
+			Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+			Signals.held_notifs = new Gee.ArrayList<OLLMrpc.Notification>();
+		}
+
 		[CCode (cname = "shell_signals_connect")]
 		public static int connect(GLib.Object obj, string signal_name, int gjs_handler_id = 0)
 		{
@@ -162,18 +196,12 @@ namespace Shell
 				return 0;
 			}
 			var lid = (int) handle.rpc_lid;
-			if (Signals.subs == null) {
-				Signals.subs = new Gee.HashMap<int, Gee.HashMap<string, int>>();
-				Signals.refs = new Gee.HashMap<int, int>();
-			}
+			Signals.init();
 			if (Signals.subs.has_key(lid)
 					&& Signals.subs.get(lid).has_key(signal_name)) {
 				var hid = Signals.subs.get(lid).get(signal_name);
 				Signals.refs.set(hid, Signals.refs.get(hid) + 1);
 				if (gjs_handler_id != 0) {
-					if (Signals.gjs_ids == null) {
-						Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
-					}
 					if (!Signals.gjs_ids.has_key(lid)) {
 						Signals.gjs_ids.set(lid, new Gee.HashMap<int, int>());
 					}
@@ -199,6 +227,10 @@ namespace Shell
 						return;
 					}
 					var target = Gsr.Client.Rpc.client.proxies.get(notif.id);
+					if (notif.reply_id == 0 && Signals.emit_depth > 0) {
+						Signals.held_notifs.add(notif);
+						return;
+					}
 					if (notif.reply_id == 0) {
 						Signals.emit(target, notif.method, notif.args);
 					} else {
@@ -218,9 +250,6 @@ namespace Shell
 				Signals.refs.set(hid, 1);
 				if (gjs_handler_id == 0 || name != signal_name) {
 					continue;
-				}
-				if (Signals.gjs_ids == null) {
-					Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
 				}
 				if (!Signals.gjs_ids.has_key(lid)) {
 					Signals.gjs_ids.set(lid, new Gee.HashMap<int, int>());
@@ -285,15 +314,48 @@ namespace Shell
 			table.unset(signal_name);
 		}
 
+		/**
+		 * Deliver one-way notifications queued during {@link emit}.
+		 *
+		 * Runs only when no {@link emit} is still open. Each
+		 * delivery may queue more, and those are delivered
+		 * before this returns.
+		 */
+		private static void drain_notifs()
+		{
+			if (Signals.emit_depth != 0 || Signals.held_notifs == null) {
+				return;
+			}
+			while (Signals.held_notifs.size > 0) {
+				var held = Signals.held_notifs.get(0);
+				Signals.held_notifs.remove_at(0);
+				if (Signals.subs == null
+						|| !Signals.subs.has_key(held.id)
+						|| !Signals.subs.get(held.id).has_key(held.method)) {
+					continue;
+				}
+				if (!Gsr.Client.Rpc.client.proxies.has_key(held.id)) {
+					continue;
+				}
+				Signals.emit(
+					Gsr.Client.Rpc.client.proxies.get(held.id),
+					held.method,
+					held.args);
+			}
+		}
+
 		private static bool emit(
 			GLib.Object obj,
 			string signal_name,
 			Gee.ArrayList<GLib.Value?> args
 		) {
+			Signals.emit_depth++;
 			uint signal_id = 0;
 			GLib.Quark detail = 0;
 			if (!GLib.Signal.parse_name(signal_name, obj.get_type(), out signal_id, out detail, false)
 					|| signal_id == 0) {
+				Signals.emit_depth--;
+				Signals.drain_notifs();
 				return false;
 			}
 			GLib.SignalQuery query;
@@ -380,7 +442,10 @@ namespace Shell
 				closure.sink();
 			}
 			OLLMrpc.Bin.TypeOverride.release_params(query.param_types);
-			return query.return_type == GLib.Type.BOOLEAN && ret.get_boolean();
+			var result = query.return_type == GLib.Type.BOOLEAN && ret.get_boolean();
+			Signals.emit_depth--;
+			Signals.drain_notifs();
+			return result;
 		}
 	}
 }

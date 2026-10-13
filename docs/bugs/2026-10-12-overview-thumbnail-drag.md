@@ -44,7 +44,7 @@ method=Meta-Window.activate
 
 `Meta-Workspace.index` has replied before `before-update`; the important point is that the first `clicked` handler has not returned. It continues through the activation RPC path until `Meta-Window.activate`, while incoming notifications are dispatched during those synchronous calls.
 
-✔️ `tests/call-sync-repro/signal-reentrancy-gate.vala` reproduces the ordering with pure Vala and two pipes. `current` fails because `before-update` starts the drag inside `clicked`. The `later-depth`, `signal-queue`, `transport-queue`, and `server-delay` policy modes all preserve click run-to-completion while still replying to a nested blocking callback. `later-reentry` preserves the original `redraw_depth` behavior: a nested frame requests one follow-up pass without recursively invoking the active later. The `signal-reentrancy` Meson suite also passes the existing related real-RPC gates: 12 passes, one expected baseline failure, no failures, and no timeouts. These are policy and RPC-regression results, not product fixes.
+✔️ `tests/call-sync-repro/signal-reentrancy-gate.vala` reproduces the ordering with pure Vala and two pipes. `current` fails because `before-update` starts the drag inside `clicked`. The `later-depth`, `signal-queue`, `transport-queue`, and `server-delay` policy modes all preserve click run-to-completion while still replying to a nested blocking callback. `later-reentry` preserves the original `redraw_depth` behavior: a nested frame requests one follow-up pass without recursively invoking the active later. The `signal-reentrancy` Meson suite also passes the existing related real-RPC gates: 15 passes, three expected baseline failures (`current`, `stack-eager`, `stack-defer`), no failures, and no timeouts. `stack-bool`, `stack-void`, and `stack` pass the distributed call stack: nested RPC completes inside the open remote signal, the causal signal runs at depth 2, and the unrelated signal waits until that frame closes. Boolean and void replies differ only by completion byte. These are policy and RPC-regression results, not product fixes.
 
 ## Steps
 
@@ -354,3 +354,9 @@ Added `tests/call-sync-repro/signal-reentrancy-gate.vala`. It uses two pipes and
 The `later-reentry` mode covers the issue that originally required the `Meta.Laters.redraw_depth` guard: a later callback makes a synchronous request, receives nested `before-update`, and must finish without recursively invoking itself. It passes with one callback invocation at depth one and one deferred follow-up pass. The new signal-ordering design must retain that guard; signal-emission depth and later-dispatch depth protect different call stacks.
 
 The `signal-reentrancy` Meson suite adds the existing `after-reply`, `buffer-invoke`, `reentrant-emit-call`, `outer-emit-reply`, `notif-nested-call`, `same-hook-reentrant-emit`, and `nested-relay-storm` gates. It reports 12 passes, one expected failure for `current`, no failures, and no timeouts. A product candidate must pass this suite and the Weston smoke.
+
+### 2026-10-13 11:43 distributed call stack gate
+
+Extended `tests/call-sync-repro/signal-reentrancy-gate.vala` with one remote signal frame. `stack-bool` and `stack-void` print `PASS ... nested rpc completed, causal signal nested, unrelated waited`. `stack` prints `PASS stack: boolean and void differ only in reply payload`. `stack-eager` prints `FAIL stack-eager: unrelated signal overtook the open remote frame`. `stack-defer` prints `FAIL stack-defer: causal signal waited until the outer frame closed`.
+
+`meson test -C build --suite signal-reentrancy --print-errorlogs` reports 15 passes, three expected failures, no failures, and no timeouts. No product code changed.

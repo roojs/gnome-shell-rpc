@@ -12,6 +12,7 @@ User-facing docs (no plan numbers):
 | [`clutter-layout-allocate.md`](clutter-layout-allocate.md) | Stock Clutter/GJS allocate program — chrome chases follow this |
 | [`signals-client.md`](signals-client.md) | Client proxy signals, class closures, and subscription dispatch |
 | [`signals-server.md`](signals-server.md) | Server leases, subscriptions, and vfunc hooks |
+| [`signal-reentrancy.md`](signal-reentrancy.md) | Prove a signal-ordering change in the stand-alone test before editing `src/` |
 | [`gjs-overridden-properties.md`](gjs-overridden-properties.md) | GJS property overrides: server get/set calls the JavaScript accessor |
 | [`coding-standards.md`](coding-standards.md) | Vala style |
 | [`coding-standards-router.md`](coding-standards-router.md) | Which standards apply to a change |

@@ -17,7 +17,7 @@ Mutter server process
 
 The proxy and server objects are different GObjects in different processes.
 
-For the other half of the boundary, see [Server-side signals](signals-server.md). For a property whose accessor is JavaScript, see [GJS-overridden properties](gjs-overridden-properties.md).
+For the other half of the boundary, see [Server-side signals](signals-server.md). For a property whose accessor is JavaScript, see [GJS-overridden properties](gjs-overridden-properties.md). For proving that one signal does not run in the middle of another, see [Signal reentrancy](signal-reentrancy.md).
 
 ## Terminology
 

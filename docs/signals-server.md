@@ -2,7 +2,7 @@
 
 This document describes signals in the Mutter server process. The server owns the real Meta, Clutter, and St GObjects.
 
-For proxy declarations and GJS dispatch, see [Client-side signals](signals-client.md). For a property whose accessor is JavaScript, see [GJS-overridden properties](gjs-overridden-properties.md).
+For proxy declarations and GJS dispatch, see [Client-side signals](signals-client.md). For a property whose accessor is JavaScript, see [GJS-overridden properties](gjs-overridden-properties.md). For proving that one signal does not run in the middle of another, see [Signal reentrancy](signal-reentrancy.md).
 
 ## Server state
 

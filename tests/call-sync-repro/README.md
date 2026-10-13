@@ -46,17 +46,64 @@ ordering policy from `docs/plans/1.4-signal-reentrancy.md`.
 meson compile -C build tests/call-sync-repro/signal-reentrancy-gate
 GATE=./build/tests/call-sync-repro/signal-reentrancy-gate
 
-timeout 3 $GATE current          # FAIL — before-update starts drag inside clicked
-timeout 3 $GATE later-depth      # PASS — nested later is rescheduled
-timeout 3 $GATE later-reentry    # PASS — active later is not recursively invoked
-timeout 3 $GATE signal-queue     # PASS — Signals queues non-blocking notification
-timeout 3 $GATE transport-queue  # PASS — transport queues non-blocking notification
-timeout 3 $GATE server-delay     # PASS — server sends frame notification after response
+timeout 3 $GATE current          # existing failure — before-update starts drag inside clicked
+timeout 3 $GATE later-depth      # desired pass — nested later is rescheduled
+timeout 3 $GATE later-reentry    # desired pass — active later is not recursively invoked
+timeout 3 $GATE signal-queue     # desired pass — Signals queues non-blocking notification
+timeout 3 $GATE transport-queue  # desired pass — transport queues non-blocking notification
+timeout 3 $GATE server-delay     # desired pass — server sends frame notification after response
+timeout 3 $GATE stack-bool       # desired pass — causal nested, unrelated waits
+timeout 3 $GATE stack-void       # desired pass — same schedule, void completion byte
+timeout 3 $GATE stack            # desired pass — bool and void differ only in reply
+timeout 3 $GATE stack-eager      # desired failure — unrelated overtakes the open frame
+timeout 3 $GATE stack-defer      # desired failure — causal signal waits for the frame
+timeout 3 $GATE server-bool      # desired pass — server sends the caused signal and holds the frame
+timeout 3 $GATE server-void      # desired pass — same decision, void completion byte
+timeout 3 $GATE server           # desired pass — bool and void use the same server decision
+timeout 3 $GATE proposal-after   # desired pass — frame after the nested call is held
+timeout 3 $GATE proposal-during  # desired failure — frame inside the call is sent at once
+timeout 3 $GATE proposal-noreply # desired failure — server waits for a reply that never comes
+timeout 3 $GATE emit-queue       # desired pass — frame waits until the click handler returns
+timeout 3 $GATE call-hold        # desired failure — frame runs after the call, still inside the click
+timeout 3 $GATE later-skip       # desired failure — frame signal still runs inside the open click
 ```
 
-Every mode services the blocking callback before the server writes the
+Every phase-1 mode services the blocking callback before the server writes the
 synchronous response. A passing deferral mode therefore preserves required
 nested callback progress; it does not pass by deferring all notifications.
+
+`stack-bool` and `stack-void` are the distributed call stack. The server opens
+one remote signal (`O`). The client handler sends a nested request (`R`). The
+server emits the signal caused by that request (`A`) and waits for handler
+completion before the nested response (`S`). An unrelated source (`U`) is sent
+only after the outer completion. `D` ends the exchange. Boolean completion is
+`Y`; void completion is `K`. `stack` runs both and requires the same schedule.
+`stack-eager` delivers `U` during the open frame. `stack-defer` holds `A` until
+the frame closes. Those two are desired failures: they name the two signal
+classes by showing each wrong classification.
+
+`server-bool` and `server-void` are the server making that choice. A frame that
+becomes ready while a signal is open is held. A signal emitted by the nested
+call is sent at once. A frame that becomes ready with no signal open is sent
+at once. `server` runs both completion kinds and requires the same choice.
+
+`proposal-after`, `proposal-during`, and `proposal-noreply` copy the rule in
+the Phase 5 blocks, not the product server. A one-way signal is held only
+while a wait is open and the server is not inside the shell's call.
+Otherwise it is sent and the server waits for a reply. `proposal-after`
+holds a frame that becomes ready after the nested call returns.
+`proposal-during` sends a frame that becomes ready inside that call.
+`proposal-noreply` is the client reading the signal and never replying;
+the wait is cut off at 200ms so the suite cannot hang.
+
+`emit-queue`, `call-hold`, and `later-skip` are the three client ideas. The
+server in each one does not hold the frame: it sends the caused signal and
+waits, sends a frame during the call, replies to the call, then sends another
+frame while the click is still open. `emit-queue` passed. It holds both frames
+until the click handler has returned. `call-hold` did not: it releases the
+frame when the nested call returns, and the click is still going. `later-skip`
+did not: the drag callback waits, but the frame signal still runs during the
+click. Those two are meant to keep failing.
 
 The Meson `signal-reentrancy` suite combines those policy modes with the real
 RPC regressions that a product implementation must preserve:
@@ -73,10 +120,11 @@ RPC regressions that a product implementation must preserve:
 meson test -C build --suite signal-reentrancy --print-errorlogs
 ```
 
-The `current` pipe mode is registered as an expected failure. The suite passes
-only when that failure remains reproducible, the original later-reentry guard
-still works, every candidate policy passes, and all real RPC flow regressions
-pass.
+`current` is an existing failure. `stack-eager`, `stack-defer`,
+`proposal-during`, `proposal-noreply`, `call-hold`, and `later-skip` are
+desired failures. The suite is in good shape only when those seven still
+fail, the desired passes still succeed, and the older RPC tests remain
+existing passes.
 
 ## reentrant-emit-call-gate (real libocrpc, two processes)
 

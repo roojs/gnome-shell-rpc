@@ -208,11 +208,37 @@ foreach mode : [
   'signal-queue',
   'transport-queue',
   'server-delay',
+  'stack-bool',
+  'stack-void',
+  'stack',
+  'server-bool',
+  'server-void',
+  'server',
+  'proposal-after',
+  'emit-queue',
 ]
   test(
     'signal-reentrancy-' + mode,
     signal_reentrancy_gate,
     args: [mode],
+    suite: 'signal-reentrancy',
+    timeout: 5,
+  )
+endforeach
+
+foreach mode : [
+  'stack-eager',
+  'stack-defer',
+  'proposal-during',
+  'proposal-noreply',
+  'call-hold',
+  'later-skip',
+]
+  test(
+    'signal-reentrancy-' + mode,
+    signal_reentrancy_gate,
+    args: [mode],
+    should_fail: true,
     suite: 'signal-reentrancy',
     timeout: 5,
   )
