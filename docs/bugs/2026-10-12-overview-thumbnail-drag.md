@@ -12,7 +12,7 @@ This is not a failure to activate the selected window. The failure is that the l
 
 ## Evidence
 
-✔️ `overview-window-activate-smoke` reproduced the failure on Weston at 09:15:05 on 2026-10-13:
+✔️ `overview-window-activate-smoke` reproduced the failure on Weston:
 
 ```text
 overview-window-activate-smoke: previews=1 ... matched=true
@@ -25,40 +25,223 @@ overview-window-activate-smoke: after selected=true overview=false
 overview-window-activate-smoke: miss Error: miss drag-on-click
 ```
 
-The proof stopped as `smoke-fail` after 14 seconds. The complete RPC trace is in `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`, around lines 40329661–40329730.
+The proof stopped as `smoke-fail`. The complete RPC trace is in `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`, around lines 40329661–40329730.
 
 ✔️ The relevant wire order is:
 
 ```text
-09:15:05.729344 notification method=long-press
-09:15:05.729400 id=19820 method=Gsr-Clutter.get_current_event
-09:15:05.731106 id=19824 method=Clutter-Stage.schedule_update
-09:15:05.732155 notification method=clicked
-09:15:05.732228 id=19827 method=Meta-Workspace.index
-09:15:05.732771 replied id=19827
-09:15:05.733331 notification method=before-update
-09:15:05.733367 id=19830 method=Clutter-ClickAction.release
+notification method=long-press
+method=Gsr-Clutter.get_current_event
+method=Clutter-Stage.schedule_update
+notification method=clicked
+method=Meta-Workspace.index
+reply method=Meta-Workspace.index
+notification method=before-update
+method=Clutter-ClickAction.release
 ...
-09:15:06.062354 id=20464 method=Meta-Window.activate
+method=Meta-Window.activate
 ```
 
 `Meta-Workspace.index` has replied before `before-update`; the important point is that the first `clicked` handler has not returned. It continues through the activation RPC path until `Meta-Window.activate`, while incoming notifications are dispatched during those synchronous calls.
 
-## Call trace
+✔️ `tests/call-sync-repro/signal-reentrancy-gate.vala` reproduces the ordering with pure Vala and two pipes. `current` fails because `before-update` starts the drag inside `clicked`. The `later-depth`, `signal-queue`, `transport-queue`, and `server-delay` policy modes all preserve click run-to-completion while still replying to a nested blocking callback. `later-reentry` preserves the original `redraw_depth` behavior: a nested frame requests one follow-up pass without recursively invoking the active later. The `signal-reentrancy` Meson suite also passes the existing related real-RPC gates: 12 passes, one expected baseline failure, no failures, and no timeouts. These are policy and RPC-regression results, not product fixes.
 
-1. `WindowPreview` constructs one `Clutter.ClickAction`. It first connects its own `clicked` handler to `_activate()`, then passes the action to `DND._Draggable.addClickAction()`. The DND `clicked` handler that sets `_actionClicked = true` is therefore second in signal order (`windowPreview.js:116–124`, `dnd.js:144–146`).
+## Steps
 
-2. For an ordinary click, Clutter cancels the possible long press before emitting `clicked`. The DND `long-press` handler receives `CANCEL`, calls `Clutter.get_current_event()`, and queues a `Meta.LaterType.BEFORE_REDRAW` callback. `Meta.Laters.add()` subscribes to `before-update` and calls `Clutter.Stage.schedule_update()` (`dnd.js:146–174`).
+### 1. Connect the activation handler before the DND click marker
 
-3. The server emits `clicked`. Client `Signals.emit()` starts the handlers in connection order. The first handler is `WindowPreview._activate()`, which emits `selected` with `global.get_current_time()` (`windowPreview.js:554–556`).
+**Client** `vendor/gnome-shell/js/ui/windowPreview.js`
 
-4. `Workspace._onCloneSelected()` receives `selected`, calls `Meta.Workspace.index()`, and calls `Main.activateWindow()` (`workspace.js:1397–1404`). `Main.activateWindow()` calls `Meta.Window.activate()`, then `overview.hide()` and `panel.closeCalendar()` (`main.js:848–865`). These proxy operations are synchronous RPC calls.
+```js
+let clickAction = new Clutter.ClickAction();
+clickAction.connect('clicked', () => this._activate());
+this._draggable.addClickAction(clickAction);
+```
 
-5. Before that first `clicked` handler returns, the client receives `before-update` while processing the nested RPC traffic. The `Meta.Laters.run_before_redraw()` callback immediately drains the queued BEFORE_REDRAW later.
+**Client** `vendor/gnome-shell/js/ui/dnd.js`
 
-6. Stock DND expects all `clicked` handlers to have run before the later. They have not: the second `clicked` handler has not yet set `_actionClicked`. The callback therefore takes the non-click branch, calls `Clutter.ClickAction.release()`, obtains the coordinates, and calls `startDrag()` (`dnd.js:159–170`).
+```js
+addClickAction(action) {
+    action.connect('clicked', () => (this._actionClicked = true));
+```
 
-7. The activation path still finishes, so the correct window is focused and the overview hides. The DND callback has nevertheless left the preview in drag state and changed its opacity to `100`.
+On a normal desktop the first `clicked` handler activates the window, then the second sets `_actionClicked`. The signal completes before any BEFORE_REDRAW callback runs.
+
+Here the handlers are connected in the same order. This step works as expected.
+
+### 2. Cancel the long press and queue the BEFORE_REDRAW callback
+
+**Client** `vendor/gnome-shell/js/ui/dnd.js`
+
+```js
+const event = Clutter.get_current_event();
+const laters = global.compositor.get_laters();
+this._longPressLater = laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
+    if (this._actionClicked)
+        return GLib.SOURCE_REMOVE;
+    action.release();
+    this.startDrag(...action.get_coords(), event.get_time(),
+        this._dragTouchSequence, event.get_device());
+});
+```
+
+`Clutter.get_current_event()` is an RPC override.
+
+**Client** `src/client/libmutter-clutter-rpc-16/overrides/Clutter.override.vala`
+
+```vala
+var response = Gsr.Client.Rpc.call_value(
+    "Gsr-Clutter.get_current_event");
+current_event_cache = event_from_values(response.args);
+```
+
+**RPC** `Gsr-Clutter.get_current_event`
+
+**Server** `src/server/libmutter-clutter-16/Clutter.vala`
+
+```vala
+unowned var ev = global::Clutter.get_current_event();
+this.reply_event(request, ev);
+```
+
+- ✔️ `long-press(CANCEL)` notification
+- ✔️ `Gsr-Clutter.get_current_event` → event reply
+- ✔️ `Meta-Compositor.get_laters` → laters-object reply
+- ✔️ `Meta-Display.get_compositor` → compositor-object reply
+- ✔️ `Meta-Compositor.get_stage` → stage-object reply
+- ✔️ `Clutter-Stage.schedule_update` → empty reply
+- ✔️ `RPC-Live-Callback.reply` → empty reply
+
+On a normal desktop these calls queue the callback for the next BEFORE_REDRAW. They do not run it during the current input signal.
+
+Here the same calls and responses complete. This step works as expected.
+
+### 3. Enter the first clicked handler and select the window
+
+**Client** `vendor/gnome-shell/js/ui/windowPreview.js`
+
+```js
+_activate() {
+    this.emit('selected', global.get_current_time());
+}
+```
+
+**Client** `vendor/gnome-shell/js/ui/workspace.js`
+
+```js
+_onCloneSelected(clone, time) {
+    const wsIndex = this.metaWorkspace?.index();
+    Main.activateWindow(clone.metaWindow, time, wsIndex);
+}
+```
+
+**Client** `vendor/gnome-shell/js/ui/main.js`
+
+```js
+let activeWorkspaceNum = workspaceManager.get_active_workspace_index();
+window.activate(time);
+overview.hide();
+panel.closeCalendar();
+```
+
+- ✔️ `clicked` notification
+- ✔️ First handler calls `WindowPreview._activate`
+- ✔️ Local `selected` signal calls `Workspace._onCloneSelected`
+- ✔️ `Meta-Workspace.index` → workspace-index reply
+- ✔️ `Meta-WorkspaceManager.get_active_workspace_index` → active-index reply
+- ✔️ `Meta-Window.activate` → empty reply
+
+On a normal desktop `Main.activateWindow` returns, then signal delivery proceeds to the second `clicked` handler and sets `_actionClicked`.
+
+Here `Signals.emit()` is still inside `WindowPreview._activate`. The second handler has not run, so `_actionClicked` is still unset.
+
+### 4. Deliver `before-update` inside the first clicked handler
+
+This is the first point where the RPC path differs from the expected path.
+
+**Client** `src/client/libshell-16/Signals.vala`
+
+```vala
+if (notif.reply_id == 0) {
+    Signals.emit(target, notif.method, notif.args);
+} else {
+    Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+        OLLMrpc.args("tb", (uint64) notif.reply_id,
+            Signals.emit(target, notif.method, notif.args)));
+}
+```
+
+An RPC call made from the outer `Signals.emit(..., "clicked", ...)` can receive another notification. The client immediately calls `Signals.emit()` again for that notification.
+
+**Client** `src/client/libmutter-rpc-16/overrides/Laters.override.vala`
+
+```vala
+stage.signal_before_update.connect((view, frame) => {
+    this.run_before_redraw();
+});
+```
+
+```vala
+private void run_before_redraw()
+{
+    if (this.redraw_depth > 0) {
+        this.redraw_pending = true;
+        return;
+    }
+    this.redraw_depth++;
+    this.dispatch_before_redraw();
+```
+
+On a normal desktop `Clutter.Stage::before-update` cannot interrupt `Clutter.ClickAction::clicked`. The second click handler sets `_actionClicked` before `dispatch_before_redraw()` invokes the DND callback. The callback takes the `_actionClicked` branch and does not drag.
+
+Here:
+
+- 🚫 Outer client signal: `Signals.emit(clickAction, "clicked", ...)`
+  - First handler: `WindowPreview._activate()`
+    - Synchronous activation RPC is in progress
+      - Nested `before-update` notification arrives
+        - Nested client signal: `Signals.emit(stage, "before-update", ...)`
+          - `run_before_redraw()`
+            - `dispatch_before_redraw()`
+              - DND callback reads `_actionClicked`
+
+`redraw_depth` is zero because no later is currently being dispatched. It does not describe the outer `clicked` signal, so `run_before_redraw()` dispatches immediately. `_actionClicked` is still unset.
+
+### 5. Take the drag branch before the click marker is set
+
+**Client** `vendor/gnome-shell/js/ui/dnd.js`
+
+```js
+if (this._actionClicked) {
+    delete this._actionClicked;
+    return GLib.SOURCE_REMOVE;
+}
+action.release();
+this.startDrag(
+    ...action.get_coords(),
+    event.get_time(),
+    this._dragTouchSequence,
+    event.get_device());
+```
+
+On a normal desktop `_actionClicked` is true. The callback removes the marker and returns.
+
+Here `_actionClicked` is unset:
+
+- 🚫 `Clutter-ClickAction.release` → empty reply
+- 🚫 `Clutter-ClickAction.get_coords` → coordinate reply
+- 🚫 `DND._Draggable.startDrag(...)`
+- 🚫 `Clutter-Actor.set_opacity` sets the drag actor to `DRAGGING_WINDOW_OPACITY`
+
+The nested `before-update` then returns. The outer `clicked` handler continues, activates the correct gedit window, and hides the overview. The second `clicked` handler eventually sets `_actionClicked`, but the callback has already started the drag.
+
+The final state is therefore:
+
+- ✔️ `selected=true`
+- ✔️ `overview=false`
+- ✔️ focus is `"Untitled Document 1 - gedit"`
+- 🚫 `inDrag=true`
+- 🚫 preview opacity is `100`
 
 ## Root cause
 
@@ -67,6 +250,8 @@ The proof stopped as `smoke-fail` after 14 seconds. The complete RPC trace is in
 🔷 The RPC client breaks that ordering. A blocking `clicked` notification is dispatched synchronously by `src/client/libshell-16/Signals.vala`, but RPC calls made by its first JavaScript handler can deliver another signal notification. Here that notification is `before-update`. `src/client/libmutter-rpc-16/overrides/Laters.override.vala` immediately drains BEFORE_REDRAW callbacks when it receives `before-update`, even though the outer `clicked` emission is still active. The later overtakes the remaining `clicked` handler.
 
 ✔️ `clicked` and `long-press` are already blocking subscriptions in `src/server/libmutter-clutter-16/ClutterActor.vala`. Making `clicked` blocking is therefore not a fix. Blocking keeps the server waiting for the callback reply; it does not prevent the client from dispatching `before-update` during a nested RPC call.
+
+ℹ️ Stock GNOME Shell has synchronous GObject signals; it has no blocking-versus-non-blocking notification model. `Subscription.blocking`, `Notification.reply_id`, and the hand list of boolean-return event names are this project's wire policy. Signals outside that list, including `before-update`, are currently relayed one-way. The design decision is whether to retain that name list, derive policy from the signal return type, or serialize relays on the server; it is not a stock Shell distinction.
 
 ✔️ `Connection.emit_wait_poll()` drains requests while waiting for a blocking callback but does not run `MainContext.iteration()`. The evidence does not support server main-loop pumping as the immediate cause.
 
@@ -132,7 +317,7 @@ Hand report: clicking the terminal thumbnail in the overview, with terminal, fil
 
 First click missed the thumbnail: `pointer_click` used button times 1µs and 2µs. Motion at time 0 is `CLUTTER_CURRENT_TIME` and is restamped to now, so the pointer entered the preview and the press never landed. Press and release now also use 0.
 
-Second run, `overview-window-activate-smoke: miss Error: miss overview-stayed`. Log line: `after selected=true overview=true focus="Untitled Document 1 - gedit" inDrag=true actor opacity=255 scale=1,1 800x568 unmapped visible preview opacity=100`. Client log: `long-press`, `Gsr-Clutter.get_current_event` id=15951, then `clicked`, then `Clutter-ClickAction.release` while `Meta-Workspace.index` was still in flight. `clicked` is connected to `_activate` before `addClickAction` sets `_actionClicked`. The before-redraw later ran in that gap and called `startDrag`. A depth counter on `Shell.Signals.emit` plus a deferral in `Meta.Laters` was compiled and then removed. It is not the change to land without a decision.
+Second run, `overview-window-activate-smoke: miss Error: miss overview-stayed`. Log line: `after selected=true overview=true focus="Untitled Document 1 - gedit" inDrag=true actor opacity=255 scale=1,1 800x568 unmapped visible preview opacity=100`. Client log: `long-press`, `Gsr-Clutter.get_current_event`, then `clicked`, then `Clutter-ClickAction.release` while `Meta.Workspace.index` was still in flight. `clicked` is connected to `_activate` before `addClickAction` sets `_actionClicked`. The before-redraw later ran in that gap and called `startDrag`. A depth counter on `Shell.Signals.emit` plus a deferral in `Meta.Laters` was compiled and then removed. It is not the change to land without a decision.
 
 ### 2026-10-12 15:20 deferred-later build hung
 
@@ -159,3 +344,13 @@ With that race isolated, `overview-window-activate-smoke` completed the click an
 The existing blocking `clicked` subscription is insufficient by itself. `Shell.Signals.emit` is still active when a nested RPC reply delivers `before-update`; `Meta.Laters.run_before_redraw` immediately dispatches the long-press CANCEL later. A normal `before-update` is itself one signal emission deep, which may explain why the earlier unconditional signal-depth deferral never completed.
 
 A signal-depth candidate was briefly added to `src/` before it had passed the reproduction. Its first build also exposed an invalid `libmutter-rpc` → `libshell` dependency. The unproved product edits were reverted; only the passing reproduction harness remains.
+
+### Off-code signal-ordering gate
+
+Added `tests/call-sync-repro/signal-reentrancy-gate.vala`. It uses two pipes and pure Vala: the client enters `clicked` and makes a synchronous request; the server sends a blocking callback, waits for its reply, sends `before-update`, then sends the response.
+
+`current` fails with `before-update started drag inside clicked`. `later-depth`, `signal-queue`, `transport-queue`, and `server-delay` pass with `clicked completed before before-update`. Every mode services the nested blocking callback before the server response, so the passing modes do not hide a deadlock by deferring all notifications.
+
+The `later-reentry` mode covers the issue that originally required the `Meta.Laters.redraw_depth` guard: a later callback makes a synchronous request, receives nested `before-update`, and must finish without recursively invoking itself. It passes with one callback invocation at depth one and one deferred follow-up pass. The new signal-ordering design must retain that guard; signal-emission depth and later-dispatch depth protect different call stacks.
+
+The `signal-reentrancy` Meson suite adds the existing `after-reply`, `buffer-invoke`, `reentrant-emit-call`, `outer-emit-reply`, `notif-nested-call`, `same-hook-reentrant-emit`, and `nested-relay-storm` gates. It reports 12 passes, one expected failure for `current`, no failures, and no timeouts. A product candidate must pass this suite and the Weston smoke.

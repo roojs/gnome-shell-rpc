@@ -33,6 +33,51 @@ timeout 5 $GATE_SUB_BOX    # named-signal boxed (not Bytes) — PASS 2026-09-19
 `stack` matches live after OPC send fix: reply is recv’d at depth=1, not
 dispatched, emit times out, parent never responds.
 
+## signal-reentrancy-gate (pure Vala, two pipes)
+
+Shape: the client is inside its first `clicked` handler and makes a synchronous
+request. The server sends a blocking callback, waits for its in-flow reply,
+sends non-blocking `before-update`, then sends the synchronous response.
+
+No GJS, Clutter, libocrpc, or product source is linked. Each mode implements one
+ordering policy from `docs/plans/1.4-signal-reentrancy.md`.
+
+```bash
+meson compile -C build tests/call-sync-repro/signal-reentrancy-gate
+GATE=./build/tests/call-sync-repro/signal-reentrancy-gate
+
+timeout 3 $GATE current          # FAIL — before-update starts drag inside clicked
+timeout 3 $GATE later-depth      # PASS — nested later is rescheduled
+timeout 3 $GATE later-reentry    # PASS — active later is not recursively invoked
+timeout 3 $GATE signal-queue     # PASS — Signals queues non-blocking notification
+timeout 3 $GATE transport-queue  # PASS — transport queues non-blocking notification
+timeout 3 $GATE server-delay     # PASS — server sends frame notification after response
+```
+
+Every mode services the blocking callback before the server writes the
+synchronous response. A passing deferral mode therefore preserves required
+nested callback progress; it does not pass by deferring all notifications.
+
+The Meson `signal-reentrancy` suite combines those policy modes with the real
+RPC regressions that a product implementation must preserve:
+
+- `after-reply-gate`
+- `buffer-invoke-gate`
+- `reentrant-emit-call-gate`
+- `outer-emit-reply-gate`
+- `notif-nested-call-gate`
+- `same-hook-reentrant-emit-gate`
+- `nested-relay-storm-gate`
+
+```bash
+meson test -C build --suite signal-reentrancy --print-errorlogs
+```
+
+The `current` pipe mode is registered as an expected failure. The suite passes
+only when that failure remains reproducible, the original later-reentry guard
+still works, every candidate policy passes, and all real RPC flow regressions
+pass.
+
 ## reentrant-emit-call-gate (real libocrpc, two processes)
 
 Shape: server `Gate.provoke` → `hook.emit` (server blocked in emit); client

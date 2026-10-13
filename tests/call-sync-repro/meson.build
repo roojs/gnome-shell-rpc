@@ -4,8 +4,17 @@ executable('call-sync-repro',
   install: false,
 )
 
+# Two pipes model clicked -> sync request -> blocking callback +
+# before-update -> response. Modes exercise the signal-ordering options.
+signal_reentrancy_gate = executable('signal-reentrancy-gate',
+  'signal-reentrancy-gate.vala',
+  dependencies: [dependency('gio-unix-2.0')],
+  vala_args: ['--pkg=posix'],
+  install: false,
+)
+
 # Real libocrpc gate: post-call_poll Live.Invoke + idle MainContext only.
-executable('after-reply-gate',
+after_reply_gate = executable('after-reply-gate',
   [
     'after-reply-gate.vala',
     meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
@@ -23,7 +32,7 @@ executable('after-reply-gate',
 
 # Nested sync call_poll from inside a Live.Invoke while server in hook.emit
 # — the "hang after settle" re-entrancy reduced to two libocrpc processes.
-executable('reentrant-emit-call-gate',
+reentrant_emit_call_gate = executable('reentrant-emit-call-gate',
   [
     'reentrant-emit-call-gate.vala',
     meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
@@ -39,8 +48,26 @@ executable('reentrant-emit-call-gate',
   install: false,
 )
 
+# A server emit inside an outer call_poll requires a depth-two callback reply.
+outer_emit_reply_gate = executable('outer-emit-reply-gate',
+  [
+    'outer-emit-reply-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Response then Invoke in one client read — bin buffer vs IOChannel IN.
-executable('buffer-invoke-gate',
+buffer_invoke_gate = executable('buffer-invoke-gate',
   [
     'buffer-invoke-gate.vala',
     meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
@@ -113,7 +140,7 @@ executable('coalesced-nested-request-gate',
 
 # Nested call_poll from a Notification handler during outer call_poll
 # (app-search 08:28 set_width / before-update / get_children).
-executable('notif-nested-call-gate',
+notif_nested_call_gate = executable('notif-nested-call-gate',
   [
     'notif-nested-call-gate.vala',
     meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
@@ -131,7 +158,7 @@ executable('notif-nested-call-gate',
 
 # Live shape at volume: deep nesting + re-entrant emits + sync calls in invoke
 # handlers + notifications mid-dispatch. Looks for a wedge the one-shot gates miss.
-executable('nested-relay-storm-gate',
+nested_relay_storm_gate = executable('nested-relay-storm-gate',
   [
     'nested-relay-storm-gate.vala',
     meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
@@ -149,7 +176,7 @@ executable('nested-relay-storm-gate',
 )
 
 # Nested Hook.emit on ONE callback id — inner reply must not release the outer.
-executable('same-hook-reentrant-emit-gate',
+same_hook_reentrant_emit_gate = executable('same-hook-reentrant-emit-gate',
   [
     'same-hook-reentrant-emit-gate.vala',
     meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
@@ -164,6 +191,80 @@ executable('same-hook-reentrant-emit-gate',
   link_args: ['-rdynamic'],
   build_rpath: ocrpc_rpath,
   install: false,
+)
+
+test(
+  'signal-reentrancy-current',
+  signal_reentrancy_gate,
+  args: ['current'],
+  should_fail: true,
+  suite: 'signal-reentrancy',
+  timeout: 5,
+)
+
+foreach mode : [
+  'later-depth',
+  'later-reentry',
+  'signal-queue',
+  'transport-queue',
+  'server-delay',
+]
+  test(
+    'signal-reentrancy-' + mode,
+    signal_reentrancy_gate,
+    args: [mode],
+    suite: 'signal-reentrancy',
+    timeout: 5,
+  )
+endforeach
+
+test(
+  'signal-reentrancy-after-reply',
+  after_reply_gate,
+  suite: 'signal-reentrancy',
+  timeout: 10,
+)
+
+test(
+  'signal-reentrancy-buffer-invoke',
+  buffer_invoke_gate,
+  suite: 'signal-reentrancy',
+  timeout: 10,
+)
+
+test(
+  'signal-reentrancy-reentrant-emit-call',
+  reentrant_emit_call_gate,
+  suite: 'signal-reentrancy',
+  timeout: 10,
+)
+
+test(
+  'signal-reentrancy-outer-emit-reply',
+  outer_emit_reply_gate,
+  suite: 'signal-reentrancy',
+  timeout: 10,
+)
+
+test(
+  'signal-reentrancy-notif-nested-call',
+  notif_nested_call_gate,
+  suite: 'signal-reentrancy',
+  timeout: 10,
+)
+
+test(
+  'signal-reentrancy-same-hook-reentrant-emit',
+  same_hook_reentrant_emit_gate,
+  suite: 'signal-reentrancy',
+  timeout: 20,
+)
+
+test(
+  'signal-reentrancy-nested-relay-storm',
+  nested_relay_storm_gate,
+  suite: 'signal-reentrancy',
+  timeout: 30,
 )
 
 # Burst of Notifications ahead of the Invoke — client must drain its bin
