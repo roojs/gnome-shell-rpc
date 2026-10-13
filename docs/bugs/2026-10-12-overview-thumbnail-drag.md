@@ -1,16 +1,78 @@
 # Overview thumbnail drag and click
 
-**Status:** ⏳ open. Clicking an overview window thumbnail starts a drag. The thumbnail stays at drag opacity 100 and the overview stays up. `clicked` is on the blocking list with `long-press`. The Weston abort is the allocate that returned a preferred height of -12, not a reason to drop `clicked`.
+**Status:** ⏳ open. The click failure is reproduced and its call ordering is identified. No product fix is proposed or present in `src/`.
 
-Weston `overview-window-activate-smoke` at 15:13: `selected=true overview=true inDrag=true` and the preview `opacity=100`. Stock `dnd.js` queues a `BEFORE_REDRAW` later from `ClickAction::long-press` CANCEL, then relies on the `clicked` handler to set `_actionClicked` before that later runs. The later ran while `clicked` was still inside `Meta.Workspace.index` (`ClickAction.release` at 15:13:56.957839, after `clicked` at 15:13:56.957136). Drag opacity 100 is `DRAGGING_WINDOW_OPACITY`.
+## Problem
 
-The Ubuntu VM (`alan@192.168.88.197`) did not answer (`No route to host`). The earlier hand drag still has `TypeError: event is null` at `dnd.js:151` when long-press CANCEL cannot read `Clutter.get_current_event()` during press-and-move. That path is not what this click reproduced.
+🔷 Expected: clicking a window preview selects that window, leaves the overview, and does not start a drag.
+
+🔷 Actual: selection succeeds, the overview closes, and the correct window gains focus, but the same click also starts the preview's drag path. The selected window is left looking ghosted because the preview has opacity `100`, the stock `DRAGGING_WINDOW_OPACITY`, and `_draggable._dragInProgress` remains true.
+
+This is not a failure to activate the selected window. The failure is that the long-press cancellation callback runs in the middle of the click signal, before the click handler that suppresses that callback has run.
+
+## Evidence
+
+✔️ `overview-window-activate-smoke` reproduced the failure on Weston at 09:15:05 on 2026-10-13:
+
+```text
+overview-window-activate-smoke: previews=1 ... matched=true
+overview-window-activate-smoke: click 399.28125,273.21484375 ...
+overview-window-activate-smoke: after selected=true overview=false
+  focus="Untitled Document 1 - gedit"
+  inDrag=true
+  actor opacity=255 ...
+  preview opacity=100 scale=0.544...
+overview-window-activate-smoke: miss Error: miss drag-on-click
+```
+
+The proof stopped as `smoke-fail` after 14 seconds. The complete RPC trace is in `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`, around lines 40329661–40329730.
+
+✔️ The relevant wire order is:
+
+```text
+09:15:05.729344 notification method=long-press
+09:15:05.729400 id=19820 method=Gsr-Clutter.get_current_event
+09:15:05.731106 id=19824 method=Clutter-Stage.schedule_update
+09:15:05.732155 notification method=clicked
+09:15:05.732228 id=19827 method=Meta-Workspace.index
+09:15:05.732771 replied id=19827
+09:15:05.733331 notification method=before-update
+09:15:05.733367 id=19830 method=Clutter-ClickAction.release
+...
+09:15:06.062354 id=20464 method=Meta-Window.activate
+```
+
+`Meta-Workspace.index` has replied before `before-update`; the important point is that the first `clicked` handler has not returned. It continues through the activation RPC path until `Meta-Window.activate`, while incoming notifications are dispatched during those synchronous calls.
+
+## Call trace
+
+1. `WindowPreview` constructs one `Clutter.ClickAction`. It first connects its own `clicked` handler to `_activate()`, then passes the action to `DND._Draggable.addClickAction()`. The DND `clicked` handler that sets `_actionClicked = true` is therefore second in signal order (`windowPreview.js:116–124`, `dnd.js:144–146`).
+
+2. For an ordinary click, Clutter cancels the possible long press before emitting `clicked`. The DND `long-press` handler receives `CANCEL`, calls `Clutter.get_current_event()`, and queues a `Meta.LaterType.BEFORE_REDRAW` callback. `Meta.Laters.add()` subscribes to `before-update` and calls `Clutter.Stage.schedule_update()` (`dnd.js:146–174`).
+
+3. The server emits `clicked`. Client `Signals.emit()` starts the handlers in connection order. The first handler is `WindowPreview._activate()`, which emits `selected` with `global.get_current_time()` (`windowPreview.js:554–556`).
+
+4. `Workspace._onCloneSelected()` receives `selected`, calls `Meta.Workspace.index()`, and calls `Main.activateWindow()` (`workspace.js:1397–1404`). `Main.activateWindow()` calls `Meta.Window.activate()`, then `overview.hide()` and `panel.closeCalendar()` (`main.js:848–865`). These proxy operations are synchronous RPC calls.
+
+5. Before that first `clicked` handler returns, the client receives `before-update` while processing the nested RPC traffic. The `Meta.Laters.run_before_redraw()` callback immediately drains the queued BEFORE_REDRAW later.
+
+6. Stock DND expects all `clicked` handlers to have run before the later. They have not: the second `clicked` handler has not yet set `_actionClicked`. The callback therefore takes the non-click branch, calls `Clutter.ClickAction.release()`, obtains the coordinates, and calls `startDrag()` (`dnd.js:159–170`).
+
+7. The activation path still finishes, so the correct window is focused and the overview hides. The DND callback has nevertheless left the preview in drag state and changed its opacity to `100`.
+
+## Root cause
+
+✔️ Stock gnome-shell relies on a same-process ordering guarantee: the `BEFORE_REDRAW` later queued by long-press cancellation cannot run until the current `clicked` signal emission has completed. Its `_actionClicked` guard is correct under that guarantee.
+
+🔷 The RPC client breaks that ordering. A blocking `clicked` notification is dispatched synchronously by `src/client/libshell-16/Signals.vala`, but RPC calls made by its first JavaScript handler can deliver another signal notification. Here that notification is `before-update`. `src/client/libmutter-rpc-16/overrides/Laters.override.vala` immediately drains BEFORE_REDRAW callbacks when it receives `before-update`, even though the outer `clicked` emission is still active. The later overtakes the remaining `clicked` handler.
+
+✔️ `clicked` and `long-press` are already blocking subscriptions in `src/server/libmutter-clutter-16/ClutterActor.vala`. Making `clicked` blocking is therefore not a fix. Blocking keeps the server waiting for the callback reply; it does not prevent the client from dispatching `before-update` during a nested RPC call.
+
+✔️ `Connection.emit_wait_poll()` drains requests while waiting for a blocking callback but does not run `MainContext.iteration()`. The evidence does not support server main-loop pumping as the immediate cause.
 
 ## Reproduction
 
-Hand: open Activities with more than one window. Click a thumbnail to go to that application. The window that appears is slightly ghosted. Press and drag a thumbnail toward another workspace. It does not drop there.
-
-Click gate:
+Automated click proof:
 
 ```bash
 GI_META_SMOKE=overview-window-activate-smoke \
@@ -20,13 +82,27 @@ GI_META_SMOKE=overview-window-activate-smoke \
   ./scripts/agent-nested-smoke-prove.sh
 ```
 
-Drag gate that does not match the hand path (immediate click, current event is set):
+The smoke passes window selection, focus, and overview-close checks, then prints `miss drag-on-click` when `_dragInProgress` is true or the preview opacity is `100`.
+
+Hand: open Activities with more than one window, then click a window preview. The correct window appears but looks slightly ghosted.
+
+## Separate unresolved drag path
+
+The earlier hand test of pressing and moving a preview did not reach the call ordering above. It failed at `dnd.js:151` with:
+
+```text
+TypeError: event is null
+```
+
+In that path, `Clutter.get_current_event()` was null during long-press cancellation, so DND could not read the event sequence used to start a drag. The current-event smoke below uses an immediate click, sees a current event, and passes. It therefore does not reproduce or explain the press-and-move failure:
 
 ```bash
 GI_META_SMOKE=current-event-long-press-smoke \
   GSR_WESTON_PIXMAN=1 GSR_NESTED_TIMEOUT=60 \
   ./scripts/agent-nested-smoke-prove.sh
 ```
+
+The two symptoms share the window-preview input path, but only the click-causes-drag path has been isolated.
 
 ## Debug-code cleanup ledger
 
@@ -73,3 +149,13 @@ User ran Weston. `gsr-client` pid 1124015 SIGILL at 15:24:59. Restarted client 1
 ### 2026-10-12 15:56 `clicked` put back
 
 Unblocking `clicked` was the wrong response. It stays on the list. The abort is the allocate relay returning `min=-12` for an `StWidget` inside a `BoxPointer` while that click was still waiting. That height is the allocation bug.
+
+### 2026-10-13 09:15 clean reproduction and narrower deferral
+
+The rebuilt smoke first aborted on the unrelated Quick Settings `add_child`/`hide` gap because `gsr-smoke` starts `main.js` without the normal shell startup lock. The smoke now loads `panelMenu.js` after the module graph is initialized and hides a menu actor before delegating to stock `setMenu`; this is reproduction-only.
+
+With that race isolated, `overview-window-activate-smoke` completed the click and reported `miss drag-on-click`. The selected-window checks had already passed. The client log then called `Meta.Context.terminate_with_error` with that exact failure.
+
+The existing blocking `clicked` subscription is insufficient by itself. `Shell.Signals.emit` is still active when a nested RPC reply delivers `before-update`; `Meta.Laters.run_before_redraw` immediately dispatches the long-press CANCEL later. A normal `before-update` is itself one signal emission deep, which may explain why the earlier unconditional signal-depth deferral never completed.
+
+A signal-depth candidate was briefly added to `src/` before it had passed the reproduction. Its first build also exposed an invalid `libmutter-rpc` → `libshell` dependency. The unproved product edits were reverted; only the passing reproduction harness remains.

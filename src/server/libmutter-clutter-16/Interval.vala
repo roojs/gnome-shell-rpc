@@ -25,12 +25,12 @@ namespace Gsr.Server.Clutter
 		{
 			var gtype = GLib.Type.from_name(name);
 			if (gtype == GLib.Type.INVALID) {
-				request.connection.reply_error(request,
-					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
 			var peer = (global::Clutter.Interval) GLib.Object.new(
 				typeof(global::Clutter.Interval), "value-type", gtype);
+				
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				args = OLLMrpc.args("t",
@@ -71,10 +71,10 @@ namespace Gsr.Server.Clutter
 		) {
 			var interval = request.connection.leases.get((int) lid)
 				as global::Clutter.Interval;
+				
 			if (interval == null
 				|| box_bytes.length < sizeof(global::Clutter.ActorBox)) {
-				request.connection.reply_error(request,
-					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
 			var box = *((global::Clutter.ActorBox*) box_bytes.get_data());

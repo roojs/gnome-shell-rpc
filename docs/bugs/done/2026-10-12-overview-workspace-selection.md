@@ -54,3 +54,7 @@ Same command with `GSR_NESTED_TIMEOUT=40`. `before=0 after=1 target=1 switch=tru
 ### 2026-10-12 12:52 signed off
 
 User: it works on Weston, and that is enough to close it for now. Moved to `docs/bugs/done/`.
+
+### 2026-10-13 08:31 duplicate reproduction cleanup
+
+Removed the later `tests/gjs-embed/workspace-selection-smoke.js`; it duplicated the completed `workspace-select-smoke.js` gate and was not part of the signed-off fix.

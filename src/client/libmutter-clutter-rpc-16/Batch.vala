@@ -18,7 +18,8 @@ namespace Gsr.Client.Clutter
 					send.add(entry.value);
 				}
 				actor.prop_batch.clear();
-				Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_properties", actor, send);
+				Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_properties",
+					 actor, send);
 			}
 		}
 

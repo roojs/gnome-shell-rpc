@@ -13,7 +13,8 @@ Existing logs to inspect before adding diagnostics:
 
 ## Debug-code cleanup ledger
 
-- No reproduction or product code has been added yet.
+- `tests/gjs-embed/applications-picker-smoke.js` is the clean reproduction. It clicks the real Show Applications button and observes state, display mapping, grid page size, item count, and pickable app icons without priming the grid or forcing state.
+- No product code or `src/` diagnostics have been added.
 
 ## LLM efforts
 

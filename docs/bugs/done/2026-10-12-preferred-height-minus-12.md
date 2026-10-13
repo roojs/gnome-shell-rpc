@@ -1,66 +1,10 @@
 # Preferred height of -12 aborts ClutterBoxLayout
 
-**Status:** ⏳ open. Applied in `StartupFrameLock`. Weston boot 16:31 reached `READY=1`, `notify_ready`, and `startup notice removed`, with no minimum-height abort. Prove line `stop (prepare-started) after 6s` (exit 137 is that SIGKILL). The guest scanout is not checked from here.
+**Status:** ✅ closed 2026-10-13. The splash remains in `StartupFrameLock`. After rebuilding HEAD, Weston reached `READY=1`, `Meta-Context.notify_ready`, and `startup notice removed` at 08:34:12, then stayed alive until `stop (timeout) after 35s`. There was no minimum-height abort, segfault, or C++ exception in that run.
 
 `PanelMenu.setMenu` does `Main.uiGroup.add_child(this.menu.actor)` and the next line is `hide()`. `quicksettings-add-hide-race-smoke` at 16:23:40 printed `exposed-before-hide wrapper-mapped=true min=-12 nat=-12` and `FAIL add_child dispatched layout before hide`. The empty Quick Settings grid is that child: `QuickSettingsLayout` returns `(rows.length - 1) * row_spacing`, and with zero rows and `spacing-rows` of 12 that is -12. `quicksettings-layout-neg-smoke` allocates that grid at 182×32 and mutter exits 133 on `ClutterBoxLayout child qs-smoke-grid … minimum height: -12`. The hand session did the same abort at 15:25:08 while the startup notice was still up (`startup notice painted` at 15:25:02, no `startup notice removed`). `before-update` was delivered during that allocate.
 
-`begin()` now inhibits the stage-view clocks from the startup RPC, and `release_internal()` uninhibits them before `schedule_update`. It does not inhibit from `after_update`. The guest has to show the shell after `notify_ready`, not stay on the previous frame. The explicit allocate smoke must still abort. The add-before-hide smoke does not call `begin_shell_startup`, so it stays a fail.
-
-## Proposal
-
-Edits are Remove / Replace with / Add. Verify the surrounding lines before applying.
-
-### 1. `src/server/StartupFrameLock.vala` — clock hold
-
-**Why:** `begin()` must stop every current stage-view clock before any frame can allocate the menu `setMenu` just mapped.
-
-**Where:** On `StartupFrameLock`, after `connection_stopped_id`.
-
-**Depends on:** none.
-
-#### Add
-
-```vala
-		private global::Clutter.FrameClock[] clocks = {};
-
-		[CCode (cname = "clutter_stage_view_get_frame_clock", cheader_filename = "clutter/clutter.h")]
-		private static extern unowned global::Clutter.FrameClock view_frame_clock(global::Clutter.StageView view);
-```
-
-### 2. `src/server/StartupFrameLock.vala` — `begin()`
-
-**Why:** Inhibit from this RPC, not from the notice frame.
-
-**Where:** `begin()`, after the `connection.stopped` connect, before `after_update`.
-
-**Depends on:** 1.
-
-#### Add
-
-```vala
-			foreach (var view in stage.peek_stage_views()) {
-				var clock = view_frame_clock(view);
-				clock.inhibit();
-				this.clocks += clock;
-			}
-```
-
-### 3. `src/server/StartupFrameLock.vala` — `release_internal()`
-
-**Why:** The frame after `notify_ready` has to be scheduled after the clocks are released, or the guest stays on the last scanned frame.
-
-**Where:** `release_internal()`, after `this.connection = null`, before `schedule_update`.
-
-**Depends on:** 1.
-
-#### Add
-
-```vala
-			foreach (var clock in this.clocks) {
-				clock.uninhibit();
-			}
-			this.clocks = {};
-```
+`begin()` inhibits the stage-view clocks from the startup RPC, and `release_internal()` uninhibits them before `schedule_update`. It does not inhibit from `after_update`. This keeps the startup frame from allocating Quick Settings in the `add_child`/`hide` RPC gap while retaining the splash. The explicit allocate smoke must still abort. The add-before-hide smoke does not call `begin_shell_startup`, so it stays a fail.
 
 ## Reproduction
 
@@ -131,3 +75,26 @@ GI_META_SMOKE=quicksettings-add-hide-race-smoke ./scripts/agent-nested-smoke-pro
 ```
 
 `READY=1` at 16:31:40.852310, `Meta-Context.notify_ready`, `startup notice removed`. No `minimum height` line after 16:31. `nested-weston-prove: stop (prepare-started) after 6s`.
+
+### 2026-10-13 08:33 rebuilt HEAD and proved the startup hold
+
+The first local runs were invalid because `build/src/gsr-server` was timestamped 2026-10-12 09:27 and did not contain the `startup notice painted` or `startup notice removed` strings. Rebuilt the current source:
+
+```bash
+meson compile -C build gsr-server gsr-client
+```
+
+The normal proof reached `READY=1`, `Meta-Context.notify_ready`, and `StartupFrameLock.vala:147: startup notice removed` at 08:33:49. It stopped deliberately with `stop (prepare-started) after 5s`; no minimum-height abort occurred.
+
+Held the rebuilt shell after ready:
+
+```bash
+GSR_NESTED_STAYUP=1 GSR_NESTED_TIMEOUT=35 \
+  timeout --foreground -k 3 45 ./scripts/weston-gsr-prove.sh
+```
+
+At 08:34:12 it reached `READY=1`, `Meta-Context.notify_ready`, and `startup notice removed`. The server remained alive until `stop (timeout) after 35s`. There was no later `minimum height`, `segfault`, or `length_error` marker. Exit 137 is the scripted Weston SIGKILL after that stop.
+
+### 2026-10-13 08:38 closed
+
+User accepted the rebuilt Weston proof and closed the bug.

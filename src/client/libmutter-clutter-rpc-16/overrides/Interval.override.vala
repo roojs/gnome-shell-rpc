@@ -61,8 +61,7 @@
 			if (this.send_actor_box(true, value)) {
 				return;
 			}
-			Gsr.Client.Rpc.call_value(
-				"Clutter-Interval.set_initial", this,
+			Gsr.Client.Rpc.call_value("Clutter-Interval.set_initial", this,
 				OLLMrpc.args("V", value));
 		}
 
@@ -86,15 +85,13 @@
 			if (value.type().name() != "ClutterActorBox") {
 				return false;
 			}
-			unowned Clutter.ActorBox* boxp =
-				(Clutter.ActorBox*) value.get_boxed();
+			unowned Clutter.ActorBox* boxp = (Clutter.ActorBox*) value.get_boxed();
 			if (boxp == null) {
 				return false;
 			}
 			uint8[] data = new uint8[sizeof(Clutter.ActorBox)];
 			*((Clutter.ActorBox*) data) = *boxp;
-			Gsr.Client.Rpc.call_value(
-				is_initial
+			Gsr.Client.Rpc.call_value( is_initial
 					? "Gsr-Clutter-Interval.set_initial_box"
 					: "Gsr-Clutter-Interval.set_final_box",
 				null,

@@ -236,8 +236,21 @@ async function run(main) {
 imports._promiseNative.setMainLoopHook(() => {
 	smokeLog('hook');
 	GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-		import('resource:///org/gnome/shell/ui/main.js').then(main => {
-			return main.start().then(() => run(main));
+		import('resource:///org/gnome/shell/ui/main.js').then(async main => {
+			// This smoke starts main.js directly, so it does not take the
+			// shell-startup frame lock used by gsr-client. Keep PanelMenu's
+			// add-then-hide RPC gap from aborting on the unrelated empty
+			// Quick Settings layout.
+			const PanelMenu =
+				await import('resource:///org/gnome/shell/ui/panelMenu.js');
+			const setMenu = PanelMenu.Button.prototype.setMenu;
+			PanelMenu.Button.prototype.setMenu = function (menu) {
+				if (menu)
+					menu.actor.hide();
+				return setMenu.call(this, menu);
+			};
+			await main.start();
+			return run(main);
 		}).then(() => {
 			smokeLog('done');
 			global.context.terminate();

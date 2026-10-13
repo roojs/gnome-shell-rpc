@@ -85,8 +85,7 @@ namespace Shell
 					 */
 					uint8[] data = new uint8[sizeof(Clutter.ActorBox)];
 					*((Clutter.ActorBox*) data) = child_box;
-					Gsr.Client.Rpc.call_value(
-						"Clutter-Actor.allocate", child,
+					Gsr.Client.Rpc.call_value("Clutter-Actor.allocate", child,
 						OLLMrpc.args("ay", new GLib.Bytes(data)));
 					continue;
 				}

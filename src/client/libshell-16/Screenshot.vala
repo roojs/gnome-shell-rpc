@@ -28,8 +28,7 @@ namespace Shell
 			stride = width * 4;
 			pixels = new uint8[stride * height];
 			Mtk.Rectangle rect = { 0, 0, width, height };
-			stage.paint_to_buffer(
-				rect, 1f, pixels, stride,
+			stage.paint_to_buffer(rect, 1f, pixels, stride,
 				Cogl.PixelFormat.RGBA_8888, Clutter.PaintFlag.none);
 		}
 

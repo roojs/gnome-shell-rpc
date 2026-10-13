@@ -51,8 +51,7 @@ namespace Gsr.Server.St
 			var created = request.connection.leases.get((int) request.lease_id)
 				as DrawingAreaActor;
 			if (created == null) {
-				request.connection.reply_error(request,
-					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
 			var n = (int) vfunc_ids.n_children();
