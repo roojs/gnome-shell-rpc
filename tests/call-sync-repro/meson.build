@@ -216,6 +216,7 @@ foreach mode : [
   'server',
   'proposal-after',
   'emit-queue',
+  'event',
 ]
   test(
     'signal-reentrancy-' + mode,
@@ -233,6 +234,8 @@ foreach mode : [
   'proposal-noreply',
   'call-hold',
   'later-skip',
+  'press-gap',
+  'server-gap',
 ]
   test(
     'signal-reentrancy-' + mode,

@@ -28,7 +28,8 @@ The overview click that starts a drag in the middle of `clicked` is the case thi
 
 | Byte | Meaning |
 | ---- | ------- |
-| `O` | The outer signal is open |
+| `O` | The outer signal is open. In `press-gap` this is `clicked` |
+| `L` | `long-press`. The handler returns before the frame |
 | `R` | The handler made a nested call |
 | `A` | A signal caused by that call |
 | `U` | An unrelated signal, such as a frame update |
@@ -44,13 +45,16 @@ The order we want: `A` runs before `S`. `U` waits until the outer signal has fin
 The click plan's server rule is copied by three modes. They are not the product code. A one-way signal is held only when a wait is already open and the server is not inside the shell's call. Any other one-way signal is sent at once, and the server waits for the shell to finish it.
 
 - `proposal-after` is a desired pass. The frame becomes ready after the nested call returns, while the outer wait is still open, and it is held. That is the timing in the click log.
-- `proposal-during` is a desired failure. The frame becomes ready inside the nested call, and this rule sends it at once.
+- `proposal-during` is a desired failure. The hold is skipped while the server is inside the shell's call, so the frame is sent at once. That is not the name-list rule.
 - `proposal-noreply` is a desired failure. The client reads the signal and never replies. The stand-alone wait stops after 200ms. On the real server that wait would not stop.
 
-Those two failures are why the blocks in the click plan stay unapplied.
+Those two failures are why that particular hold stays unapplied. Removing the name list is the `server` check, and that one passed.
 
 The server blocks stay unapplied. The next try was three client ideas. One of them keeps the order. The other two do not, and those two checks are meant to keep failing.
 
-- `emit-queue` passed. The frame waits until the whole click handler has returned, including the part after the nested call. The signal that call caused still runs immediately. The code for that is written in the click plan and is not applied.
+- `emit-queue` passed. The frame waits until the whole click handler has returned, including the part after the nested call. The signal that call caused still runs immediately. That queue is in `src/client/libshell-16/Signals.vala`.
+- `press-gap` is an existing failure. `long-press` returns, then the frame, then `clicked`. The queue does not hold that frame, because no handler is running. The drag starts before `clicked` sets the flag.
+- `server-gap` is an existing failure. The passing server rule is applied to that same order. The frame is still sent, because no signal is open between the two.
+- `event` passed. The frame stays held until `clicked` has replied. The signal that call caused is still sent at once. That order is not in the server. An idle flush was tried and removed. Idle is not a way to deliver it.
 - `call-hold` did not. The frame is released when the nested call returns, and the click is still going. That is the bug.
 - `later-skip` did not. The drag callback waits, but the frame signal itself still runs during the click.

@@ -434,6 +434,9 @@ private class StackHarness
 	private StackKind kind;
 	public ProposalWhen proposal_when;
 	public ClientRule client_rule;
+	public bool press_gap;
+	public bool server_gap;
+	public bool event_hold;
 	private int queued_frames;
 	private bool rescheduled_frame;
 	public bool second_handler_ran;
@@ -442,7 +445,7 @@ private class StackHarness
 	public bool drag_ran;
 	private int emit_poll_depth;
 	private bool in_dispatch;
-	private uint8[] held_notes = new uint8[8];
+	private uint8[] held_notifs = new uint8[8];
 	private int held_count;
 	public bool reply_timed_out;
 	private int client_read;
@@ -528,18 +531,18 @@ private class StackHarness
 		return this.read_reply();
 	}
 
-	private void hold_note(uint8 message)
+	private void hold_notif(uint8 message)
 	{
-		this.held_notes[this.held_count] = message;
+		this.held_notifs[this.held_count] = message;
 		this.held_count++;
 	}
 
 	private bool flush_held()
 	{
 		while (this.emit_poll_depth == 0 && this.held_count > 0) {
-			var message = this.held_notes[0];
+			var message = this.held_notifs[0];
 			for (var i = 1; i < this.held_count; i++) {
-				this.held_notes[i - 1] = this.held_notes[i];
+				this.held_notifs[i - 1] = this.held_notifs[i];
 			}
 			this.held_count--;
 			if (!this.send_and_wait(message)) {
@@ -576,7 +579,7 @@ private class StackHarness
 	private bool deliver_oneway(uint8 message)
 	{
 		if (this.emit_poll_depth > 0 && !this.in_dispatch) {
-			this.hold_note(message);
+			this.hold_notif(message);
 			if (message == (uint8) 'U') {
 				this.unrelated_was_held = true;
 			}
@@ -872,6 +875,242 @@ private class StackHarness
 		}
 	}
 
+	/**
+	 * Long-press returns, then a frame, then clicked.
+	 *
+	 * The frame is one-way. No handler is running when
+	 * it is sent. The click flag is set only by clicked.
+	 */
+	private bool run_press_gap_server()
+	{
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'L')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'U')) {
+			return false;
+		}
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'O')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		return StackHarness.write_byte(this.server_write, (uint8) 'D');
+	}
+
+	private bool run_press_gap_client()
+	{
+		uint8 message;
+		if (!StackHarness.read_byte(this.client_read, out message)
+				|| message != (uint8) 'L') {
+			return false;
+		}
+		if (!this.write_reply()) {
+			return false;
+		}
+		if (!StackHarness.read_byte(this.client_read, out message)
+				|| message != (uint8) 'U') {
+			return false;
+		}
+		this.on_open_frame();
+		if (!StackHarness.read_byte(this.client_read, out message)
+				|| message != (uint8) 'O') {
+			return false;
+		}
+		this.depth = 1;
+		this.second_handler_ran = true;
+		this.depth = 0;
+		if (this.client_rule == ClientRule.EMIT_QUEUE) {
+			this.flush_frames();
+		}
+		if (!this.write_reply()) {
+			return false;
+		}
+		if (!StackHarness.read_byte(this.client_read, out message)
+				|| message != (uint8) 'D') {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Phase 3 server rule on the guest order.
+	 *
+	 * A frame is held only while a signal is still
+	 * open. long-press has already finished, so the
+	 * frame is sent and waited for before clicked.
+	 */
+	private bool run_server_gap_server()
+	{
+		this.signals_open = 1;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'L')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.signals_open = 0;
+		if (this.signals_open > 0) {
+			this.unrelated_waiting = true;
+			this.unrelated_was_held = true;
+		} else if (!StackHarness.write_byte(this.server_write, (uint8) 'U')
+				|| !this.read_reply()) {
+			return false;
+		}
+		this.signals_open = 1;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'O')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.signals_open = 0;
+		if (this.unrelated_waiting) {
+			this.unrelated_waiting = false;
+			if (!StackHarness.write_byte(this.server_write, (uint8) 'U')
+					|| !this.read_reply()) {
+				return false;
+			}
+		}
+		return StackHarness.write_byte(this.server_write, (uint8) 'D');
+	}
+
+	private bool run_server_gap_client()
+	{
+		uint8 message;
+		if (!StackHarness.read_byte(this.client_read, out message)
+				|| message != (uint8) 'L') {
+			return false;
+		}
+		if (!this.write_reply()) {
+			return false;
+		}
+		while (true) {
+			if (!StackHarness.read_byte(this.client_read, out message)) {
+				return false;
+			}
+			if (message == (uint8) 'D') {
+				return this.second_handler_ran;
+			}
+			if (message == (uint8) 'U') {
+				this.take_frame();
+				if (!this.write_reply()) {
+					return false;
+				}
+				continue;
+			}
+			if (message == (uint8) 'O') {
+				this.depth = 1;
+				this.second_handler_ran = true;
+				this.depth = 0;
+				if (!this.write_reply()) {
+					return false;
+				}
+				continue;
+			}
+			return false;
+		}
+	}
+
+	/**
+	 * One pointer event covers long-press and clicked.
+	 *
+	 * The frame becomes ready after long-press replies.
+	 * It is not sent until clicked has replied. A signal
+	 * caused by clicked's call is sent at once.
+	 */
+	private bool run_event_server()
+	{
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'L')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.unrelated_waiting = true;
+		this.unrelated_was_held = true;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'O')) {
+			return false;
+		}
+		uint8 message;
+		if (!StackHarness.read_byte(this.server_read, out message)
+				|| message != (uint8) 'R') {
+			return false;
+		}
+		this.inside_nested_call = true;
+		this.signals_open = 1;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'A')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.caused_sent_inside_call = true;
+		this.inside_nested_call = false;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'S')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.signals_open = 0;
+		this.unrelated_waiting = false;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'U')) {
+			return false;
+		}
+		return StackHarness.write_byte(this.server_write, (uint8) 'D');
+	}
+
+	private bool run_event_client()
+	{
+		uint8 message;
+		if (!StackHarness.read_byte(this.client_read, out message)
+				|| message != (uint8) 'L') {
+			return false;
+		}
+		if (!this.write_reply()) {
+			return false;
+		}
+		while (true) {
+			if (!StackHarness.read_byte(this.client_read, out message)) {
+				return false;
+			}
+			if (message == (uint8) 'D') {
+				return this.second_handler_ran && this.causal_ran;
+			}
+			if (message == (uint8) 'U') {
+				this.take_frame();
+				continue;
+			}
+			if (message != (uint8) 'O') {
+				return false;
+			}
+			this.depth = 1;
+			this.in_call = true;
+			if (!StackHarness.write_byte(this.client_write, (uint8) 'R')) {
+				return false;
+			}
+			if (!StackHarness.read_byte(this.client_read, out message)
+					|| message != (uint8) 'A' || !this.take_causal()) {
+				return false;
+			}
+			if (!StackHarness.read_byte(this.client_read, out message)
+					|| message != (uint8) 'S') {
+				return false;
+			}
+			this.nested_completed = true;
+			this.in_call = false;
+			this.second_handler_ran = true;
+			this.depth = 0;
+			if (!this.write_reply()) {
+				return false;
+			}
+		}
+	}
+
 	private bool run_open_server()
 	{
 		if (!StackHarness.write_byte(this.server_write, (uint8) 'O')) {
@@ -1046,6 +1285,27 @@ private class StackHarness
 			});
 			client_ok = this.run_noreply_client();
 			server.join();
+		} else if (this.event_hold) {
+			var server = new GLib.Thread<void*>("stack-server", () => {
+				server_ok = this.run_event_server();
+				return null;
+			});
+			client_ok = this.run_event_client();
+			server.join();
+		} else if (this.server_gap) {
+			var server = new GLib.Thread<void*>("stack-server", () => {
+				server_ok = this.run_server_gap_server();
+				return null;
+			});
+			client_ok = this.run_server_gap_client();
+			server.join();
+		} else if (this.press_gap) {
+			var server = new GLib.Thread<void*>("stack-server", () => {
+				server_ok = this.run_press_gap_server();
+				return null;
+			});
+			client_ok = this.run_press_gap_client();
+			server.join();
 		} else if (this.client_rule != ClientRule.NONE) {
 			var server = new GLib.Thread<void*>("stack-server", () => {
 				server_ok = this.run_open_server();
@@ -1067,6 +1327,9 @@ private class StackHarness
 		Posix.close(server_to_client[0]);
 		Posix.close(server_to_client[1]);
 
+		if (this.press_gap || this.server_gap || this.event_hold) {
+			return client_ok && server_ok;
+		}
 		if (this.policy == StackPolicy.PROPOSAL
 				&& this.proposal_when == ProposalWhen.NOREPLY) {
 			return client_ok && server_ok;
@@ -1117,7 +1380,7 @@ int main(string[] args)
 {
 	if (args.length != 2) {
 		stderr.printf(
-			"usage: %s current|later-depth|later-reentry|signal-queue|transport-queue|server-delay|stack-bool|stack-void|stack|stack-eager|stack-defer|server-bool|server-void|server|proposal-after|proposal-during|proposal-noreply|emit-queue|call-hold|later-skip\n",
+			"usage: %s current|later-depth|later-reentry|signal-queue|transport-queue|server-delay|stack-bool|stack-void|stack|stack-eager|stack-defer|server-bool|server-void|server|proposal-after|proposal-during|proposal-noreply|emit-queue|call-hold|later-skip|press-gap|server-gap|event\n",
 			args[0]);
 		return 2;
 	}
@@ -1284,6 +1547,60 @@ int main(string[] args)
 		}
 		stderr.printf(
 			"PASS emit-queue: frame waited until the click handler returned\n");
+		return 0;
+	}
+	if (args[1] == "press-gap") {
+		var gap = new StackHarness(StackPolicy.FRAME, StackKind.VOID);
+		gap.client_rule = ClientRule.EMIT_QUEUE;
+		gap.press_gap = true;
+		if (!gap.run() || !gap.second_handler_ran) {
+			stderr.printf(
+				"FAIL press-gap: pipe exchange did not complete\n");
+			return 1;
+		}
+		if (gap.drag_before_second) {
+			stderr.printf(
+				"FAIL press-gap: frame between long-press and clicked started the drag\n");
+			return 1;
+		}
+		stderr.printf(
+			"PASS press-gap: frame waited until clicked set the flag\n");
+		return 0;
+	}
+	if (args[1] == "event") {
+		var held = new StackHarness(StackPolicy.SERVER, StackKind.VOID);
+		held.event_hold = true;
+		if (!held.run() || !held.second_handler_ran || !held.causal_nested
+				|| !held.caused_sent_inside_call || !held.unrelated_was_held
+				|| !held.drag_ran) {
+			stderr.printf(
+				"FAIL event: pipe exchange did not complete\n");
+			return 1;
+		}
+		if (held.drag_before_second) {
+			stderr.printf(
+				"FAIL event: frame ran before clicked set the flag\n");
+			return 1;
+		}
+		stderr.printf(
+			"PASS event: frame waited until clicked set the flag\n");
+		return 0;
+	}
+	if (args[1] == "server-gap") {
+		var gap = new StackHarness(StackPolicy.SERVER, StackKind.VOID);
+		gap.server_gap = true;
+		if (!gap.run() || !gap.second_handler_ran) {
+			stderr.printf(
+				"FAIL server-gap: pipe exchange did not complete\n");
+			return 1;
+		}
+		if (gap.drag_before_second) {
+			stderr.printf(
+				"FAIL server-gap: frame between long-press and clicked started the drag\n");
+			return 1;
+		}
+		stderr.printf(
+			"PASS server-gap: frame waited until clicked set the flag\n");
 		return 0;
 	}
 	if (args[1] == "call-hold") {

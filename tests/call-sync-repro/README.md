@@ -66,6 +66,9 @@ timeout 3 $GATE proposal-noreply # desired failure — server waits for a reply 
 timeout 3 $GATE emit-queue       # desired pass — frame waits until the click handler returns
 timeout 3 $GATE call-hold        # desired failure — frame runs after the call, still inside the click
 timeout 3 $GATE later-skip       # desired failure — frame signal still runs inside the open click
+timeout 3 $GATE press-gap        # existing failure — frame between long-press and clicked starts the drag
+timeout 3 $GATE server-gap       # existing failure — the passing server rule still sends that frame
+timeout 3 $GATE event            # desired pass — frame waits until clicked has set the flag
 ```
 
 Every phase-1 mode services the blocking callback before the server writes the

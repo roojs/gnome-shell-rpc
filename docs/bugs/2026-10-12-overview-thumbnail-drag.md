@@ -1,14 +1,72 @@
 # Overview thumbnail drag and click
 
-**Status:** ⏳ open. The click failure is reproduced and its call ordering is identified. No product fix is proposed or present in `src/`.
+**Status:** ⏳ open. Same failure. The queue in `src/client/libshell-16/Signals.vala` holds a one-way frame only while a signal handler is still running. On the guest, `before-update` arrives after `long-press` has returned and before `clicked` arrives, so the drag still starts. `startDrag` then throws, and the pointer grab is not released.
+
+`event` is the order that keeps that frame until `clicked` has replied, and still sends the signal that call caused at once. It passes. That order is not in the server. An idle flush was written into `Connection.vala` and removed. Idle is out of the question. Do not use it to deliver a held notification. It causes other problems.
 
 ## Problem
 
 🔷 Expected: clicking a window preview selects that window, leaves the overview, and does not start a drag.
 
-🔷 Actual: selection succeeds, the overview closes, and the correct window gains focus, but the same click also starts the preview's drag path. The selected window is left looking ghosted because the preview has opacity `100`, the stock `DRAGGING_WINDOW_OPACITY`, and `_draggable._dragInProgress` remains true.
+🔷 Actual: selection succeeds. The same click still starts the preview drag. On the 2026-10-13 guest the drag throws because `get_transition('scale-x')` is null, the grab stays, and further clicks stop. The clock keeps updating.
 
-This is not a failure to activate the selected window. The failure is that the long-press cancellation callback runs in the middle of the click signal, before the click handler that suppresses that callback has run.
+This is not a failure to activate the selected window. The BEFORE_REDRAW later still runs before the `clicked` handler that sets `_actionClicked`. The applied queue does not cover that slot: no handler is on the stack between the two signals.
+
+## Reproduction
+
+`press-gap` is the order from the guest log. It fails:
+
+```bash
+meson compile -C build tests/call-sync-repro/signal-reentrancy-gate
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate press-gap
+```
+
+```text
+FAIL press-gap: frame between long-press and clicked started the drag
+```
+
+`meson test -C build signal-reentrancy-press-gap` expects that failure (`should_fail: true`).
+
+`server-gap` runs the passing server rule on that same order. A frame is held only while a signal is still open, and every signal waits for a reply. It fails the same way:
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate server-gap
+```
+
+```text
+FAIL server-gap: frame between long-press and clicked started the drag
+```
+
+`server` still passes. Removing the name list was not the check that failed.
+
+`event` passes. The frame stays held until `clicked` has replied. The signal caused by that click is still sent at once.
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event
+```
+
+```text
+PASS event: frame waited until clicked set the flag
+```
+
+`meson test -C build signal-reentrancy-event` is Ok. The server does not do this yet.
+
+Guest log, `alan@192.168.122.52`, `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`, session from 17:05, binaries 17:05:31:
+
+```text
+17:07:55.975  notification method=long-press
+17:07:55.975  method=RPC-Live-Callback.reply
+17:07:55.977  notification method=before-update
+17:07:55.991  notification method=clicked
+17:07:56.435  method=Meta-Display.set_cursor
+17:07:56.647  JS ERROR: TypeError: this._dragActor.get_transition(...) is null
+             startDrag@dnd.js:522
+             addClickAction longPressLater@dnd.js:166
+```
+
+No `clicked` or `button-press-event` after 17:07:56. `gsr-client` 21773 and `gsr-server` 21427 stayed in `do_poll`. The next client lines are the clock, once a minute. Server journal at 17:07:56: `Can't update stage views ... needs an allocation` for the reparented drag actor, then the null transition.
+
+`overview-window-activate-smoke` printed `ok` at 17:06 on Weston. That script does not put a frame in this gap.
 
 ## Evidence
 
@@ -255,7 +313,7 @@ The final state is therefore:
 
 ✔️ `Connection.emit_wait_poll()` drains requests while waiting for a blocking callback but does not run `MainContext.iteration()`. The evidence does not support server main-loop pumping as the immediate cause.
 
-## Reproduction
+## Weston click smoke
 
 Automated click proof:
 
@@ -360,3 +418,42 @@ The `signal-reentrancy` Meson suite adds the existing `after-reply`, `buffer-inv
 Extended `tests/call-sync-repro/signal-reentrancy-gate.vala` with one remote signal frame. `stack-bool` and `stack-void` print `PASS ... nested rpc completed, causal signal nested, unrelated waited`. `stack` prints `PASS stack: boolean and void differ only in reply payload`. `stack-eager` prints `FAIL stack-eager: unrelated signal overtook the open remote frame`. `stack-defer` prints `FAIL stack-defer: causal signal waited until the outer frame closed`.
 
 `meson test -C build --suite signal-reentrancy --print-errorlogs` reports 15 passes, three expected failures, no failures, and no timeouts. No product code changed.
+
+### 2026-10-13 17:22 guest hang is this bug
+
+Read `alan@192.168.122.52` `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log` and `mutter-rpc.debug.log`, and `journalctl -b` for pids 21427 and 21773. `192.168.88.197` did not answer. Installed `/usr/bin/gsr-client`, `/usr/bin/gsr-server`, and `/usr/lib/x86_64-linux-gnu/libshell-16.so` are timestamped 17:05:31 and export `shell_signals_held_notifs`.
+
+The 17:07:55 click replies to `long-press`, then receives `before-update`, then receives `clicked`. `Meta-Display.set_cursor` is at 17:07:56.435, inside `startDrag`, and `dnd.js:522` throws because `get_transition('scale-x')` is null. The server had already logged `needs an allocation` for the reparented actor. No later click notification arrives. Both processes stay in `do_poll`.
+
+Added `press-gap` to `tests/call-sync-repro/signal-reentrancy-gate.vala`. The server writes `L`, reads the reply, writes `U`, writes `O`, reads the reply, writes `D`. The client uses the applied queue rule: a frame runs immediately when no handler is active. The drag flag is set only when `O` is handled.
+
+```bash
+meson compile -C build tests/call-sync-repro/signal-reentrancy-gate
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate press-gap
+```
+
+Exit 1. `FAIL press-gap: frame between long-press and clicked started the drag`. `meson test -C build signal-reentrancy-press-gap` reports Expected Fail, exit status 1.
+
+### 2026-10-13 17:45 name-list rule on the same gap
+
+`proposal-during` and `proposal-noreply` were the checks cited when the name-list removal was dropped. `proposal-during` skips the hold while the server is inside the shell's call. `proposal-noreply` waits for a reply the client never sends. Neither one is "every signal waits, and a frame is held for the whole open signal". That rule is `server`, which still prints `PASS server: boolean and void use the same server decision`.
+
+Added `server-gap`. After `long-press` replies, no signal is open, so the rule sends the frame and waits for its reply, then sends `clicked`.
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate server-gap
+```
+
+Exit 1. `FAIL server-gap: frame between long-press and clicked started the drag`. `meson test -C build signal-reentrancy-server-gap` reports Expected Fail.
+
+### 2026-10-13 17:50 hold the frame until the click has replied
+
+`event` keeps the frame until `clicked` has replied. The signal caused by that click is still sent at once.
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event
+```
+
+Exit 0. `PASS event: frame waited until clicked set the flag`. `meson test -C build signal-reentrancy-event` is Ok.
+
+A flush from `GLib.Idle` was added to `src/server/rpc/Connection.vala` and then removed. Idle is out of the question. Do not use it to deliver a held notification. It causes other problems. `Connection.vala` is back to writing each notification as it is emitted. The installed guest binary is still the 17:05 build.
