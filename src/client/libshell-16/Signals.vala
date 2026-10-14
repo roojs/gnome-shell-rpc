@@ -66,15 +66,6 @@ namespace Shell
 		private static Gee.ArrayList<OLLMrpc.Notification>? held_notifs;
 
 		/**
-		 * Timelines paused while {@link emit} is still running.
-		 *
-		 * {@link hold_transition} appends. {@link release_timelines}
-		 * starts them when {@link emit_depth} is back to zero.
-		 * Created with the other tables on the first {@link connect}.
-		 */
-		private static Gee.ArrayList<GLib.Object>? held_timelines;
-
-		/**
 		 * Signal names an actor has collected and not sent yet.
 		 *
 		 * Empty on a later {@link connect}. That connect clears the
@@ -187,7 +178,6 @@ namespace Shell
 			Signals.refs = new Gee.HashMap<int, int>();
 			Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
 			Signals.held_notifs = new Gee.ArrayList<OLLMrpc.Notification>();
-			Signals.held_timelines = new Gee.ArrayList<GLib.Object>();
 		}
 
 		[CCode (cname = "shell_signals_connect")]
@@ -365,7 +355,6 @@ namespace Shell
 			if (!GLib.Signal.parse_name(signal_name, obj.get_type(), out signal_id, out detail, false)
 					|| signal_id == 0) {
 				Signals.emit_depth--;
-				Signals.release_timelines();
 				Signals.drain_notifs();
 				return false;
 			}
@@ -455,58 +444,8 @@ namespace Shell
 			OLLMrpc.Bin.TypeOverride.release_params(query.param_types);
 			var result = query.return_type == GLib.Type.BOOLEAN && ret.get_boolean();
 			Signals.emit_depth--;
-			Signals.release_timelines();
 			Signals.drain_notifs();
 			return result;
-		}
-
-		/**
-		 * Pause a timeline until the outermost {@link emit} returns.
-		 *
-		 * A call with no emit open does nothing, so an animation
-		 * started from the main loop keeps playing. A timeline that
-		 * has already advanced, or is not playing, is left alone.
-		 *
-		 * @param timeline leased timeline from get_transition
-		 */
-		[CCode (cname = "shell_signals_hold_transition")]
-		public static void hold_transition(GLib.Object timeline)
-		{
-			if (Signals.emit_depth == 0) {
-				return;
-			}
-			var playing = Gsr.Client.Rpc.call_value("Clutter-Timeline.is_playing", timeline);
-			if (playing.retval.type() != GLib.Type.BOOLEAN || !playing.retval.get_boolean()) {
-				return;
-			}
-			var elapsed = Gsr.Client.Rpc.call_value("Clutter-Timeline.get_elapsed_time", timeline);
-			if (elapsed.retval.type() != GLib.Type.UINT || elapsed.retval.get_uint() > 32) {
-				return;
-			}
-			Gsr.Client.Rpc.call_value("Clutter-Timeline.pause", timeline);
-			if (Signals.held_timelines == null) {
-				Signals.held_timelines = new Gee.ArrayList<GLib.Object>();
-			}
-			Signals.held_timelines.add(timeline);
-		}
-
-		/**
-		 * Start timelines paused by {@link hold_transition}.
-		 *
-		 * A nested emit leaves them paused. The list is swapped
-		 * out before the start calls, so a start that re-enters
-		 * emit cannot start the same timeline twice.
-		 */
-		private static void release_timelines()
-		{
-			if (Signals.emit_depth != 0 || Signals.held_timelines == null) {
-				return;
-			}
-			var pending = Signals.held_timelines;
-			Signals.held_timelines = new Gee.ArrayList<GLib.Object>();
-			foreach (var timeline in pending) {
-				Gsr.Client.Rpc.call_value("Clutter-Timeline.start", timeline);
-			}
 		}
 	}
 }

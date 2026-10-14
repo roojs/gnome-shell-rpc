@@ -119,9 +119,6 @@ namespace Gsr.Client.Rpc
 	private extern void shell_signals_disconnect(
 		GLib.Object obj, string signal_name);
 
-	[CCode (cname = "shell_signals_hold_transition")]
-	private extern void shell_signals_hold_transition(GLib.Object timeline);
-
 	/**
 	 * Insert create-time proxy into {@link OLLMrpc.Client.proxies}.
 	 *
@@ -159,19 +156,6 @@ namespace Gsr.Client.Rpc
 	public void ensure_signal_unsubscribe(GLib.Object obj, string signal_name)
 	{
 		shell_signals_disconnect(obj, signal_name);
-	}
-
-	/**
-	 * Vala stub path into {@link Shell.Signals.hold_transition}.
-	 *
-	 * mutter-rpc / st-rpc cannot link shell-gi. Lazy-bound
-	 * ({@code --unresolved-symbols}).
-	 *
-	 * @param timeline leased timeline from get_transition
-	 */
-	public void hold_transition(GLib.Object timeline)
-	{
-		shell_signals_hold_transition(timeline);
 	}
 
 	/**

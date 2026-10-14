@@ -2,9 +2,9 @@
 
 Split from [`2026-10-12-overview-thumbnail-drag.md`](2026-10-12-overview-thumbnail-drag.md) on 2026-10-14. That file is only a pointer. The long log is [`archive/2026-10-12-overview-thumbnail-drag.md`](archive/2026-10-12-overview-thumbnail-drag.md). Do not continue the old file.
 
-**Review:** applied, and the 17:42 hand drag is not fixed. `stopped` still fired during the ease.
+**Review:** the hold is out of `src/`. The guest is still running the 17:50 install of it until the next install. Do not `gdm3 restart` to try that install.
 
-**Status:** a press that leaves an overview preview starts a drag, then `startDrag` throws and the grab stays. `dnd.js:522` calls `get_transition('scale-x')` after the 250ms scale has already stopped. The reproduction is `tests/call-sync-repro/scale-gap-gate.vala`. `current` still fails. `pause-on-ease` passes, and `pause-plain` shows an ordinary ease finishes too.
+**Status:** a press that leaves an overview preview starts a drag, then `startDrag` throws and the grab stays. `dnd.js:522` calls `get_transition('scale-x')` after the 250ms scale has already stopped. The reproduction is `tests/call-sync-repro/scale-gap-gate.vala`. `current` still fails. `pause-on-ease` passes on the gate and failed on the guest: installing it and restarting gdm killed that session. `Actor.set_scale` is back to the RPC only.
 
 ## Proposal
 
@@ -506,3 +506,15 @@ Nested Weston, `nested-weston-prove.tee.log`. One `JS ERROR`, and it is `global.
 ```
 
 `set_scale` at .614 to `stopped` at .885 is 271ms. `before-update` arrives between the hold's own RPCs (the `get_elapsed_time` reply is 64ms after the call). The elapsed read is already past 32ms, so that timeline is not paused, and it reaches the end while ease is still running. The one timeline that was paused is started at 17:42:31.099, 1.5s later, in the middle of another ease. The 17:43 session has `GSR_DEBUG=0` and an empty debug log.
+
+### 2026-10-14 17:48 launch
+
+Same log. A click calls `Gsr-Mutter-AppLaunch.launch_desktop_file` id=16473 at 17:48:15.594 and the reply is 17:48:15.621. No `returned false` warning. The only `window_created` after that is 17:48:29.958, `title=(null) frame=0,0 0x0`. No later `size-changed` and no second `window_created`. At that same second the nested bus activates `xdg-desktop-portal` and `org.freedesktop.secrets` exits 1. `JS ERROR: global.get_switcheroo_control is not a function` is 17:48:45.183 in `appMenu.js`. No application process was still running when the session was checked afterwards.
+
+## LLM efforts
+
+### 2026-10-14 17:54 guest boot
+
+`alan@192.168.122.52`. `192.168.88.197` has no route. Boot `-1` (`02c6358e952a4748a135e9f6219f3bb8`) ran from 2026-10-13 17:20 until 2026-10-14 17:52:06. At 17:50:55 `meson install --no-rebuild` from `/home/alan/gitlive/gnome-shell-rpc/build`. At 17:50:59 `/etc/init.d/gdm3 restart`. The new libraries are stamped 17:50:55 and export `shell_signals_hold_transition` and `gsr_client_rpc_hold_transition`. Journald at 17:52:00: `Suppressed 3275 messages from user@1000.service`. From 17:51:38 the new `gsr-server` logs `g_atomic_ref_count_dec: assertion 'old_value > 0' failed`, `gsignal.c:2699` no handler, and a `St-Widget.set_label_actor` `-32602` loop. No `Out of memory` line. Boot `0` started 17:53:00 and is the same libraries: every `Clutter-Actor.set_scale` is followed by two `Clutter-Actor.get_transition` calls, and `Clutter-Timeline.is_playing` / `pause` / `start` are absent while those scales are outside `emit`. Load on that boot was 3.25 at two minutes, `gsr-server` 24% and `gsr-client` 19%.
+
+The hold is removed from `Signals.vala`, `namespace.vala`, and `Actor.override.vala`. The guest process is still the 17:50 binaries.
