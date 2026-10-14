@@ -217,6 +217,8 @@ foreach mode : [
   'proposal-after',
   'emit-queue',
   'event',
+  'event-scope',
+  'event-reschedule',
 ]
   test(
     'signal-reentrancy-' + mode,
@@ -236,6 +238,7 @@ foreach mode : [
   'later-skip',
   'press-gap',
   'server-gap',
+  'event-no-click',
 ]
   test(
     'signal-reentrancy-' + mode,
@@ -518,6 +521,22 @@ executable('button-release-deliver-gate',
   'button-release-deliver-gate.c',
   dependencies: [libmutter_dep],
   install: false,
+)
+
+# Stock Clutter must finish both ClickAction handlers before a frame scheduled
+# by long-press cancellation reaches before-update.
+clutter_event_frame_order_gate = executable(
+  'clutter-event-frame-order-gate',
+  'clutter-event-frame-order-gate.c',
+  dependencies: [libmutter_dep],
+  install: false,
+)
+
+test(
+  'signal-reentrancy-clutter-event-frame-order',
+  clutter_event_frame_order_gate,
+  suite: 'signal-reentrancy',
+  timeout: 20,
 )
 
 # Unset boolean return must not stop a true-handled signal chain.

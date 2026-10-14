@@ -2,16 +2,17 @@
 
 A signal handler can call back into the compositor and wait. While that wait is open, another signal can arrive. In one process, the signal caused by the call runs before the call returns, and a frame update does not cut into the handler. Shell and compositor are two processes. The same order still has to hold, and it has to be proved before it is put into `src/`.
 
-## Prove a change in the stand-alone test first
+## Follow the debugging procedure
 
 `tests/call-sync-repro/signal-reentrancy-gate.vala` is one small program. Two threads pass one-byte messages through a pair of pipes. It does not start GNOME Shell, and it does not link product code.
 
 When a bug looks like one signal running in the middle of another:
 
-1. Add a mode to that program that copies the rule you want to try.
-2. Run `meson test -C build --suite signal-reentrancy`.
-3. Write any `src/` change in a plan, as `Remove` / `Replace with` / `Add`, and review it.
-4. Apply it only after that mode shows the order you want.
+1. Follow [`docs/debugging.md`](debugging.md) in order and keep the bug file current after every stage.
+2. At stage 4, shrink the failure into this gate.
+3. At stage 5, add a mode that copies the rule being tested and run `meson test -C build --suite signal-reentrancy`.
+4. Keep product code unchanged until the reproduction passes and still matches the stage 3 failure.
+5. Only at stage 6 may a minor proven change land or a major change be written as a proposed-code review.
 
 The overview click that starts a drag in the middle of `clicked` is the case this test was built for. That work lives in [`plans/1.4-signal-reentrancy.md`](plans/1.4-signal-reentrancy.md). Further reentrancy bugs use this same test before any product change.
 
@@ -56,5 +57,9 @@ The server blocks stay unapplied. The next try was three client ideas. One of th
 - `press-gap` is an existing failure. `long-press` returns, then the frame, then `clicked`. The queue does not hold that frame, because no handler is running. The drag starts before `clicked` sets the flag.
 - `server-gap` is an existing failure. The passing server rule is applied to that same order. The frame is still sent, because no signal is open between the two.
 - `event` passed. The frame stays held until `clicked` has replied. The signal that call caused is still sent at once. That order is not in the server. An idle flush was tried and removed. Idle is not a way to deliver it.
+- `event-no-click` is a desired failure. Holding the frame from `long-press` until `clicked` replies never sends the frame when the user drags and no `clicked` follows.
+- `event-scope` passed. Frames are held while the pointer event is open and sent when that event ends: after `clicked` replies on a click, and after `long-press` replies on a drag. The click arm holds one frame before `clicked` and another during its nested call. Boolean and void clicks use the same schedule, a causal nested signal still runs immediately, and a later idle frame is not held.
+- `event-reschedule` passed. It replaces all frames that become ready during one pointer event with one follow-up frame. It retains no notification arguments, handles a drag with no `clicked`, keeps the causal signal nested, and leaves an idle frame immediate.
+- `clutter-event-frame-order-gate` passed against real Clutter. `long-press(CANCEL)` and both `clicked` handlers have a current event. The scheduled `before-update` follows them with no current event.
 - `call-hold` did not. The frame is released when the nested call returns, and the click is still going. That is the bug.
 - `later-skip` did not. The drag callback waits, but the frame signal itself still runs during the click.

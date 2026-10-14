@@ -40,7 +40,9 @@ request. The server sends a blocking callback, waits for its in-flow reply,
 sends non-blocking `before-update`, then sends the synchronous response.
 
 No GJS, Clutter, libocrpc, or product source is linked. Each mode implements one
-ordering policy from `docs/plans/1.4-signal-reentrancy.md`.
+ordering policy from `docs/plans/1.4-signal-reentrancy.md`. This is the stage 4
+and stage 5 reproduction required by `docs/debugging.md`; product code stays
+unchanged until a rule passes here and still matches the Weston failure.
 
 ```bash
 meson compile -C build tests/call-sync-repro/signal-reentrancy-gate
@@ -69,9 +71,13 @@ timeout 3 $GATE later-skip       # desired failure — frame signal still runs i
 timeout 3 $GATE press-gap        # existing failure — frame between long-press and clicked starts the drag
 timeout 3 $GATE server-gap       # existing failure — the passing server rule still sends that frame
 timeout 3 $GATE event            # desired pass — frame waits until clicked has set the flag
+timeout 3 $GATE event-no-click   # desired failure — holding for clicked loses the frame when no clicked follows
+timeout 3 $GATE event-scope      # desired pass — click/drag event holds frame; idle frame remains immediate
+timeout 3 $GATE event-reschedule # desired pass — event frames coalesce into one follow-up frame
+timeout 20 ./build/tests/call-sync-repro/clutter-event-frame-order-gate
 ```
 
-Every phase-1 mode services the blocking callback before the server writes the
+Every initial mode services the blocking callback before the server writes the
 synchronous response. A passing deferral mode therefore preserves required
 nested callback progress; it does not pass by deferring all notifications.
 
@@ -90,9 +96,10 @@ becomes ready while a signal is open is held. A signal emitted by the nested
 call is sent at once. A frame that becomes ready with no signal open is sent
 at once. `server` runs both completion kinds and requires the same choice.
 
-`proposal-after`, `proposal-during`, and `proposal-noreply` copy the rule in
-the Phase 5 blocks, not the product server. A one-way signal is held only
-while a wait is open and the server is not inside the shell's call.
+`proposal-after`, `proposal-during`, and `proposal-noreply` retain an earlier
+server-rule experiment. They do not describe the product server or a current
+product proposal. A one-way signal is held only while a wait is open and the
+server is not inside the shell's call.
 Otherwise it is sent and the server waits for a reply. `proposal-after`
 holds a frame that becomes ready after the nested call returns.
 `proposal-during` sends a frame that becomes ready inside that call.
@@ -107,6 +114,21 @@ until the click handler has returned. `call-hold` did not: it releases the
 frame when the nested call returns, and the click is still going. `later-skip`
 did not: the drag callback waits, but the frame signal still runs during the
 click. Those two are meant to keep failing.
+
+`press-gap` and `server-gap` retain the guest failure between `long-press` and
+`clicked`. `event-no-click` rejects a hold that can only be released by
+`clicked`. `event-scope` runs boolean and void click arms plus a drag arm with
+no `clicked`. On each click arm, one frame arrives before `clicked` and another
+arrives during its nested call. The caused signal remains nested, both frames
+run after the event, and a third frame runs immediately once the event is
+closed.
+
+`event-reschedule` covers the same click and drag arms without retaining frame
+notification arguments. The two click-arm arrivals request one follow-up
+frame. `clutter-event-frame-order-gate` uses real Clutter and confirms the
+stock boundary: `long-press(CANCEL)` and both `clicked` handlers have a current
+event, then `before-update` runs with no current event. Scheduling an update
+from that callback produces a second, non-recursive frame.
 
 The Meson `signal-reentrancy` suite combines those policy modes with the real
 RPC regressions that a product implementation must preserve:
@@ -123,11 +145,11 @@ RPC regressions that a product implementation must preserve:
 meson test -C build --suite signal-reentrancy --print-errorlogs
 ```
 
-`current` is an existing failure. `stack-eager`, `stack-defer`,
-`proposal-during`, `proposal-noreply`, `call-hold`, and `later-skip` are
-desired failures. The suite is in good shape only when those seven still
-fail, the desired passes still succeed, and the older RPC tests remain
-existing passes.
+`current`, `press-gap`, and `server-gap` are existing failures.
+`stack-eager`, `stack-defer`, `proposal-during`, `proposal-noreply`,
+`call-hold`, `later-skip`, and `event-no-click` are desired failures. The suite
+is in good shape only when those ten still fail, the desired passes still
+succeed, and the older RPC tests remain existing passes.
 
 ## reentrant-emit-call-gate (real libocrpc, two processes)
 

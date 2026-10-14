@@ -1,8 +1,98 @@
 # Overview thumbnail drag and click
 
-**Status:** ⏳ open. Same failure. The queue in `src/client/libshell-16/Signals.vala` holds a one-way frame only while a signal handler is still running. On the guest, `before-update` arrives after `long-press` has returned and before `clicked` arrives, so the drag still starts. `startDrag` then throws, and the pointer grab is not released.
+**Status:** click is fixed on the hand session. Drag is not. Diagnosis is from the 09:57 log below. Not yet shrunk into the reentrancy gate.
 
-`event` is the order that keeps that frame until `clicked` has replied, and still sends the signal that call caused at once. It passes. That order is not in the server. An idle flush was written into `Connection.vala` and removed. Idle is out of the question. Do not use it to deliver a held notification. It causes other problems.
+Hand check on the Weston debug session, 2026-10-14 ~09:57: a click on a window preview selects it and leaves the overview. Pressing and moving a preview does not start a drag. Slider grab is fixed on that same session. The update menu and the expand overlap are still broken, and they are not this bug.
+
+## Diagnosis
+
+The drag dies inside `long-press(CANCEL)`, before `startDrag`. `Clutter.get_current_event()` is null, so `dnd.js` throws at the line that reads the event sequence:
+
+```text
+09:57:54.644  notification method=captured-event
+09:57:54.644  method=RPC-Live-Callback.reply
+09:57:54.647  notification method=long-press
+09:57:54.647  method=Gsr-Clutter.get_current_event
+09:57:54.648  JS ERROR: TypeError: event is null
+             addClickAction/<@resource:///org/gnome/shell/ui/dnd.js:151:13
+09:57:54.648  method=RPC-Live-Callback.reply
+```
+
+`dnd.js` `addClickAction` calls `get_current_event()` only when the state is `Clutter.LongPressState.CANCEL`. The other `long-press` notifications in this session reply at once and never call it: 09:57:50.972, 09:57:51.475, 09:57:54.275, 09:57:56.769, and 09:57:57.271. The last pair is about 502ms apart, which is the long-press activate timeout, not a drag cancel. Only the 09:57:54.647 notification is the drag attempt.
+
+Nothing else arrives between that notification and the throw. No `before-update`, no `clicked`, no nested signal. The handler asks for the current event as its first call, the server reply is empty (`event_from_values` returns null when the packed args are short), and the handler then replies. `long-press` is already a blocking subscription. The wait is still open when the null comes back.
+
+This is not the click-gap reentrancy. That bug was a `before-update` running after `long-press` had returned and before `clicked` set `_actionClicked`. The applied `event-reschedule` change covers that gap, the Weston click smoke printed `ok`, and this hand click no longer starts a drag. Stock Clutter still has a current event during `long-press(CANCEL)` (`clutter-event-frame-order-gate`, `current=1,1,0`). On this RPC drag the same call sees none.
+
+Log: `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`, session still running at 09:59. After the throw, pointer `captured-event`, `leave-event`, and `enter-event` continue. There is no `startDrag`, no `clicked`, and no second `get_current_event`.
+
+`event-reschedule` remains the landed click fix. A frame that becomes ready while the pointer event is open is not relayed on that stack. It requests one follow-up frame instead. An idle flush was written into `Connection.vala` and removed. Idle is out of the question. Do not use it to deliver a held notification. It causes other problems.
+
+## Applied stage 6 change
+
+The proposal applies `event-reschedule`. A one-way `before-update` notification that is emitted while Clutter still has a current input event is consumed on the server. The stage requests a follow-up frame. No notification or boxed `Clutter.Frame` argument is retained, no idle source is added, and other notifications keep their existing order.
+
+### 1. `src/server/rpc/Connection.vala` — `filter_notification`: allow a server module to consume one notification
+
+**Why:** the generic connection owns the final `write()` boundary, while the Clutter module owns the event/frame policy. The passing gate requires the frame notification to be suppressed before it reaches the client.
+
+**Where:** class signals after `stopping`, then the start of `write()`.
+
+**Depends on:** none.
+
+#### Add — after `stopping`, declare the per-connection notification filter
+
+```vala
+		/**
+		 * Consume a notification before it is written.
+		 *
+		 * @param notification outbound notification
+		 * @return true when the notification was consumed
+		 */
+		public signal bool filter_notification(OLLMrpc.Notification notification);
+```
+
+#### Remove
+
+```vala
+		{
+			if (!this.channel_open || this.bin == null) {
+```
+
+#### Replace with
+
+```vala
+		{
+			var notification = gobject as OLLMrpc.Notification;
+			if (notification != null && this.filter_notification(notification)) {
+				return;
+			}
+			if (!this.channel_open || this.bin == null) {
+```
+
+### 2. `src/server/rpc/Server.vala` — `connection_ready`: reschedule a frame emitted during an input event
+
+**Why:** `event-reschedule` passes the click and drag arms without retaining frame arguments. `clutter-event-frame-order-gate` proves that the click handlers have a current event, a normal frame does not, and a frame can request a non-recursive follow-up.
+
+**Where:** `start()`, inside `this.listen.connection_ready`, immediately after the cast to `Gsr.Server.Rpc.Connection`.
+
+**Depends on:** ### 1.
+
+#### Add — consume only one-way `before-update` during a current event
+
+```vala
+				conn.filter_notification.connect((notification) => {
+					if (notification.method != "before-update"
+							|| notification.reply_id != 0
+							|| global::Clutter.get_current_event() == null) {
+						return false;
+					}
+					((global::Clutter.Stage) stage).schedule_update();
+					return true;
+				});
+```
+
+These two hunks are applied. The full build and 34-check `signal-reentrancy` suite pass. The Weston click smoke prints `ok`; the installed guest remains the final check for the deterministic `press-gap` order.
 
 ## Problem
 
@@ -49,7 +139,57 @@ timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event
 PASS event: frame waited until clicked set the flag
 ```
 
-`meson test -C build signal-reentrancy-event` is Ok. The server does not do this yet.
+`meson test -C build signal-reentrancy-event` is Ok.
+
+`event-no-click` shows why a hold started by `long-press` cannot simply wait for `clicked` to release it (`should_fail: true`). When the user drags and no `clicked` follows, the held frame is never sent:
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event-no-click
+```
+
+```text
+FAIL event-no-click: frame after long-press without clicked was never sent
+```
+
+`event-scope` holds the frame while the pointer event is open and flushes it
+when that event finishes: after `clicked` replies on a click, and after
+`long-press` replies on a drag. Boolean and void click completion use the same
+order. On the click arm, one frame arrives in the gap before `clicked` and a
+second arrives during its nested call. Both wait. A later frame with no event
+open runs immediately:
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event-scope
+```
+
+```text
+PASS event-scope: frame waited for click and drag events, then idle frame ran
+```
+
+`meson test -C build signal-reentrancy-event-scope` is Ok. The server does not do this yet.
+
+`event-reschedule` does not retain the frame notification or its boxed frame
+argument. A frame that becomes ready during the event requests one follow-up
+frame. The click arm supplies two arrivals, before `clicked` and during its
+nested call; they coalesce into one follow-up:
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event-reschedule
+```
+
+```text
+PASS event-reschedule: event frames coalesced into one follow-up frame
+```
+
+The real-Clutter gate schedules a frame from `long-press(CANCEL)`:
+
+```bash
+timeout 20 ./build/tests/call-sync-repro/clutter-event-frame-order-gate
+```
+
+```text
+PASS clutter-event-frame-order-gate: cancel=1 first=2 second=3 frame=4 current=1,1,0
+```
 
 Guest log, `alan@192.168.122.52`, `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`, session from 17:05, binaries 17:05:31:
 
@@ -102,7 +242,13 @@ method=Meta-Window.activate
 
 `Meta-Workspace.index` has replied before `before-update`; the important point is that the first `clicked` handler has not returned. It continues through the activation RPC path until `Meta-Window.activate`, while incoming notifications are dispatched during those synchronous calls.
 
-✔️ `tests/call-sync-repro/signal-reentrancy-gate.vala` reproduces the ordering with pure Vala and two pipes. `current` fails because `before-update` starts the drag inside `clicked`. The `later-depth`, `signal-queue`, `transport-queue`, and `server-delay` policy modes all preserve click run-to-completion while still replying to a nested blocking callback. `later-reentry` preserves the original `redraw_depth` behavior: a nested frame requests one follow-up pass without recursively invoking the active later. The `signal-reentrancy` Meson suite also passes the existing related real-RPC gates: 15 passes, three expected baseline failures (`current`, `stack-eager`, `stack-defer`), no failures, and no timeouts. `stack-bool`, `stack-void`, and `stack` pass the distributed call stack: nested RPC completes inside the open remote signal, the causal signal runs at depth 2, and the unrelated signal waits until that frame closes. Boolean and void replies differ only by completion byte. These are policy and RPC-regression results, not product fixes.
+✔️ `tests/call-sync-repro/signal-reentrancy-gate.vala` reproduces the ordering
+with pure Vala and two pipes. `current`, `press-gap`, and `server-gap` retain
+the failure boundaries. `event-no-click` rejects a hold that depends on
+`clicked`. `event-reschedule` passes the click, drag, causal nested-signal,
+boolean, void, coalescing, and idle-frame checks. The Meson suite reports 24 passes, 10 expected
+failures, no unexpected failures, and no timeouts. These are policy and
+RPC-regression results, not product fixes.
 
 ## Steps
 
@@ -457,3 +603,129 @@ timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event
 Exit 0. `PASS event: frame waited until clicked set the flag`. `meson test -C build signal-reentrancy-event` is Ok.
 
 A flush from `GLib.Idle` was added to `src/server/rpc/Connection.vala` and then removed. Idle is out of the question. Do not use it to deliver a held notification. It causes other problems. `Connection.vala` is back to writing each notification as it is emitted. The installed guest binary is still the 17:05 build.
+
+### 2026-10-14 08:33 `event-no-click` and `event-scope` in `signal-reentrancy-gate`
+
+Added `event-no-click` (`should_fail: true`) and `event-scope` to `tests/call-sync-repro/signal-reentrancy-gate.vala`.
+
+`event-no-click` starts holding the frame when `long-press` finishes and releases it only when `clicked` replies. The click arm passes, and the drag arm (`long-press` without `clicked`) never sends the frame:
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event-no-click
+```
+
+Exit 1. `FAIL event-no-click: frame after long-press without clicked was never sent`.
+
+`event-scope` holds the frame while the pointer event is open (`in_event`) and flushes it synchronously when that event ends (`finish_event()`), with no `GLib.Idle`. On a click, `clicked` replies before `finish_event()`, so the frame runs after `clicked` sets `_actionClicked`. On a drag, no `clicked` runs, and `finish_event()` still sends the frame as soon as the event ends:
+
+```bash
+timeout 5 ./build/tests/call-sync-repro/signal-reentrancy-gate event-scope
+```
+
+Exit 0. `PASS event-scope: frame waited for the event to end on both click and drag`.
+
+`meson test -C build --suite signal-reentrancy --print-errorlogs` reports 22 Ok, 10 Expected Fail, 0 Fail, 0 Timeout. No `src/` files changed.
+
+### 2026-10-14 08:49 debugging procedure restored
+
+Read `docs/debugging.md` in full and returned this bug to stage 5. Removed the
+premature client code proposal from
+`docs/plans/1.4-signal-reentrancy.md`. No product source was inspected or
+changed.
+
+Strengthened `event-scope` in
+`tests/call-sync-repro/signal-reentrancy-gate.vala`. It now runs both boolean
+and void click arms, the no-`clicked` drag arm, the causal nested signal, the
+held frame, and a second frame after the event has closed. The two click arms
+use the same schedule and different completion bytes. Each arm receives both
+frames, and the post-event frame is immediate.
+
+```bash
+meson compile -C build tests/call-sync-repro/signal-reentrancy-gate
+meson test -C build --suite signal-reentrancy --print-errorlogs
+```
+
+The gate compiled. The suite reports 22 Ok, 10 Expected Fail, 0 Fail, 0
+Unexpected Pass, and 0 Timeout. `event-scope` prints `PASS event-scope: frame
+waited for click and drag events, then idle frame ran`.
+
+### 2026-10-14 09:18 two held-frame arrival points
+
+Extended `event-scope` with a second frame that becomes ready during the
+click's nested call. The first frame still becomes ready after `long-press`
+and before `clicked`. Both remain held until the pointer event ends. The
+causal signal runs before the nested call returns, and the frame after the
+event remains immediate.
+
+The first full suite run printed `PASS same-hook-reentrant-emit-gate` but that
+process did not exit before Meson's 20-second timeout. The focused retry
+completed in 0.03 seconds. A second full run reports 22 Ok, 10 Expected Fail,
+0 Fail, 0 Unexpected Pass, and 0 Timeout.
+
+### 2026-10-14 09:36 stock event boundary and frame reschedule
+
+Added `clutter-event-frame-order-gate.c`. It runs real Clutter under a headless
+Mutter context. `long-press(CANCEL)` schedules a frame during button release.
+Both `clicked` handlers finish before `before-update`. The cancellation and
+both click handlers see `Clutter.get_current_event()` set; `before-update`
+sees it clear:
+
+```text
+PASS clutter-event-frame-order-gate: cancel=1 first=2 second=3 frame=4 current=1,1,0
+```
+
+Added `event-reschedule` to the pure-Vala gate. The two click-arm frames become
+one follow-up frame instead of retaining notification arguments. The drag arm
+also gets a follow-up without `clicked`. The causal signal remains nested, and
+the later idle frame remains immediate:
+
+```text
+PASS event-reschedule: event frames coalesced into one follow-up frame
+```
+
+A `before-update` handler was temporarily added to the Weston smoke to call
+`Clutter.get_current_event()`. That added an RPC to every frame, changed the
+timing, and the click passed with 112 observed frames and no current event.
+The probe was removed. The next uninstrumented run also passed, so the Weston
+click is not currently a deterministic failure marker. The installed guest
+order and `press-gap` remain the deterministic failure.
+
+An attempt to force `before-update` inside `clicked` with a nested
+`MainContext.iteration()` in the Clutter gate did not produce a frame and
+timed out. That test-only attempt was removed; nested main-context iteration
+remains rejected.
+
+The first expanded suite run printed `PASS buffer-invoke-gate` but timed out
+during process exit. Its focused retry passed in 0.02 seconds. The next full
+suite reports 24 Ok, 10 Expected Fail, 0 Fail, 0 Unexpected Pass, and 0
+Timeout.
+
+### 2026-10-14 09:39 follow-up frame and stage 6 proposal
+
+Extended `clutter-event-frame-order-gate` to call `schedule_update()` from its
+first `before-update`. Clutter emitted a second frame without recursively
+entering the first callback:
+
+```text
+PASS clutter-event-frame-order-gate: cancel=1 first=2 second=3 frame=4 current=1,1,0 follow-up=2
+```
+
+The pure gate and the real-Clutter gate now prove every part of
+`event-reschedule`: classify the input-event stack, suppress its frame relay,
+coalesce multiple requests, and let the frame clock provide a later
+notification. Added the stage 6 major-change proposal at the top of this file.
+No `src/` file was changed.
+
+### 2026-10-14 09:48 applied proposal; first build found the stage's declared type
+
+Applied the two reviewed proposal hunks. The first full build failed because `Meta.Backend.get_stage()` is declared as `Clutter.Actor`, so Vala does not expose `schedule_update()` directly on the inferred local. The stage is the real `Clutter.Stage` already used by the frame signal and `peek_stage_views()`. Updated the call, and the proposal above, to cast that actor to `global::Clutter.Stage` before `schedule_update()`.
+
+The next full build passed. `meson test -C build --suite signal-reentrancy --print-errorlogs` reports 24 Ok, 10 Expected Fail, 0 Fail, 0 Unexpected Pass, and 0 Timeout.
+
+The Weston click proof printed `overview-window-activate-smoke: after selected=true overview=false focus="Untitled Document 1 - gedit" inDrag=false ... preview opacity=255`, then `overview-window-activate-smoke: ok`. The prove ended with `stop (smoke-ok) after 21s`. The script's exit 137 is its documented teardown of Weston after the successful smoke.
+
+### 2026-10-14 10:05 drag hand log: current event is null on long-press cancel
+
+Read `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log` from the Weston debug session the user had just run. Hand report: click on the overview thumbnail works; drag does not. Slider grab works. Update menu and expand overlap are still broken and are not this bug.
+
+The only `JS ERROR` in that window is at 09:57:54.648: `TypeError: event is null` at `dnd.js:151` (`event.get_event_sequence()`), immediately after `Gsr-Clutter.get_current_event` id=41605 inside `long-press`. The `captured-event` 3ms earlier replied with no nested call. No notification sits between `long-press` and the throw. Five other `long-press` notifications in the same minute reply without calling `get_current_event`. Wrote this at the top as the current diagnosis. Stopped before shrinking it into the gate. No `src/` change.

@@ -28,6 +28,14 @@ namespace Gsr.Server.Rpc
 		public signal void stopping();
 
 		/**
+		 * Consume a notification before it is written.
+		 *
+		 * @param notification outbound notification
+		 * @return true when the notification was consumed
+		 */
+		public signal bool filter_notification(OLLMrpc.Notification notification);
+
+		/**
 		 * Set when this client calls Meta.Context.notify_ready.
 		 */
 		public bool ready = false;
@@ -75,6 +83,10 @@ namespace Gsr.Server.Rpc
 			OLLMrpc.Live.Buffer? buffer = null
 		)
 		{
+			var notification = gobject as OLLMrpc.Notification;
+			if (notification != null && this.filter_notification(notification)) {
+				return;
+			}
 			if (!this.channel_open || this.bin == null) {
 				return;
 			}

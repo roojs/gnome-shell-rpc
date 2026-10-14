@@ -437,12 +437,20 @@ private class StackHarness
 	public bool press_gap;
 	public bool server_gap;
 	public bool event_hold;
+	public bool event_open;
+	public bool event_scope;
+	public bool event_reschedule;
+	public bool event_drag;
+	private bool in_event;
+	private int event_frames_waiting;
+	private bool event_frame_pending;
 	private int queued_frames;
-	private bool rescheduled_frame;
+	public bool rescheduled_frame;
 	public bool second_handler_ran;
 	public bool frame_before_second;
 	public bool drag_before_second;
 	public bool drag_ran;
+	public int frames_run;
 	private int emit_poll_depth;
 	private bool in_dispatch;
 	private uint8[] held_notifs = new uint8[8];
@@ -820,6 +828,7 @@ private class StackHarness
 
 	private void take_frame()
 	{
+		this.frames_run++;
 		if (this.depth > 0) {
 			this.unrelated_overtook = true;
 		}
@@ -1111,6 +1120,226 @@ private class StackHarness
 		}
 	}
 
+	/**
+	 * Hold a frame from long-press until clicked replies.
+	 *
+	 * On a click, the held frame is sent when clicked
+	 * replies. On a drag, clicked never runs, so the held
+	 * frame is never sent.
+	 */
+	private bool run_event_open_server()
+	{
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'L')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.in_event = true;
+		if (this.in_event || this.signals_open > 0) {
+			this.unrelated_waiting = true;
+			this.unrelated_was_held = true;
+		} else if (!StackHarness.write_byte(this.server_write, (uint8) 'U')) {
+			return false;
+		}
+		if (this.event_drag) {
+			return StackHarness.write_byte(this.server_write, (uint8) 'D');
+		}
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'O')) {
+			return false;
+		}
+		uint8 message;
+		if (!StackHarness.read_byte(this.server_read, out message)
+				|| message != (uint8) 'R') {
+			return false;
+		}
+		this.inside_nested_call = true;
+		this.signals_open = 1;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'A')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.caused_sent_inside_call = true;
+		this.inside_nested_call = false;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'S')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.signals_open = 0;
+		this.in_event = false;
+		if (this.unrelated_waiting) {
+			this.unrelated_waiting = false;
+			if (!StackHarness.write_byte(this.server_write, (uint8) 'U')) {
+				return false;
+			}
+		}
+		return StackHarness.write_byte(this.server_write, (uint8) 'D');
+	}
+
+	/**
+	 * Hold a frame only while the pointer event is open.
+	 *
+	 * The event starts before long-press and ends after
+	 * the last handler for that event returns. On a click,
+	 * clicked replies before the event ends, and the held
+	 * frame is sent when the event ends. On a drag, no
+	 * clicked runs, and the held frame is still sent when
+	 * the event ends.
+	 */
+	private bool emit_event_frame()
+	{
+		if (this.in_event || this.signals_open > 0) {
+			this.unrelated_waiting = true;
+			this.unrelated_was_held = true;
+			if (this.event_reschedule) {
+				this.event_frame_pending = true;
+			} else {
+				this.event_frames_waiting++;
+			}
+			return true;
+		}
+		return StackHarness.write_byte(this.server_write, (uint8) 'U');
+	}
+
+	private bool finish_event()
+	{
+		this.in_event = false;
+		if (this.signals_open > 0) {
+			return true;
+		}
+		this.unrelated_waiting = false;
+		if (this.event_reschedule && this.event_frame_pending) {
+			this.event_frame_pending = false;
+			this.rescheduled_frame = true;
+			this.unrelated_sent++;
+			return StackHarness.write_byte(this.server_write, (uint8) 'U');
+		}
+		while (this.event_frames_waiting > 0) {
+			this.event_frames_waiting--;
+			this.unrelated_sent++;
+			if (!StackHarness.write_byte(this.server_write, (uint8) 'U')) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private bool run_event_scope_server()
+	{
+		this.in_event = true;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'L')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		if (!this.emit_event_frame()) {
+			return false;
+		}
+		if (this.event_drag) {
+			if (!this.finish_event()) {
+				return false;
+			}
+			this.immediate_when_idle = true;
+			this.unrelated_sent++;
+			if (!StackHarness.write_byte(this.server_write, (uint8) 'U')) {
+				return false;
+			}
+			return StackHarness.write_byte(this.server_write, (uint8) 'D');
+		}
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'O')) {
+			return false;
+		}
+		uint8 message;
+		if (!StackHarness.read_byte(this.server_read, out message)
+				|| message != (uint8) 'R') {
+			return false;
+		}
+		this.inside_nested_call = true;
+		this.signals_open = 1;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'A')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.caused_sent_inside_call = true;
+		if (!this.emit_event_frame()) {
+			return false;
+		}
+		this.inside_nested_call = false;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'S')) {
+			return false;
+		}
+		if (!this.read_reply()) {
+			return false;
+		}
+		this.signals_open = 0;
+		if (!this.finish_event()) {
+			return false;
+		}
+		this.immediate_when_idle = true;
+		this.unrelated_sent++;
+		if (!StackHarness.write_byte(this.server_write, (uint8) 'U')) {
+			return false;
+		}
+		return StackHarness.write_byte(this.server_write, (uint8) 'D');
+	}
+
+	private bool run_event_open_client()
+	{
+		uint8 message;
+		if (!StackHarness.read_byte(this.client_read, out message)
+				|| message != (uint8) 'L') {
+			return false;
+		}
+		if (!this.write_reply()) {
+			return false;
+		}
+		while (true) {
+			if (!StackHarness.read_byte(this.client_read, out message)) {
+				return false;
+			}
+			if (message == (uint8) 'D') {
+				if (this.event_drag) {
+					return this.drag_ran;
+				}
+				return this.second_handler_ran && this.causal_ran;
+			}
+			if (message == (uint8) 'U') {
+				this.take_frame();
+				continue;
+			}
+			if (message != (uint8) 'O') {
+				return false;
+			}
+			this.depth = 1;
+			this.in_call = true;
+			if (!StackHarness.write_byte(this.client_write, (uint8) 'R')) {
+				return false;
+			}
+			if (!StackHarness.read_byte(this.client_read, out message)
+					|| message != (uint8) 'A' || !this.take_causal()) {
+				return false;
+			}
+			if (!StackHarness.read_byte(this.client_read, out message)
+					|| message != (uint8) 'S') {
+				return false;
+			}
+			this.nested_completed = true;
+			this.in_call = false;
+			this.second_handler_ran = true;
+			this.depth = 0;
+			if (!this.write_reply()) {
+				return false;
+			}
+		}
+	}
+
 	private bool run_open_server()
 	{
 		if (!StackHarness.write_byte(this.server_write, (uint8) 'O')) {
@@ -1285,6 +1514,20 @@ private class StackHarness
 			});
 			client_ok = this.run_noreply_client();
 			server.join();
+		} else if (this.event_scope || this.event_reschedule) {
+			var server = new GLib.Thread<void*>("stack-server", () => {
+				server_ok = this.run_event_scope_server();
+				return null;
+			});
+			client_ok = this.run_event_open_client();
+			server.join();
+		} else if (this.event_open) {
+			var server = new GLib.Thread<void*>("stack-server", () => {
+				server_ok = this.run_event_open_server();
+				return null;
+			});
+			client_ok = this.run_event_open_client();
+			server.join();
 		} else if (this.event_hold) {
 			var server = new GLib.Thread<void*>("stack-server", () => {
 				server_ok = this.run_event_server();
@@ -1327,7 +1570,9 @@ private class StackHarness
 		Posix.close(server_to_client[0]);
 		Posix.close(server_to_client[1]);
 
-		if (this.press_gap || this.server_gap || this.event_hold) {
+		if (this.press_gap || this.server_gap || this.event_hold
+				|| this.event_open || this.event_scope
+				|| this.event_reschedule) {
 			return client_ok && server_ok;
 		}
 		if (this.policy == StackPolicy.PROPOSAL
@@ -1380,7 +1625,7 @@ int main(string[] args)
 {
 	if (args.length != 2) {
 		stderr.printf(
-			"usage: %s current|later-depth|later-reentry|signal-queue|transport-queue|server-delay|stack-bool|stack-void|stack|stack-eager|stack-defer|server-bool|server-void|server|proposal-after|proposal-during|proposal-noreply|emit-queue|call-hold|later-skip|press-gap|server-gap|event\n",
+			"usage: %s current|later-depth|later-reentry|signal-queue|transport-queue|server-delay|stack-bool|stack-void|stack|stack-eager|stack-defer|server-bool|server-void|server|proposal-after|proposal-during|proposal-noreply|emit-queue|call-hold|later-skip|press-gap|server-gap|event|event-no-click|event-scope|event-reschedule\n",
 			args[0]);
 		return 2;
 	}
@@ -1584,6 +1829,113 @@ int main(string[] args)
 		}
 		stderr.printf(
 			"PASS event: frame waited until clicked set the flag\n");
+		return 0;
+	}
+	if (args[1] == "event-no-click") {
+		var held = new StackHarness(StackPolicy.SERVER, StackKind.VOID);
+		held.event_open = true;
+		var drag = new StackHarness(StackPolicy.SERVER, StackKind.VOID);
+		drag.event_open = true;
+		drag.event_drag = true;
+		if (!held.run() || !held.second_handler_ran || !held.causal_nested
+				|| !held.caused_sent_inside_call || !held.unrelated_was_held
+				|| !held.drag_ran || held.drag_before_second) {
+			stderr.printf(
+				"FAIL event-no-click: pipe exchange did not complete\n");
+			return 1;
+		}
+		if (!drag.run() || !drag.drag_ran) {
+			stderr.printf(
+				"FAIL event-no-click: frame after long-press without clicked was never sent\n");
+			return 1;
+		}
+		stderr.printf(
+			"PASS event-no-click: held frame was sent without clicked\n");
+		return 0;
+	}
+	if (args[1] == "event-scope") {
+		var held_bool = new StackHarness(StackPolicy.SERVER, StackKind.BOOLEAN);
+		held_bool.event_scope = true;
+		var held_void = new StackHarness(StackPolicy.SERVER, StackKind.VOID);
+		held_void.event_scope = true;
+		var drag = new StackHarness(StackPolicy.SERVER, StackKind.VOID);
+		drag.event_scope = true;
+		drag.event_drag = true;
+		if (!held_bool.run() || !held_void.run() || !drag.run()
+				|| !held_bool.second_handler_ran
+				|| !held_void.second_handler_ran
+				|| !held_bool.causal_nested || !held_void.causal_nested
+				|| !held_bool.caused_sent_inside_call
+				|| !held_void.caused_sent_inside_call
+				|| !held_bool.unrelated_was_held
+				|| !held_void.unrelated_was_held
+				|| !drag.unrelated_was_held
+				|| !held_bool.drag_ran || !held_void.drag_ran
+				|| !drag.drag_ran
+				|| !held_bool.immediate_when_idle
+				|| !held_void.immediate_when_idle
+				|| !drag.immediate_when_idle
+				|| held_bool.unrelated_sent != 3
+				|| held_void.unrelated_sent != 3
+				|| drag.unrelated_sent != 2
+				|| held_bool.frames_run != 3
+				|| held_void.frames_run != 3
+				|| drag.frames_run != 2
+				|| held_bool.reply_sent == held_void.reply_sent) {
+			stderr.printf(
+				"FAIL event-scope: pipe exchange did not complete\n");
+			return 1;
+		}
+		if (held_bool.drag_before_second || held_void.drag_before_second) {
+			stderr.printf(
+				"FAIL event-scope: frame ran before clicked set the flag\n");
+			return 1;
+		}
+		stderr.printf(
+			"PASS event-scope: frame waited for click and drag events, then idle frame ran\n");
+		return 0;
+	}
+	if (args[1] == "event-reschedule") {
+		var held_bool = new StackHarness(StackPolicy.SERVER, StackKind.BOOLEAN);
+		held_bool.event_reschedule = true;
+		var held_void = new StackHarness(StackPolicy.SERVER, StackKind.VOID);
+		held_void.event_reschedule = true;
+		var drag = new StackHarness(StackPolicy.SERVER, StackKind.VOID);
+		drag.event_reschedule = true;
+		drag.event_drag = true;
+		if (!held_bool.run() || !held_void.run() || !drag.run()
+				|| !held_bool.second_handler_ran
+				|| !held_void.second_handler_ran
+				|| !held_bool.causal_nested || !held_void.causal_nested
+				|| !held_bool.caused_sent_inside_call
+				|| !held_void.caused_sent_inside_call
+				|| !held_bool.unrelated_was_held
+				|| !held_void.unrelated_was_held
+				|| !drag.unrelated_was_held
+				|| !held_bool.rescheduled_frame
+				|| !held_void.rescheduled_frame
+				|| !drag.rescheduled_frame
+				|| !held_bool.immediate_when_idle
+				|| !held_void.immediate_when_idle
+				|| !drag.immediate_when_idle
+				|| held_bool.unrelated_sent != 2
+				|| held_void.unrelated_sent != 2
+				|| drag.unrelated_sent != 2
+				|| held_bool.frames_run != 2
+				|| held_void.frames_run != 2
+				|| drag.frames_run != 2
+				|| held_bool.reply_sent == held_void.reply_sent) {
+			stderr.printf(
+				"FAIL event-reschedule: pipe exchange did not complete\n");
+			return 1;
+		}
+		if (held_bool.drag_before_second || held_void.drag_before_second) {
+			stderr.printf(
+				"FAIL event-reschedule: follow-up frame ran before clicked\n");
+			return 1;
+		}
+		stderr.printf(
+			"PASS event-reschedule: event frames coalesced into one follow-up frame\n");
 		return 0;
 	}
 	if (args[1] == "server-gap") {
