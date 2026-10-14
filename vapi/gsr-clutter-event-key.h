@@ -32,4 +32,8 @@ ClutterEvent * gsr_clutter_event_key_insert (ClutterEventType type,
                                              uint32_t keyval,
                                              ClutterModifierType modifiers);
 
+/* Mutter clutter-stage.c. Declaration only; libmutter defines it.
+ * Not in the public clutter headers. */
+void _clutter_stage_process_queued_events (ClutterStage *stage);
+
 G_END_DECLS

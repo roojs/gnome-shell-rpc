@@ -8,6 +8,23 @@ namespace Gsr.Server.Clutter
 {
 	public class Clutter : GLib.Object
 	{
+		private static int queued_flush_depth;
+		private static bool flush_again;
+		private static global::Clutter.Stage? flush_stage;
+		/* Leave and other crossings are emitted with no current event.
+		 * dnd.js reads get_current_event() inside that long-press. */
+		private static global::Clutter.Event? open_event;
+
+		[CCode (cname = "clutter_event_copy", cheader_filename = "clutter/clutter.h")]
+		private static extern global::Clutter.Event copy_clutter_event(global::Clutter.Event event);
+
+		/**
+		 * Mutter's {@code _clutter_stage_process_queued_events} (clutter-stage-private.h, defined in clutter-stage.c).
+		 * Delivers events already queued on the stage. The Vala name is that symbol. This tree only declares it.
+		 */
+		[CCode (cname = "_clutter_stage_process_queued_events", cheader_filename = "gsr-clutter-event-key.h")]
+		private static extern void _clutter_stage_process_queued_events(global::Clutter.Stage stage);
+
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
@@ -19,6 +36,36 @@ namespace Gsr.Server.Clutter
 				null
 			);
 			OLLMrpc.Request.register_live("Gsr-Clutter", new Clutter());
+			/* A pointer burst queues motions. Delivering one blocks on the
+			 * client, and the main loop takes the rest of the burst while
+			 * that delivery is still on the stack. Flush again when it
+			 * returns, or the long-press timeout runs first and the drag
+			 * never starts. */
+			global::Clutter.Event.add_filter(null, (event, event_actor) => {
+				if (global::Clutter.get_current_event() == null) {
+					open_event = copy_clutter_event(event);
+				}
+				if (event_actor != null) {
+					var stage = event_actor.get_stage();
+					if (stage != null) {
+						flush_stage = (global::Clutter.Stage) stage;
+					}
+				}
+				if (flush_stage == null) {
+					return false;
+				}
+				if (queued_flush_depth > 0) {
+					flush_again = true;
+					return false;
+				}
+				do {
+					flush_again = false;
+					queued_flush_depth++;
+					_clutter_stage_process_queued_events(flush_stage);
+					queued_flush_depth--;
+				} while (flush_again);
+				return false;
+			});
 		}
 
 		/**
@@ -29,6 +76,9 @@ namespace Gsr.Server.Clutter
 		public void get_current_event(OLLMrpc.Request request)
 		{
 			unowned var ev = global::Clutter.get_current_event();
+			if (ev == null) {
+				ev = open_event;
+			}
 			this.reply_event(request, ev);
 		}
 

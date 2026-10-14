@@ -929,6 +929,14 @@
 		Gsr.Client.Rpc.call_value(
 			"Clutter-Actor.set_scale", this,
 			OLLMrpc.args("dd", scale_x, scale_y));
+		var x_transition = this.get_transition("scale-x");
+		if (x_transition != null) {
+			Gsr.Client.Rpc.hold_transition(x_transition);
+		}
+		var y_transition = this.get_transition("scale-y");
+		if (y_transition != null) {
+			Gsr.Client.Rpc.hold_transition(y_transition);
+		}
 	}
 
 	/**

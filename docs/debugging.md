@@ -20,8 +20,10 @@ Suggestions, next tries, and the trial log stay out of the top. They go in `## L
 
 One line, and only when you stop. The bug file is the rest. Do not paste the log, the diagnosis, or the next step into chat.
 
-- `Can you review docs/bugs/<file>.md`
-- `Can you review the proposal in docs/bugs/<file>.md`
+The line names the bug file and why the review was requested. The same reason is the first lines of that file. A review is not "this is done". If the smoke or the gate has not passed, the reason says what is unproven and why you stopped.
+
+- `Can you review docs/bugs/<file>.md — <why>`
+- `Can you review the proposal in docs/bugs/<file>.md — <why>`
 
 The second line is only for a stage 6 major change. The `alan2` copy request in stage 2 is the one ask that is not a review.
 

@@ -403,6 +403,34 @@ GObject — not `export()` `"t"` + `proxies.get`.
 OPC: [`OLLMchat/docs/bugs/2026-09-16-any-args-token-reg-type.md`](file:///home/alan/gitlive/OLLMchat/docs/bugs/2026-09-16-any-args-token-reg-type.md).
 Helper.LayoutManager `"od"` / `"odddd"` + `get_object()`.
 
+## scale-gap-gate
+
+Shape: a 250ms scale exists, the handler has not returned, and the grab is
+already held. `current` lets the clock run during a 400ms quiet gap, because
+`before-update` is one-way. The timeline finishes, `stopped` is written with
+no reply wait, and the second read of `scale-x` is null. `new-frame` is not
+connected. That is the 14:40 hang. `in-process` does not tick until the
+handler returns, so the second read is still the timeline and the scale then
+finishes. That control is what one process does. It is not a strategy for
+`src/`.
+
+```bash
+meson compile -C build tests/call-sync-repro/scale-gap-gate
+GATE=./build/tests/call-sync-repro/scale-gap-gate
+
+timeout 5 $GATE current            # existing failure — scale-x gone, grab held
+timeout 5 $GATE in-process         # control — clock waits, then the scale finishes
+timeout 5 $GATE pause-on-ease      # pause when ease returns, start when the handler returns
+timeout 5 $GATE pause-plain        # same, ordinary ease that never connects new-frame
+timeout 5 $GATE pause-on-get       # pause after the first successful get
+timeout 5 $GATE ease-gap           # pause-on-get loses a gap before that get
+timeout 5 $GATE start-on-frame     # stay paused until the new-frame subscribe
+timeout 5 $GATE frame-plain        # ordinary ease never subscribes, so it never starts
+timeout 5 $GATE start-on-stopped   # the subscribe get_transition already does is too early
+timeout 5 $GATE hold-until-click   # drag has no clicked, scale never finishes
+timeout 5 $GATE inhibit-drag       # holding for the whole grab means the scale never runs
+```
+
 ## request-buffer-gate
 
 Shape: `live_handles` client `call_poll` to `Gate.eat_fd`. Server must see

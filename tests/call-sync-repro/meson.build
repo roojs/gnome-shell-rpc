@@ -539,6 +539,22 @@ test(
   timeout: 20,
 )
 
+# Drag cancel on a batched leave has no current event. Same failure as the
+# Weston and guest thumbnail drag. should_fail until a fix passes it.
+clutter_drag_leave_gate = executable(
+  'clutter-drag-leave-gate',
+  'clutter-drag-leave-gate.c',
+  dependencies: [libmutter_dep],
+  install: false,
+)
+
+test(
+  'signal-reentrancy-clutter-drag-leave',
+  clutter_drag_leave_gate,
+  suite: 'signal-reentrancy',
+  timeout: 20,
+)
+
 # Unset boolean return must not stop a true-handled signal chain.
 executable('button-release-chain-gate',
   [
@@ -802,6 +818,42 @@ test(
   ],
   depends: [later_callback_hold_fixture, later_callback_hold_typelib],
 )
+
+# 250ms scale removed while the handler is still open. current is the
+# RPC split (clock runs in the quiet gap). in-process is the control.
+scale_gap_gate = executable('scale-gap-gate',
+  'scale-gap-gate.vala',
+  dependencies: [dependency('gio-unix-2.0')],
+  vala_args: ['--pkg=posix'],
+  install: false,
+)
+
+test(
+  'scale-gap-current',
+  scale_gap_gate,
+  args: ['current'],
+  should_fail: true,
+  timeout: 5,
+)
+
+foreach mode : ['in-process', 'pause-on-ease', 'pause-plain', 'pause-on-get', 'start-on-frame']
+  test(
+    'scale-gap-' + mode,
+    scale_gap_gate,
+    args: [mode],
+    timeout: 5,
+  )
+endforeach
+
+foreach mode : ['ease-gap', 'frame-plain', 'start-on-stopped', 'hold-until-click', 'inhibit-drag']
+  test(
+    'scale-gap-' + mode,
+    scale_gap_gate,
+    args: [mode],
+    should_fail: true,
+    timeout: 5,
+  )
+endforeach
 
 # Nested poke: one callback removes itself and runs the queue again, which
 # calls the next SourceFunc. Then the JS wrapper is dropped and poke runs.
