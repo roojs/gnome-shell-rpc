@@ -66,6 +66,32 @@ outer_emit_reply_gate = executable('outer-emit-reply-gate',
   install: false,
 )
 
+# A blocking void GObject signal must carry a reply id and keep the server
+# inside the emission until the client replies. Current libocrpc sends it
+# one-way because GClosure passes a null return_value for void signals.
+blocking_void_signal_gate = executable('blocking-void-signal-gate',
+  [
+    'blocking-void-signal-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+test(
+  'blocking-void-signal',
+  blocking_void_signal_gate,
+  timeout: 5,
+)
+
 # Response then Invoke in one client read — bin buffer vs IOChannel IN.
 buffer_invoke_gate = executable('buffer-invoke-gate',
   [

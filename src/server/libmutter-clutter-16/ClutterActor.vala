@@ -170,6 +170,7 @@ namespace Gsr.Server.Clutter
 					id = (int) request.lease_id
 				};
 				switch (names[i]) {
+					case "before-update":
 					case "button-press-event":
 					case "button-release-event":
 					case "captured-event":

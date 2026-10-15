@@ -431,6 +431,26 @@ timeout 5 $GATE hold-until-click   # drag has no clicked, scale never finishes
 timeout 5 $GATE inhibit-drag       # holding for the whole grab means the scale never runs
 ```
 
+## blocking-void-signal-gate
+
+Real-libocrpc gate for the boundary behind the scale gap. A server subscribes
+to a void GObject signal with `Subscription.blocking = true`. The client
+handles the notification, calls back into the server, and replies. The nested
+call must run while the server is still inside the signal emission.
+
+```bash
+meson compile -C build tests/call-sync-repro/blocking-void-signal-gate
+timeout 5 ./build/tests/call-sync-repro/blocking-void-signal-gate
+```
+
+| Run | Result |
+| --- | ------ |
+| 2026-10-15 | **FAIL** — notification arrived with `reply_id = 0`; emission had already returned |
+| 2026-10-15 | **PASS** after libocrpc fix — reply id set; nested call observed the open emission |
+
+Bug:
+[`2026-10-15-blocking-void-signal-does-not-wait.md`](../../docs/bugs/2026-10-15-blocking-void-signal-does-not-wait.md).
+
 ## request-buffer-gate
 
 Shape: `live_handles` client `call_poll` to `Gate.eat_fd`. Server must see

@@ -2,11 +2,20 @@
 
 Split from [`2026-10-12-overview-thumbnail-drag.md`](2026-10-12-overview-thumbnail-drag.md) on 2026-10-14. That file is only a pointer. The long log is [`archive/2026-10-12-overview-thumbnail-drag.md`](archive/2026-10-12-overview-thumbnail-drag.md). Do not continue the old file.
 
-**Review:** the hold is out of `src/`. The guest is still running the 17:50 install of it until the next install. Do not `gdm3 restart` to try that install.
+**Review:** the global transition hold is rejected and out of `src/`. Its
+stand-alone gate did not exercise the product hook, and its guest install
+regressed startup. The guest was still running the 17:50 install at the last
+reachable check. Do not `gdm3 restart` to try that install.
 
-**Status:** a press that leaves an overview preview starts a drag, then `startDrag` throws and the grab stays. `dnd.js:522` calls `get_transition('scale-x')` after the 250ms scale has already stopped. The reproduction is `tests/call-sync-repro/scale-gap-gate.vala`. `current` still fails. `pause-on-ease` passes on the gate and failed on the guest: installing it and restarting gdm killed that session. `Actor.set_scale` is back to the RPC only.
+**Status:** ✔️ the scale-gone failure is fixed in nested Weston with the
+2026-10-15 libocrpc void-signal fix and `before-update` on the consumer
+blocking list. The 400ms forced gap at `dnd.js:522` still returned the
+`scale-x` transition; `new-frame` connected and fired. There was no
+`transition-gone` error. The smoke continued and failed separately with
+`miss preview-moved dx=0` after `drag-begin`. `Actor.set_scale` remains the
+single RPC only; the rejected transition hold stays out.
 
-## Proposal
+## Rejected proposal
 
 `pause-on-ease` on the gate: pause the timeline when ease returns, leave it paused across the quiet gap, and start it when the handler returns. The scale is still at its start for the second read, `new-frame` can connect, and the scale then finishes.
 
@@ -418,7 +427,11 @@ this._dragActor.get_transition('scale-x').connect('new-frame', () => {
 
 ## Where to start
 
-The proposal at the top of this file is the candidate. It is not applied. `src/` stays as it is until that proposal is accepted. `get_transition` and `run_main_loop` are not part of it.
+Do not reapply the proposal at the top. Continue from the FAIL-backed
+libocrpc bug
+[`2026-10-15-blocking-void-signal-does-not-wait.md`](2026-10-15-blocking-void-signal-does-not-wait.md).
+`src/` stays as it is. `get_transition` and `run_main_loop` are not consumer
+fix points.
 
 ## LLM efforts
 
@@ -518,3 +531,65 @@ Same log. A click calls `Gsr-Mutter-AppLaunch.launch_desktop_file` id=16473 at 1
 `alan@192.168.122.52`. `192.168.88.197` has no route. Boot `-1` (`02c6358e952a4748a135e9f6219f3bb8`) ran from 2026-10-13 17:20 until 2026-10-14 17:52:06. At 17:50:55 `meson install --no-rebuild` from `/home/alan/gitlive/gnome-shell-rpc/build`. At 17:50:59 `/etc/init.d/gdm3 restart`. The new libraries are stamped 17:50:55 and export `shell_signals_hold_transition` and `gsr_client_rpc_hold_transition`. Journald at 17:52:00: `Suppressed 3275 messages from user@1000.service`. From 17:51:38 the new `gsr-server` logs `g_atomic_ref_count_dec: assertion 'old_value > 0' failed`, `gsignal.c:2699` no handler, and a `St-Widget.set_label_actor` `-32602` loop. No `Out of memory` line. Boot `0` started 17:53:00 and is the same libraries: every `Clutter-Actor.set_scale` is followed by two `Clutter-Actor.get_transition` calls, and `Clutter-Timeline.is_playing` / `pause` / `start` are absent while those scales are outside `emit`. Load on that boot was 3.25 at two minutes, `gsr-server` 24% and `gsr-client` 19%.
 
 The hold is removed from `Signals.vala`, `namespace.vala`, and `Actor.override.vala`. The guest process is still the 17:50 binaries.
+
+### 2026-10-15 gate/integration mismatch and void-signal boundary
+
+The `pause-on-ease` gate manually performs `PAUSE` after `EASE` and `START`
+after `HANDLER_DONE`. It does not link `Shell.Signals`, call
+`Actor.set_scale`, exercise `emit_depth`, or cross the lazy C trampoline. It
+therefore did not prove the integration that was copied into `src/`.
+
+The copied integration intercepted every changed actor scale, not only DND.
+Stock shell call sites include GDM timed-login/auth animations, panel,
+window-manager effects, message list, dash, magnifier, workspace and app-grid
+animations. Even when `emit_depth` was zero and no hold occurred, it added two
+`get_transition` RPCs per `set_scale`. The guest logs prove that broad probing;
+they do not isolate it as the cause of the startup failure.
+
+`tests/call-sync-repro/blocking-void-signal-gate.vala` uses real libocrpc.
+Direct run exited 1:
+
+```text
+FAIL blocking-void-signal-gate: blocking void signal was one-way tick=true reply-id=false observed-during-emit=false error=
+```
+
+`Subscription.emit` returns early when `return_value == null`; that is always
+the GClosure shape for void signals. Thus setting `blocking = true` on
+`before-update` cannot currently hold its emission. The dedicated bug is
+[`2026-10-15-blocking-void-signal-does-not-wait.md`](2026-10-15-blocking-void-signal-does-not-wait.md).
+
+### 2026-10-15 libocrpc fix and Weston proof
+
+The OLLMchat build now waits for blocking void signals without writing a
+boolean return through the null GClosure return slot. gnome-shell-rpc was
+configured with:
+
+```bash
+meson configure build -Docrpc_libdir=/home/alan/gitlive/OLLMchat/build/libocrpc
+```
+
+`blocking-void-signal-gate` changed from the recorded FAIL to:
+
+```text
+PASS blocking-void-signal-gate: void signal waited for reply
+```
+
+Added `before-update` to `ClutterActor.vala`'s blocking subscription switch.
+The full build passed. The signal-reentrancy suite reported 25 passes and 10
+expected failures, with no unexpected failures or timeouts.
+
+The overview drag smoke reached the forced 400ms gap:
+
+```text
+09:13:44.634  Clutter-Actor.get_transition id=19602
+09:13:44.635  Clutter-Actor.get_transition id=19604
+09:13:45.038  Clutter-Actor.get_transition id=19612
+09:13:45.110  notification method=new-frame
+09:13:45.120  overview-thumbnail-drag-smoke: after began=true inDrag=true dx=0
+09:13:45.120  overview-thumbnail-drag-smoke: miss Error: miss preview-moved dx=0
+```
+
+The second read was 403ms after the transition was created and returned an
+object. No `transition-gone` or `dnd.js:522` error occurred. This closes the
+scale lifetime failure. The zero displacement is after `drag-begin` and after
+`new-frame`; it is a separate drag-position failure.
