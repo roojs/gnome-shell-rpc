@@ -144,42 +144,29 @@ async function run(main) {
 		throw new Error('miss preview');
 
 	let began = false;
+	let ended = false;
 	preview.connect('drag-begin', () => {
 		began = true;
 	});
-	/* St.Settings.enable-animations is not writable. The 14:40
-	 * ease still ran for 250ms, so force that duration here. */
-	const origDuration = Clutter.Actor.prototype.set_easing_duration;
-	Clutter.Actor.prototype.set_easing_duration = function (msecs, params) {
-		const next = params != null ? params : {};
-		next.animationRequired = true;
-		return origDuration.call(this, msecs, next);
-	};
-	/* dnd.js calls get_transition again after ease(). The hand
-	 * session spent ~230ms there and the 250ms scale was gone. */
-	let transitionGone = false;
-	const origGetTransition = Clutter.Actor.prototype.get_transition;
-	Clutter.Actor.prototype.get_transition = function (name) {
-		const stack = new Error().stack || '';
-		const directDrag = name === 'scale-x'
-			&& stack.indexOf('/dnd.js:') >= 0
-			&& stack.indexOf('environment.js') < 0;
-		if (directDrag) {
-			const end = GLib.get_monotonic_time() + 400 * 1000;
-			while (GLib.get_monotonic_time() < end) {}
-		}
-		const transition = origGetTransition.call(this, name);
-		if (directDrag && transition == null) {
-			transitionGone = true;
-			throw new Error('transition-gone');
-		}
-		return transition;
-	};
+	preview.connect('drag-end', () => {
+		ended = true;
+	});
 	const [x, y] = preview.get_transformed_position();
 	const [w, h] = preview.get_transformed_size();
 	const cx = x + w / 2;
 	const cy = y + h / 2;
 	smokeLog('drag ' + cx + ',' + cy + ' size=' + w + 'x' + h);
+	if (GLib.getenv('GI_META_SMOKE_MANUAL') === '1') {
+		smokeLog('manual-ready');
+		const manualDeadline =
+			GLib.get_monotonic_time() + 30 * GLib.TIME_SPAN_SECOND;
+		while (!began && GLib.get_monotonic_time() < manualDeadline)
+			await delay(100);
+		if (!began)
+			throw new Error('miss manual-drag-begin');
+		smokeLog('ok');
+		return;
+	}
 
 	const seat = Clutter.get_default_backend().get_default_seat();
 	const virt = seat.create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
@@ -188,18 +175,45 @@ async function run(main) {
 	await delay(50);
 	virt.notify_button(now(), 1, Clutter.ButtonState.PRESSED);
 	await delay(50);
-	/* Past the preview. The hand drag cancels on that leave. */
-	virt.notify_absolute_motion(now(), x + w + 80, y + h + 80);
-	await delay(300);
-	const [movedX] = preview.get_transformed_position();
+	const stayInside = GLib.getenv('GI_META_SMOKE_STAY_INSIDE') === '1';
+	const startX = stayInside ? cx + 80 : x + w + 80;
+	const startY = stayInside ? cy : y + h + 80;
+	/* The default crosses the preview boundary; stay-inside reproduces the
+	 * path where actor motion used to disappear after the press. */
+	virt.notify_absolute_motion(now(), startX, startY);
+	await delay(100);
+	/* Continue beyond the 250ms drag scale transition. The earlier smoke
+	 * stopped after one early displacement and never tested this path. */
+	let movedX = x;
+	let firstDx = null;
+	for (let offset = 20; offset <= 200; offset += 20) {
+		virt.notify_absolute_motion(
+			now(), startX + offset, stayInside ? startY : startY + offset);
+		await delay(100);
+		[movedX] = preview.get_transformed_position();
+		const dx = movedX - x;
+		if (firstDx === null)
+			firstDx = dx;
+		smokeLog('motion offset=' + offset + ' dx=' + dx);
+	}
+	const tracked = (movedX - x) - firstDx;
 	smokeLog('after began=' + began + ' inDrag=' + preview.inDrag
-		+ ' dx=' + (movedX - x));
-	if (transitionGone)
-		throw new Error('transition-gone');
+		+ ' dx=' + (movedX - x) + ' tracked=' + tracked);
 	if (!began)
 		throw new Error('miss drag-begin');
 	if (Math.abs(movedX - x) < 30)
 		throw new Error('miss preview-moved dx=' + (movedX - x));
+	if (tracked < 30)
+		throw new Error('miss preview-tracked dx=' + (movedX - x)
+			+ ' first=' + firstDx);
+	virt.notify_button(now(), 1, Clutter.ButtonState.RELEASED);
+	const endDeadline =
+		GLib.get_monotonic_time() + 3 * GLib.TIME_SPAN_SECOND;
+	while (!ended && GLib.get_monotonic_time() < endDeadline)
+		await delay(100);
+	if (!ended || preview.inDrag)
+		throw new Error('miss drag-end ended=' + ended
+			+ ' inDrag=' + preview.inDrag);
 	smokeLog('ok');
 }
 

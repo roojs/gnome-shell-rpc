@@ -67,6 +67,10 @@ namespace Clutter
 			this.scroll_source = (uint32) scroll_source;
 			this.source_device = source_device;
 			this.time = time;
+			if (Event.devices_by_type != null) {
+				return;
+			}
+			Event.devices_by_type = new Gee.HashMap<int, InputDevice>();
 		}
 
 		public static Event from_local(
@@ -80,10 +84,13 @@ namespace Clutter
 			ScrollSource scroll_source = ScrollSource.unknown,
 			InputDevice? source_device = null
 		) {
-			return new Event.local(
-				type, x, y, button, state, keyval, related,
+			return new Event.local(type, x, y, button, state, keyval, related,
 				scroll_source, source_device);
 		}
+
+		/* One client device per type. dnd.js compares get_device() with !==,
+		 * and the two unpack paths must hand back that same object. */
+		private static Gee.HashMap<int, InputDevice>? devices_by_type;
 
 		/**
 		 * Scroll source, source-device type, then event time, packed after
@@ -98,13 +105,9 @@ namespace Clutter
 				return;
 			}
 			this.scroll_source = fields.get(index).get_uint();
+			var device_type = -1;
 			if (fields.size > index + 1) {
-				var device_type = fields.get(index + 1).get_int();
-				if (device_type >= 0) {
-					var device = new InputDevice();
-					device.device_type = (InputDeviceType) device_type;
-					this.source_device = device;
-				}
+				device_type = fields.get(index + 1).get_int();
 			}
 			if (fields.size > index + 2) {
 				this.time = fields.get(index + 2).get_uint();
@@ -116,6 +119,15 @@ namespace Clutter
 				this.scroll_dx = fields.get(index + 4).get_double();
 				this.scroll_dy = fields.get(index + 5).get_double();
 			}
+			if (device_type < 0) {
+				return;
+			}
+			if (!Event.devices_by_type.has_key(device_type)) {
+				var created = new InputDevice();
+				created.device_type = (InputDeviceType) device_type;
+				Event.devices_by_type.set(device_type, created);
+			}
+			this.source_device = Event.devices_by_type.get(device_type);
 		}
 
 		/**
@@ -162,11 +174,6 @@ namespace Clutter
 			this.event_type = (EventType) state.event_type;
 			this.flags = state.flags;
 			this.time = state.time;
-			if (state.device_type >= 0) {
-				var device = new InputDevice();
-				device.device_type = (InputDeviceType) state.device_type;
-				this.source_device = device;
-			}
 			switch (this.event_type) {
 				case EventType.button_press:
 				case EventType.button_release:
@@ -224,6 +231,15 @@ namespace Clutter
 				default:
 					break;
 			}
+			if (state.device_type < 0) {
+				return;
+			}
+			if (!Event.devices_by_type.has_key(state.device_type)) {
+				var created = new InputDevice();
+				created.device_type = (InputDeviceType) state.device_type;
+				Event.devices_by_type.set(state.device_type, created);
+			}
+			this.source_device = Event.devices_by_type.get(state.device_type);
 		}
 
 		[CCode (cname = "clutter_event_type")]

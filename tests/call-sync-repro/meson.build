@@ -67,8 +67,8 @@ outer_emit_reply_gate = executable('outer-emit-reply-gate',
 )
 
 # A blocking void GObject signal must carry a reply id and keep the server
-# inside the emission until the client replies. Current libocrpc sends it
-# one-way because GClosure passes a null return_value for void signals.
+# inside the emission until the client replies. This guards the libocrpc fix
+# for the null GClosure return_value used by void signals.
 blocking_void_signal_gate = executable('blocking-void-signal-gate',
   [
     'blocking-void-signal-gate.vala',

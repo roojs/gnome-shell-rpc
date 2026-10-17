@@ -1,248 +1,587 @@
-# Drag scale is gone before dnd.js connects it
+# Overview thumbnail drag
 
-Split from [`2026-10-12-overview-thumbnail-drag.md`](2026-10-12-overview-thumbnail-drag.md) on 2026-10-14. That file is only a pointer. The long log is [`archive/2026-10-12-overview-thumbnail-drag.md`](archive/2026-10-12-overview-thumbnail-drag.md). Do not continue the old file.
+Consolidated from the 2026-10-12 investigation. The old long log is
+[`archive/2026-10-12-overview-thumbnail-drag.md`](archive/2026-10-12-overview-thumbnail-drag.md).
+Continue all overview-thumbnail drag work here.
 
-**Review:** the global transition hold is rejected and out of `src/`. Its
-stand-alone gate did not exercise the product hook, and its guest install
-regressed startup. The guest was still running the 17:50 install at the last
-reachable check. Do not `gdm3 restart` to try that install.
+**Status:** open. The drag follows the pointer and the button release
+reaches `dnd.js`. A drop on the top workspace thumbnail, and a drop on the
+window to the right, still snap the preview back. Neither calls
+`Meta.Window.change_workspace_by_index`.
 
-**Status:** ✔️ the scale-gone failure is fixed in nested Weston with the
-2026-10-15 libocrpc void-signal fix and `before-update` on the consumer
-blocking list. The 400ms forced gap at `dnd.js:522` still returned the
-`scale-x` transition; `new-frame` connected and fired. There was no
-`transition-gone` error. The smoke continued and failed separately with
-`miss preview-moved dx=0` after `drag-begin`. `Actor.set_scale` remains the
-single RPC only; the rejected transition hold stays out.
+The 16:39:25 release at (782, 276) and the 16:39:31 release at (270, 104)
+both run `Meta.Workspace.index`, `Meta.Window.located_on_workspace`, and
+`Meta.Window.get_monitor`, then animate `set_x` / `set_y` / `set_scale`.
+That is `Workspace.acceptDrop()` rejecting the window with `_isMyWindow()`.
+`ThumbnailsBox.acceptDropInternal()` would call `located_on_workspace`
+before `index()`. The top drop is therefore picked as the current
+workspace, which already contains the window.
 
-## Rejected proposal
+The sustained Weston smoke is:
 
-`pause-on-ease` on the gate: pause the timeline when ease returns, leave it paused across the quiet gap, and start it when the handler returns. The scale is still at its start for the second read, `new-frame` can connect, and the scale then finishes.
+```bash
+GI_META_SMOKE=overview-thumbnail-drag-smoke \
+GI_META_SMOKE_CMD='gedit --new-window' \
+GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1 \
+GSR_NESTED_TIMEOUT=90 \
+./scripts/agent-nested-smoke-prove.sh
+```
 
-`startDrag` runs inside `Shell.Signals.emit` (before-update, then the before-redraw later). `emit_depth` is already that nesting. When it returns to 0, `drain_notifs` already runs. The start goes there. `Meta.Context.run_main_loop` stays `loop.run()`. Nothing uses `GLib.Idle`. `Actor.get_transition` is not changed.
+16:22, `nested-weston-prove: stop (smoke-fail) after 12s`:
 
-The list is `Shell.Signals.held_timelines`. It is the same kind of memory as `held_notifs`, and it lives for the open `emit` only. It is not a field on `Gsr.Client.Rpc`, and nothing walks it from the main loop. The clutter client does not link shell-gi, so `set_scale` reaches it through a C trampoline, the same way `pending_signals` already works.
+```text
+overview-thumbnail-drag-smoke: motion offset=20 dx=93.22265625
+overview-thumbnail-drag-smoke: motion offset=40 dx=93.22265625
+...
+overview-thumbnail-drag-smoke: motion offset=200 dx=93.22265625
+overview-thumbnail-drag-smoke: after began=true inDrag=true dx=93.22265625
+overview-thumbnail-drag-smoke: miss Error: miss drag-end ended=false inDrag=true
+```
 
-A timeline that has already advanced more than 32ms is left alone, so a later `set_scale` during the drag does not pause the scale that already started. 32 is one or two frames between the setter's return and the elapsed read. `get_transition` of each axis is an extra RPC on every `set_scale`.
+`Clutter-Actor.set_position` stops at 16:22:44.698. Virtual motion continues
+until the release at 16:22:45.509. Each of those later `event` notifications
+is answered with no further RPC. `dnd.js::_onEvent()` returns before
+`_updateDragPosition()` and `_dragActorDropped()` when
+`event.get_device() !== this._grabbedDevice`. Both unpack paths construct a
+new client `InputDevice` from `device_type` alone:
+`Event.read_scroll_tail()` for `get_current_event()`, and
+`Event.apply_state()` for the `event` signal.
 
-### 1. `src/client/libshell-16/Signals.vala` — `held_timelines`
+The in-preview case failed because client GJS gesture subclasses were
+represented by a stock server `ClutterGestureAction`. Their GJS
+`vfunc_gesture_prepare()` overrides never ran. The stock capture actions
+therefore consumed post-press pointer motion before the stage, preview, and
+DND click action received it. Disabling all six stage gesture actions for
+one diagnostic run made the same reproduction pass with
+`began=true inDrag=true dx=93.22`. Disabling only all four `swipe` actions,
+only `unfullscreen`, or only `osk` still failed. This was class-vfunc
+parity, not a special case for one named shell gesture.
 
-**Why:** `emit` has to start the timelines it paused, and only those. `held_notifs` is the existing list with the same lifetime.
+## Remaining failure: motion stays inside the preview
 
-**Where:** static fields, immediately after `held_notifs`.
+A press followed by a move that remains on the overview preview reports
+`began=false inDrag=false dx=0`. The filter sees the expected coordinates,
+but the implicit-grab chain reaches capture-phase stage gesture actions
+before actor capture. The server peers are stock `ClutterGestureAction`
+objects, so the GJS subclass preparation checks are absent and actor
+delivery stops:
+
+```text
+12:12:51.637  button press on the preview
+12:12:51.641  notification method=long-press
+12:12:51.737  one actor type=3 cluster, then no further preview motion
+              backend motions continue from x=327 to x=586
+
+overview-thumbnail-drag-smoke: after began=false inDrag=false dx=0
+overview-thumbnail-drag-smoke: miss Error: miss drag-begin
+nested-weston-prove: stop (smoke-fail) after 11s
+```
+
+Moving outside the preview is different: it emits leave, the copied
+`open_event` supplies the long-press cancel event, and drag starts.
+
+The 12:00 diagnostic run narrowed the loss. Every post-press virtual motion
+arrived outside an RPC signal wait (`emit-depth=0`), became backend raw
+motion, and entered the global Clutter filter as `type=3` with
+`queued_flush_depth=0`. A later diagnostic identified the target as the
+server peer for the preview itself
+(`GsrServerClutterActor`, client type
+`Gjs_ui_windowPreview_WindowPreview`). No actor `type=3` followed:
+
+```text
+12:00:49.136  notify_absolute_motion emit-depth=0
+12:00:49.137  raw motion
+12:00:49.137  event filter type=3 flush-depth=0
+12:00:49.237  notify_absolute_motion emit-depth=0
+12:00:49.238  raw motion
+12:00:49.238  event filter type=3 flush-depth=0
+...
+12:00:49.648  after began=false inDrag=false dx=0
+```
+
+This disproves the nested `Connection.emit_wait_poll()` and queue-flush
+theories. Mutter's event-emission chain puts capture actions before each
+actor. The six named stage actions are `unfullscreen`, four `swipe` actions,
+and `osk`; each is a GJS `Clutter.GestureAction` subclass on the client but a
+stock base action on the server.
+
+The off-code Clutter control without that filter passes:
+
+```text
+PASS clutter-drag-leave-gate inside-no-filter: motion cancel type=3 count=1
+```
+
+## Implemented fix
+
+The all-stage-actions-disabled diagnostic proves that preserving the GJS
+gesture subclass vfuncs is the relevant strategy. It is not the proposed
+product behavior: stage gestures must remain enabled. The proposal gives
+`Clutter.GestureAction` the same client-subclass/server-helper split already
+used by `Clutter.Actor` and `Clutter.LayoutManager`.
+
+The stock client and wire class `Clutter.GestureAction` already exists. The
+new Vala class below is only the missing server peer subclass. Its
+`Gsr-Clutter-GestureAction` wire prefix is deliberate: `create` and
+`add_hooks` are project RPC methods, not stock Clutter API. Registering them
+under `Clutter-GestureAction` would make the stock wire class claim methods
+that do not exist in the typelib.
+
+### 1. `src/client/libmutter-clutter-rpc-16/Clutter.overrides` — generate GestureAction relay IDs
+
+**Why:** the client and server must use the real typelib vfunc offsets for
+all five `Clutter.GestureAction` class slots.
+
+**Where:** the helper and relay declarations after `LayoutManager`.
 
 **Depends on:** none.
 
+#### Add — mark GestureAction as a helper and relay its five real vfuncs
+
+```text
+GestureAction helper=1
+GestureAction.gesture_begin    relay=object-bool
+GestureAction.gesture_progress relay=object-bool
+GestureAction.gesture_end      relay=object-void
+GestureAction.gesture_cancel   relay=object-void
+GestureAction.gesture_prepare  relay=object-bool
+```
+
+### 1b. `src/client/libmutter-clutter-rpc-16/Clutter.deny` — suppress the stock constructor
+
+**Why:** the generator's stock `GestureAction.new` construct would add a
+second construct block and mint a stock peer. The helper construct owns
+peer creation and hook registration.
+
 #### Add
 
-After the `held_notifs` field. Timelines paused while `emit` is open.
-
-```vala
-		/**
-		 * Timelines paused while {@link emit} is still running.
-		 *
-		 * {@link hold_transition} appends. {@link release_timelines}
-		 * starts them when {@link emit_depth} is back to zero.
-		 * Created with the other tables on the first {@link connect}.
-		 */
-		private static Gee.ArrayList<GLib.Object>? held_timelines;
+```text
+GestureAction.new
 ```
 
-#### Remove
+### 2. `src/generator/Generator.vala` — generate simple object-argument relays
 
-```vala
-			Signals.held_notifs = new Gee.ArrayList<OLLMrpc.Notification>();
-```
+**Why:** all five client relay bodies are mechanical. The existing C
+trampolines already call bool/void vfunc slots with one pointer argument.
+The generator should emit these adapters instead of putting five wrappers
+in `GestureAction.override.vala`.
 
-#### Replace with
-
-```vala
-			Signals.held_notifs = new Gee.ArrayList<OLLMrpc.Notification>();
-			Signals.held_timelines = new Gee.ArrayList<GLib.Object>();
-```
-
-### 2. `src/client/libshell-16/Signals.vala` — `hold_transition`, `release_timelines`
-
-**Why:** pause a timeline that has just started, and start it only when the outermost `emit` has returned.
-
-**Where:** new methods on `Shell.Signals`, after `emit`. `hold_transition` is the C symbol the clutter client calls. `release_timelines` stays in this file.
+**Where:** `emit_class_struct_slots()`, where `relay=1` is collected and
+`bind_vfunc()` is emitted.
 
 **Depends on:** §1.
 
-#### Add
-
-New methods after `emit`, still inside `class Signals`.
-
-```vala
-		/**
-		 * Pause a timeline until the outermost {@link emit} returns.
-		 *
-		 * A call with no emit open does nothing, so an animation
-		 * started from the main loop keeps playing. A timeline that
-		 * has already advanced, or is not playing, is left alone.
-		 *
-		 * @param timeline leased timeline from get_transition
-		 */
-		[CCode (cname = "shell_signals_hold_transition")]
-		public static void hold_transition(GLib.Object timeline)
-		{
-			if (Signals.emit_depth == 0) {
-				return;
-			}
-			var playing = Gsr.Client.Rpc.call_value("Clutter-Timeline.is_playing", timeline);
-			if (playing.retval.type() != GLib.Type.BOOLEAN || !playing.retval.get_boolean()) {
-				return;
-			}
-			var elapsed = Gsr.Client.Rpc.call_value("Clutter-Timeline.get_elapsed_time", timeline);
-			if (elapsed.retval.type() != GLib.Type.UINT || elapsed.retval.get_uint() > 32) {
-				return;
-			}
-			Gsr.Client.Rpc.call_value("Clutter-Timeline.pause", timeline);
-			if (Signals.held_timelines == null) {
-				Signals.held_timelines = new Gee.ArrayList<GLib.Object>();
-			}
-			Signals.held_timelines.add(timeline);
-		}
-
-		/**
-		 * Start timelines paused by {@link hold_transition}.
-		 *
-		 * A nested emit leaves them paused. The list is swapped
-		 * out before the start calls, so a start that re-enters
-		 * emit cannot start the same timeline twice.
-		 */
-		private static void release_timelines()
-		{
-			if (Signals.emit_depth != 0 || Signals.held_timelines == null) {
-				return;
-			}
-			var pending = Signals.held_timelines;
-			Signals.held_timelines = new Gee.ArrayList<GLib.Object>();
-			foreach (var timeline in pending) {
-				Gsr.Client.Rpc.call_value("Clutter-Timeline.start", timeline);
-			}
-		}
-```
-
-### 3. `src/client/libshell-16/Signals.vala` — `emit`
-
-**Why:** both returns from `emit` already drop `emit_depth` and then deliver queued notifications. The paused scale starts at that same moment, after `startDrag` has connected `new-frame`.
-
-**Where:** the two `emit_depth--` sites inside `emit`.
-
-**Depends on:** §2.
+##### Part 1 — accept typed relay policies
 
 #### Remove
 
 ```vala
-				Signals.emit_depth--;
-				Signals.drain_notifs();
-				return false;
+								&& this.overrides.get(symbol).get("relay") == "1") {
 ```
 
 #### Replace with
 
 ```vala
-				Signals.emit_depth--;
-				Signals.release_timelines();
-				Signals.drain_notifs();
-				return false;
+								&& this.overrides.get(symbol).get("relay") != "") {
 ```
+
+Apply the same replacement to the second relay-policy check later in
+`emit_class_struct_slots()`:
 
 #### Remove
 
 ```vala
-			Signals.emit_depth--;
-			Signals.drain_notifs();
-			return result;
+						&& this.overrides.get(@"$(class_name).$(fname)").get("relay") == "1") {
 ```
 
 #### Replace with
 
 ```vala
-			Signals.emit_depth--;
-			Signals.release_timelines();
-			Signals.drain_notifs();
-			return result;
+						&& this.overrides.get(@"$(class_name).$(fname)").get("relay") != "") {
 ```
 
-### 4. `src/client/rpc/namespace.vala` — `hold_transition`
+##### Part 2 — emit object-bool and object-void callback adapters
 
-**Why:** `Actor.set_scale` lives in the clutter client, which does not link shell-gi. The trampoline is the same shape as `ensure_signal_subscribe`.
-
-**Where:** extern next to `shell_signals_disconnect`. Public method next to `ensure_signal_unsubscribe`.
-
-**Depends on:** §2.
-
-#### Add
-
-Extern immediately after `shell_signals_disconnect`.
+#### Add — after the generated `bind_vfunc()` block and before helper-ID collection
 
 ```vala
-	[CCode (cname = "shell_signals_hold_transition")]
-	private extern void shell_signals_hold_transition(GLib.Object timeline);
+				foreach (var rname in relayed) {
+					var symbol = @"$(class_name).$(rname)";
+					var relay = this.overrides.get(symbol).get("relay");
+					var vala = this.vala_ident(rname);
+					if (relay == "object-bool") {
+						stream.puts(@"
+		internal uint64 relay_$(vala)()
+		{
+			return Gsr.Client.Rpc.callback_bind((call) => {
+				var argument = call.args.get(0).get_object();
+				var result = Gsr.Client.Rpc.vfunc_call_bool_pointer(this,
+					OLLMrpc.Gi.vfunc_offset(\"$(ns)\", \"$(class_name)\", \"$(rname)\"), (void*) argument);
+				return OLLMrpc.args(\"b\", result);
+			});
+		}
+");
+						continue;
+					}
+					if (relay == "object-void") {
+						stream.puts(@"
+		internal uint64 relay_$(vala)()
+		{
+			return Gsr.Client.Rpc.callback_bind((call) => {
+				var argument = call.args.get(0).get_object();
+				Gsr.Client.Rpc.vfunc_call_void_pointer(this,
+					OLLMrpc.Gi.vfunc_offset(\"$(ns)\", \"$(class_name)\", \"$(rname)\"), (void*) argument);
+				return OLLMrpc.args(\"\");
+			});
+		}
+");
+					}
+				}
 ```
 
-#### Add
+Existing `relay=1` entries remain handwritten because their argument or
+return packing is specialized.
 
-Public method immediately after `ensure_signal_unsubscribe`.
+### 3. `src/server/libmutter-clutter-16/ClutterGestureAction.vala` — add the server helper peer
+
+**Why:** a stock server `ClutterGestureAction` uses base vfuncs instead of
+the client GJS subclass overrides. The helper keeps stock behavior when a
+slot is not overridden and blocks for the client result when it is.
+
+**Where:** new file.
+
+**Depends on:** §§1–2.
+
+#### Add — create the complete helper class
 
 ```vala
-	/**
-	 * Vala stub path into {@link Shell.Signals.hold_transition}.
-	 *
-	 * mutter-rpc / st-rpc cannot link shell-gi. Lazy-bound
-	 * ({@code --unresolved-symbols}).
-	 *
-	 * @param timeline leased timeline from get_transition
-	 */
-	public void hold_transition(GLib.Object timeline)
+/**
+ * Clutter GestureAction peer for a client GJS subclass.
+ * Class slots hook back to the client's real Clutter vfunc overrides.
+ */
+namespace Gsr.Server.Clutter
+{
+	public class GestureAction : global::Clutter.GestureAction
 	{
-		shell_signals_hold_transition(timeline);
+		public Gee.HashMap<int, OLLMrpc.Live.Hook> vfuncs {
+			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
+		}
+
+		public static void rpc_register()
+		{
+			var helper = new GestureAction();
+			OLLMrpc.Request.add_class(
+				"Gsr-Clutter-GestureAction", typeof(GestureAction),
+				"create", "",
+				"add_hooks", "v",
+				null);
+			OLLMrpc.Request.register_live("Gsr-Clutter-GestureAction", helper);
+			GestureActionVfuncIds.register_vfunc_ids();
+		}
+
+		public void create(OLLMrpc.Request request)
+		{
+			var created = new GestureAction();
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t", (uint64) request.connection.export(created)),
+			});
+		}
+
+		public void add_hooks(OLLMrpc.Request request, GLib.Variant vfunc_ids)
+		{
+			var created = request.connection.leases.get((int) request.lease_id) as GestureAction;
+			if (created == null) {
+				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var n = (int) vfunc_ids.n_children();
+			var ids = new GLib.VariantBuilder(new GLib.VariantType("at"));
+			for (var i = 0; i < n; i++) {
+				var id = request.connection.next_handle;
+				request.connection.next_handle++;
+				var hook = new OLLMrpc.Live.Hook() {
+					connection = request.connection,
+					id = id
+				};
+				request.connection.callbacks.set(id, hook);
+				ids.add("t", (uint64) id);
+				var vfunc_id = vfunc_ids.get_child_value(i).get_int32();
+				created.vfuncs.set(vfunc_id, hook);
+			}
+			request.reply(new OLLMrpc.Response() {
+				args = OLLMrpc.args("v", ids.end()),
+			});
+		}
+
+		public override bool gesture_begin(global::Clutter.Actor actor)
+		{
+			var hook = this.vfuncs.get(GestureActionVfuncIds.gesture_begin_id);
+			if (hook == null) {
+				return base.gesture_begin(actor);
+			}
+			hook.emit(OLLMrpc.args("o", actor));
+			if (hook.reply_args.size < 1) {
+				return false;
+			}
+			return hook.reply_args.get(0).get_boolean();
+		}
+
+		public override bool gesture_progress(global::Clutter.Actor actor)
+		{
+			var hook = this.vfuncs.get(GestureActionVfuncIds.gesture_progress_id);
+			if (hook == null) {
+				return base.gesture_progress(actor);
+			}
+			hook.emit(OLLMrpc.args("o", actor));
+			if (hook.reply_args.size < 1) {
+				return false;
+			}
+			return hook.reply_args.get(0).get_boolean();
+		}
+
+		public override void gesture_end(global::Clutter.Actor actor)
+		{
+			var hook = this.vfuncs.get(GestureActionVfuncIds.gesture_end_id);
+			if (hook == null) {
+				return;
+			}
+			hook.emit(OLLMrpc.args("o", actor));
+		}
+
+		public override void gesture_cancel(global::Clutter.Actor actor)
+		{
+			var hook = this.vfuncs.get(GestureActionVfuncIds.gesture_cancel_id);
+			if (hook == null) {
+				return;
+			}
+			hook.emit(OLLMrpc.args("o", actor));
+		}
+
+		public override bool gesture_prepare(global::Clutter.Actor actor)
+		{
+			var hook = this.vfuncs.get(GestureActionVfuncIds.gesture_prepare_id);
+			if (hook == null) {
+				return base.gesture_prepare(actor);
+			}
+			hook.emit(OLLMrpc.args("o", actor));
+			if (hook.reply_args.size < 1) {
+				return false;
+			}
+			return hook.reply_args.get(0).get_boolean();
+		}
 	}
+}
 ```
 
-### 5. `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala` — `set_scale`
+### 4. `src/client/libmutter-clutter-rpc-16/overrides/GestureAction.override.vala` — mint the helper
 
-**Why:** ease sets `scale_x` and `scale_y`, and both setters call `set_scale`. The implicit timelines exist when that RPC returns. Holding them there is before the gap that removes them. `get_transition` is unchanged.
+**Why:** GJS subclasses must construct the helper peer and bind the generated
+relays only for vfunc slots they actually override.
 
-**Where:** end of `set_scale`, after the `Clutter-Actor.set_scale` call.
+**Where:** before the existing `enabled` property.
 
-**Depends on:** §4.
+**Depends on:** §§1–3.
 
-#### Remove
+`construct` is intentional here. GJS creates several different subclasses,
+so there is no single explicit constructor call to override. The
+`rpc_lid != 0` branch prevents a deserialized proxy from minting a second
+peer. The empty-hook branch covers an exact base `GestureAction`, and the
+handler-map initialization is required before storing callback rows.
+
+#### Add — construct the server peer and bind the real vfunc callbacks
 
 ```vala
-		Gsr.Client.Rpc.call_value(
-			"Clutter-Actor.set_scale", this,
-			OLLMrpc.args("dd", scale_x, scale_y));
+	construct {
+		if (this.rpc_lid != 0) {
+			return;
+		}
+		Gsr.Client.Rpc.hook_rows = new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
+		string[] always = {};
+		var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(
+			this.get_type(), "Clutter", "GestureAction", typeof(GestureAction).name(), always);
+		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
+		foreach (var name in overridden) {
+			var vfunc_id = -1;
+			var hook_id = this.bind_vfunc(name, out vfunc_id);
+			if (hook_id == 0) {
+				continue;
+			}
+			vfunc_ids.add("i", vfunc_id);
+		}
+		var response = Gsr.Client.Rpc.call_value("Gsr-Clutter-GestureAction.create");
+		this.rpc_lid = response.args.get(0).get_uint64();
+		Gsr.Client.Rpc.register_handle(this);
+		if (Gsr.Client.Rpc.hook_rows.size == 0) {
+			Gsr.Client.Rpc.hook_rows = null;
+			return;
+		}
+		var hooks = Gsr.Client.Rpc.call_value(
+			"Gsr-Clutter-GestureAction.add_hooks", this, OLLMrpc.args("v", vfunc_ids.end()));
+		var ids = hooks.args.get(0).get_variant();
+		if (Gsr.Client.Rpc.handlers == null) {
+			Gsr.Client.Rpc.handlers = new Gee.HashMap<int, Gsr.Client.Rpc.InvokeRow>();
+		}
+		var n = (int) ids.n_children();
+		for (var i = 0; i < n; i++) {
+			var id = ids.get_child_value(i).get_uint64();
+			Gsr.Client.Rpc.handlers.set((int) id, Gsr.Client.Rpc.hook_rows.get(i));
+		}
+		Gsr.Client.Rpc.hook_rows = null;
 	}
 ```
 
-#### Replace with
+### 5. `src/server/libmutter-clutter-16/namespace.vala` — register and alias the helper
+
+**Why:** construction needs the custom live endpoint, and later stock
+`Clutter-GestureAction.*` calls must dispatch against the helper lease.
+
+**Where:** `rpc_register()`, beside the Actor and LayoutManager setup.
+
+**Depends on:** §3.
+
+#### Add — register the helper after Actor
 
 ```vala
-		Gsr.Client.Rpc.call_value(
-			"Clutter-Actor.set_scale", this,
-			OLLMrpc.args("dd", scale_x, scale_y));
-		var x_transition = this.get_transition("scale-x");
-		if (x_transition != null) {
-			Gsr.Client.Rpc.hold_transition(x_transition);
-		}
-		var y_transition = this.get_transition("scale-y");
-		if (y_transition != null) {
-			Gsr.Client.Rpc.hold_transition(y_transition);
-		}
-	}
+		GestureAction.rpc_register();
 ```
 
-The other open drag failure, a move that stays on the preview and never starts a drag, is [`2026-10-14-drag-inside-preview.md`](2026-10-14-drag-inside-preview.md). Do not mix them.
+#### Add — alias the helper type after the existing Clutter aliases
+
+```vala
+		OLLMrpc.Bin.register_alias(
+			"Clutter-GestureAction", typeof(GestureAction));
+```
+
+### 6. `src/meson.build` — compile the helper
+
+**Why:** the new server peer must be part of `gsr-server`.
+
+**Where:** `compositor_sources`, after `ClutterLayoutManager.vala`.
+
+**Depends on:** §3.
+
+#### Add — include the new server source
+
+```meson
+  'server/libmutter-clutter-16/ClutterGestureAction.vala',
+```
+
+After implementation, the bar is the unchanged stay-inside Weston command
+printing `began=true`, `inDrag=true`, and `ok`, followed by the off-preview
+and click controls and the signal-reentrancy suite. No stage action may be
+disabled in product code.
+
+## 2026-10-17 implementation and proof
+
+### First test: FAIL
+
+The first unchanged stay-inside test did not reach its result assertion.
+`gsr-server` crashed during the pointer sequence:
+
+```text
+overview-thumbnail-drag-smoke: drag 399.4765625,296.162109375
+nested-weston-prove: mutter exited ec=139 after 9s
+```
+
+The same crash reproduced on the next diagnostic run. The core is for
+`gsr-server`, not the client or `libocrpc`. GDB showed:
+
+```text
+#0 0x0
+#1 Gsr.Server.Clutter.GestureAction.gesture_cancel
+   ClutterGestureAction.vala:100
+parent gesture_end=0x0 gesture_cancel=0x0
+```
+
+The helper called `base.gesture_cancel(actor)` when no client hook existed,
+but stock `ClutterGestureActionClass.gesture_cancel` is NULL. Its
+`gesture_end` slot is also NULL. This is the same invalid-base-vfunc shape
+previously proved for `Helper.Actor.event`: Vala emits an indirect call
+through the parent slot, and a NULL stock slot jumps to address zero.
+
+The three boolean parent slots are non-NULL functions. The failure is
+therefore specifically the void fallback calls, not callback transport,
+signal reentrancy, or the generated vfunc offsets.
+
+The missing cancel hook is an expected state. `VfuncRelay.overridden()`
+only registers slots that differ from the stock client
+`Clutter.GestureAction` class. GNOME Shell's `EdgeDragAction` overrides
+prepare, progress, and end, but not cancel. Both the `unfullscreen` and
+`osk` capture actions use `EdgeDragAction`, so either can legitimately
+reach the helper's no-hook cancel path. `TouchSwipeGesture` does override
+cancel. The core and existing logs do not identify which individual
+server action emitted this cancel, so narrowing it further would require
+new diagnostics.
+
+The parent class contents confirm the stock fallback semantics:
+
+```text
+gesture_begin    = 0x7d27f73d66c0
+gesture_progress = 0x7d27f73d66c0
+gesture_end      = 0x0
+gesture_cancel   = 0x0
+gesture_prepare  = 0x7d27f73d66c0
+
+0x7d27f73d66c0: mov $0x1,%eax
+0x7d27f73d66c9: ret
+```
+
+Stock begin, progress, and prepare return true. Stock end and cancel have
+no class handler and therefore mean no-op, not “call a parent function.”
+
+### Subsequent correction and proof
+
+`gesture_end` and `gesture_cancel` use their stock no-op behavior when the
+client did not override them. The three boolean parent slots retain their
+base fallback.
+
+The rebuilt stay-inside reproduction passed without disabling any action:
+
+```text
+overview-thumbnail-drag-smoke: after began=true inDrag=true dx=93.22265625
+overview-thumbnail-drag-smoke: ok
+```
+
+The off-preview control produced the same successful measurement. The
+click control printed `overview-window-activate-smoke: ok`. The
+signal-reentrancy suite completed with 25 passes, 10 expected failures,
+zero failures, and zero timeouts.
+
+## Rejected queue-flush candidate
+
+The recursive queue flush was added in the same commit as the rejected
+transition-hold experiment, but for the separate leave/motion investigation.
+The crossing copy in that commit fixed the leave path. No result isolates
+the recursive queue flush as necessary for that fix.
+
+The standalone gate passes both with the current flush and without the
+filter, so it does not reproduce the live distinction. Removing the
+recursive flush while retaining `global::Clutter.Event.add_filter` and its
+crossing copy was also tested on the real Weston smoke. It still printed
+`began=false inDrag=false dx=0` and `miss drag-begin` at 12:58. The product
+edit was reverted. This is not the fix.
+
+## Rejected transition-hold experiment
+
+The earlier scale-lifetime proposal added timeline storage, a
+`hold_transition` trampoline, and extra RPC calls from `Actor.set_scale`.
+It was removed after its gate failed to exercise that integration and its
+guest installation regressed startup. None of those changes are part of the
+current proposal. The investigation record remains below under
+`2026-10-14 17:27 proposal`.
 
 ## What already landed
 
 Click is fixed. Do not reopen it. `event-reschedule` is in `src/server/rpc/Server.vala` `filter_notification` and `src/server/rpc/Connection.vala` `write()`. A one-way `before-update` while `Clutter.get_current_event()` is set is consumed and `schedule_update()` is called. `overview-window-activate-smoke` printed `ok`. Plan [`docs/plans/1.4-signal-reentrancy.md`](../plans/1.4-signal-reentrancy.md).
 
-The leave cancel is fixed. Do not reopen it. `dnd.js:151` used to throw `event is null` on long-press CANCEL. `src/server/libmutter-clutter-16/Clutter.vala` copies that crossing into `open_event` when `clutter_get_current_event()` is null, and `get_current_event` returns the copy. The C symbol stays `_clutter_stage_process_queued_events`. The 13:35 leave smoke printed `after began=true inDrag=true dx=108.09375` and `ok` with no `event is null`. That run was fast enough that `scale-x` was still alive. It does not cover this hang.
+The leave cancel is fixed. Do not reopen it. `dnd.js:151` used to throw
+`event is null` on long-press CANCEL.
+`src/server/libmutter-clutter-16/Clutter.vala` copies that crossing into
+`open_event` when `global::Clutter.get_current_event()` is null, and
+`get_current_event` returns the copy. The 13:35 leave smoke printed
+`after began=true inDrag=true dx=108.09375` and `ok` with no
+`event is null`. That run was fast enough that `scale-x` was still alive.
+It does not cover this hang.
 
 ## The failure
 
@@ -417,21 +756,20 @@ this._dragActor.get_transition('scale-x').connect('new-frame', () => {
 - Do not replace `Meta.Context.run_main_loop`'s `loop.run()` with `context.iteration()`. That was tried at 16:37 and rejected.
 - Do not add a field or a method to remember paused timelines. `Gsr.Client.Rpc.paused_transitions` was added and removed. Coding standards forbid a new field or method unless the user or a plan names it. The `if` that filled that list also had no braces.
 - Do not put `LD_LIBRARY_PATH` or `GSR_TYPELIB_DIR` into `SpawnClient`. The client already links `build/src/libmutter-clutter-rpc-16.so` via RUNPATH. That setenv was added and removed.
-- Do not mark `before-update` blocking and expect the frame to wait. It is a void signal, so `Subscription.emit` does not wait. Do not edit OLLMchat. A filtered write returns before the wait; a blocking notification that was not written must not be left waiting. If that wait is in OPC, the stop is a FAIL gate under `tests/call-sync-repro/` plus the bug file.
+- `before-update` is now blocking. The corrected libocrpc waits for blocking
+  void signals without writing through a null GClosure return slot.
 - Do not inhibit the frame clock for the whole drag. `new-frame` has to be connected, then the 250ms scale has to run.
 - Do not hold every frame until `clicked`. That is the `event-no-click` failure. A drag has no `clicked`.
 - Do not return STOP from the event filter. That drops the click sequence.
-- Do not rename `_clutter_stage_process_queued_events`.
 - Do not treat `drag-begin` alone as success. The 12:08 smoke printed `ok` while `dnd.js:522` threw.
 - `ClutterBoxLayout` minimum height `-12` and `global.stage.context is null` are a different abort. The update menu and the expand overlap are different bugs.
 
 ## Where to start
 
-Do not reapply the proposal at the top. Continue from the FAIL-backed
-libocrpc bug
-[`2026-10-15-blocking-void-signal-does-not-wait.md`](2026-10-15-blocking-void-signal-does-not-wait.md).
-`src/` stays as it is. `get_transition` and `run_main_loop` are not consumer
-fix points.
+The libocrpc fix and consumer `before-update` subscription are applied.
+`get_transition` and `run_main_loop` are not consumer fix points. The
+library-owned report is
+[`2026-10-15-FIXED-blocking-void-signal-does-not-wait.md`](../../../OLLMchat/docs/bugs/done/2026-10-15-FIXED-blocking-void-signal-does-not-wait.md).
 
 ## LLM efforts
 
@@ -555,8 +893,9 @@ FAIL blocking-void-signal-gate: blocking void signal was one-way tick=true reply
 
 `Subscription.emit` returns early when `return_value == null`; that is always
 the GClosure shape for void signals. Thus setting `blocking = true` on
-`before-update` cannot currently hold its emission. The dedicated bug is
-[`2026-10-15-blocking-void-signal-does-not-wait.md`](2026-10-15-blocking-void-signal-does-not-wait.md).
+`before-update` could not hold its emission before the library fix. The
+library-owned report is
+[`2026-10-15-FIXED-blocking-void-signal-does-not-wait.md`](../../../OLLMchat/docs/bugs/done/2026-10-15-FIXED-blocking-void-signal-does-not-wait.md).
 
 ### 2026-10-15 libocrpc fix and Weston proof
 
@@ -591,5 +930,315 @@ The overview drag smoke reached the forced 400ms gap:
 
 The second read was 403ms after the transition was created and returned an
 object. No `transition-gone` or `dnd.js:522` error occurred. This closes the
-scale lifetime failure. The zero displacement is after `drag-begin` and after
-`new-frame`; it is a separate drag-position failure.
+scale lifetime failure.
+
+The zero displacement was a smoke error, not a product failure. The
+threshold-crossing event is also the drag start point, where `dnd.js`
+deliberately preserves the actor's original stage position. The harness now
+sends a second motion after `startDrag()` returns. The rerun printed:
+
+```text
+10:04:10.647  Clutter-Actor.get_transition after the forced 400ms gap
+10:04:10.714  notification method=new-frame
+10:04:10.723  Clutter-Actor.set_position
+10:04:10.930  overview-thumbnail-drag-smoke: after began=true inDrag=true dx=93.22265625
+10:04:10.930  overview-thumbnail-drag-smoke: ok
+10:04:10.930  overview-thumbnail-drag-smoke: done
+              nested-weston-prove: stop (smoke-ok) after 11s
+```
+
+### 2026-10-15 click regression check
+
+The first `overview-window-activate-smoke` run selected and focused the
+window without starting a drag, but checked `overview.visible` at its fixed
+three-second deadline and reported `miss overview-stayed`. A longer
+reproduction showed that the overview completed hiding 3.24 seconds after
+the click. The smoke now uses a configurable eight-second hide deadline.
+The documented default run printed:
+
+```text
+11:37:48.328  overview-window-activate-smoke: click
+11:37:51.752  after selected=true overview=false focus="Untitled Document 1 - gedit" inDrag=false
+11:37:51.754  overview-window-activate-smoke: ok
+               nested-weston-prove: stop (smoke-ok) after 16s
+```
+
+This covers the existing blocking `clicked` and `long-press` subscriptions
+after the libocrpc correction made their configured wait effective.
+
+### 2026-10-15 current in-preview reproduction
+
+Added `GI_META_SMOKE_STAY_INSIDE=1` to select the existing in-preview path
+without changing the default off-preview proof. With the corrected libocrpc,
+two post-press motions still produced:
+
+```text
+11:42:12.423  overview-thumbnail-drag-smoke: drag
+11:42:13.148  after began=false inDrag=false dx=0
+11:42:13.149  miss Error: miss drag-begin
+               nested-weston-prove: stop (smoke-fail) after 15s
+```
+
+The server received both virtual motion calls and its backend logged both
+raw motions, but no actor `type=3` followed either one. Repeating four
+post-press motions at 50ms intervals also ended `began=false inDrag=false`
+and `smoke-fail`. The remaining failure therefore survives the libocrpc
+void-signal fix and is not a single-motion smoke artifact.
+
+### 2026-10-15 12:49–12:58 filter boundary and rejected removal
+
+Temporary filter diagnostics showed that every post-press motion targets
+the server peer for the preview itself:
+
+```text
+event filter type=3 actor=GsrServerClutterActor
+client=Gjs_ui_windowPreview_WindowPreview coords=441.0,247.0 flush-depth=0
+```
+
+The preview actor's `event` override did not run afterwards. A smaller move
+that stayed on the same target actor produced the same miss.
+
+Mutter processes global filters before adding the current event to the stage
+queue, so the recursive queue flush cannot process the event whose filter is
+currently running. That made removal worth testing, but did not make it a
+proved fix. The actual Weston A/B without the recursive flush still printed:
+
+```text
+12:58:23.744  after began=false inDrag=false dx=0
+12:58:23.744  miss Error: miss drag-begin
+```
+
+The queue-flush removal and temporary filter diagnostics were reverted.
+The C extern wrapper was separately renamed from `copy_clutter_event` to
+`clutter_event_copy` so its exposed Vala name matches the real C symbol.
+At 13:42 the entire global filter was removed for one Weston A/B, not just
+its recursive flush. The in-preview smoke still reported
+`began=false inDrag=false dx=0`. The filter was restored; it is outside the
+remaining cause.
+
+### 2026-10-15 13:01–13:38 event phases
+
+Temporary smoke handlers on the preview showed the initial motion and
+button press, but no post-press motion in `captured-event`, `event`, or
+`motion-event`. The click action emitted long-press `QUERY` (`state=0`) and
+then `ACTIVATE` (`state=1`) after 500ms. It never emitted `CANCEL`
+(`state=2`), which is the state that starts DND.
+
+Calling the real `Clutter.Stage.schedule_update()` immediately after every
+virtual motion did not change the failure. `_clutter_stage_queue_event()`
+already schedules an update when it enqueues an event, so this result is
+consistent with Mutter's implementation.
+
+The passing off-preview control receives no motion signal before drag start
+either. Its leave crossing (`type=5`) immediately emits long-press
+`CANCEL`, then the drag starts and the next move changes the preview by
+94.6 pixels. This confirms that the two paths differ at motion delivery,
+not in the DND cancel handler. The temporary smoke handlers and scheduling
+mode were removed.
+
+Relative virtual motion instead of absolute motion produced the same raw
+XTEST positions and the same miss. Removing `before-update` from the
+blocking subscription switch for one A/B also left the same
+`began=false` result at 13:46. Both trials were reverted. The remaining
+motion loss is not caused by the corrected blocking-void behavior.
+
+A headless Clutter control then pressed with one virtual pointer and moved
+with a second virtual pointer. It still delivered motion and cancelled the
+long press, so differing press/motion device objects alone do not reproduce
+the Weston loss. That temporary gate mode was removed.
+
+`GI_META_SMOKE_MANUAL=1` was added for the required physical-input
+comparison. Its first launch never reached `manual-ready`: Weston selected
+display `:5`, but the run stalled during startup and was killed later. It
+did not produce a drag result.
+
+The second manual run reached `manual-ready` at 14:40. A physical drag in
+the nested overview did not emit `drag-begin`; the smoke timed out after 30
+seconds with `miss manual-drag-begin`. The failure is therefore not an
+XTEST-only automation artifact.
+
+The next candidate moved `_clutter_stage_process_queued_events()` from the
+pre-queue global filter to a local server `before-update` handler. The
+headless control with an event-vfunc actor and a stage grab delivered motion,
+but the real Weston smoke still printed `began=false` at 14:51. The product
+trial and proxy/grab gate additions were reverted.
+
+### 2026-10-16 08:31–17:43 implicit-grab action boundary
+
+The two `captured-event` notifications before the failure came from the real
+`MetaStage` subscription, lease 8. They were the initial pointer crossing
+and button press. No post-press motion reached that stage signal. This
+rejects the earlier theory that a remote captured-event callback returned
+STOP: capture-phase actor delivery was never entered.
+
+The filter saw the requested stay-inside coordinates (`441`, `461`, `481`,
+`501`, `521`) and the expected target peer while the stage grab was still
+`MetaStage`. Mutter 48.1 builds the implicit-grab emission chain with
+capture-phase actions before each actor. The pressed path contained:
+
+```text
+preview peer             ClutterClickAction
+preview ancestor         ClutterClickAction
+MetaStage                unfullscreen
+MetaStage                swipe
+MetaStage                osk
+MetaStage                swipe
+MetaStage                swipe
+MetaStage                swipe
+```
+
+The six stage entries are capture-phase GJS `Clutter.GestureAction`
+subclasses. The client stub currently constructs a stock server
+`ClutterGestureAction`; `GestureAction.override.vala` only supplies the
+client `enabled` property and has no vfunc relay.
+
+Disabling all six stage gesture actions only for one diagnostic run changed
+the same stay-inside reproduction to:
+
+```text
+after began=true inDrag=true dx=93.22265625
+ok
+```
+
+Three narrower controls each still failed: disable all four `swipe` actions,
+disable only `unfullscreen`, and disable only `osk`. Therefore this is not a
+special-case bad action. Any remaining stock capture action can consume the
+mouse sequence without its GJS `vfunc_gesture_prepare()` rejection. The
+disable code and all filter, subscription, and smoke diagnostics were
+removed. The proposed helper relays all five real GestureAction vfuncs so
+normal shell gestures remain enabled.
+
+### 2026-10-16 17:49 proposal review
+
+Confirmed that the stock client and wire `Clutter.GestureAction` class is
+already generated. The proposal adds only its missing server peer subclass.
+The Vala class and file do not use a `Gsr` prefix; only the private wire
+helper does, so `create` and `add_hooks` are not presented as stock Clutter
+API. Removed the unused method-name map and names array, the duplicate
+vfunc-name lookup, and redundant boolean type checks. Kept `construct`
+because arbitrary GJS subclasses must mint the peer during GObject
+construction. A second review corrected the proposal's over-wrapped
+assignments, vfunc lookups, and calls; short expressions now stay on one
+line and wrapped calls keep arguments grouped. A third review removed the
+five mechanical client `relay_gesture_*` methods: typed `relay=object-bool`
+and `relay=object-void` policies now generate them with the existing generic
+vfunc trampolines. The five server overrides remain the peer's actual
+virtual implementation and provide the required base fallback.
+
+### 2026-10-17 physical drag invalidates the early smoke result
+
+The successful smoke line was not a completed drag/drop test. It stopped
+after `drag-begin` and one displacement:
+
+```text
+after began=true inDrag=true dx=93.22265625
+ok
+```
+
+It never released the virtual button. In a physical nested-Weston drag, the
+preview followed the pointer only through `10:38:17.761`. Raw pointer motion
+continued through `10:38:19.062`, and the button was released at
+`10:38:19.148`, but there were no further `Clutter-Actor.set_position` calls.
+There was no client exception or process crash. Generic `event`
+notifications continued after the last position update, while no further
+`Clutter-GestureAction` callback was invoked.
+
+The only startup critical in that sequence was:
+
+```text
+g_value_get_uint: assertion 'G_VALUE_HOLDS_UINT (value)' failed
+```
+
+It followed `Gsr-Clutter.get_current_event` during `startDrag()`. Whether it
+is causal is not yet proved. The next stage is to make the smoke continue
+motion beyond the scale transition, release, and assert drag completion,
+then diagnose which event callback stops updating the drag actor.
+
+Code inspection found that boundary. `dnd.js::_onEvent()` compares the
+current event device with `_grabbedDevice` by object identity. The wire event
+stores only `device_type`, and each call to `Event.apply_state()` executes
+`new InputDevice()`. Consequently the later motion cannot have the saved
+device's identity and is propagated without calling `_updateDragPosition()`.
+This also explains why the last `set_position` coincided with transition
+completion: those calls were transition-frame position updates.
+
+The smoke was changed to send ten motions over one second, release the
+button, and require `drag-end`. The obsolete transition timing monkeypatch
+was removed.
+
+### 2026-10-17 16:22 sustained smoke
+
+```bash
+GI_META_SMOKE=overview-thumbnail-drag-smoke \
+GI_META_SMOKE_CMD='gedit --new-window' \
+GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1 \
+GSR_NESTED_TIMEOUT=90 \
+./scripts/agent-nested-smoke-prove.sh
+```
+
+Exit 137 is Weston auto-close after the smoke failure. The result is:
+
+```text
+motion offset=20 dx=93.22265625
+motion offset=40 through offset=200 stay at dx=93.22265625
+after began=true inDrag=true dx=93.22265625
+miss Error: miss drag-end ended=false inDrag=true
+nested-weston-prove: stop (smoke-fail) after 12s
+```
+
+`set_position` ends at 16:22:44.698. Motions and the button release continue
+after that, and each `event` notification returns without another RPC.
+`Event.read_scroll_tail()` and `Event.apply_state()` now keep one client
+`InputDevice` per `device_type` in `devices_by_type`, so both unpack paths
+return the object `startDrag()` stored. The smoke now also requires the
+preview to move at least 30 pixels after its first measured position.
+
+### 2026-10-17 16:36 device identity rerun
+
+Rebuilt `src/libmutter-clutter-rpc-16.so` and reran the same command.
+
+```text
+motion offset=20 dx=424.52734375
+motion offset=40 dx=444.52734375
+motion offset=60 dx=464.52734375
+motion offset=80 dx=484.52734375
+motion offset=100 dx=504.52734375
+motion offset=120 dx=524.52734375
+motion offset=140 dx=528.52734375
+motion offset=160 dx=528.52734375
+motion offset=180 dx=528.52734375
+motion offset=200 dx=528.52734375
+after began=true inDrag=true dx=528.52734375 tracked=104
+overview-thumbnail-drag-smoke: ok
+nested-weston-prove: stop (smoke-ok) after 11s
+```
+
+The preview kept moving after the first sample, and the button release
+ended the drag. The last four samples stay at 528 because the pointer
+reached the edge of the nested stage.
+
+### 2026-10-17 16:38 stay-inside control
+
+Same smoke with `GI_META_SMOKE_STAY_INSIDE=1`.
+
+```text
+motion offset=20 dx=189.52734375
+motion offset=40 dx=209.52734375
+...
+motion offset=200 dx=369.52734375
+after began=true inDrag=true dx=369.52734375 tracked=180
+overview-thumbnail-drag-smoke: ok
+nested-weston-prove: stop (smoke-ok) after 10s
+```
+
+Every 20-pixel step moved the preview, and the release ended the drag.
+
+### 2026-10-17 16:53 hand drops snap back
+
+The live nested session log, no new prove. Releases at 16:39:25 (782, 276)
+and 16:39:31 (270, 104) both call `get_actor_at_pos`,
+`transform_stage_point`, `Meta.Workspace.index`,
+`located_on_workspace`, and `get_monitor`, then `set_x` / `set_y` /
+`set_scale`. There is no `change_workspace_by_index`. The call order matches
+`Workspace.acceptDrop()` when `_isMyWindow()` is true. A workspace-thumbnail
+drop would call `located_on_workspace` before `index()`.

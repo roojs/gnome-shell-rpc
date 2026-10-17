@@ -2,10 +2,9 @@
 
 Archived 2026-10-14. This is the pre-split file. Do not continue it.
 
-Working bugs:
+Current report:
 
 - [`../2026-10-14-drag-scale-gone.md`](../2026-10-14-drag-scale-gone.md)
-- [`../2026-10-14-drag-inside-preview.md`](../2026-10-14-drag-inside-preview.md)
 
 The text below is the file as it stood when it was split.
 
@@ -161,7 +160,8 @@ Before that fix the same smoke printed `miss drag-on-click` with `inDrag=true` a
 
 Leave cancel (`event is null` at `dnd.js:151`) was fixed after this section was written. See the status at the top of the pre-split account, and `2026-10-14-drag-scale-gone.md`.
 
-In-preview drag never started. See `2026-10-14-drag-inside-preview.md`.
+In-preview drag never started. This is now consolidated in
+`2026-10-14-drag-scale-gone.md`.
 
 The scale hang is the 14:40 log. See `2026-10-14-drag-scale-gone.md`.
 

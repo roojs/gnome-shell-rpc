@@ -26,6 +26,8 @@ import {formatError} from 'resource:///org/gnome/shell/misc/errorUtils.js';
 const SMOKE = 'overview-window-activate-smoke';
 const CMD = GLib.getenv('GI_META_SMOKE_CMD') || 'gedit --new-window';
 const WAIT_MS = parseInt(GLib.getenv('GI_META_SMOKE_WAIT_MS') || '8000', 10);
+const HIDE_WAIT_MS =
+	parseInt(GLib.getenv('GI_META_SMOKE_HIDE_WAIT_MS') || '8000', 10);
 
 /**
  * @param {string} message
@@ -186,7 +188,8 @@ async function run(main) {
 		+ ' preview ' + actorBits(preview));
 	globalObj.pointer_click(cx, cy);
 
-	const hideDeadline = GLib.get_monotonic_time() + 3 * GLib.TIME_SPAN_SECOND;
+	const hideDeadline = GLib.get_monotonic_time()
+		+ HIDE_WAIT_MS * GLib.TIME_SPAN_MILLISECOND;
 	while (main.overview.visible && GLib.get_monotonic_time() < hideDeadline)
 		await delay(100);
 	await delay(400);

@@ -47,6 +47,7 @@ compositor_sources = files(
   'server/libmutter-clutter-16/ClutterStage.vala',
   'server/libmutter-clutter-16/ClutterThreads.vala',
   'server/libmutter-clutter-16/ClutterLayoutManager.vala',
+  'server/libmutter-clutter-16/ClutterGestureAction.vala',
   'server/libmutter-clutter-16/ClutterPaintContext.vala',
   'server/libmutter-clutter-16/Constraint.vala',
   'server/libmutter-clutter-16/Interval.vala',

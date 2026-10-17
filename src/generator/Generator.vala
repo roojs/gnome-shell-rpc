@@ -1871,7 +1871,7 @@ $(minted)				this.rpc_ctor_clear();
 						var symbol = @"$(class_name).$(fname)";
 						if (this.overrides.has_key(symbol)
 								&& this.overrides.get(symbol).has_key("relay")
-								&& this.overrides.get(symbol).get("relay") == "1") {
+								&& this.overrides.get(symbol).get("relay") != "") {
 							relayed.add(fname);
 						}
 						continue;
@@ -1891,7 +1891,7 @@ $(minted)				this.rpc_ctor_clear();
 				}
 				if (this.overrides.has_key(@"$(class_name).$(fname)")
 						&& this.overrides.get(@"$(class_name).$(fname)").has_key("relay")
-						&& this.overrides.get(@"$(class_name).$(fname)").get("relay") == "1") {
+						&& this.overrides.get(@"$(class_name).$(fname)").get("relay") != "") {
 					relayed.add(fname);
 				}
 			}
@@ -1913,6 +1913,38 @@ $(minted)				this.rpc_ctor_clear();
 			}
 		}
 ");
+				foreach (var rname in relayed) {
+					var symbol = @"$(class_name).$(rname)";
+					var relay = this.overrides.get(symbol).get("relay");
+					var vala = this.vala_ident(rname);
+					if (relay == "object-bool") {
+						stream.puts(@"
+		internal uint64 relay_$(vala)()
+		{
+			return Gsr.Client.Rpc.callback_bind((call) => {
+				var argument = call.args.get(0).get_object();
+				var result = Gsr.Client.Rpc.vfunc_call_bool_pointer(this,
+					OLLMrpc.Gi.vfunc_offset(\"$(ns)\", \"$(class_name)\", \"$(rname)\"), (void*) argument);
+				return OLLMrpc.args(\"b\", result);
+			});
+		}
+");
+						continue;
+					}
+					if (relay == "object-void") {
+						stream.puts(@"
+		internal uint64 relay_$(vala)()
+		{
+			return Gsr.Client.Rpc.callback_bind((call) => {
+				var argument = call.args.get(0).get_object();
+				Gsr.Client.Rpc.vfunc_call_void_pointer(this,
+					OLLMrpc.Gi.vfunc_offset(\"$(ns)\", \"$(class_name)\", \"$(rname)\"), (void*) argument);
+				return OLLMrpc.args(\"\");
+			});
+		}
+");
+					}
+				}
 				if (this.overrides.has_key(class_name)
 						&& this.overrides.get(class_name).has_key("helper")
 						&& this.overrides.get(class_name).get("helper") == "1") {

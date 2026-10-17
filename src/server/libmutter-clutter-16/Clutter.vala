@@ -16,7 +16,7 @@ namespace Gsr.Server.Clutter
 		private static global::Clutter.Event? open_event;
 
 		[CCode (cname = "clutter_event_copy", cheader_filename = "clutter/clutter.h")]
-		private static extern global::Clutter.Event copy_clutter_event(global::Clutter.Event event);
+		private static extern global::Clutter.Event clutter_event_copy(global::Clutter.Event event);
 
 		/**
 		 * Mutter's {@code _clutter_stage_process_queued_events} (clutter-stage-private.h, defined in clutter-stage.c).
@@ -43,7 +43,7 @@ namespace Gsr.Server.Clutter
 			 * never starts. */
 			global::Clutter.Event.add_filter(null, (event, event_actor) => {
 				if (global::Clutter.get_current_event() == null) {
-					open_event = copy_clutter_event(event);
+					open_event = clutter_event_copy(event);
 				}
 				if (event_actor != null) {
 					var stage = event_actor.get_stage();

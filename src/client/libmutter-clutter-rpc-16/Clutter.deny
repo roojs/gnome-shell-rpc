@@ -40,6 +40,8 @@ BindingPool.install_action
 BindingPool.override_action
 EOTF.get_default_luminance
 Gesture.get_point_event
+# Lease via Gsr-Clutter-GestureAction.create with client vfunc hooks.
+GestureAction.new
 GestureAction.get_last_event
 GestureAction.get_sequence
 InputFocus.filter_event

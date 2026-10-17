@@ -16,6 +16,7 @@ namespace Gsr.Server.Clutter
 		Interval.rpc_register();
 		Constraint.rpc_register();
 		Actor.rpc_register();
+		GestureAction.rpc_register();
 		LayoutManager.rpc_register();
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();
@@ -27,6 +28,7 @@ namespace Gsr.Server.Clutter
 		/* Clutter-Frame stays immediately after Gi.register in Server.start. */
 		// OLLMrpc.Bin.register("Clutter-Frame", typeof(global::Clutter.Frame));
 		OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Constraint));
+		OLLMrpc.Bin.register_alias("Clutter-GestureAction", typeof(GestureAction));
 		OLLMrpc.Bin.register_alias("Clutter-LayoutManager", typeof(LayoutManager));
 	}
 
