@@ -26,6 +26,7 @@ namespace Gsr.Server.Clutter
 				"add_hook", "it",
 				"add_hooks", "Sv",
 				"add_signals", "S",
+				"hidden", "b",
 				"add_properties", "",
 				"allocate_public", "ay",
 				"base_preferred_width", "d",
@@ -38,6 +39,16 @@ namespace Gsr.Server.Clutter
 				null);
 			OLLMrpc.Request.register_live("Gsr-Clutter-Actor", helper);
 			ActorVfuncIds.register_vfunc_ids();
+			/* get_actor_at_pos picks in this process. The drag actor is a
+			 * stock St.Widget and the window picture is a stock Clone, so
+			 * an Actor constructor never runs for them. Clutter emits
+			 * pick only when a handler is pending, and an emission hook
+			 * is not one. One class handler here covers every actor.
+			 * shell-hidden-from-pick set means skip this pick; the key
+			 * removed means chain to the original handler. */
+			GLib.Signal.override_class_handler("pick", 
+				typeof(global::Clutter.Actor), (GLib.Callback) pick_hidden);
+
 			style_changed_id = OLLMrpc.Gi.vfunc_offset("St", "Widget", "style_changed");
 		}
 
@@ -195,6 +206,46 @@ namespace Gsr.Server.Clutter
 						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 					return;
 				}
+			}
+			request.reply(new OLLMrpc.Response());
+		}
+
+		/**
+		 * Class handler installed once from {@link rpc_register}.
+		 * A set {@code shell-hidden-from-pick} skips this actor.
+		 * Otherwise the original pick runs.
+		 */
+		static void pick_hidden(global::Clutter.Actor actor, global::Clutter.PickContext pick_context)
+		{
+			if (actor.get_data<bool>("shell-hidden-from-pick")) {
+				return;
+			}
+			GLib.Signal.chain_from_overridden_handler(actor, pick_context);
+		}
+
+		/**
+		 * ''Gsr-Clutter-Actor.hidden'' — set or remove
+		 * {@code shell-hidden-from-pick} on the leased actor.
+		 *
+		 * The pick class handler is already installed. This call
+		 * only stores the bool or removes it.
+		 *
+		 * @param request inbound RPC; lease is the actor
+		 * @param hidden true stores the bool, false removes the key
+		 */
+		public void hidden(OLLMrpc.Request request, bool hidden)
+		{
+			var actor = request.connection.leases.get((int) request.lease_id) 
+				as global::Clutter.Actor;
+				
+			if (actor == null) {
+				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			if (hidden) {
+				actor.set_data<bool>("shell-hidden-from-pick", true);
+			} else {
+				actor.steal_data<bool>("shell-hidden-from-pick");
 			}
 			request.reply(new OLLMrpc.Response());
 		}

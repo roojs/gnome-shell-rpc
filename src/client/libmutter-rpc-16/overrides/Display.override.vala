@@ -93,6 +93,7 @@
 		 *
 		 * Each {@link Window} gets a lease id; {@code window_type} is read via stock
 		 * {@code Meta-Window.get_window_type} (Gi property is read-only).
+		 * A lease already in {@code proxies} is that same object.
 		 */
 		public GLib.List<Window> list_all_windows()
 		{
@@ -103,9 +104,15 @@
 			var list = new GLib.List<Window>();
 			foreach (unowned GLib.Object row in rows) {
 				var snap = (Gsr.Shared.Window) row;
-				var win = new Window();
-				win.rpc_lid = (uint64) snap.id;
-				Gsr.Client.Rpc.register_handle(win);
+				var lid = (uint64) snap.id;
+				var win = Gsr.Client.Rpc.client.proxies.has_key((int) lid)
+					? Gsr.Client.Rpc.client.proxies.get((int) lid) as Window
+					: null;
+				if (win == null) {
+					win = new Window();
+					win.rpc_lid = lid;
+					Gsr.Client.Rpc.register_handle(win);
+				}
 				list.append(win);
 			}
 			return list;

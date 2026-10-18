@@ -300,30 +300,16 @@ namespace Shell
 	}
 
 	/**
-	 * Stock {@code shell_util_set_hidden_from_pick} — connect {@code pick}
-	 * and stop emission so the actor is skipped even under PICK_ALL.
+	 * Stock {@code shell_util_set_hidden_from_pick} — {@code Gsr-Clutter-Actor.hidden}
+	 * stores the bool the compositor pick hook reads.
 	 */
 	public void util_set_hidden_from_pick(Clutter.Actor actor, bool hidden)
 	{
-		const string key = "shell-stop-pick";
-		if (hidden) {
-			if (actor.get_data<void*>(key) != null) {
-				return;
-			}
-			actor.signal_pick.connect(stop_pick);
-			actor.set_data(key, (void*) 0x1);
-		} else {
-			if (actor.get_data<void*>(key) == null) {
-				return;
-			}
-			actor.signal_pick.disconnect(stop_pick);
-			actor.set_data(key, null);
+		try {
+			Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.hidden", actor, OLLMrpc.args("b", hidden));
+		} catch (GLib.Error e) {
+			GLib.warning("hidden: %s", e.message);
 		}
-	}
-
-	static void stop_pick(Clutter.Actor actor, Clutter.PickContext pick_context)
-	{
-		GLib.Signal.stop_emission_by_name(actor, "pick");
 	}
 
 	/**

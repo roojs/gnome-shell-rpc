@@ -4,20 +4,226 @@ Consolidated from the 2026-10-12 investigation. The old long log is
 [`archive/2026-10-12-overview-thumbnail-drag.md`](archive/2026-10-12-overview-thumbnail-drag.md).
 Continue all overview-thumbnail drag work here.
 
-**Status:** open. The drag follows the pointer and the button release
-reaches `dnd.js`. A drop on the top workspace thumbnail, and a drop on the
-window to the right, still snap the preview back. Neither calls
-`Meta.Window.change_workspace_by_index`.
+**Status:** The drop calls `change_workspace_by_index` and the window
+appears on the destination workspace. The preview in the old place
+stays. `Meta.Compositor.get_window_actors` minted a new `Meta.Window`
+for a lease the overview already held, and `register_handle` replaced
+the proxy. `window-removed` then carried that new object.
+`Workspace._lookupIndex` compares with `===`, missed the preview, and
+never called `destroy`. `restoreOnSuccess` snapped the same preview
+back to its old position. 10:18:33 in
+`~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`:
+`get_window_actors` during the drag, then `change_workspace_by_index`,
+`window-removed`, `window-added`, `set_position`, and no
+`Clutter-Actor.destroy`.
 
-The 16:39:25 release at (782, 276) and the 16:39:31 release at (270, 104)
-both run `Meta.Workspace.index`, `Meta.Window.located_on_workspace`, and
-`Meta.Window.get_monitor`, then animate `set_x` / `set_y` / `set_scale`.
-That is `Workspace.acceptDrop()` rejecting the window with `_isMyWindow()`.
-`ThumbnailsBox.acceptDropInternal()` would call `located_on_workspace`
-before `index()`. The top drop is therefore picked as the current
-workspace, which already contains the window.
+`get_window_actors` and `list_all_windows` now reuse the proxy already
+stored for that lease. The open `weston-gsr-session.sh --debug` is
+still the previous client. This session has to be started again before
+the reuse is in the process.
 
-The sustained Weston smoke is:
+An emission hook cannot stop the signal. The 18:30 run installed one,
+`hidden` arrived, and the probe still hit `pick-top`. GLib logs
+`cannot be stopped from emission hook` and the class handler still runs.
+
+18:40, with `installPickSkip` removed, the same smoke printed `ok`.
+`nested-weston-prove: stop (timeout) after 90s` is the nest timer;
+this smoke name is not in the early-stop list.
+
+```text
+overview-drop-workspace-smoke: pick-hidden hit=pick-bottom at=140,260
+overview-drop-workspace-smoke: acceptDropInternal mine=false ws=1
+overview-drop-workspace-smoke: change_workspace_by_index index=1
+overview-drop-workspace-smoke: box-accept ok=true dropWorkspace=1 x=63 y=14.296561241149902
+overview-drop-workspace-smoke: drop moved=true pick=Clutter_Actor > WorkspaceThumbnail > ThumbnailsBox > ControlsManager > overview > overviewGroup @414,108
+overview-drop-workspace-smoke: ok
+```
+
+`dnd.js` picks with `get_actor_at_pos(PickMode.ALL)`. Before this, the
+client log at 16:51:55.716 and 16:52:02.123 was `get_actor_at_pos`, two
+`get_parent` calls, `transform_stage_point`, `Meta.Workspace.index`,
+`located_on_workspace`, `get_monitor`, three more `get_parent` calls,
+then the snap-back ease. That was the dragged `WindowPreview`.
+`_isMyWindow()` was true, so `change_workspace_by_index` was not called.
+
+The drop reproduction is:
+
+```bash
+GI_META_SMOKE=overview-drop-workspace-smoke \
+GI_META_SMOKE_CMD='gedit --new-window' \
+GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1 \
+GSR_NESTED_TIMEOUT=90 \
+./scripts/agent-nested-smoke-prove.sh
+```
+
+It hides one actor from pick, then drags a preview onto another workspace
+thumbnail and requires `change_workspace_by_index`.
+
+## Proposal
+
+The 18:04 smoke passed by wrapping `get_actor_at_pos` in the test. That
+wrapper is gone.
+
+Stage pick runs in the compositor. The drag preview is a stock
+`St.Widget` and the window picture is a stock `Clutter.Clone`, so an
+`Actor` constructor never runs for them. The handler is installed once
+at register. `hidden` only stores or removes the bool.
+
+Clutter emits `pick` only when a handler is pending
+(`clutter_actor_continue_pick`). An emission hook is not a handler, so
+the vfunc runs and the hook never sees the pick. GLib also rejects
+`g_signal_stop_emission` from an emission hook. The register-time
+class handler is pending for every actor. A set bool returns. A missing
+bool chains to the original pick.
+
+### `src/server/libmutter-clutter-16/ClutterActor.vala` — register the handler
+
+**Why:** `get_actor_at_pos` runs in this process. One class handler at register covers every actor, including stock widgets and clones.
+
+**Where:** `Actor.rpc_register`, and the `"hidden"` entry in `add_class`.
+
+**Depends on:** nothing
+
+#### Remove
+
+```vala
+				"add_signals", "S",
+				"add_properties", "",
+```
+
+#### Replace with
+
+```vala
+				"add_signals", "S",
+				"hidden", "b",
+				"add_properties", "",
+```
+
+#### Remove
+
+```vala
+			OLLMrpc.Request.register_live("Gsr-Clutter-Actor", helper);
+			ActorVfuncIds.register_vfunc_ids();
+```
+
+#### Replace with
+
+```vala
+			OLLMrpc.Request.register_live("Gsr-Clutter-Actor", helper);
+			ActorVfuncIds.register_vfunc_ids();
+			/* get_actor_at_pos picks in this process. The drag actor is a
+			 * stock St.Widget and the window picture is a stock Clone, so
+			 * an Actor constructor never runs for them. Clutter emits
+			 * pick only when a handler is pending, and an emission hook
+			 * is not one. One class handler here covers every actor.
+			 * shell-hidden-from-pick set means skip this pick; the key
+			 * removed means chain to the original handler. */
+			GLib.Signal.override_class_handler("pick", typeof(global::Clutter.Actor), (GLib.Callback) pick_hidden);
+```
+
+### `src/server/libmutter-clutter-16/ClutterActor.vala` — set or remove the key
+
+**Why:** The class handler is already installed. This call only puts the bool on the actor or takes it off.
+
+**Where:** `Actor.add_signals`, after its reply.
+
+**Depends on:** the class handler and the `add_class` entry above
+
+#### Add
+
+```vala
+		/**
+		 * Class handler installed once from {@link rpc_register}.
+		 * A set {@code shell-hidden-from-pick} skips this actor.
+		 * Otherwise the original pick runs.
+		 */
+		static void pick_hidden(global::Clutter.Actor actor, global::Clutter.PickContext pick_context)
+		{
+			if (actor.get_data<bool>("shell-hidden-from-pick")) {
+				return;
+			}
+			GLib.Signal.chain_from_overridden_handler(actor, pick_context);
+		}
+
+		/**
+		 * ''Gsr-Clutter-Actor.hidden'' — set or remove
+		 * {@code shell-hidden-from-pick} on the leased actor.
+		 *
+		 * The pick class handler is already installed. This call
+		 * only stores the bool or removes it.
+		 *
+		 * @param request inbound RPC; lease is the actor
+		 * @param hidden true stores the bool, false removes the key
+		 */
+		public void hidden(OLLMrpc.Request request, bool hidden)
+		{
+			var actor = request.connection.leases.get((int) request.lease_id) as global::Clutter.Actor;
+			if (actor == null) {
+				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			if (hidden) {
+				actor.set_data<bool>("shell-hidden-from-pick", true);
+			} else {
+				actor.steal_data<bool>("shell-hidden-from-pick");
+			}
+			request.reply(new OLLMrpc.Response());
+		}
+```
+
+### `src/client/libshell-16/Util.vala` — ask the compositor to stop pick
+
+**Why:** `Shell.util_set_hidden_from_pick` is what `dnd.js` and the window clone call. The connect has to be the server one above.
+
+**Where:** `util_set_hidden_from_pick` and `stop_pick`.
+
+**Depends on:** `Gsr-Clutter-Actor.hidden`
+
+#### Remove
+
+```vala
+	public void util_set_hidden_from_pick(Clutter.Actor actor, bool hidden)
+	{
+		const string key = "shell-stop-pick";
+		if (hidden) {
+			if (actor.get_data<void*>(key) != null) {
+				return;
+			}
+			actor.signal_pick.connect(stop_pick);
+			actor.set_data(key, (void*) 0x1);
+		} else {
+			if (actor.get_data<void*>(key) == null) {
+				return;
+			}
+			actor.signal_pick.disconnect(stop_pick);
+			actor.set_data(key, null);
+		}
+	}
+
+	static void stop_pick(Clutter.Actor actor, Clutter.PickContext pick_context)
+	{
+		GLib.Signal.stop_emission_by_name(actor, "pick");
+	}
+```
+
+#### Replace with
+
+```vala
+	public void util_set_hidden_from_pick(Clutter.Actor actor, bool hidden)
+	{
+		try {
+			Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.hidden", actor, OLLMrpc.args("b", hidden));
+		} catch (GLib.Error e) {
+			GLib.warning("hidden: %s", e.message);
+		}
+	}
+```
+
+Applied. `installPickSkip` is gone. The smoke still records
+`get_actor_at_pos` so the pointer can steer, and it does not hide
+actors. The check is that smoke without the hide wrapper.
+
+The sustained motion smoke is:
 
 ```bash
 GI_META_SMOKE=overview-thumbnail-drag-smoke \
@@ -1242,3 +1448,132 @@ and 16:39:31 (270, 104) both call `get_actor_at_pos`,
 `set_scale`. There is no `change_workspace_by_index`. The call order matches
 `Workspace.acceptDrop()` when `_isMyWindow()` is true. A workspace-thumbnail
 drop would call `located_on_workspace` before `index()`.
+
+### 2026-10-17 17:05 pick stop moved to the compositor
+
+The same log, read again. Both releases do two `get_parent` calls before
+`Workspace.index`. That is the dragged preview's content clone and
+`windowContainer`, then that preview's `acceptDrop`. The preview is the
+drag actor (`WindowPreview` has no `getDragActor`, so `startDrag` reparents
+the preview itself) and `Shell.util_set_hidden_from_pick` only connected
+`pick` in the client. `get_actor_at_pos` never saw that handler.
+
+`util_set_hidden_from_pick` now calls
+`Gsr-Clutter-Actor.set_hidden_from_pick`, which connects the stop on the
+server actor. Rebuilt `src/gsr-server` and `src/libshell-16.so`. Did not
+start a prove: `weston-gsr-session.sh --debug` pid 1083535 is still up.
+
+### 2026-10-17 17:43 drop smoke fails
+
+```bash
+GI_META_SMOKE=overview-drop-workspace-smoke \
+GI_META_SMOKE_CMD='gedit --new-window' \
+GI_WAYLAND_LAUNCH_UNSET_DISPLAY=1 \
+GSR_NESTED_TIMEOUT=90 \
+./scripts/agent-nested-smoke-prove.sh
+```
+
+`nested-weston-prove: stop (smoke-fail) after 10s`. Process exit 137 is
+Weston auto-close after that stop.
+
+```text
+pick-hidden hit=pick-top at=140,260
+n_workspaces=12
+thumb index=0 .. thumb index=11
+drag 399.4765625,296.162109375 -> thumb 559.5,108
+drop moved=false pick=Clutter_Clone > Clutter_Actor > WindowPreview > uiGroup > Meta_Stage @521,49
+miss Error: miss change_workspace_by_index pick=Clutter_Clone > Clutter_Actor > WindowPreview > uiGroup > Meta_Stage @521,49
+```
+
+Twelve workspaces were already present; this run did not append one.
+The hidden actor was still the pick result. The last drop pick was the
+dragged preview on `uiGroup`, and `change_workspace_by_index` did not run.
+No `src/` edit.
+
+### 2026-10-17 18:04 test pick skip passes
+
+`installPickSkip` in `tests/gjs-embed/overview-drop-workspace-smoke.js`
+records actors passed to `Shell.util_set_hidden_from_pick`. Its
+`get_actor_at_pos` wrapper hides each recorded actor it hits, picks
+again, and shows it. The smoke also drops the workspace count to 2 and
+steers the virtual pointer until the pick chain contains
+`WorkspaceThumbnail`. No `src/` edit.
+
+```text
+pick-hidden hit=pick-bottom at=140,260
+n_workspaces=2
+target index=1
+step 3 Clutter_Actor > WorkspaceThumbnail > ThumbnailsBox > ... @414,108
+acceptDropInternal mine=false ws=1
+change_workspace_by_index index=1
+box-accept ok=true dropWorkspace=1 x=63 y=14.296561241149902
+drop moved=true pick=Clutter_Actor > WorkspaceThumbnail > ThumbnailsBox > ... @414,108
+overview-drop-workspace-smoke: ok
+```
+
+The earlier 17:43 run, without this wrapper, picked `pick-top` and the
+dragged preview and did not call `change_workspace_by_index`.
+
+### 2026-10-17 17:32 reverted
+
+That server method and the client call to it are removed.
+`Shell.util_set_hidden_from_pick` again connects `pick` on the client
+proxy. No gate or smoke has shown that a compositor-side stop changes
+the drop target.
+
+### 2026-10-17 18:30 emission hook does not stop pick
+
+Applied `Gsr-Clutter-Actor.hidden` and a `Clutter.Actor.pick` emission
+hook. `installPickSkip` was removed. `hidden` was received (ids 1249,
+5470, 6153, …). The probe still hit `pick-top`, and the drop pick was
+the dragged `WindowPreview`. `change_workspace_by_index` did not run.
+`nested-weston-prove: stop (smoke-fail) after 9s`.
+
+A separate program printed:
+
+```text
+GLib-GObject-CRITICAL: emission of signal "vpicked" cannot be stopped from emission hook
+```
+
+The class handler still ran. A normal handler on the same signal
+skipped the class handler while a bool was set, and ran it after the
+bool was removed.
+
+### 2026-10-17 18:40 normal pick handler passes
+
+The emission hook is not installed. `hidden` stores
+`shell-hidden-from-pick` and connects `stop_pick` once. The handler
+stops `pick` only while that bool is set.
+
+```text
+pick-hidden hit=pick-bottom at=140,260
+acceptDropInternal mine=false ws=1
+change_workspace_by_index index=1
+box-accept ok=true dropWorkspace=1 x=63 y=14.296561241149902
+drop moved=true
+overview-drop-workspace-smoke: ok
+```
+
+`nested-weston-prove: stop (timeout) after 90s`. Process exit 137 is
+Weston auto-close after that timer.
+
+### 2026-10-18 10:18 old preview stays after the drop
+
+Hand drop in `weston-gsr-session.sh --debug`. The window lands on the
+other workspace and the old picture stays. Client log
+`~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`:
+
+```text
+10:18:29.326 get_window_actors
+10:18:30.394 get_window_actors
+10:18:33.005 change_workspace_by_index
+10:18:33.007 window-removed
+10:18:33.007 window-added
+10:18:33.012 set_position
+```
+
+No `Clutter-Actor.destroy` after `window-removed`.
+`get_window_actors` did `new Window()` and `register_handle`, which
+overwrites `proxies[lid]`. The preview still holds the earlier object.
+`===` misses, so `_doRemoveWindow` returns before `destroy`.
+`restoreOnSuccess` then eases that preview back to the old slot.

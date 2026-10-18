@@ -8,7 +8,9 @@
 		 * empty list and stock {@code Workspace} construction bulk-adds
 		 * nothing. Each hydrated actor binds its window up front, the
 		 * same way {@code Display.list_all_windows} hydrates windows
-		 * from snapshot rows.
+		 * from snapshot rows. A lease already in {@code proxies} is
+		 * returned as that object. A new {@code Window} would break
+		 * the overview's {@code ===} on {@code window-removed}.
 		 */
 		public GLib.List<WindowActor> get_window_actors()
 		{
@@ -22,13 +24,25 @@
 				if (actor_lid == 0 || win_lid == 0) {
 					continue;
 				}
-				var win = new Window();
-				win.rpc_lid = win_lid;
-				Gsr.Client.Rpc.register_handle(win);
-				var actor = new WindowActor();
-				actor.rpc_lid = actor_lid;
-				actor.bound_meta_window = win;
-				Gsr.Client.Rpc.register_handle(actor);
+				var win = Gsr.Client.Rpc.client.proxies.has_key((int) win_lid)
+					? Gsr.Client.Rpc.client.proxies.get((int) win_lid) as Window
+					: null;
+				if (win == null) {
+					win = new Window();
+					win.rpc_lid = win_lid;
+					Gsr.Client.Rpc.register_handle(win);
+				}
+				var actor = Gsr.Client.Rpc.client.proxies.has_key((int) actor_lid)
+					? Gsr.Client.Rpc.client.proxies.get((int) actor_lid) as WindowActor
+					: null;
+				if (actor == null) {
+					actor = new WindowActor();
+					actor.rpc_lid = actor_lid;
+					actor.bound_meta_window = win;
+					Gsr.Client.Rpc.register_handle(actor);
+				} else if (actor.bound_meta_window == null) {
+					actor.bound_meta_window = win;
+				}
 				list.append(actor);
 			}
 			return list;
