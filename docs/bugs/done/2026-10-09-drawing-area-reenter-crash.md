@@ -1,6 +1,6 @@
 # Drawing-area repaint reenters and kills mutter-rpc
 
-**Status:** Fixed in `src/`. `Gsr-St-DrawingArea.queue_repaint` that arrives while a repaint emission is still on the stack is ignored. The draw already running reads the current value. Stock `st_drawing_area_queue_repaint` emits `repaint` before it returns and drops the mapped cairo buffer first, so a nested call cleared `in_repaint` under the outer hook and `DrawingArea.paint` dereferenced the NULL from `get_context` (SIGSEGV, exit 139).
+**Status:** ✅ closed 2026-10-18. User has not seen this crash again. `Gsr-St-DrawingArea.queue_repaint` that arrives while a repaint emission is still on the stack is ignored. The draw already running reads the current value. Stock `st_drawing_area_queue_repaint` emits `repaint` before it returns and drops the mapped cairo buffer first, so a nested call cleared `in_repaint` under the outer hook and `DrawingArea.paint` dereferenced the NULL from `get_context` (SIGSEGV, exit 139).
 
 Reproduction:
 
@@ -45,3 +45,5 @@ Client: `socket closed` at 14:30:54.763 with paint 18909 and `queue_repaint` 188
 2026-10-09 15:01. Landed a deferral that used `GLib.Idle.add` after the hook returned. Same command: `repaint already running, deferred`, `running deferred repaint`, `drawing-area-reenter-smoke: ok depth=1 entered=3 surface=480x64`. That idle is banned (`docs/bugs/done/2026-09-16-allocate-follow-reference.md`, `docs/bugs/done/2026-09-23-prefix-generated-vala-signals.md`).
 
 2026-10-09 15:22. Removed the idle and the again-flag. `queue_repaint` during the emission replies and returns. The draw already on the stack continues. Same command: `repaint already running, skipped`, `drew depth=1 surface=480x64`, `drawing-area-reenter-smoke: ok depth=1 entered=3 surface=480x64`, `quit (ok)`. No `in_repaint` assertion, no `cogl_buffer_dispose` mapped assertion. Wrapper exit 137 is `stop_tree` after smoke-ok.
+
+2026-10-18. User has not seen the crash again. Closed.

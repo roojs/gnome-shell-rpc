@@ -2,9 +2,9 @@
 
 Archived 2026-10-14. This is the pre-split file. Do not continue it.
 
-Current report:
+Closed report:
 
-- [`../2026-10-14-drag-scale-gone.md`](../2026-10-14-drag-scale-gone.md)
+- [`2026-10-14-drag-scale-gone.md`](2026-10-14-drag-scale-gone.md)
 
 The text below is the file as it stood when it was split.
 

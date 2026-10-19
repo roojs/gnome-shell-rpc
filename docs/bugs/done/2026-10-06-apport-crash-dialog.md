@@ -2,7 +2,7 @@
 
 **Status:** ✅ closed 2026-10-06. User: assume fixed.
 
-Split from [`../2026-10-05-boot-crash-and-logout-hang.md`](../2026-10-05-boot-crash-and-logout-hang.md). The GTK dialog interrupted restart and logout. Apport 2.32 wrote `/var/crash/_usr_bin_gsr-client.1000.crash`.
+Split from [`2026-10-05-boot-crash-and-logout-hang.md`](2026-10-05-boot-crash-and-logout-hang.md). The GTK dialog interrupted restart and logout. Apport 2.32 wrote `/var/crash/_usr_bin_gsr-client.1000.crash`.
 
 ## Required
 

@@ -1,10 +1,18 @@
 # Debugging instructions for LLMs
 
-Written for the model. Mandatory when the user asks to fix a failure or says to start with the debugging rules. Follow this file in order. [`nested-debug.md`](nested-debug.md) is the log and stop-reason reference. This file is the procedure.
+Do not hack product code. The order is prove, debug, prove the fix off the product code, then propose. Apply the change only when it is trivial and that off-code prove already passed.
+
+1. **Prove** the failure. Read the logs that already exist, then show the same failure on Weston. Leave `src/` as it was.
+2. **Debug** on a reproduction: a `tests/call-sync-repro` gate or a `tests/gjs-embed` smoke. That program is what you change.
+3. **Prove the fix off the product code.** Rerun the reproduction until it passes, and the pass still matches the failure proved in step 1. Primary `src/` stays unchanged through this step.
+4. **Propose** the proven change in the bug file, as code fences (see stage 6).
+5. **Apply** only a trivial change: copy that proven edit into `src/`, rebuild, and rerun the Weston command from step 1. A major change stays a proposal until review.
+
+A guess in `src/` before the reproduction passes is a hack. Do not do it. A candidate fix lands in `src/` only in stage 6, and only when it is a minor change that already passed on the reproduction.
+
+Written for the model. Mandatory when the user asks to fix a failure or says to start with the debugging rules. Follow this file in order. [`nested-debug.md`](nested-debug.md) is the log and stop-reason reference. This file is the procedure. The five steps above are the rule. The stages below are how to carry them out.
 
 Keep working. Do not pause to narrate each prove, summarise a dead end, or ask whether to continue. That rule is [`.cursor/rules/no-status-theatre.mdc`](../.cursor/rules/no-status-theatre.mdc). Its text stays there.
-
-A candidate fix lands in `src/` only in stage 6, and only when it is a minor change that already passed on the reproduction.
 
 ---
 

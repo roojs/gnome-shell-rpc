@@ -1,52 +1,12 @@
 # Overview thumbnail drag
 
-Consolidated from the 2026-10-12 investigation. The old long log is
-[`archive/2026-10-12-overview-thumbnail-drag.md`](archive/2026-10-12-overview-thumbnail-drag.md).
-Continue all overview-thumbnail drag work here.
+**Status:** ✅ closed 2026-10-18. Signed off on the desktop. Dropping a window preview on another workspace thumbnail moves the window, and the picture in the old place is gone.
 
-**Status:** The drop calls `change_workspace_by_index` and the window
-appears on the destination workspace. The preview in the old place
-stays. `Meta.Compositor.get_window_actors` minted a new `Meta.Window`
-for a lease the overview already held, and `register_handle` replaced
-the proxy. `window-removed` then carried that new object.
-`Workspace._lookupIndex` compares with `===`, missed the preview, and
-never called `destroy`. `restoreOnSuccess` snapped the same preview
-back to its old position. 10:18:33 in
-`~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`:
-`get_window_actors` during the drag, then `change_workspace_by_index`,
-`window-removed`, `window-added`, `set_position`, and no
-`Clutter-Actor.destroy`.
+**Cause:** Stage `get_actor_at_pos` picks in the compositor. `Shell.util_set_hidden_from_pick` stopped `pick` only on the client proxy, so the drop hit the dragged preview and `acceptDrop` treated it as the window's own workspace. After the move worked, `Meta.Compositor.get_window_actors` minted a new `Meta.Window` for a lease the preview already held. `window-removed` carried that new object, `===` missed the preview, and `restoreOnSuccess` eased it back to the old slot.
 
-`get_window_actors` and `list_all_windows` now reuse the proxy already
-stored for that lease. The open `weston-gsr-session.sh --debug` is
-still the previous client. This session has to be started again before
-the reuse is in the process.
+**Fix:** `Gsr-Clutter-Actor.hidden` stores bool `shell-hidden-from-pick`. One `pick` class handler, installed when the server registers, skips that actor while the bool is set and chains to the original pick when the key is gone. `Shell.util_set_hidden_from_pick` calls that RPC. `get_window_actors` and `list_all_windows` return the proxy already stored for the lease.
 
-An emission hook cannot stop the signal. The 18:30 run installed one,
-`hidden` arrived, and the probe still hit `pick-top`. GLib logs
-`cannot be stopped from emission hook` and the class handler still runs.
-
-18:40, with `installPickSkip` removed, the same smoke printed `ok`.
-`nested-weston-prove: stop (timeout) after 90s` is the nest timer;
-this smoke name is not in the early-stop list.
-
-```text
-overview-drop-workspace-smoke: pick-hidden hit=pick-bottom at=140,260
-overview-drop-workspace-smoke: acceptDropInternal mine=false ws=1
-overview-drop-workspace-smoke: change_workspace_by_index index=1
-overview-drop-workspace-smoke: box-accept ok=true dropWorkspace=1 x=63 y=14.296561241149902
-overview-drop-workspace-smoke: drop moved=true pick=Clutter_Actor > WorkspaceThumbnail > ThumbnailsBox > ControlsManager > overview > overviewGroup @414,108
-overview-drop-workspace-smoke: ok
-```
-
-`dnd.js` picks with `get_actor_at_pos(PickMode.ALL)`. Before this, the
-client log at 16:51:55.716 and 16:52:02.123 was `get_actor_at_pos`, two
-`get_parent` calls, `transform_stage_point`, `Meta.Workspace.index`,
-`located_on_workspace`, `get_monitor`, three more `get_parent` calls,
-then the snap-back ease. That was the dragged `WindowPreview`.
-`_isMyWindow()` was true, so `change_workspace_by_index` was not called.
-
-The drop reproduction is:
+**Proof:** `overview-drop-workspace-smoke` printed `ok` (`pick-hidden hit=pick-bottom`, `change_workspace_by_index index=1`). The leftover preview was signed off on the desktop 2026-10-18.
 
 ```bash
 GI_META_SMOKE=overview-drop-workspace-smoke \
@@ -56,8 +16,8 @@ GSR_NESTED_TIMEOUT=90 \
 ./scripts/agent-nested-smoke-prove.sh
 ```
 
-It hides one actor from pick, then drags a preview onto another workspace
-thumbnail and requires `change_workspace_by_index`.
+The old long log is
+[`2026-10-12-overview-thumbnail-drag.md`](2026-10-12-overview-thumbnail-drag.md).
 
 ## Proposal
 
@@ -778,7 +738,7 @@ current proposal. The investigation record remains below under
 
 ## What already landed
 
-Click is fixed. Do not reopen it. `event-reschedule` is in `src/server/rpc/Server.vala` `filter_notification` and `src/server/rpc/Connection.vala` `write()`. A one-way `before-update` while `Clutter.get_current_event()` is set is consumed and `schedule_update()` is called. `overview-window-activate-smoke` printed `ok`. Plan [`docs/plans/1.4-signal-reentrancy.md`](../plans/1.4-signal-reentrancy.md).
+Click is fixed. Do not reopen it. `event-reschedule` is in `src/server/rpc/Server.vala` `filter_notification` and `src/server/rpc/Connection.vala` `write()`. A one-way `before-update` while `Clutter.get_current_event()` is set is consumed and `schedule_update()` is called. `overview-window-activate-smoke` printed `ok`. Plan [`docs/plans/1.4-signal-reentrancy.md`](../../plans/1.4-signal-reentrancy.md).
 
 The leave cancel is fixed. Do not reopen it. `dnd.js:151` used to throw
 `event is null` on long-press CANCEL.
@@ -975,7 +935,7 @@ this._dragActor.get_transition('scale-x').connect('new-frame', () => {
 The libocrpc fix and consumer `before-update` subscription are applied.
 `get_transition` and `run_main_loop` are not consumer fix points. The
 library-owned report is
-[`2026-10-15-FIXED-blocking-void-signal-does-not-wait.md`](../../../OLLMchat/docs/bugs/done/2026-10-15-FIXED-blocking-void-signal-does-not-wait.md).
+[`2026-10-15-FIXED-blocking-void-signal-does-not-wait.md`](../../../../OLLMchat/docs/bugs/done/2026-10-15-FIXED-blocking-void-signal-does-not-wait.md).
 
 ## LLM efforts
 
@@ -1101,7 +1061,7 @@ FAIL blocking-void-signal-gate: blocking void signal was one-way tick=true reply
 the GClosure shape for void signals. Thus setting `blocking = true` on
 `before-update` could not hold its emission before the library fix. The
 library-owned report is
-[`2026-10-15-FIXED-blocking-void-signal-does-not-wait.md`](../../../OLLMchat/docs/bugs/done/2026-10-15-FIXED-blocking-void-signal-does-not-wait.md).
+[`2026-10-15-FIXED-blocking-void-signal-does-not-wait.md`](../../../../OLLMchat/docs/bugs/done/2026-10-15-FIXED-blocking-void-signal-does-not-wait.md).
 
 ### 2026-10-15 libocrpc fix and Weston proof
 
@@ -1577,3 +1537,7 @@ No `Clutter-Actor.destroy` after `window-removed`.
 overwrites `proxies[lid]`. The preview still holds the earlier object.
 `===` misses, so `_doRemoveWindow` returns before `destroy`.
 `restoreOnSuccess` then eases that preview back to the old slot.
+
+### 2026-10-18 closed
+
+User: the drop is complete. Moved to `docs/bugs/done/`.

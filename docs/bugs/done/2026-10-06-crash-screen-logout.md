@@ -1,6 +1,6 @@
 # Crash-screen Log Out does not end the session
 
-**Status:** ✅ closed 2026-10-10. User: has not seen this recently. Split from [`../2026-10-05-boot-crash-and-logout-hang.md`](../2026-10-05-boot-crash-and-logout-hang.md) 2026-10-06. The boot crash stays there.
+**Status:** ✅ closed 2026-10-10. User: has not seen this recently. Split from [`2026-10-05-boot-crash-and-logout-hang.md`](2026-10-05-boot-crash-and-logout-hang.md) 2026-10-06. That boot crash was closed 2026-10-18.
 
 The crash screen in `src/server/rpc/SpawnClient.vala` has two Log Out
 controls (top-right text and the last choice box). Both call
@@ -105,4 +105,4 @@ Installed GDM login, force the crash screen, press Log Out:
 - before RUNNING (crash during startup): `SessionManager.Logout` warning, no
   `Session.Terminate` warning, session removed.
 
-2026-10-10. User: has not seen the crash-screen Log Out fail recently. Closed. The boot crash stays in [`../2026-10-05-boot-crash-and-logout-hang.md`](../2026-10-05-boot-crash-and-logout-hang.md).
+2026-10-10. User: has not seen the crash-screen Log Out fail recently. Closed. The boot crash stays in [`2026-10-05-boot-crash-and-logout-hang.md`](2026-10-05-boot-crash-and-logout-hang.md).

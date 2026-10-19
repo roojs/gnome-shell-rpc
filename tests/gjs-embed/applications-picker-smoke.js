@@ -22,6 +22,7 @@ const SMOKE = 'applications-picker-smoke';
 
 function smokeLog(message) {
 	log(SMOKE + ': ' + message);
+	log('shell-boot/ui/init: ' + message);
 }
 
 function delay(ms) {
@@ -31,6 +32,19 @@ function delay(ms) {
 			return GLib.SOURCE_REMOVE;
 		});
 	});
+}
+
+function actorChain(actor) {
+	const parts = [];
+	for (let current = actor;
+		current != null && parts.length < 8;
+		current = current.get_parent?.() ?? null) {
+		const type = current.constructor?.name ?? 'actor';
+		const name = current.name ? '#' + current.name : '';
+		const style = current.style_class ? '.' + current.style_class : '';
+		parts.push(type + name + style);
+	}
+	return parts.join(' > ');
 }
 
 function appIconForActor(actor) {
@@ -75,10 +89,20 @@ async function run() {
 	const [width, height] = button.get_transformed_size();
 	const clickX = x + width / 2;
 	const clickY = y + height / 2;
+	const picked = stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, clickX, clickY);
+	// Virtual absolute motion lands 38px left and 59px above the stage
+	// point (X event 530,501 for a request of 568,560, then 568,560 for
+	// a request of 606,619). Aim so the event hits this button.
+	const eventX = clickX + 38;
+	const eventY = clickY + 59;
+	const eventPick = stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, clickX - 38, clickY - 59);
 	smokeLog('click at=' + clickX + ',' + clickY
 		+ ' size=' + width + 'x' + height
-		+ ' before=' + stateAdjustment.value);
-	globalObj.pointer_click(clickX, clickY);
+		+ ' before=' + stateAdjustment.value
+		+ ' pick=' + actorChain(picked)
+		+ ' event-space=' + actorChain(eventPick)
+		+ ' aim=' + eventX + ',' + eventY);
+	globalObj.pointer_click(eventX, eventY);
 	await delay(4000);
 
 	const layout = appDisplay._grid?.layout_manager;

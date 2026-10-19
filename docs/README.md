@@ -9,6 +9,7 @@ User-facing docs (no plan numbers):
 | [`debugging.md`](debugging.md) | LLM instructions for a fix: read logs, reproduce, shrink, fix the repro, then land |
 | [`nested-debug.md`](nested-debug.md) | Prove SIGKILL vs real death; do not gdb your own kill |
 | [`libmutter-rpc-for-gnome-shell-js.md`](libmutter-rpc-for-gnome-shell-js.md) | `GI_TYPELIB_PATH` / pkg-config for client Meta |
+| [`shell-javascript.md`](shell-javascript.md) | Where the client’s shell JavaScript comes from |
 | [`clutter-layout-allocate.md`](clutter-layout-allocate.md) | Stock Clutter/GJS allocate program — chrome chases follow this |
 | [`signals-client.md`](signals-client.md) | Client proxy signals, class closures, and subscription dispatch |
 | [`signals-server.md`](signals-server.md) | Server leases, subscriptions, and vfunc hooks |

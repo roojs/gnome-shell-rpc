@@ -1,8 +1,8 @@
 # Boot crash
 
-**Status:** ⏳ open. User 2026-10-05. The crash-screen Log Out failure was split out 2026-10-06 to [`done/2026-10-06-crash-screen-logout.md`](done/2026-10-06-crash-screen-logout.md), closed 2026-10-10.
+**Status:** ✅ closed 2026-10-18. User: the boot crash and the logout hang have not come back. The crash-screen Log Out failure was split out 2026-10-06 to [`2026-10-06-crash-screen-logout.md`](2026-10-06-crash-screen-logout.md), closed 2026-10-10.
 
-Earlier logins: [`done/2026-10-03-greeter-login-black-screen.md`](done/2026-10-03-greeter-login-black-screen.md), [`done/2026-10-04-greeter-crash-screen.md`](done/2026-10-04-greeter-crash-screen.md).
+Earlier logins: [`2026-10-03-greeter-login-black-screen.md`](2026-10-03-greeter-login-black-screen.md), [`2026-10-04-greeter-crash-screen.md`](2026-10-04-greeter-crash-screen.md).
 
 ## Boot crash
 
@@ -34,7 +34,7 @@ The returned notify repeats the write.
 The loop grew from request 10728 at 15:30:56.617 to request 16654 at
 15:31:01.981. The Apport report is for PID 10211 at 15:31:02 and says
 `SIGSEGV`; it contains a core but no retraced stack. The dialog that came
-with that file is [`done/2026-10-06-apport-crash-dialog.md`](done/2026-10-06-apport-crash-dialog.md).
+with that file is [`2026-10-06-apport-crash-dialog.md`](2026-10-06-apport-crash-dialog.md).
 The next two clients,
 10550 and 10581, trapped in `GLib.error` at 15:31:12 and 15:31:18.
 
@@ -69,7 +69,7 @@ Do not skip `set_property` in `Client.vala`. Do not patch
 entered the running state at 08:22:55, before either client died.
 
 Two clients, then the crash screen. The Log Out that followed is in
-[`done/2026-10-06-crash-screen-logout.md`](done/2026-10-06-crash-screen-logout.md).
+[`2026-10-06-crash-screen-logout.md`](2026-10-06-crash-screen-logout.md).
 
 | PID | What the journal still has | Trap |
 | --- | --- | --- |
@@ -155,7 +155,7 @@ handed: `ClutterEventSequence`, `ClutterMargin`, `ClutterPaintVolume`,
 `GrapheneMatrix`, `GraphenePoint3D`, `StIconColors`, `StShadow`.
 
 The rest of that list, including the Graphene math records and
-`St.ShadowHelper`, is [`done/2026-10-06-uncovered-boxed-types.md`](done/2026-10-06-uncovered-boxed-types.md).
+`St.ShadowHelper`, is [`2026-10-06-uncovered-boxed-types.md`](2026-10-06-uncovered-boxed-types.md).
 
 ## Seen again — 2026-10-06 09:29
 
@@ -241,7 +241,7 @@ No new file under `/var/crash/`. `coredumpctl` is not installed.
 | 2838 | Spawned 12:58:18. Last server recv 12:58:38.023: `Clutter-Actor.get_children` id 13141. | 12:58:38.336 `connection write error: live object MetaWindowWayland not in connection.lease_ids`. `window_created title=(null) frame=0,0 0x0` at 12:58:38.381. Kernel `trap int3` in `libglib-2.0.so.0.8400.1` at `0x73e0f`. |
 | 3362 | Crash-screen restart. Spawned 12:58:41 (`manual-restart=false` on 2838, so this was the Restart click). Last client line 12:58:50.893: `before-update` after `Clutter-Stage.schedule_update`. | 12:58:50.894 `malloc_consolidate(): unaligned fastbin chunk detected`. Server 12:58:52.102 `Broken pipe`. No second kernel trap. `client exited manual-restart=false` at 12:58:52.163, so the crash screen is up again and nothing respawned. |
 
-The first death is [`done/2026-10-03-new-window-kills-client.md`](done/2026-10-03-new-window-kills-client.md).
+The first death is [`2026-10-03-new-window-kills-client.md`](2026-10-03-new-window-kills-client.md).
 A subscribed signal carries the new `Meta.Window` before
 `Meta.Display::window-created` exports it. This VM's `libocrpc` 1.4.0-1
 does not contain that export. The 1.4.0 changelog has no such entry.
@@ -301,3 +301,5 @@ Fixed in tree. `Graphene.Size` is width, height, same as `Graphene.Point`.
 `St.Adjustment.value` keeps the notified value and does not send
 `set_value` again while that send is still on the stack. The echo gate
 passes, including a server clamp that notifies a different double.
+
+2026-10-18. User: the boot crash and the logout hang have not come back. Closed.

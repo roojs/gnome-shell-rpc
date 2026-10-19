@@ -10,9 +10,7 @@ but calls go out-of-process instead of in-process.
 
 The goal is a shell client you can restart without tearing down the desktop.
 
-**Status (2026-10-05):** 1.2 and subplans 1.2.1–1.2.5 are done
-([`docs/plans/done/1.2-teardown-and-restart.md`](docs/plans/done/1.2-teardown-and-restart.md)).
-No active plan.
+**Status (2026-10-19):** Shell 16 mostly works. A few minor UI details still need fixing.
 
 ---
 
@@ -27,102 +25,14 @@ gsr-server (compositor)                 gsr-client (shell)
 
 - **Compositor** — **`gsr-server`** in `src/server/`: mutter plugin; real Mutter.
 - **Client** — **`gsr-client`** in `src/client/`: stock GJS plus our copy of shell
-  JavaScript, described below. **`libmutter-rpc-16`** stands in for `libmutter`.
+  JavaScript ([`docs/shell-javascript.md`](docs/shell-javascript.md)).
+  **`libmutter-rpc-16`** stands in for `libmutter`.
 
 Shared types live in `src/shared/`. Folder roles: [`src/README.md`](src/README.md).
 
 All development uses **nested** mutter. Do **not** point this at your host
 `gnome-shell`, and do **not** nest under host GNOME (that freezes the desktop).
-
----
-
-## Where the shell JavaScript comes from
-
-GNOME Shell’s JavaScript is source under `js/` in the upstream tree. A normal
-install does not leave that tree on disk for the shell to execute. The package
-build compiles it into a **GResource** and links that into `libshell`. At run
-time the process loads modules as `resource:///org/gnome/shell/…` (for example
-`resource:///org/gnome/shell/ui/init.js`). On this kind of system that blob
-lives inside `/usr/lib/gnome-shell/libshell-16.so`. There is no
-`/usr/share/gnome-shell/js` directory to point a program at.
-
-This client does the same kind of compile, from our own checkout, into our own
-binary:
-
-1. `meson setup` fetches upstream gnome-shell into `vendor/gnome-shell/` and
-   pins it to **48.0** when that directory is missing or is not 48.x. The
-   checkout is gitignored. Open `vendor/gnome-shell/js/` when you need to read
-   the shell sources; workspace search will not see them.
-2. The build compiles that `js/` tree (plus a generated `misc/config.js`) into
-   a GResource and links it into **`gsr-client`**.
-3. The client runs that resource: `resource:///org/gnome/shell/ui/init.js` and
-   the modules it imports.
-
-We do not install `vendor/gnome-shell/js`, and we do not execute the copy
-inside the distro `libshell`. The distro `gnome-shell` package is still
-required for **`libst-16.so`**, **`St-16.gir`**, and **`Gvc`**.
-
-`GNOME_SHELL_JS_DIR` or **`-Dgnome_shell_js_dir=`** is an optional override
-that loads a `js/` directory from disk instead. Leave both unset for the
-normal client, which uses the resource built in step 2.
-
----
-
-## Nested testing (Weston)
-
-**Default prove env:** Mutter runs `--wayland --nested` **inside Weston**, and
-Weston itself is an **X11 window** on your desktop. Close the Weston window to
-throw the prove away; host GNOME stays usable.
-
-```bash
-# Interactive nest. Weston opens idle. The top-left panel button starts
-# the shell and fills the window. No debug logs. Close Weston to stop.
-./scripts/weston-gsr-session.sh
-
-# Same session with debug logs and the in-Weston log terminal.
-./scripts/weston-gsr-session.sh --debug
-
-# Timed score / agent prove (~25s nest, 10s settle after READY)
-./scripts/weston-gsr-prove.sh
-
-# Stay-up timed prove (no READY/A4 early SIGKILL — runs to nest timeout)
-GSR_NESTED_STAYUP=1 ./scripts/weston-gsr-prove.sh
-```
-
-| Script | Role |
-| ------ | ---- |
-| `scripts/weston-gsr-session.sh` | Weston (X11). `--debug` adds the log terminal |
-| `scripts/weston-gsr-prove.sh` | Timed prove for scoring / agents |
-| `scripts/nested-weston-prove.sh` | `dbus-run-session` + `gsr-server --nested` (inside Weston) |
-
-Prove log: `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`  
-Debug: `~/.cache/gnome-shell-rpc/{mutter-rpc,org.gnome.ShellRpc}.debug.log`
-
-Why Weston-in-X11 (and why not host GNOME):
-[`docs/weston-nested-test-env.md`](docs/weston-nested-test-env.md).  
-Prove SIGKILL vs real death / gdb: [`docs/nested-debug.md`](docs/nested-debug.md).  
-Build / install / older `dbus-run-session` notes: [`docs/build.md`](docs/build.md).
-
-```bash
-# Stop a stuck nest
-pkill -9 -f 'gsr-server --wayland'
-pkill -9 -f gsr-client
-pkill -9 -f 'weston.*wayland-gsr'
-```
-
----
-
-## Where we are
-
-| Area | Status |
-| ---- | ------ |
-| Plugin + RPC + nested boot | Working (Weston nest) |
-| Thin host + `init.js` → READY / A4 prepare | ✔️ |
-| Stay-up after READY (extensions / `set_theme`) | ⏳ — see plan 0.8 |
-| `WaylandClient.spawnv` argv (`string[]` / Ffi `"S"`) | ✔️ gated |
-| Phase B key / panel click smokes | B1/B3 ✔️ (short proves) |
-| Generated Meta stubs (`gi-stub-gen`) | Gaps **0** (deny/override gated) |
-| Client library `libmutter-rpc-16` | Built; install under `…/mutter-rpc-16/` |
+How to run that nest: [`docs/weston-nested-test-env.md`](docs/weston-nested-test-env.md).
 
 ---
 
@@ -130,12 +40,16 @@ pkill -9 -f 'weston.*wayland-gsr'
 
 | Doc | What |
 | --- | ---- |
+| [`docs/shell-javascript.md`](docs/shell-javascript.md) | Where the shell JavaScript comes from |
 | [`docs/debugging.md`](docs/debugging.md) | **LLM instructions for a fix:** read logs, reproduce, shrink, fix the repro, then land |
 | [`docs/weston-nested-test-env.md`](docs/weston-nested-test-env.md) | **Default nested prove** (Weston in X11) |
+| [`docs/nested-debug.md`](docs/nested-debug.md) | Prove SIGKILL vs real death; do not gdb your own kill |
 | [`docs/build.md`](docs/build.md) | Prerequisites, meson/ninja, install |
 | [`docs/libmutter-rpc-for-gnome-shell-js.md`](docs/libmutter-rpc-for-gnome-shell-js.md) | Point gnome-shell JS at `libmutter-rpc` |
-| [`docs/README.md`](docs/README.md) | Docs index + agent plans |
-| [`docs/plans/done/1.2-teardown-and-restart.md`](docs/plans/done/1.2-teardown-and-restart.md) | 1.2 archived (teardown and restart) |
+| [`docs/signals-client.md`](docs/signals-client.md) | Client proxy signals, class closures, and how GJS connects them |
+| [`docs/signals-server.md`](docs/signals-server.md) | Server leases, subscriptions, and vfunc hooks |
+| [`docs/signal-reentrancy.md`](docs/signal-reentrancy.md) | Prove signal order in the stand-alone test before editing `src/` |
+| [`docs/README.md`](docs/README.md) | Docs index |
 
 RPC wire format lives in OLLMchat **libocrpc**.
 

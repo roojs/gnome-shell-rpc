@@ -449,7 +449,7 @@ timeout 5 ./build/tests/call-sync-repro/blocking-void-signal-gate
 | 2026-10-15 | **PASS** after libocrpc fix — reply id set; nested call observed the open emission |
 
 Consumer investigation:
-[`2026-10-14-drag-scale-gone.md`](../../docs/bugs/2026-10-14-drag-scale-gone.md).
+[`2026-10-14-drag-scale-gone.md`](../../docs/bugs/done/2026-10-14-drag-scale-gone.md).
 Library-owned report:
 [`2026-10-15-FIXED-blocking-void-signal-does-not-wait.md`](../../../OLLMchat/docs/bugs/done/2026-10-15-FIXED-blocking-void-signal-does-not-wait.md).
 

@@ -187,28 +187,12 @@ namespace Shell
 			}
 			instance = new Global(display);
 			var event_vfunc_id = OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "event");
+			/* GJS connect already subscribes to stage key-press-event and
+			 * re-emits it. Emitting again from this hook runs
+			 * SearchController._onStageKeyPress twice, so the first
+			 * overview letter is inserted twice. Later letters hit
+			 * Clutter.Text and stop before the stage. */
 			var event_hook_id = Gsr.Client.Rpc.callback_bind((call) => {
-				var type = (Clutter.EventType) call.args.get(1).get_int();
-				var x = (float) call.args.get(2).get_double();
-				var y = (float) call.args.get(3).get_double();
-				var button = (uint32) call.args.get(4).get_uint();
-				var keyval = 0u;
-				if (call.args.size > 5) {
-					keyval = call.args.get(5).get_uint();
-				}
-				var ev = Clutter.Event.from_local(type, x, y, button, 0, keyval);
-				switch (type) {
-					case Clutter.EventType.key_press:
-						GLib.Signal.emit_by_name(
-							instance.stage, "key-press-event", ev);
-						break;
-					case Clutter.EventType.key_release:
-						GLib.Signal.emit_by_name(
-							instance.stage, "key-release-event", ev);
-						break;
-					default:
-						break;
-				}
 				return OLLMrpc.args("b", false);
 			});
 			Gsr.Client.Rpc.call_value(
