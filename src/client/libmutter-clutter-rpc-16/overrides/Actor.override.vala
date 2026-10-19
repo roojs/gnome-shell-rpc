@@ -78,6 +78,17 @@
 					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
 					this.prop_batch_open = true;
 					return;
+				case "St-Viewport":
+					/* Exact Viewport uses St-Viewport.new below. A GJS
+					 * subclass (IconGrid) has vfunc_allocate and needs
+					 * the same hooks as St-Widget. */
+					if (this.get_type() != t) {
+						this.create_with_overrides();
+						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+						this.prop_batch_open = true;
+						return;
+					}
+					break;
 				case "Clutter-Actor":
 					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
 					if (this.get_type() != typeof(Actor)) {

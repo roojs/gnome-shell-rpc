@@ -84,9 +84,24 @@ async function run() {
 		return;
 	}
 
-	await delay(1000);
-	const [x, y] = button.get_transformed_position();
-	const [width, height] = button.get_transformed_size();
+	let x = 0;
+	let y = 0;
+	let width = 0;
+	let height = 0;
+	let lastBox = '';
+	let stable = 0;
+	for (let i = 0; i < 15 && stable < 2; i++) {
+		await delay(200);
+		const [nx, ny] = button.get_transformed_position();
+		const [nw, nh] = button.get_transformed_size();
+		const box = nx + ',' + ny + ' ' + nw + 'x' + nh;
+		stable = box === lastBox && nw > 0 && nh > 0 ? stable + 1 : 0;
+		lastBox = box;
+		x = nx;
+		y = ny;
+		width = nw;
+		height = nh;
+	}
 	const clickX = x + width / 2;
 	const clickY = y + height / 2;
 	const picked = stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, clickX, clickY);
@@ -98,12 +113,24 @@ async function run() {
 	const eventPick = stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, clickX - 38, clickY - 59);
 	smokeLog('click at=' + clickX + ',' + clickY
 		+ ' size=' + width + 'x' + height
+		+ ' stable=' + stable
 		+ ' before=' + stateAdjustment.value
 		+ ' pick=' + actorChain(picked)
 		+ ' event-space=' + actorChain(eventPick)
 		+ ' aim=' + eventX + ',' + eventY);
 	globalObj.pointer_click(eventX, eventY);
-	await delay(4000);
+	await delay(800);
+	if (!button.checked) {
+		const [rx, ry] = button.get_transformed_position();
+		const [rw, rh] = button.get_transformed_size();
+		const retryX = rx + rw / 2 + 38;
+		const retryY = ry + rh / 2 + 59;
+		smokeLog('retry aim=' + retryX + ',' + retryY
+			+ ' size=' + rw + 'x' + rh);
+		globalObj.pointer_click(retryX, retryY);
+		await delay(800);
+	}
+	await delay(2500);
 
 	const layout = appDisplay._grid?.layout_manager;
 	const ids = countPickableApps(stage);

@@ -1,6 +1,6 @@
 # Applications picker does not work
 
-**Status:** ⏳ open. Show Applications does open the app grid. The grid has its items and stays mapped, and the page size stays 0, so the icons are not laid out. `src/` has not been changed. A field-copy of `Clutter.Margin` on the smoke did not get a clean rerun, so that is not yet shown to fix the page size.
+**Status:** ⏳ open. Show Applications opens the app grid. Without a call to the grid's JS `vfunc_allocate`, the page size stays 0. `11:00:30` Weston, smoke only: after the click, `grid.vfunc_allocate(appDisplay.allocation)` with that box at `800x315` and the grid's own allocation `0x0`. Result `page=800x315 pickable=30` then `ok`. `src/` matches HEAD.
 
 ## Diagnosis still true
 
@@ -25,11 +25,13 @@ GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 \
 GSR_NESTED_TIMEOUT=25 ./scripts/agent-nested-smoke-prove.sh
 ```
 
-Pass would be `applications-picker-smoke: ok`. The `09:00:31` line is `miss page-size`.
+Pass would be `applications-picker-smoke: ok`. Without a smoke-side `adaptToSize`, the line is `miss page-size`.
+
+`10:34:23` Weston, smoke only: after the click, `appDisplay.allocation` was `800x315` and `appDisplay._grid.allocation` was `0x0`. The smoke called `_findBestModeForSize`, `adaptToSize(800, 315)`, then `layout_manager.allocate` on the grid. Result: `state=2 checked=true visible=true mapped=true items=147 page=800x315 pickable=30` then `ok`. `11:00:26` calls `appDisplay._grid.vfunc_allocate` with that same parent box instead. `11:00:30` is the same `ok` line. The button is clicked only after its transformed box has stayed the same for two samples. At `11:00:12` that box was `568,560` size `44x80`. Replacing `IconGrid.prototype.allocate` and `IconGridLayout.prototype.vfunc_allocate` did not run; the throw stayed at `iconGrid.js:742`.
 
 ## Debug-code cleanup ledger
 
-- `tests/gjs-embed/applications-picker-smoke.js` clicks Show Applications and records state, mapping, item count, page size, and pickable icons. It does not prime `adaptToSize`. The `+38,+59` aim is the measured virtual-pointer offset, not a product change.
+- `tests/gjs-embed/applications-picker-smoke.js` clicks Show Applications and records state, mapping, item count, page size, and pickable icons. After the click it calls `appDisplay._grid.vfunc_allocate` with `appDisplay.allocation` when that box is non-zero. The `+38,+59` aim is the measured virtual-pointer offset, not a product change.
 - `tests/gjs-embed/shell-boot/ui/init.js` only imports that smoke so `gsr-smoke` takes the startup frame lock. No `src/` change.
 
 ## LLM efforts
@@ -71,3 +73,27 @@ Request `606,619`. X event `x:568.00, y:560.00` on the button. `state=2 checked=
 ### 2026-10-19 09:04 smoke-side margin copy was not a clean rerun
 
 Patched `AppGrid._updatePadding` to assign margin fields, and wrapped `IconGrid.vfunc_allocate` to log. The button's reported center moved to `626,545` and the pick there was `overviewGroup`, not the button. `state=1 checked=false` `miss state`. No `grid-vfunc` line, no `clutter_margin_copy`, no `adaptToSize`. The patch was removed. It does not show whether a margin copy fixes the page size.
+
+### 2026-10-19 09:23 prototype allocate did not run
+
+Same Weston command. Replaced `IconGrid.prototype.allocate` so it called `adaptToSize` before the saved method, and replaced `AppGrid._updatePadding` with field copies. Click still `568,560` on `show-apps`. `state=2 ... page=0x0 pickable=7` `miss page-size`. The throw stack is still `iconGrid.js:742` from `overviewControls.js:236`, with no frame in the smoke. The GI `allocate` method is not the prototype property.
+
+### 2026-10-19 09:28 layout prototype did not run
+
+Replaced `IconGridLayout.prototype.vfunc_allocate` and logged arguments on the first call. No `layout-args` line. Same `miss page-size`. The class slot stays the function registered with the class. The replacement was removed.
+
+### 2026-10-19 10:24 through 10:34 smoke-side adaptToSize passes
+
+`10:24:24` called `adaptToSize` on `appDisplay.layout_manager` with `appDisplay.allocation` `800x315`. `miss exception TypeError: appDisplay._findBestModeForSize is not a function`. The grid is `appDisplay._grid`. `10:26:10` the reported button center was `626,545` and the pick was `overviewGroup`, `miss state`, grid box `0x0`. `10:31:34` the click hit `568,560` again, grid allocation `0x0`, `miss page-size`. `10:34:18` `reallocate grid=0x0 parent=800x315`, then `_findBestModeForSize`, `adaptToSize`, and `layout_manager.allocate` on `_grid`. `10:34:23` `page=800x315 pickable=30` `ok`. The smoke calls were removed after that.
+
+### 2026-10-19 10:37 and 10:44 class-slot edit still misses
+
+`Actor.allocate` called the allocate class slot before `allocate_public`. Rebuilt. Both reruns: click `568,560` on `show-apps`, `state=2 ... page=0x0 pickable=7` `miss page-size`. Stack still `iconGrid.js:742` and not `iconGrid.js:1251`. `clutter_margin_copy` still missing. That edit is reverted. `src/` matches HEAD.
+
+### 2026-10-19 10:54 JS vfunc_allocate was not reached
+
+Restored `Actor.override.vala` and rebuilt. Smoke calls `appDisplay._grid.vfunc_allocate(appDisplay.allocation)` after the click. `click at=674,540 size=64x72` and the pick at that point is `St_Button.show-apps`. Aim `712,599`. X event `x:674.00, y:540.00` is delivered to `overviewGroup`, not the button. `vfunc parent=0x0 grid=0x0`. `state=1 checked=false` `miss state`. The grid never opened. `src/` not edited.
+
+### 2026-10-19 11:00 JS vfunc_allocate passes
+
+Same smoke. The click waits until the transformed box is unchanged for two samples. `click at=568,560 size=44x80 stable=2` on `show-apps`. `vfunc parent=800x315 grid=0x0 checked=true`. `state=2 checked=true visible=true mapped=true items=147 page=800x315 pickable=30` `ok`. `src/` not edited.
