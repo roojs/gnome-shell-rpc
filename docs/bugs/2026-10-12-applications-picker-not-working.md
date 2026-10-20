@@ -1,28 +1,124 @@
 # Applications picker does not work
 
-**Status:** ⏳ open. Paused 2026-10-20 10:06. Show Applications opens the grid and the page size stays 0. `src/` matches HEAD. No product fix is proven.
+**Status:** ⏳ open. Paused 2026-10-20 10:06. Show Applications opens the grid. The page stays 0 by 0. `src/` matches HEAD. No product fix is proven.
 
-`10:05:49` after the click lands on Show Applications:
+**Cause:** `ControlsManagerLayout` gives `AppDisplay` a box of 800 by 315. `AppDisplay`'s `Clutter.BinLayout` leaves its child `_box` at 0 by 0. `_box` is visible and mapped. The scroll parent, the scroll view, and the grid stay 0 by 0. The grid stays unmapped. `IconGrid.vfunc_allocate` and `IconGridLayout.vfunc_allocate` do not run, so the page size stays 0.
 
-`boxes app=800x315 appLayout=Clutter_BinLayout box=0x0 boxVisible=true boxMapped=true scrollParent=0x0 BaseAppViewGridLayout scroll=0x0 scrollVisible=true grid=0x0 gridMapped=false`
+## Steps
 
-`state=2 checked=true visible=true mapped=true items=147 page=0x0 pickable=7`
+### 1. Show Applications opens the grid
 
-`miss page-size`
+On a normal desktop the Show Applications button opens the applications grid.
 
-`AppDisplay` is `800x315`. Its child `_box` (`St.BoxLayout`) stays `0x0` even though it is visible and mapped. The scroll view's parent (`BaseAppViewGridLayout`) stays `0x0`, so does the scroll view, and the grid stays unmapped. `IconGrid.vfunc_allocate` and `IconGridLayout.vfunc_allocate` do not run. A `St.Viewport` subclass added straight to the stage does run `vfunc_allocate` (`09:14:11` `probe allocate 40x40`).
+Here it works as expected.
 
-Resume here. `Clutter.BinLayout` on `AppDisplay` is given `800x315` and does not give that box to `_box`. Forcing `BaseAppViewGridLayout.vfunc_allocate` with the app box (`10:01:43`) throws `Could not locate clutter_margin_copy` before `this._scrollView.allocate`. That symbol is still missing (`clutter_margin_dup` is what the library exports; `ActorBox.copy` is the same `dup`/`copy` gap). That throw is not yet shown to be why the page stays 0, because the natural path never enters that layout.
+### 2. The overview gives AppDisplay its box
 
-## Diagnosis still true
+`vendor/gnome-shell/js/ui/overviewControls.js`, `ControlsManagerLayout.vfunc_allocate`:
 
-The hand line is still `miss page-size` with state 2, checked, visible, mapped, 147 items, `page=0x0`, `pickable=7`. `overviewControls.js:236` calls `_appDisplay.allocate`. On `09:00:31`, before the viewport allocate hook, that path threw at `iconGrid.js:742` (`adaptToSize wasn't called`) and `appDisplay.js:164` threw `clutter_margin_copy`. Later runs with the hook registered do not log `iconGrid.js:742` or `iconGrid.js:1251`. The page stays 0 because the grid's allocate method does not run.
+```js
+this._appDisplay.allocate(appDisplayBox);
+```
 
-Direct `GI_META_SMOKE=applications-picker-smoke` never reaches this. `gsr-smoke` calls `begin_shell_startup` only when the script path ends in `ui/init.js`, so `main.start()` aborts on `ClutterBoxLayout` minimum height `-12` and the client then logs `global.stage.context is null` (`mutter exited ec=133`). The run that reaches the grid is `tests/gjs-embed/shell-boot/ui/init.js`, which imports the smoke after that lock.
+On a normal desktop that box is the applications area.
 
-A request of stage point `568,560` is delivered as an X button press at `530,501` (workspace, not the button). A request of `606,619` is delivered at `568,560` and hits the button. The smoke aims `+38,+59` for that.
+Here it works as expected. `AppDisplay` is 800 by 315.
 
-## Reproduction
+### 3. AppDisplay stores that box and allocates on the server
+
+`AppDisplay` is an `St.Widget`, so `allocate` takes the helper path. `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala`:
+
+```vala
+this.allocation_priv = box;
+Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.allocate_public", this,
+    OLLMrpc.args("ay", new GLib.Bytes(helper_data)));
+```
+
+On a normal desktop the actor keeps that box and the server runs `clutter_actor_allocate`.
+
+Here it works as expected. The stored box is the 800 by 315 from step 2.
+
+### 4. BinLayout gives that box to `_box`
+
+`AppDisplay._init` sets `layout_manager: new Clutter.BinLayout()` and `this.add_child(this._box)`. `_box` is an `St.BoxLayout` with `x_expand` and `y_expand`. `clutter_bin_layout_allocate` ends on the child:
+
+```c
+clutter_actor_allocate_align_fill (child, &child_alloc,
+                                   x_align, y_align,
+                                   x_fill, y_fill);
+```
+
+On a normal desktop `_box` is the same 800 by 315.
+
+Here it does not work as expected. `_box` stays 0 by 0. It is visible and mapped.
+
+### 5. BoxLayout gives `_box` to the scroll parent
+
+`_box` holds the scroll parent. `allocate_box_child` in `clutter-box-layout.c`:
+
+```c
+clutter_actor_allocate (child, child_box);
+```
+
+On a normal desktop the scroll parent is given a box inside `_box`.
+
+Here it does not work as expected. The scroll parent stays 0 by 0. Its layout manager is `BaseAppViewGridLayout`.
+
+### 6. The grid layout allocates the scroll view
+
+`vendor/gnome-shell/js/ui/appDisplay.js`, `BaseAppViewGridLayout.vfunc_allocate`:
+
+```js
+this._scrollView.allocate(box);
+```
+
+On a normal desktop the scroll view is the size of that box. Its child is `AppGrid`.
+
+Here it does not work as expected. This line does not run. The scroll view stays 0 by 0 and visible. The grid stays 0 by 0 and unmapped.
+
+### 7. Page padding is copied before that allocate
+
+The same `vfunc_allocate` sets `indicatorsPadding` first. `AppGrid._updatePadding`:
+
+```js
+const padding = this._indicatorsPadding.copy();
+```
+
+On a normal desktop this returns the margin, then step 6 allocates the scroll view.
+
+Here it does not work as expected. The natural path does not reach this line. Forcing `scrollParent.layout_manager.vfunc_allocate` throws `Could not locate clutter_margin_copy` at `appDisplay.js:164`, before `this._scrollView.allocate`. `libmutter-clutter-rpc-16.so` exports `clutter_margin_dup`.
+
+### 8. The grid sets its page from the box
+
+`vendor/gnome-shell/js/ui/iconGrid.js`, `IconGrid.vfunc_allocate`:
+
+```js
+const [width, height] = box.get_size();
+this._findBestModeForSize(width, height);
+this.layout_manager.adaptToSize(width, height);
+super.vfunc_allocate(box);
+```
+
+On a normal desktop the page is the size of the grid's box, and `IconGridLayout.vfunc_allocate` then places the icons.
+
+Here it does not work as expected. Neither `vfunc_allocate` runs. The page stays 0 by 0.
+
+A `St.Viewport` subclass added straight to the stage does run `vfunc_allocate`. The grid's method is not called because the actors above it have no box.
+
+### 9. Calling that method with the parent box does size the page
+
+The same two lines, invoked by the smoke with the 800 by 315 box:
+
+```js
+this._findBestModeForSize(width, height);
+this.layout_manager.adaptToSize(width, height);
+```
+
+On a normal desktop step 8 is what runs these.
+
+Here it works as expected. The page becomes 800 by 315. `appDisplay._grid.vfunc_allocate` with that same box does the same. Those calls were taken back out. They are not the product path.
+
+**Reproduction** of the failure, with those calls absent:
 
 ```bash
 GSR_WESTON_SOCKET=wayland-gsr-apppick \
@@ -31,9 +127,9 @@ GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 \
 GSR_NESTED_TIMEOUT=25 ./scripts/agent-nested-smoke-prove.sh
 ```
 
-Pass would be `applications-picker-smoke: ok`. Without a smoke-side `adaptToSize`, the line is `miss page-size`.
+Pass is `applications-picker-smoke: ok`. The line is `miss page-size`.
 
-`10:34:23` Weston, smoke only: after the click, `appDisplay.allocation` was `800x315` and `appDisplay._grid.allocation` was `0x0`. The smoke called `_findBestModeForSize`, `adaptToSize(800, 315)`, then `layout_manager.allocate` on the grid. Result: `state=2 checked=true visible=true mapped=true items=147 page=800x315 pickable=30` then `ok`. `11:00:26` calls `appDisplay._grid.vfunc_allocate` with that same parent box instead. `11:00:30` is the same `ok` line. The button is clicked only after its transformed box has stayed the same for two samples. At `11:00:12` that box was `568,560` size `44x80`. Replacing `IconGrid.prototype.allocate` and `IconGridLayout.prototype.vfunc_allocate` did not run; the throw stayed at `iconGrid.js:742`.
+Direct `GI_META_SMOKE=applications-picker-smoke` never reaches the grid. `gsr-smoke` calls `begin_shell_startup` only when the script path ends in `ui/init.js`, so `main.start()` aborts on `ClutterBoxLayout` minimum height `-12` and the client then logs `global.stage.context is null` (`mutter exited ec=133`). The run that reaches the grid is `tests/gjs-embed/shell-boot/ui/init.js`, which imports the smoke after that lock.
 
 ## Debug-code cleanup ledger
 
