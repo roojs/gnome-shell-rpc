@@ -1,6 +1,6 @@
 # Applications picker does not work
 
-**Status:** ⏳ open. Show Applications opens the app grid. Without a call to the grid's JS `vfunc_allocate`, the page size stays 0. `11:00:30` Weston, smoke only: after the click, `grid.vfunc_allocate(appDisplay.allocation)` with that box at `800x315` and the grid's own allocation `0x0`. Result `page=800x315 pickable=30` then `ok`. `src/` matches HEAD.
+**Status:** ⏳ open. Show Applications opens the app grid and the page size stays 0. `09:47:43` the app display box is `800x315`, the scroll view is `0x0`, the grid is `0x0` and unmapped. `IconGrid.vfunc_allocate` and `IconGridLayout.vfunc_allocate` do not run. A `St.Viewport` subclass added to the stage does run `vfunc_allocate` (`09:14:11` `probe allocate 40x40`). Calling `appDisplay.layout_manager.vfunc_allocate` with the `800x315` box leaves the scroll view at `0x0` (`09:52:38`). `src/` matches HEAD.
 
 ## Diagnosis still true
 
@@ -31,7 +31,7 @@ Pass would be `applications-picker-smoke: ok`. Without a smoke-side `adaptToSize
 
 ## Debug-code cleanup ledger
 
-- `tests/gjs-embed/applications-picker-smoke.js` clicks Show Applications and records state, mapping, item count, page size, and pickable icons. After the click it calls `appDisplay._grid.vfunc_allocate` with `appDisplay.allocation` when that box is non-zero. The `+38,+59` aim is the measured virtual-pointer offset, not a product change.
+- `tests/gjs-embed/applications-picker-smoke.js` waits until the Show Applications box is stable, clicks it, and records state, mapping, item count, page size, and pickable icons. It does not call `vfunc_allocate`. The `+38,+59` aim is the measured virtual-pointer offset.
 - `tests/gjs-embed/shell-boot/ui/init.js` only imports that smoke so `gsr-smoke` takes the startup frame lock. No `src/` change.
 
 ## LLM efforts
@@ -97,3 +97,27 @@ Restored `Actor.override.vala` and rebuilt. Smoke calls `appDisplay._grid.vfunc_
 ### 2026-10-19 11:00 JS vfunc_allocate passes
 
 Same smoke. The click waits until the transformed box is unchanged for two samples. `click at=568,560 size=44x80 stable=2` on `show-apps`. `vfunc parent=800x315 grid=0x0 checked=true`. `state=2 checked=true visible=true mapped=true items=147 page=800x315 pickable=30` `ok`. `src/` not edited.
+
+### 2026-10-19 later src guesses did not run line 1251
+
+Forcing `allocate` onto every actor, and calling `allocate_vfunc` from `relay_allocate`, both left the throw at `iconGrid.js:742`. Neither stack contains `iconGrid.js:1251`. Both edits were reverted. The forced hook also left the button at `0x0` on the retry.
+
+### 2026-10-20 08:36 AppGrid's allocate hook is registered and the page stays 0
+
+`St-Viewport` subclasses take `create_with_overrides` (commit `d17e7a9`). `actor-hooks type=Gjs_ui_appDisplay_AppGrid names=allocate` at `08:35:56`. Click `568,560` on `show-apps`. `08:36:09` `state=2 checked=true visible=true mapped=true items=147 page=0x0 pickable=7` `miss page-size`. No `iconGrid.js:1251` in the client log. The registered hook does not enter the JS method the smoke called. The hook-name log is removed from `create_with_overrides`.
+
+### 2026-10-20 08:44 allocate_vfunc still misses
+
+`relay_allocate` called `this.allocate_vfunc(box)` instead of `vfunc_call_void_pointer`. Rebuilt `libmutter-clutter-rpc-16.so`. Click `568,560` size `44x80` on `show-apps`. `08:44:52` `state=2 checked=true visible=true mapped=true items=147 page=0x0 pickable=7` `miss page-size`. The tee has no `iconGrid.js:742` and no `iconGrid.js:1251`. The relay edit is reverted. `src/` matches HEAD. `Gi.vfunc_offset` (`OLLMchat/libocrpc/Gi.vala`) is the typelib class-struct field offset. GJS writes its trampoline at that same field. The hook's call of that slot is not the JS method the smoke called.
+
+### 2026-10-20 09:14 a Viewport subclass does allocate
+
+Smoke built a `St.Viewport` subclass with `vfunc_allocate`, added it to the stage at 40×40. `09:14:11` `probe allocate 40x40`, `probe hits=1`. The click still ended `page=0x0` `miss page-size`. The probe was removed.
+
+### 2026-10-20 09:47 the grid allocate methods do not run
+
+`GI_RPC_JS_OVERRIDE_DIR=/tmp/gsr-apppick-js` logged at the start of `IconGrid.vfunc_allocate` and `IconGridLayout.vfunc_allocate`. Overlay installed (`js override overlay 1 files`). No `grid-vfunc` and no `layout-vfunc`. `09:48:05` `boxes app=800x315 scroll=0x0 grid=0x0 gridMapped=false`, then `page=0x0` `miss page-size`.
+
+### 2026-10-20 09:52 layout vfunc does not size the scroll view
+
+Same overlay. After the boxes line, the smoke called `appDisplay.layout_manager.vfunc_allocate(appDisplay, appDisplay.allocation)`. `09:52:38` `after-layout scroll=0x0 grid=0x0 page=0x0`, then `miss page-size`. That call is removed from the smoke. The boxes log stays.

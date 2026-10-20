@@ -1,6 +1,6 @@
 # Nested window stays small without debug
 
-**Status:** ⏳ open. User 2026-10-12. In the Weston test session the nested Wayland window now opens in the right place. Without `--debug` it is still small. It should fill the Weston window, or a large part of it. A `--debug` session keeps the smaller size so the log terminal has room.
+**Status:** ✔️ archived 2026-10-20 — taken off the board. Debug-session window size only. The user said it is not important.
 
 ## Reproduction
 
@@ -23,3 +23,7 @@ With debug, the nested window stays at its default size:
 ### 2026-10-12 09:42 report created
 
 Recorded from the user. No log read, no prove, no product change.
+
+### 2026-10-20 archived
+
+User: archive it. Only for debugging. Reduce the number of bugs.
