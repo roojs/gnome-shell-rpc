@@ -142,20 +142,18 @@ async function run() {
 	const [appW, appH] = appDisplay.allocation.get_size();
 	const [boxW, boxH] = box.allocation.get_size();
 	const [parentW, parentH] = scrollParent.allocation.get_size();
+	const appLayout = appDisplay.layout_manager;
 	smokeLog('boxes app=' + appW + 'x' + appH
+		+ ' appLayout=' + (appLayout ? appLayout.constructor.name : 'null')
 		+ ' box=' + boxW + 'x' + boxH
+		+ ' boxVisible=' + box.visible
+		+ ' boxMapped=' + box.mapped
 		+ ' scrollParent=' + parentW + 'x' + parentH
 		+ ' ' + scrollParent.layout_manager.constructor.name
 		+ ' scroll=' + scrollW + 'x' + scrollH
+		+ ' scrollVisible=' + scroll.visible
 		+ ' grid=' + gridW + 'x' + gridH
 		+ ' gridMapped=' + appDisplay._grid.mapped);
-	if (appW > 0 && appH > 0)
-		scrollParent.layout_manager.vfunc_allocate(scrollParent, appDisplay.allocation);
-	const [scrollW2, scrollH2] = scroll.allocation.get_size();
-	const [gridW2, gridH2] = appDisplay._grid.allocation.get_size();
-	smokeLog('after-parent-layout scroll=' + scrollW2 + 'x' + scrollH2
-		+ ' grid=' + gridW2 + 'x' + gridH2
-		+ ' page=' + (layout?._pageWidth ?? -1) + 'x' + (layout?._pageHeight ?? -1));
 	smokeLog('state=' + stateAdjustment.value
 		+ ' checked=' + button.checked
 		+ ' visible=' + appDisplay.visible

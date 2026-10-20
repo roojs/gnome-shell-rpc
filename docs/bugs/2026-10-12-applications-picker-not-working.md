@@ -1,16 +1,22 @@
 # Applications picker does not work
 
-**Status:** ⏳ open. Show Applications opens the app grid and the page size stays 0. `09:47:43` the app display box is `800x315`, the scroll view is `0x0`, the grid is `0x0` and unmapped. `IconGrid.vfunc_allocate` and `IconGridLayout.vfunc_allocate` do not run. A `St.Viewport` subclass added to the stage does run `vfunc_allocate` (`09:14:11` `probe allocate 40x40`). Calling `appDisplay.layout_manager.vfunc_allocate` with the `800x315` box leaves the scroll view at `0x0` (`09:52:38`). `src/` matches HEAD.
+**Status:** ⏳ open. Paused 2026-10-20 10:06. Show Applications opens the grid and the page size stays 0. `src/` matches HEAD. No product fix is proven.
+
+`10:05:49` after the click lands on Show Applications:
+
+`boxes app=800x315 appLayout=Clutter_BinLayout box=0x0 boxVisible=true boxMapped=true scrollParent=0x0 BaseAppViewGridLayout scroll=0x0 scrollVisible=true grid=0x0 gridMapped=false`
+
+`state=2 checked=true visible=true mapped=true items=147 page=0x0 pickable=7`
+
+`miss page-size`
+
+`AppDisplay` is `800x315`. Its child `_box` (`St.BoxLayout`) stays `0x0` even though it is visible and mapped. The scroll view's parent (`BaseAppViewGridLayout`) stays `0x0`, so does the scroll view, and the grid stays unmapped. `IconGrid.vfunc_allocate` and `IconGridLayout.vfunc_allocate` do not run. A `St.Viewport` subclass added straight to the stage does run `vfunc_allocate` (`09:14:11` `probe allocate 40x40`).
+
+Resume here. `Clutter.BinLayout` on `AppDisplay` is given `800x315` and does not give that box to `_box`. Forcing `BaseAppViewGridLayout.vfunc_allocate` with the app box (`10:01:43`) throws `Could not locate clutter_margin_copy` before `this._scrollView.allocate`. That symbol is still missing (`clutter_margin_dup` is what the library exports; `ActorBox.copy` is the same `dup`/`copy` gap). That throw is not yet shown to be why the page stays 0, because the natural path never enters that layout.
 
 ## Diagnosis still true
 
-`09:00:31` Weston, after the click lands on `St.Button.show-apps`:
-
-`applications-picker-smoke: state=2 checked=true visible=true mapped=true items=147 page=0x0 pickable=7`
-
-`applications-picker-smoke: miss page-size`
-
-`IconGrid.vfunc_allocate` (`iconGrid.js:1251`, the `adaptToSize` call) is not in the stack. `overviewControls.js:236` calls `_appDisplay.allocate`, and the layout manager throws at `iconGrid.js:742`: `IconGridLayout.adaptToSize wasn't called before allocation`. Same second, `AppGrid._updatePadding` (`appDisplay.js:164`) throws `Could not locate clutter_margin_copy` against `libmutter-clutter-rpc-16.so`. That library exports `clutter_margin_dup`, `clutter_margin_new`, `clutter_margin_free`, and `clutter_margin_get_type`. It does not export `clutter_margin_copy`. `ActorBox.copy` already exists because Vala emits `dup` and GJS looks up `copy`.
+The hand line is still `miss page-size` with state 2, checked, visible, mapped, 147 items, `page=0x0`, `pickable=7`. `overviewControls.js:236` calls `_appDisplay.allocate`. On `09:00:31`, before the viewport allocate hook, that path threw at `iconGrid.js:742` (`adaptToSize wasn't called`) and `appDisplay.js:164` threw `clutter_margin_copy`. Later runs with the hook registered do not log `iconGrid.js:742` or `iconGrid.js:1251`. The page stays 0 because the grid's allocate method does not run.
 
 Direct `GI_META_SMOKE=applications-picker-smoke` never reaches this. `gsr-smoke` calls `begin_shell_startup` only when the script path ends in `ui/init.js`, so `main.start()` aborts on `ClutterBoxLayout` minimum height `-12` and the client then logs `global.stage.context is null` (`mutter exited ec=133`). The run that reaches the grid is `tests/gjs-embed/shell-boot/ui/init.js`, which imports the smoke after that lock.
 
@@ -31,7 +37,7 @@ Pass would be `applications-picker-smoke: ok`. Without a smoke-side `adaptToSize
 
 ## Debug-code cleanup ledger
 
-- `tests/gjs-embed/applications-picker-smoke.js` waits until the Show Applications box is stable, clicks it, and records state, mapping, item count, page size, and pickable icons. It does not call `vfunc_allocate`. The `+38,+59` aim is the measured virtual-pointer offset.
+- `tests/gjs-embed/applications-picker-smoke.js` waits until the Show Applications box is stable, clicks it, and records state, mapping, item count, page size, and pickable icons. It also logs the app / `_box` / scroll-parent / scroll / grid boxes. It does not call `vfunc_allocate`. The `+38,+59` aim is the measured virtual-pointer offset. `/tmp/gsr-apppick-js` is a leftover overlay of `ui/iconGrid.js` with two log lines. It is not in the repo. The last prove passed `GI_RPC_JS_OVERRIDE_DIR=/tmp/gsr-apppick-js`. A resume run without that variable is the clean reproduction.
 - `tests/gjs-embed/shell-boot/ui/init.js` only imports that smoke so `gsr-smoke` takes the startup frame lock. No `src/` change.
 
 ## LLM efforts
@@ -120,4 +126,12 @@ Smoke built a `St.Viewport` subclass with `vfunc_allocate`, added it to the stag
 
 ### 2026-10-20 09:52 layout vfunc does not size the scroll view
 
-Same overlay. After the boxes line, the smoke called `appDisplay.layout_manager.vfunc_allocate(appDisplay, appDisplay.allocation)`. `09:52:38` `after-layout scroll=0x0 grid=0x0 page=0x0`, then `miss page-size`. That call is removed from the smoke. The boxes log stays.
+Same overlay. After the boxes line, the smoke called `appDisplay.layout_manager.vfunc_allocate(appDisplay, appDisplay.allocation)`. `09:52:38` `after-layout scroll=0x0 grid=0x0 page=0x0`, then `miss page-size`. That call is removed from the smoke. The boxes log stays. No RPC ran between the two log lines. `appDisplay.layout_manager` is `Clutter.BinLayout`, not `BaseAppViewGridLayout`.
+
+### 2026-10-20 10:01 the grid layout throws on margin copy
+
+Same overlay. Boxes before the call: `app=800x315 box=0x0 scrollParent=0x0 BaseAppViewGridLayout scroll=0x0 grid=0x0 gridMapped=false`. The smoke then called `scrollParent.layout_manager.vfunc_allocate(scrollParent, appDisplay.allocation)`. `10:01:43` `miss exception GLib.Error g-invoke-error-quark: Could not locate clutter_margin_copy`. That is `AppGrid._updatePadding` via `indicatorsPadding` inside `BaseAppViewGridLayout.vfunc_allocate`, before `_scrollView.allocate`. The call is removed from the smoke.
+
+### 2026-10-20 10:05 paused on the zero child box
+
+Same command, no forced layout call. `10:05:49` `boxes app=800x315 appLayout=Clutter_BinLayout box=0x0 boxVisible=true boxMapped=true scrollParent=0x0 BaseAppViewGridLayout scroll=0x0 scrollVisible=true grid=0x0 gridMapped=false`, then `state=2 ... page=0x0 pickable=7` `miss page-size`. No `grid-vfunc`. `_box` is visible and mapped and still `0x0`. Stopped here.
