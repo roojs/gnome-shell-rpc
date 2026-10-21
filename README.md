@@ -30,8 +30,7 @@ gsr-server (compositor)                 gsr-client (shell)
 
 Shared types live in `src/shared/`. Folder roles: [`src/README.md`](src/README.md).
 
-All development uses **nested** mutter. Do **not** point this at your host
-`gnome-shell`, and do **not** nest under host GNOME (that freezes the desktop).
+All development uses **nested** mutter. Do **not** point this at your host `gnome-shell`, and do **not** nest under host GNOME (that may freeze  the desktop).
 How to run that nest: [`docs/weston-nested-test-env.md`](docs/weston-nested-test-env.md).
 
 ---

@@ -100,9 +100,8 @@ namespace Gsr.Server.Rpc
 				var doomed = new Gee.ArrayList<global::Clutter.Actor>();
 				var conn = (Gsr.Server.Rpc.Connection) connection;
 				conn.filter_notification.connect((notification) => {
-					if (notification.method != "before-update"
-							|| notification.reply_id != 0
-							|| global::Clutter.get_current_event() == null) {
+					if (notification.method != "before-update" || notification.reply_id != 0 || 
+							global::Clutter.get_current_event() == null) {
 						return false;
 					}
 					((global::Clutter.Stage) stage).schedule_update();

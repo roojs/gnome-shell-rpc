@@ -47,6 +47,32 @@ function actorChain(actor) {
 	return parts.join(' > ');
 }
 
+function actorBox(actor) {
+	const [cacheW, cacheH] = actor.allocation.get_size();
+	let server = 'err';
+	let width = 'err';
+	try {
+		const b = actor.get_allocation_box();
+		const [sw, sh] = b.get_size();
+		server = b.x1 + ',' + b.y1 + ' ' + sw + 'x' + sh;
+	} catch (e) {
+		server = 'err';
+	}
+	try {
+		width = actor.get_width() + 'x' + actor.get_height();
+	} catch (e) {
+		width = 'err';
+	}
+	return 'cache=' + cacheW + 'x' + cacheH
+		+ ' server=' + server
+		+ ' wh=' + width
+		+ ' expand=' + actor.x_expand + ',' + actor.y_expand
+		+ ' align=' + actor.x_align + ',' + actor.y_align
+		+ ' visible=' + actor.visible
+		+ ' mapped=' + actor.mapped
+		+ ' children=' + actor.get_n_children();
+}
+
 function appIconForActor(actor) {
 	for (let current = actor; current != null; current = current.get_parent?.() ?? null) {
 		if (current.app?.get_id != null)
@@ -137,23 +163,27 @@ async function run() {
 	const scroll = appDisplay._scrollView;
 	const scrollParent = scroll.get_parent();
 	const box = appDisplay._box;
-	const [gridW, gridH] = appDisplay._grid.allocation.get_size();
-	const [scrollW, scrollH] = scroll.allocation.get_size();
-	const [appW, appH] = appDisplay.allocation.get_size();
-	const [boxW, boxH] = box.allocation.get_size();
-	const [parentW, parentH] = scrollParent.allocation.get_size();
 	const appLayout = appDisplay.layout_manager;
-	smokeLog('boxes app=' + appW + 'x' + appH
+	smokeLog('boxes app=' + actorBox(appDisplay)
 		+ ' appLayout=' + (appLayout ? appLayout.constructor.name : 'null')
-		+ ' box=' + boxW + 'x' + boxH
-		+ ' boxVisible=' + box.visible
-		+ ' boxMapped=' + box.mapped
-		+ ' scrollParent=' + parentW + 'x' + parentH
+		+ ' box=' + actorBox(box)
+		+ ' scrollParent=' + actorBox(scrollParent)
 		+ ' ' + scrollParent.layout_manager.constructor.name
-		+ ' scroll=' + scrollW + 'x' + scrollH
-		+ ' scrollVisible=' + scroll.visible
-		+ ' grid=' + gridW + 'x' + gridH
-		+ ' gridMapped=' + appDisplay._grid.mapped);
+		+ ' scroll=' + actorBox(scroll)
+		+ ' grid=' + actorBox(appDisplay._grid));
+	function preferred(actor) {
+		try {
+			const [minW, minH, natW, natH] = actor.get_preferred_size();
+			return minW + '/' + natW + 'x' + minH + '/' + natH;
+		} catch (e) {
+			return 'err';
+		}
+	}
+	smokeLog('pref app=' + preferred(appDisplay)
+		+ ' box=' + preferred(box)
+		+ ' scrollParent=' + preferred(scrollParent)
+		+ ' scroll=' + preferred(scroll)
+		+ ' grid=' + preferred(appDisplay._grid));
 	smokeLog('state=' + stateAdjustment.value
 		+ ' checked=' + button.checked
 		+ ' visible=' + appDisplay.visible

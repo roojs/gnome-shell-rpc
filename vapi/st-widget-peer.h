@@ -57,4 +57,19 @@ GType st_drawing_area_get_type (void);
 cairo_t *st_drawing_area_get_context (StDrawingArea *area);
 void st_drawing_area_queue_repaint (StDrawingArea *area);
 
+/* Match G_DECLARE_DERIVABLE_TYPE (st-viewport.h). Private data
+ * stays in libst. The class has no extra slots. */
+typedef struct _StViewport StViewport;
+typedef struct _StViewportClass StViewportClass;
+
+struct _StViewport {
+	StWidget parent_instance;
+};
+
+struct _StViewportClass {
+	StWidgetClass parent_class;
+};
+
+GType st_viewport_get_type (void);
+
 G_END_DECLS

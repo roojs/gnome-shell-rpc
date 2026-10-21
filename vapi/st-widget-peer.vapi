@@ -20,4 +20,10 @@ namespace St {
 		public void queue_repaint ();
 		public signal void repaint ();
 	}
+
+	[CCode (cname = "StViewport", type_id = "st_viewport_get_type ()", cheader_filename = "st-widget-peer.h")]
+	public class Viewport : Widget {
+		[CCode (has_construct_function = false)]
+		protected Viewport ();
+	}
 }

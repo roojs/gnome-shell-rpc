@@ -549,6 +549,17 @@ executable('button-release-deliver-gate',
   install: false,
 )
 
+# StWidget is rejected by StScrollView.set_child. A StViewport subclass
+# is accepted and its allocate sees the scroll box. src/ stays unchanged.
+executable('viewport-scrollable-peer-gate',
+  'viewport-scrollable-peer-gate.c',
+  dependencies: [libmutter_dep],
+  include_directories: include_directories('../../vendor/gnome-shell/src'),
+  c_args: ['-DST_COMPILATION'],
+  link_args: gnome_shell_st_link_args + ['-Wl,-rpath,' + gnome_shell_pkglibdir],
+  install: false,
+)
+
 # Stock Clutter must finish both ClickAction handlers before a frame scheduled
 # by long-press cancellation reaches before-update.
 clutter_event_frame_order_gate = executable(

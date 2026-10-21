@@ -1,8 +1,354 @@
 # Applications picker does not work
 
-**Status:** ⏳ open. Paused 2026-10-20 10:06. Show Applications opens the grid. The page stays 0 by 0. `src/` matches HEAD. No product fix is proven.
+**Status:** ⏳ open. Show Applications opens the grid. The page stays 0 by 0.
 
-**Cause:** `ControlsManagerLayout` gives `AppDisplay` a box of 800 by 315. `AppDisplay`'s `Clutter.BinLayout` leaves its child `_box` at 0 by 0. `_box` is visible and mapped. The scroll parent, the scroll view, and the grid stay 0 by 0. The grid stays unmapped. `IconGrid.vfunc_allocate` and `IconGridLayout.vfunc_allocate` do not run, so the page size stays 0.
+**Next:** The subclass lease dies before `set_child`. Find that unref. Do not add vfuncs, and do not put the subclass back on `Gsr-Clutter-Actor`.
+
+1. The critical is in `nested-weston-prove.tee.log` at `10:12:17.577`, between the `Gsr-St-Viewport.add_hooks` reply and `St-ScrollView.new`. That is the rest of the subclass construct (`signal_overrides` and the property batch), not `allocate`.
+2. `St-ScrollView.set_child` then returns `-32602`. The scroll view stays at 2 children. `vfunc_allocate` runs 0 times.
+3. Rerun `viewport-scroll-child-smoke`. Pass is `child=set`, server box about `800×315`, `hits>=1`, and the line `viewport-scroll-child-smoke: ok`.
+4. Then the picker. Pass is `applications-picker-smoke: ok`.
+
+```bash
+GSR_WESTON_SOCKET=wayland-gsr-viewpeer \
+GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-viewpeer \
+GI_META_SMOKE=viewport-scroll-child-smoke GSR_WESTON_PIXMAN=1 \
+GSR_NESTED_TIMEOUT=40 ./scripts/agent-nested-smoke-prove.sh
+```
+
+```bash
+GSR_WESTON_SOCKET=wayland-gsr-apppick \
+GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-apppick \
+GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 \
+GSR_NESTED_TIMEOUT=40 ./scripts/agent-nested-smoke-prove.sh
+```
+
+Read `nested-weston-prove.tee.log`. The autolaunch log is about 5GB.
+
+**Where it stands:** `ViewportActor` is in `src/`. Exact `St.Viewport` in the `10:12:17` smoke is `child=set children=3 box=0,0 800x315`. The GJS subclass is `assign=ok child=null children=2`, box uninitialized, `hits=0`, `miss subclass`. `g_atomic_ref_count_dec: assertion 'old_value > 0' failed` is logged before `set_child`.
+
+**Still true:** A plain widget cannot be the scroll child. A real `St.Viewport` can, and it receives the scroll box. The page size is `IconGrid.vfunc_allocate`, which runs only after the grid is that child. The client `allocation` cache for `_box` and the scroll view can read 0×0 while the server boxes are already 800×315 and 800×299. The grid's own server box is the uninitialized one.
+
+## Proposal
+
+Applied. The failure is the unref above, not another edit to these fences.
+
+`IconGrid.vfunc_allocate` sets the page size. A GJS `St.Viewport` subclass is leased as `ViewportActor`, whose `allocate` override emits that hook. A chain reply runs `st_viewport_allocate`. Exact `St.Viewport` stays `St-Viewport.new`.
+
+`LayoutHooks`, `allocate_public`, preferred size, event, captured-event, and `style_changed` are not in this proposal. `DrawingAreaActor` emits its hook inside the override. This does the same for `allocate`. `helper_attached` stays false, so this lease does not go through `Gsr-Clutter-Actor.allocate_public`.
+
+`vfunc_style_changed` and `vfunc_child_added` stay unwired. Spacing, padding, and key-focus tracking are not what sets the page size.
+
+### 1. `src/server/libst-16/ViewportActor.vala` — allocate override
+
+**Why:** `base.allocate` on an `St.Viewport` subclass is `st_viewport_allocate`.
+
+**Where:** new file.
+
+#### Add
+
+```vala
+/**
+ * JS {@code St.Viewport} subclass. {@code StScrollable}, so
+ * {@code St.ScrollView.set_child} accepts it. {@code allocate}
+ * emits the client hook. A chain reply runs stock
+ * {@code St.Viewport.allocate}.
+ */
+namespace Gsr.Server.St
+{
+	public class ViewportActor : global::St.Viewport
+	{
+		public Gee.HashMap<int, OLLMrpc.Live.Hook> vfuncs {
+			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
+		}
+		public Gee.HashMap<int, string> method_names {
+			get; set; default = new Gee.HashMap<int, string>();
+		}
+		static int allocate_id;
+
+		public static void rpc_register()
+		{
+			allocate_id = OLLMrpc.Gi.vfunc_offset(
+				"Clutter", "Actor", "allocate");
+		}
+
+		/**
+		 * Client hook, then stock viewport allocate when the
+		 * reply asks to chain. An empty reply chains too.
+		 */
+		public override void allocate(global::Clutter.ActorBox box)
+		{
+			var hook = this.vfuncs.get(allocate_id);
+			if (hook == null) {
+				base.allocate(box);
+				return;
+			}
+			hook.emit(OLLMrpc.args("tdddd",
+				hook.connection.export(this),
+				(double) box.x1, (double) box.y1,
+				(double) box.x2, (double) box.y2));
+			var reply = hook.reply_args;
+			if (reply.size >= 1
+					&& !(reply.get(0).type() == GLib.Type.BOOLEAN
+						&& reply.get(0).get_boolean())) {
+				return;
+			}
+			var saved = this.vfuncs;
+			this.vfuncs = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
+			base.allocate(box);
+			this.vfuncs = saved;
+		}
+	}
+}
+```
+
+### 2. `src/server/libst-16/Viewport.vala` — lease that actor
+
+**Why:** `Gsr-Clutter-Actor.create` mints an `St.Widget`. This create mints `ViewportActor`. `add_hooks` is the `DrawingArea.add_hooks` loop with that cast. `Actor.add_hooks` is unchanged.
+
+**Where:** new file.
+
+**Depends on:** 1.
+
+Do not `register_alias("St-Viewport", typeof(ViewportActor))`.
+
+#### Add
+
+```vala
+/**
+ * Lease for a JS {@code St.Viewport} subclass.
+ */
+namespace Gsr.Server.St
+{
+	public class Viewport : GLib.Object
+	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Request.add_class(
+				"Gsr-St-Viewport", typeof(Viewport),
+				"create", "",
+				"add_hooks", "Sv"
+			);
+			OLLMrpc.Request.register_live("Gsr-St-Viewport", new Viewport());
+		}
+
+		/**
+		 * ''Gsr-St-Viewport.create'' — {@link ViewportActor} for a
+		 * JS {@code St.Viewport} subclass.
+		 */
+		public void create(OLLMrpc.Request request)
+		{
+			var created = new ViewportActor();
+			request.reply(new OLLMrpc.Response() {
+				args = OLLMrpc.args("t",
+					(uint64) request.connection.export(created)),
+			});
+		}
+
+		/**
+		 * ''Gsr-St-Viewport.add_hooks'' — store construct vfunc
+		 * hooks on the leased {@link ViewportActor}.
+		 */
+		public void add_hooks(
+			OLLMrpc.Request request,
+			string[] names,
+			GLib.Variant vfunc_ids
+		) {
+			var created = request.connection.leases.get((int) request.lease_id)
+				as ViewportActor;
+			if (created == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var n = (int) vfunc_ids.n_children();
+			var ids = new GLib.VariantBuilder(new GLib.VariantType("at"));
+			for (var i = 0; i < n; i++) {
+				var id = request.connection.next_handle;
+				request.connection.next_handle++;
+				var hook = new OLLMrpc.Live.Hook() {
+					connection = request.connection,
+					id = id
+				};
+				request.connection.callbacks.set(id, hook);
+				ids.add("t", (uint64) id);
+				var vfunc_id = vfunc_ids.get_child_value(i).get_int32();
+				created.vfuncs.set(vfunc_id, hook);
+				if (i >= names.length) {
+					continue;
+				}
+				created.method_names.set(vfunc_id, names[i]);
+			}
+			request.reply(new OLLMrpc.Response() {
+				args = OLLMrpc.args("v", ids.end()),
+			});
+		}
+	}
+}
+```
+
+### 3. `src/server/libst-16/namespace.vala` and `src/meson.build` — compile and register
+
+**Why:** Startup has to register the type and the RPC class.
+
+**Where:** `rpc_register`, after `DrawingArea.rpc_register()`. `compositor_sources`, after `DrawingAreaActor.vala`.
+
+**Depends on:** 1 and 2.
+
+#### Remove
+
+```vala
+		DrawingArea.rpc_register();
+		FocusManager.rpc_register();
+```
+
+#### Replace with
+
+```vala
+		DrawingArea.rpc_register();
+		ViewportActor.rpc_register();
+		Viewport.rpc_register();
+		FocusManager.rpc_register();
+```
+
+#### Remove
+
+```meson
+  'server/libst-16/DrawingAreaActor.vala',
+  'server/libst-16/FocusManager.vala',
+```
+
+#### Replace with
+
+```meson
+  'server/libst-16/DrawingAreaActor.vala',
+  'server/libst-16/ViewportActor.vala',
+  'server/libst-16/Viewport.vala',
+  'server/libst-16/FocusManager.vala',
+```
+
+### 4. `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala` — subclass lease
+
+**Why:** The `St-Viewport` subclass arm calls `create_with_overrides()`, which leases `Gsr-Clutter-Actor`.
+
+**Where:** that arm, and `create_viewport()` after `create_drawing_area()`.
+
+**Depends on:** 2.
+
+#### Remove
+
+```vala
+				case "St-Viewport":
+					/* Exact Viewport uses St-Viewport.new below. A GJS
+					 * subclass (IconGrid) has vfunc_allocate and needs
+					 * the same hooks as St-Widget. */
+					if (this.get_type() != t) {
+						this.create_with_overrides();
+```
+
+#### Replace with
+
+```vala
+				case "St-Viewport":
+					/* Exact Viewport uses St-Viewport.new below.
+					   A subclass leases ViewportActor. */
+					if (this.get_type() != t) {
+						this.create_viewport();
+```
+
+#### Add
+
+```vala
+	/**
+	 * GJS {@code St.Viewport} subclass. Peer is
+	 * {@link Gsr.Server.St.ViewportActor}. Only {@code allocate}
+	 * is hooked. {@code helper_attached} stays false.
+	 */
+	void create_viewport()
+	{
+		Gsr.Client.Rpc.hook_rows =
+			new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
+		var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(
+			this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
+		string[] names = {};
+		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
+		foreach (var name in overridden) {
+			if (name != "allocate") {
+				continue;
+			}
+			var vfunc_id = -1;
+			var hook_id = this.bind_vfunc(name, out vfunc_id);
+			if (hook_id == 0) {
+				continue;
+			}
+			names += name;
+			vfunc_ids.add("i", vfunc_id);
+		}
+		var response = Gsr.Client.Rpc.call_value("Gsr-St-Viewport.create", null);
+		this.rpc_lid = response.args.get(0).get_uint64();
+		Gsr.Client.Rpc.register_handle(this);
+		if (names.length == 0) {
+			Gsr.Client.Rpc.hook_rows = null;
+			return;
+		}
+		var hooks = Gsr.Client.Rpc.call_value(
+			"Gsr-St-Viewport.add_hooks", this,
+			OLLMrpc.args("Sv", names, vfunc_ids.end()));
+		var ids = hooks.args.get(0).get_variant();
+		if (Gsr.Client.Rpc.handlers == null) {
+			Gsr.Client.Rpc.handlers = new Gee.HashMap<int,
+				Gsr.Client.Rpc.InvokeRow>();
+		}
+		var n = (int) ids.n_children();
+		for (var i = 0; i < n; i++) {
+			var id = ids.get_child_value(i).get_uint64();
+			Gsr.Client.Rpc.handlers.set((int) id,
+				Gsr.Client.Rpc.hook_rows.get(i));
+		}
+		Gsr.Client.Rpc.hook_rows = null;
+	}
+```
+
+## What is sized
+
+`applications-picker-smoke` at `08:20:47` (`~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`). `cache` is `actor.allocation`. `server` is `get_allocation_box()`. `wh` is `get_width()` by `get_height()`.
+
+| Actor | Client cache | Server box | Mapped | Children |
+| ----- | ------------ | ---------- | ------ | -------- |
+| `AppDisplay` | 800×315 | 0,194 800×315 | yes | 1 |
+| `_box` | 0×0 | 0,0 800×315 | yes | 2 |
+| scroll parent | 0×0 | 0,0 800×299 | yes | 5 |
+| scroll view | 0×0 | 0,0 800×299 | yes | 2 |
+| grid | 0×0 | ∞,∞ −∞×−∞ | no | 147 |
+
+The grid box is `CLUTTER_ACTOR_BOX_UNINITIALIZED` (`clutter-types.h`: `x1 = INFINITY`, `y1 = INFINITY`, `x2 = -INFINITY`, `y2 = -INFINITY`). `get_width` / `get_height` are 0×16 because `needs_allocation` is still set, so those getters return the natural size. Preferred size of the grid is `0/0×16/16`.
+
+`_box` has `x_expand` and `y_expand`. `BinLayout` did give it the 800 by 315. The client cache stayed 0 by 0 because `Actor.allocation` reads `allocation_priv`, and that field is written by the client `allocate()` / `set_allocation` path. A stock child allocated only on the server does not update it.
+
+## Why the grid is never allocated
+
+`vendor/gnome-shell/js/ui/iconGrid.js`: `class IconGrid extends St.Viewport`. `appDisplay.js`: `class AppGrid extends IconGrid.IconGrid`. `St.Viewport` implements `St.Scrollable`. `BaseAppView._init` does `new St.ScrollView({ child: this._grid })`.
+
+`src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala`, construct, `St-Viewport`: a subclass calls `create_with_overrides()`, which leases `Gsr-Clutter-Actor`. That server class extends `global::St.Widget` (`src/server/libmutter-clutter-16/ClutterActor.vala`). An exact `St.Viewport` uses `St-Viewport.new` and is a real viewport.
+
+`st_scroll_view_set_child` (`gnome-shell` `src/st/st-scroll-view.c`):
+
+```c
+g_return_if_fail (child == NULL || ST_IS_SCROLLABLE (child));
+```
+
+Server log, same run, `~/.cache/gnome-shell-rpc/mutter-rpc.debug.log` `08:20:33.701`, immediately after `St-ScrollView.new` and the scroll view's expand sets:
+
+```text
+recv id=2023 method=St-ScrollView.set_child
+st_scroll_view_set_child: assertion 'child == NULL || ST_IS_SCROLLABLE (child)' failed
+```
+
+That is the grid. `st_scroll_view_init` adds only `hscroll` and `vscroll`, so the scroll view's child count stays 2. `st_scroll_view_allocate` calls `clutter_actor_allocate` on `priv->child` only. There is no child.
+
+`clutter_actor_allocate` (`clutter-actor.c`) returns before the class allocate when the actor is not mapped and is not toplevel. The grid is visible in the client cache and unmapped on the server, so `IconGrid.vfunc_allocate` does not run. `_pageWidth` and `_pageHeight` stay 0.
+
+The same assertion is logged again at `08:20:34.650`, `08:20:40.672`, `08:20:40.964`, and `08:20:41.016`. Other `St-ScrollView.set_child` calls in that boot do not assert.
 
 ## Steps
 
@@ -50,7 +396,7 @@ clutter_actor_allocate_align_fill (child, &child_alloc,
 
 On a normal desktop `_box` is the same 800 by 315.
 
-Here it does not work as expected. `_box` stays 0 by 0. It is visible and mapped.
+Here the server box is that 800 by 315. The client `allocation` cache stays 0 by 0. `_box` is visible and mapped. See the table above.
 
 ### 5. BoxLayout gives `_box` to the scroll parent
 
@@ -62,7 +408,7 @@ clutter_actor_allocate (child, child_box);
 
 On a normal desktop the scroll parent is given a box inside `_box`.
 
-Here it does not work as expected. The scroll parent stays 0 by 0. Its layout manager is `BaseAppViewGridLayout`.
+Here the server box is 800 by 299. The client cache stays 0 by 0. Its layout manager is `BaseAppViewGridLayout`.
 
 ### 6. The grid layout allocates the scroll view
 
@@ -72,21 +418,15 @@ Here it does not work as expected. The scroll parent stays 0 by 0. Its layout ma
 this._scrollView.allocate(box);
 ```
 
-On a normal desktop the scroll view is the size of that box. Its child is `AppGrid`.
+On a normal desktop the scroll view is the size of that box, and its content child is `AppGrid`.
 
-Here it does not work as expected. This line does not run. The scroll view stays 0 by 0 and visible. The grid stays 0 by 0 and unmapped.
+Here the scroll view's server box is 800 by 299. It has two children, the scrollbars from `st_scroll_view_init`. The grid is not one of them.
 
-### 7. Page padding is copied before that allocate
+### 7. The scroll view's content child is rejected
 
-The same `vfunc_allocate` sets `indicatorsPadding` first. `AppGrid._updatePadding`:
+`st_scroll_view_set_child` requires `ST_IS_SCROLLABLE`. The grid's server actor is not. The assertion fails at `08:20:33.701`. `priv->child` stays null, so `st_scroll_view_allocate` never calls `clutter_actor_allocate` on the grid.
 
-```js
-const padding = this._indicatorsPadding.copy();
-```
-
-On a normal desktop this returns the margin, then step 6 allocates the scroll view.
-
-Here it does not work as expected. The natural path does not reach this line. Forcing `scrollParent.layout_manager.vfunc_allocate` throws `Could not locate clutter_margin_copy` at `appDisplay.js:164`, before `this._scrollView.allocate`. `libmutter-clutter-rpc-16.so` exports `clutter_margin_dup`.
+Forcing `scrollParent.layout_manager.vfunc_allocate` from the smoke still throws `Could not locate clutter_margin_copy` at `appDisplay.js:164` before `this._scrollView.allocate`. That throw is on the forced call. It is not why the natural path leaves the grid unallocated. `libmutter-clutter-rpc-16.so` exports `clutter_margin_dup`.
 
 ### 8. The grid sets its page from the box
 
@@ -103,7 +443,7 @@ On a normal desktop the page is the size of the grid's box, and `IconGridLayout.
 
 Here it does not work as expected. Neither `vfunc_allocate` runs. The page stays 0 by 0.
 
-A `St.Viewport` subclass added straight to the stage does run `vfunc_allocate`. The grid's method is not called because the actors above it have no box.
+A `St.Viewport` subclass added straight to the stage does run `vfunc_allocate`. The grid's method does not run because the grid was never added to the scroll view and is not mapped. `clutter_actor_allocate` returns before the class allocate in that case.
 
 ### 9. Calling that method with the parent box does size the page
 
@@ -133,7 +473,7 @@ Direct `GI_META_SMOKE=applications-picker-smoke` never reaches the grid. `gsr-sm
 
 ## Debug-code cleanup ledger
 
-- `tests/gjs-embed/applications-picker-smoke.js` waits until the Show Applications box is stable, clicks it, and records state, mapping, item count, page size, and pickable icons. It also logs the app / `_box` / scroll-parent / scroll / grid boxes. It does not call `vfunc_allocate`. The `+38,+59` aim is the measured virtual-pointer offset. `/tmp/gsr-apppick-js` is a leftover overlay of `ui/iconGrid.js` with two log lines. It is not in the repo. The last prove passed `GI_RPC_JS_OVERRIDE_DIR=/tmp/gsr-apppick-js`. A resume run without that variable is the clean reproduction.
+- `tests/gjs-embed/applications-picker-smoke.js` waits until the Show Applications box is stable, clicks it, and records state, mapping, item count, page size, and pickable icons. The boxes line logs client `allocation` and server `get_allocation_box()` for the app, `_box`, scroll parent, scroll view, and grid, plus expand, align, mapped, and child count. A following line logs preferred size. It does not call `vfunc_allocate`. The `+38,+59` aim is the measured virtual-pointer offset. `/tmp/gsr-apppick-js` is a leftover overlay of `ui/iconGrid.js` with two log lines. It is not in the repo. The 2026-10-21 prove did not set `GI_RPC_JS_OVERRIDE_DIR`.
 - `tests/gjs-embed/shell-boot/ui/init.js` only imports that smoke so `gsr-smoke` takes the startup frame lock. No `src/` change.
 
 ## LLM efforts
@@ -230,4 +570,24 @@ Same overlay. Boxes before the call: `app=800x315 box=0x0 scrollParent=0x0 BaseA
 
 ### 2026-10-20 10:05 paused on the zero child box
 
-Same command, no forced layout call. `10:05:49` `boxes app=800x315 appLayout=Clutter_BinLayout box=0x0 boxVisible=true boxMapped=true scrollParent=0x0 BaseAppViewGridLayout scroll=0x0 scrollVisible=true grid=0x0 gridMapped=false`, then `state=2 ... page=0x0 pickable=7` `miss page-size`. No `grid-vfunc`. `_box` is visible and mapped and still `0x0`. Stopped here.
+Same command, no forced layout call. `10:05:49` `boxes app=800x315 appLayout=Clutter_BinLayout box=0x0 boxVisible=true boxMapped=true scrollParent=0x0 BaseAppViewGridLayout scroll=0x0 scrollVisible=true grid=0x0 gridMapped=false`, then `state=2 ... page=0x0 pickable=7` `miss page-size`. No `grid-vfunc`. `_box` is visible and mapped and still `0x0`. Stopped here. Those sizes are `actor.allocation`, the client cache.
+
+### 2026-10-21 08:20 the cache is 0 and the server box is not
+
+Same command, `GSR_NESTED_TIMEOUT=40`, no `GI_RPC_JS_OVERRIDE_DIR`. `src/` not edited. Click `568,560` on `show-apps`. `08:20:47` `miss page-size`. Server boxes: app `0,194 800x315`, `_box` `0,0 800x315`, scroll parent `0,0 800x299`, scroll `0,0 800x299` with 2 children, grid `Infinity,Infinity -Infinityx-Infinity`, unmapped, 147 children. `mutter-rpc.debug.log` `08:20:33.701` `St-ScrollView.set_child` then `st_scroll_view_set_child: assertion 'child == NULL || ST_IS_SCROLLABLE (child)' failed`, directly after `St-ScrollView.new`. Prove stop is `stop (smoke-fail) after 15s` (script SIGKILL, exit 137). Nested-debug: that stop is the script, not a crash.
+
+### 2026-10-21 08:46 viewport subclass is the peer that gets the box
+
+`src/` product code not edited. Added `tests/call-sync-repro/viewport-scrollable-peer-gate.c` and a `meson.build` executable. `ninja -C build tests/call-sync-repro/viewport-scrollable-peer-gate` then `timeout 20 ./build/tests/call-sync-repro/viewport-scrollable-peer-gate`. Output: `St-CRITICAL` `st_scroll_view_set_child: assertion 'child == NULL || ST_IS_SCROLLABLE (child)' failed`, then `ok widget rejected children=2`, `ok viewport subclass accepted children=3`, `peer hits=1 seen=800x315 alloc=800x315 mapped=1`, `PASS viewport-scrollable-peer-gate`. Headless mutter also logged `GLib-GObject-CRITICAL` `invalid (NULL) pointer instance` around `Lost or failed to acquire name org.gnome.Mutter.ServiceChannel`. The peer line is after those, and the process exited 0. The product change is the proposal above. Not applied.
+
+### 2026-10-21 09:58 exact viewport gets the box, the subclass does not
+
+`src/` product code not edited. Added `tests/gjs-embed/viewport-scroll-child-smoke.js`. Result is in `nested-weston-prove.tee.log`, not the autolaunch log. `09:58:10`: widget `assign=reject child=null children=2` uninitialized box; exact `assign=ok child=set children=3 box=0,0 800x315`; subclass client assign succeeded, server `ST_IS_SCROLLABLE` critical, `child=null children=2` uninitialized box, `hits=0`; `viewport-scroll-child-smoke: done split`. Prove process then exit 137 from the auto-close kill. The seven-file proposal stays unapplied.
+
+### 2026-10-21 10:15 the wide proposal is removed
+
+The wide patch was taken out of the proposal. It widened `LayoutHooks` and `allocate_public`, and it copied preferred size, event, captured-event, and `style_changed`. Those edits are not the page-size fix. The proposal is the `allocate` override on a viewport lease. Not applied.
+
+### 2026-10-21 10:12 the viewport lease does not parent the subclass
+
+Applied `ViewportActor`, `Viewport`, the `St.Viewport` vapi binding, and `create_viewport()`. Rebuilt. `viewport-scroll-child-smoke` tee `10:12:17`: exact `child=set children=3 box=0,0 800x315`. Subclass: `Gsr-St-Viewport.create` and `add_hooks` reply, then `g_atomic_ref_count_dec: assertion 'old_value > 0' failed`, then `St-ScrollView.set_child` error `-32602`. `assign=ok child=null children=2` uninitialized box, `hits=0`, `miss subclass`. `allocate` did not run.

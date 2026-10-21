@@ -79,25 +79,24 @@
 					this.prop_batch_open = true;
 					return;
 				case "St-Viewport":
-					/* Exact Viewport uses St-Viewport.new below. A GJS
-					 * subclass (IconGrid) has vfunc_allocate and needs
-					 * the same hooks as St-Widget. */
-					if (this.get_type() != t) {
-						this.create_with_overrides();
-						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-						this.prop_batch_open = true;
-						return;
+					/* Exact Viewport uses St-Viewport.new below.
+					   A subclass leases ViewportActor. */
+					if (this.get_type() == t) {
+						break;
 					}
-					break;
+					this.create_viewport();
+					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+					this.prop_batch_open = true;
+					return;
 				case "Clutter-Actor":
 					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
-					if (this.get_type() != typeof(Actor)) {
-						this.create_with_overrides();
-						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-						this.prop_batch_open = true;
-						return;
+					if (this.get_type() == typeof(Actor)) {
+						break;
 					}
-					break;
+					this.create_with_overrides();
+					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+					this.prop_batch_open = true;
+					return;
 				default:
 					break;
 			}
@@ -252,6 +251,53 @@
 		for (var i = 0; i < n; i++) {
 			var id = ids.get_child_value(i).get_uint64();
 			Gsr.Client.Rpc.handlers.set((int) id, Gsr.Client.Rpc.hook_rows.get(i));
+		}
+		Gsr.Client.Rpc.hook_rows = null;
+	}
+
+	/**
+	 * GJS {@code St.Viewport} subclass. Peer is
+	 * {@link Gsr.Server.St.ViewportActor}. Only {@code allocate}
+	 * is hooked. {@code helper_attached} stays false.
+	 */
+	void create_viewport()
+	{
+		Gsr.Client.Rpc.hook_rows = new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
+		var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(
+			this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
+			
+		string[] names = {};
+		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
+		foreach (var name in overridden) {
+			if (name != "allocate") {
+				continue;
+			}
+			var vfunc_id = -1;
+			var hook_id = this.bind_vfunc(name, out vfunc_id);
+			if (hook_id == 0) {
+				continue;
+			}
+			names += name;
+			vfunc_ids.add("i", vfunc_id);
+		}
+		var response = Gsr.Client.Rpc.call_value("Gsr-St-Viewport.create", null);
+			
+		this.rpc_lid = response.args.get(0).get_uint64();
+		Gsr.Client.Rpc.register_handle(this);
+		if (names.length == 0) {
+			Gsr.Client.Rpc.hook_rows = null;
+			return;
+		}
+		var hooks = Gsr.Client.Rpc.call_value("Gsr-St-Viewport.add_hooks", this,
+			OLLMrpc.args("Sv", names, vfunc_ids.end()));
+			
+		var ids = hooks.args.get(0).get_variant();
+		if (Gsr.Client.Rpc.handlers == null) {
+			Gsr.Client.Rpc.handlers = new Gee.HashMap<int,	Gsr.Client.Rpc.InvokeRow>();
+		}
+		var n = (int) ids.n_children();
+		for (var i = 0; i < n; i++) {
+			Gsr.Client.Rpc.handlers.set((int) ids.get_child_value(i).get_uint64(), Gsr.Client.Rpc.hook_rows.get(i));
 		}
 		Gsr.Client.Rpc.hook_rows = null;
 	}
