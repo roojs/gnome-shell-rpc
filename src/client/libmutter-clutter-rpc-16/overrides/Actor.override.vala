@@ -291,7 +291,7 @@
 		var hooks = Gsr.Client.Rpc.call_value("Gsr-St-Viewport.add_hooks", this,
 			OLLMrpc.args("Sv", names, vfunc_ids.end()));
 			
-		var ids = hooks.args.get(0).get_variant();
+		var ids = hooks.args.get(0).dup_variant();
 		if (Gsr.Client.Rpc.handlers == null) {
 			Gsr.Client.Rpc.handlers = new Gee.HashMap<int,	Gsr.Client.Rpc.InvokeRow>();
 		}

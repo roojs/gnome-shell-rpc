@@ -14,7 +14,7 @@ imports.gi.versions.Clutter = '16';
 imports.gi.versions.GLib = '2.0';
 imports.gi.versions.Shell = '16';
 
-const {Clutter, GLib, Shell} = imports.gi;
+const {Clutter, Gio, GLib, Shell} = imports.gi;
 
 import 'resource:///org/gnome/shell/ui/environment.js';
 
@@ -97,6 +97,40 @@ function countPickableApps(stage) {
 async function run() {
 	const main = await import('resource:///org/gnome/shell/ui/main.js');
 	await main.start();
+
+	const earlyDisplay = main.overview._overview?.controls?.appDisplay;
+	const earlyLayout = earlyDisplay?._grid?.layout_manager;
+	if (earlyLayout != null) {
+		const proto = Object.getPrototypeOf(earlyLayout);
+		const origFind = proto._findBestIconSize;
+		proto._findBestIconSize = function () {
+			let seen = 'none';
+			try {
+				const [child] = this._container;
+				if (child != null)
+					seen = child.get_preferred_size().map(v => Math.round(v)).join('/');
+			} catch (e) {
+				seen = String(e);
+			}
+			const size = origFind.call(this);
+			let after = 'none';
+			try {
+				const [child] = this._container;
+				if (child != null)
+					after = child.get_preferred_size().map(v => Math.round(v)).join('/');
+			} catch (e) {
+				after = String(e);
+			}
+			smokeLog('bestIcon ' + size
+				+ ' seen=' + seen
+				+ ' after=' + after
+				+ ' page=' + this._pageWidth + 'x' + this._pageHeight
+				+ ' cols=' + this.columns_per_page
+				+ ' rows=' + this.rows_per_page
+				+ ' col=' + this.column_spacing);
+			return size;
+		};
+	}
 
 	const globalObj = Shell.Global.get();
 	const stage = globalObj.stage;
@@ -191,6 +225,76 @@ async function run() {
 		+ ' items=' + (appDisplay._orderedItems?.length ?? -1)
 		+ ' page=' + (layout?._pageWidth ?? -1) + 'x' + (layout?._pageHeight ?? -1)
 		+ ' pickable=' + ids.size);
+	const items = appDisplay._orderedItems ?? [];
+	const sample = [];
+	for (let i = 0; i < items.length && i < 12; i++) {
+		const item = items[i];
+		const [ix, iy] = item.get_transformed_position();
+		const [iw, ih] = item.get_transformed_size();
+		sample.push(i + '@' + Math.round(ix) + ',' + Math.round(iy)
+			+ ' ' + Math.round(iw) + 'x' + Math.round(ih));
+	}
+	smokeLog('icons ' + sample.join(' | '));
+	const first = items[0];
+	if (first != null) {
+		let pref = 'err';
+		try {
+			pref = first.get_preferred_size().map(v => Math.round(v)).join('/');
+		} catch (e) {
+			pref = 'err';
+		}
+		const pad = layout?.page_padding;
+		smokeLog('gridMode cols=' + (layout?.columns_per_page ?? -1)
+			+ ' rows=' + (layout?.rows_per_page ?? -1)
+			+ ' icon=' + (layout?.icon_size ?? -1)
+			+ ' col=' + (layout?.column_spacing ?? -1)
+			+ ' row=' + (layout?.row_spacing ?? -1)
+			+ ' maxCol=' + (layout?.max_column_spacing ?? -1)
+			+ ' maxRow=' + (layout?.max_row_spacing ?? -1)
+			+ ' pad=' + (pad ? pad.top + ',' + pad.right + ',' + pad.bottom + ',' + pad.left : 'null')
+			+ ' item0=' + pref
+			+ ' baseIcon=' + (first.icon?.iconSize ?? -1));
+	}
+	if (first != null && layout?._findBestIconSize != null) {
+		const chosen = layout._findBestIconSize();
+		for (const item of items) {
+			if (item.icon?.setIconSize)
+				item.icon.setIconSize(chosen);
+		}
+		smokeLog('applyIcon ' + chosen);
+		await delay(800);
+	}
+	const settled = [];
+	for (let i = 0; i < items.length && i < 12; i++) {
+		const item = items[i];
+		const [ix, iy] = item.get_transformed_position();
+		const [iw, ih] = item.get_transformed_size();
+		settled.push(i + '@' + Math.round(ix) + ',' + Math.round(iy)
+			+ ' ' + Math.round(iw) + 'x' + Math.round(ih));
+	}
+	smokeLog('settled ' + settled.join(' | '));
+	try {
+		const path = GLib.get_home_dir()
+			+ '/.cache/gnome-shell-rpc/applications-picker.png';
+		const stream = Gio.File.new_for_path(path).replace(
+			null, false, Gio.FileCreateFlags.NONE, null);
+		const shot = new Shell.Screenshot();
+		await shot.screenshot(false, stream);
+		stream.close(null);
+		smokeLog('shot ' + path);
+	} catch (e) {
+		smokeLog('shot miss ' + e);
+	}
+	let overlap = false;
+	for (let i = 0; i < items.length - 1 && i < 40; i++) {
+		const [ax, ay] = items[i].get_transformed_position();
+		const [aw, ah] = items[i].get_transformed_size();
+		const [bx, by] = items[i + 1].get_transformed_position();
+		if (Math.abs(ay - by) < 30 && bx < ax + aw - 8)
+			overlap = true;
+		if (Math.abs(ax - bx) < 30 && by < ay + ah - 8)
+			overlap = true;
+	}
 
 	if (!button.checked || stateAdjustment.value < 1.9)
 		smokeLog('miss state');
@@ -200,6 +304,8 @@ async function run() {
 		smokeLog('miss items');
 	else if ((layout?._pageWidth ?? 0) <= 0 || (layout?._pageHeight ?? 0) <= 0)
 		smokeLog('miss page-size');
+	else if (overlap)
+		smokeLog('miss overlap');
 	else if (ids.size === 0)
 		smokeLog('miss pickable-icons');
 	else

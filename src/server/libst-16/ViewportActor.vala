@@ -18,8 +18,10 @@ namespace Gsr.Server.St
 
 		public static void rpc_register()
 		{
-			allocate_id = OLLMrpc.Gi.vfunc_offset(
-				"Clutter", "Actor", "allocate");
+			/* set_child requires the child GType in the alias map.
+			   Stock StViewport already is. This peer is a second GType. */
+			OLLMrpc.Bin.register_alias("St-Viewport", typeof(ViewportActor));
+			allocate_id = OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "allocate");
 		}
 
 		/**

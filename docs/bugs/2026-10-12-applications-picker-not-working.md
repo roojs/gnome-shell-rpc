@@ -1,13 +1,12 @@
 # Applications picker does not work
 
-**Status:** ⏳ open. Show Applications opens the grid. The page stays 0 by 0.
+**Status:** ⏳ open. Show Applications opens, and the page size is 800 by 299. The icons and their labels are drawn on top of each other. That is not the stock application grid.
 
-**Next:** The subclass lease dies before `set_child`. Find that unref. Do not add vfuncs, and do not put the subclass back on `Gsr-Clutter-Actor`.
+**Next:** Icon size is chosen too early. `_findBestIconSize` returned 96 while the first icon's preferred size was `25/49/81/49`. After the icons settle, the same icon is `120/145/120/145` at icon size 96, and a later call returns 24. The picture is the 96px icons drawn on an 88 by 53 pitch. The pass is still a grid that looks like the stock one.
 
-1. The critical is in `nested-weston-prove.tee.log` at `10:12:17.577`, between the `Gsr-St-Viewport.add_hooks` reply and `St-ScrollView.new`. That is the rest of the subclass construct (`signal_overrides` and the property batch), not `allocate`.
-2. `St-ScrollView.set_child` then returns `-32602`. The scroll view stays at 2 children. `vfunc_allocate` runs 0 times.
-3. Rerun `viewport-scroll-child-smoke`. Pass is `child=set`, server box about `800×315`, `hits>=1`, and the line `viewport-scroll-child-smoke: ok`.
-4. Then the picker. Pass is `applications-picker-smoke: ok`.
+1. `ViewportActor.rpc_register` calls `OLLMrpc.Bin.register_alias("St-Viewport", typeof(ViewportActor))`. `set_child` accepts the grid. `viewport-scroll-child-smoke` at `22:43:08` is `ok`.
+2. Picker screenshot `~/.cache/gnome-shell-rpc/applications-picker.png` at `22:52` (800×600). Two rows of large icons occupy the same space. Labels run together on one line (`Ásbrú Connection Manager` through `Character Map`).
+3. Tee `22:52:45`: `page=800x299`, icons `0@18,218 145x145` then `1@106,218 145x145` (88px apart) and `8@18,271 145x145` (53px below the first). A 145px icon does not fit that pitch.
 
 ```bash
 GSR_WESTON_SOCKET=wayland-gsr-viewpeer \
@@ -20,18 +19,18 @@ GSR_NESTED_TIMEOUT=40 ./scripts/agent-nested-smoke-prove.sh
 GSR_WESTON_SOCKET=wayland-gsr-apppick \
 GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-apppick \
 GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 \
-GSR_NESTED_TIMEOUT=40 ./scripts/agent-nested-smoke-prove.sh
+GSR_NESTED_TIMEOUT=90 ./scripts/agent-nested-smoke-prove.sh
 ```
 
 Read `nested-weston-prove.tee.log`. The autolaunch log is about 5GB.
 
-**Where it stands:** `ViewportActor` is in `src/`. Exact `St.Viewport` in the `10:12:17` smoke is `child=set children=3 box=0,0 800x315`. The GJS subclass is `assign=ok child=null children=2`, box uninitialized, `hits=0`, `miss subclass`. `g_atomic_ref_count_dec: assertion 'old_value > 0' failed` is logged before `set_child`.
+**Where it stands:** The grid is the scroll child and `IconGrid.vfunc_allocate` runs. The picture is overlapping icons. `applications-picker.png` at `22:52` is that frame. The smoke now fails with `miss overlap` when the next icon starts inside the previous icon.
 
-**Still true:** A plain widget cannot be the scroll child. A real `St.Viewport` can, and it receives the scroll box. The page size is `IconGrid.vfunc_allocate`, which runs only after the grid is that child. The client `allocation` cache for `_box` and the scroll view can read 0×0 while the server boxes are already 800×315 and 800×299. The grid's own server box is the uninitialized one.
+**Still true:** A plain widget cannot be the scroll child. A real `St.Viewport` can, and it receives the scroll box. The page size is `IconGrid.vfunc_allocate`, which runs only after the grid is that child. The client `allocation` cache for `_box` and the scroll view can read 0×0 while the server boxes are already real. The grid server box at `22:52` is `0,0 800x299`. The icons on that grid overlap.
 
 ## Proposal
 
-Applied. The failure is the unref above, not another edit to these fences.
+Applied, including `register_alias` in `rpc_register`. The fences below are the lease. The alias line is the part that made `set_child` accept the subclass.
 
 `IconGrid.vfunc_allocate` sets the page size. A GJS `St.Viewport` subclass is leased as `ViewportActor`, whose `allocate` override emits that hook. A chain reply runs `st_viewport_allocate`. Exact `St.Viewport` stays `St-Viewport.new`.
 
@@ -68,6 +67,7 @@ namespace Gsr.Server.St
 
 		public static void rpc_register()
 		{
+			OLLMrpc.Bin.register_alias("St-Viewport", typeof(ViewportActor));
 			allocate_id = OLLMrpc.Gi.vfunc_offset(
 				"Clutter", "Actor", "allocate");
 		}
@@ -591,3 +591,27 @@ The wide patch was taken out of the proposal. It widened `LayoutHooks` and `allo
 ### 2026-10-21 10:12 the viewport lease does not parent the subclass
 
 Applied `ViewportActor`, `Viewport`, the `St.Viewport` vapi binding, and `create_viewport()`. Rebuilt. `viewport-scroll-child-smoke` tee `10:12:17`: exact `child=set children=3 box=0,0 800x315`. Subclass: `Gsr-St-Viewport.create` and `add_hooks` reply, then `g_atomic_ref_count_dec: assertion 'old_value > 0' failed`, then `St-ScrollView.set_child` error `-32602`. `assign=ok child=null children=2` uninitialized box, `hits=0`, `miss subclass`. `allocate` did not run.
+
+### 2026-10-21 22:31 the refcount critical is the reply variant
+
+gdb on `gsr-smoke`: `g_variant_unref` from `g_value_unset` in `oll_mrpc_response_finalize`, called from `clutter_actor_create_viewport`. `GLib.Value.get_variant()` does not ref. Vala unrefs that result, then the response unsets the same variant. `create_viewport` now uses `dup_variant()`. Rebuilt the client and the server. Tee `22:31:22`: no refcount critical. Exact `child=set children=3 box=0,0 800x315`. Subclass `set_child` id 46 `replied error=` and `-32602`, no `ST_IS_SCROLLABLE` line. `assign=ok child=null children=2 hits=0`, `miss subclass`.
+
+### 2026-10-21 22:43 register_alias lets set_child accept the subclass
+
+`ViewportActor.rpc_register` calls `OLLMrpc.Bin.register_alias("St-Viewport", typeof(ViewportActor))`. Rebuilt `gsr-server`. Tee `22:43:08`: widget `assign=reject`; exact `child=set children=3 box=0,0 800x315`; `subclass vfunc 800x315`; subclass `assign=ok child=set children=3 box=0,0 800x315 hits=1`; `viewport-scroll-child-smoke: ok`. Prove process exit 137 is the script stop after that line.
+
+### 2026-10-21 22:44 the picker did not reach the page line
+
+Same picker command, `GSR_NESTED_TIMEOUT=40`, sockets `wayland-gsr-apppick` / `wayland-mutter-apppick`. Tee: `22:44:53` `click at=568,560` pick `UiActor#uiGroup`, `before=1`. `22:44:54` `retry aim=606,619`. `St-ScrollView.set_child` ids 21097, 21970, and 22125 replied with no error. No `boxes`, no `state=`, no `applications-picker-smoke: ok` or `miss`. Nest killed at `22:45:22`. The fourteen `-32602` lines are `St-Widget.set_label_actor`. Exit 137 is the script stop.
+
+### 2026-10-21 22:47 the picker page is 800 by 299
+
+Same picker command with `GSR_NESTED_TIMEOUT=90`. Tee `22:47:24` click `at=568,560` on `St_Button.show-apps`. `22:47:45` `boxes` grid `server=0,0 800x299` `mapped=true` `children=147`. `state=2 checked=true visible=true mapped=true items=147 page=800x299 pickable=30`. `applications-picker-smoke: ok`. That line is not the visual pass.
+
+### 2026-10-21 22:52 the icons overlap
+
+Same command. Screenshot `~/.cache/gnome-shell-rpc/applications-picker.png`, 800×600. Two rows of large icons share the same space. Labels are one overlapping line. Tee `22:52:45` icons `0@18,218 145x145 | 1@106,218 145x145 | 8@18,271 145x145`. Pitch is 88 by 53. `shot miss TypeError: area is undefined` because `screenshot()` did not return the area; the PNG was written. Smoke still printed `ok`. The smoke now treats that pitch as `miss overlap`.
+
+### 2026-10-21 23:17 icon size 96 is chosen while the icon is 49px tall
+
+Same command. `23:16:08` `bestIcon 96 seen=none page=800x315 cols=8 rows=3 col=0`. `23:16:13` `bestIcon 96 seen=25/49/81/49 page=800x299 cols=8 rows=3 col=12`. `23:17:01` `gridMode cols=8 rows=3 icon=96 col=12 row=12 maxCol=36 maxRow=36 pad=24,18,24,18 item0=120/145/120/145 baseIcon=96`. Icons still `145x145` at an 88 by 53 pitch. `miss overlap`. Calling `_findBestIconSize` again at that point returned 24 and left the first icon at preferred `48/73/81/73`. Eight columns of a 145px icon do not fit a 800 by 299 page once padding and the 12px spacing are included. The 96 choice used the 49px measurement.
