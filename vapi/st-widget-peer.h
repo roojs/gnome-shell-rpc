@@ -72,4 +72,19 @@ struct _StViewportClass {
 
 GType st_viewport_get_type (void);
 
+/* Match G_DECLARE_DERIVABLE_TYPE (st-bin.h). Private data
+ * stays in libst. The class has no extra slots. */
+typedef struct _StBin StBin;
+typedef struct _StBinClass StBinClass;
+
+struct _StBin {
+	StWidget parent_instance;
+};
+
+struct _StBinClass {
+	StWidgetClass parent_class;
+};
+
+GType st_bin_get_type (void);
+
 G_END_DECLS

@@ -51,6 +51,7 @@
 			if (baseline != GLib.Type.INVALID
 					&& OLLMrpc.Gi.vfunc_slot(this.get_type(), "Clutter", "Actor", "queue_relayout")
 					!= OLLMrpc.Gi.vfunc_slot(baseline, "Clutter", "Actor", "queue_relayout")) {
+						
 				Gsr.Client.Rpc.vfunc_call_void(
 					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "queue_relayout"));
 			}
@@ -85,6 +86,33 @@
 						break;
 					}
 					this.create_viewport();
+					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+					this.prop_batch_open = true;
+					return;
+				case "St-Bin":
+					// Exact bin uses St-Bin.new below. Shell.SquareBin leases the 
+					//  square peer before the icon is built. 
+					//  This is very hacky however - and probably needs a better design.
+					if (this.get_type() == t) {
+						break;
+					}
+					var scan = this.get_type();
+					var square = false;
+					while (scan != GLib.Type.INVALID) {
+						if (scan.name() == "ShellSquareBin") {
+							square = true;
+							break;
+						}
+						scan = scan.parent();
+					}
+					if (!square) {
+						break;
+					}
+					var response = Gsr.Client.Rpc.call_value("Gsr-St-SquareBin.new", null,
+						OLLMrpc.args("t", (uint64) 0));
+
+					this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
+					Gsr.Client.Rpc.register_handle(this);
 					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
 					this.prop_batch_open = true;
 					return;

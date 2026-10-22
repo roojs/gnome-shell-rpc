@@ -71,6 +71,7 @@ compositor_sources = files(
   'server/libst-16/DrawingAreaActor.vala',
   'server/libst-16/ViewportActor.vala',
   'server/libst-16/Viewport.vala',
+  'server/libst-16/SquareBinActor.vala',
   'server/libst-16/FocusManager.vala',
   'server/libshell-16/namespace.vala',
   'server/libshell-16/GLSLEffect.vala',

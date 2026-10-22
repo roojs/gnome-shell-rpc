@@ -1,32 +1,12 @@
 # Applications picker does not work
 
-**Status:** ⏳ open. Show Applications opens, and the page size is 800 by 299. The icons and their labels are drawn on top of each other. That is not the stock application grid.
+**Status:** ✅ closed 2026-10-22. Show Applications opens and the icons are visible. Pagination, the wait before the next click, and the actor construct switch are the open bugs. This file is the archive.
 
-**Next:** Icon size is chosen too early. `_findBestIconSize` returned 96 while the first icon's preferred size was `25/49/81/49`. After the icons settle, the same icon is `120/145/120/145` at icon size 96, and a later call returns 24. The picture is the 96px icons drawn on an 88 by 53 pitch. The pass is still a grid that looks like the stock one.
+- [App grid pagination](../2026-10-22-app-grid-pagination.md)
+- [App grid performance](../2026-10-22-app-grid-performance.md)
+- [Actor construct lease switch](../2026-10-22-actor-construct-lease-switch.md)
 
-1. `ViewportActor.rpc_register` calls `OLLMrpc.Bin.register_alias("St-Viewport", typeof(ViewportActor))`. `set_child` accepts the grid. `viewport-scroll-child-smoke` at `22:43:08` is `ok`.
-2. Picker screenshot `~/.cache/gnome-shell-rpc/applications-picker.png` at `22:52` (800×600). Two rows of large icons occupy the same space. Labels run together on one line (`Ásbrú Connection Manager` through `Character Map`).
-3. Tee `22:52:45`: `page=800x299`, icons `0@18,218 145x145` then `1@106,218 145x145` (88px apart) and `8@18,271 145x145` (53px below the first). A 145px icon does not fit that pitch.
-
-```bash
-GSR_WESTON_SOCKET=wayland-gsr-viewpeer \
-GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-viewpeer \
-GI_META_SMOKE=viewport-scroll-child-smoke GSR_WESTON_PIXMAN=1 \
-GSR_NESTED_TIMEOUT=40 ./scripts/agent-nested-smoke-prove.sh
-```
-
-```bash
-GSR_WESTON_SOCKET=wayland-gsr-apppick \
-GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-apppick \
-GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 \
-GSR_NESTED_TIMEOUT=90 ./scripts/agent-nested-smoke-prove.sh
-```
-
-Read `nested-weston-prove.tee.log`. The autolaunch log is about 5GB.
-
-**Where it stands:** The grid is the scroll child and `IconGrid.vfunc_allocate` runs. The picture is overlapping icons. `applications-picker.png` at `22:52` is that frame. The smoke now fails with `miss overlap` when the next icon starts inside the previous icon.
-
-**Still true:** A plain widget cannot be the scroll child. A real `St.Viewport` can, and it receives the scroll box. The page size is `IconGrid.vfunc_allocate`, which runs only after the grid is that child. The client `allocation` cache for `_box` and the scroll view can read 0×0 while the server boxes are already real. The grid server box at `22:52` is `0,0 800x299`. The icons on that grid overlap.
+The sections below are how the grid got to a visible set of icons.
 
 ## Proposal
 
@@ -615,3 +595,31 @@ Same command. Screenshot `~/.cache/gnome-shell-rpc/applications-picker.png`, 800
 ### 2026-10-21 23:17 icon size 96 is chosen while the icon is 49px tall
 
 Same command. `23:16:08` `bestIcon 96 seen=none page=800x315 cols=8 rows=3 col=0`. `23:16:13` `bestIcon 96 seen=25/49/81/49 page=800x299 cols=8 rows=3 col=12`. `23:17:01` `gridMode cols=8 rows=3 icon=96 col=12 row=12 maxCol=36 maxRow=36 pad=24,18,24,18 item0=120/145/120/145 baseIcon=96`. Icons still `145x145` at an 88 by 53 pitch. `miss overlap`. Calling `_findBestIconSize` again at that point returned 24 and left the first icon at preferred `48/73/81/73`. Eight columns of a 145px icon do not fit a 800 by 299 page once padding and the 12px spacing are included. The 96 choice used the 49px measurement.
+
+### 2026-10-21 23:24 the fitted size is a grid and long labels still collide
+
+Same command. `23:23:48` `bestIcon 96 seen=25/49/81/49 after=25/49/81/49 page=800x299 cols=8 rows=3 col=12`. `23:24:04` `item0=120/145/120/145 baseIcon=96`. The smoke then called `_findBestIconSize` again: `bestIcon 24 seen=120/145/120/145 after=48/73/81/73`, and set every icon to 24. `settled 0@18,218 81x73 | 1@116,218 81x73 | 4@412,218 147x73 | 8@18,307 96x73 | 11@314,307 160x73`. Pitch is about 98 by 89. The 73px boxes clear the next row. The 147px and 160px boxes do not clear the next column. Screenshot overwritten at `23:24`. `miss overlap`.
+
+### 2026-10-22 08:54 the smoke-side refit is a grid
+
+The smoke, not `src/`, rescheduled `_findBestIconSize` on `queue-relayout` and clamped the tile's preferred width to its height. `08:53:38` `bestIcon 96 page=800x315`. `08:53:43` `bestIcon 96 page=800x299`. `08:53:58` `bestIcon 24`, then `refit 24`. `08:54:03` `item0=48/73/73/73 baseIcon=24`, settled boxes all `73x73`. Screenshot is rows of icons with an ellipsized label under each. `applications-picker-smoke: ok`.
+
+### 2026-10-22 08:56 the actor type check is removed
+
+`Actor.get_preferred_width` gained `is_overview_tile`, matching `AppViewItem` and `AppIcon` in the type name, and capped that width to the height. That is not the smoke patch. It is removed. `get_preferred_width` again returns the server width. `iconGrid.js` still queues `_queueIconSizeUpdate` from `queue-relayout` and from `adaptToSize`.
+
+### 2026-10-22 10:07 the square-bin type walk is removed
+
+`Actor.construct` gained a `St-Bin` arm, `type_is_square_bin`, and `open_square_bin_lease`, matching the GType name `ShellSquareBin`. That edit is removed. `Actor.override.vala` no longer mentions `ShellSquareBin`.
+
+### 2026-10-22 10:09 the lease stays on the St-Bin arm
+
+Removing that lease made the grid worse. The two helpers stay out. The `St-Bin` arm in `Actor.construct` leases `Gsr-St-SquareBin.new` when the type chain is `ShellSquareBin`. Exact `St.Bin` still uses `St-Bin.new`.
+
+### 2026-10-22 09:55 the square peer reports 49 and the boxes stay 145
+
+`SquareBinActor.get_preferred_width` returns `get_preferred_height(-1)`. `Shell.SquareBin` construct replaces the plain `St-Bin` lease with `Gsr-St-SquareBin.new`. Registering the client GType as `Gsr-St-SquareBin` aborted: `Gi.vfunc_names: no object Gsr.St-SquareBin`. That alias is not registered. Same command. `09:55:57` `state=2` `items=147` `page=800x299` `icon=96` `item0=49/49/49/49` `baseIcon=96`. Settled boxes `0@18,218 145x145 | 1@106,218 145x145 | 8@18,271 145x145`. `miss overlap`. Screenshot is overlapping icons, labels one character wide. Exit 137 is the script. The next smoke line logs the base icon, the box, the icon bin, the texture, and the label.
+
+### 2026-10-22 10:15 closed and split
+
+Show Applications shows the icons. Paging does not. The click does not return until the grid has loaded. The construct switch is a separate design problem. Those are the three bugs linked at the top. This file moves to `docs/bugs/done/`.

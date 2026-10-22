@@ -98,40 +98,6 @@ async function run() {
 	const main = await import('resource:///org/gnome/shell/ui/main.js');
 	await main.start();
 
-	const earlyDisplay = main.overview._overview?.controls?.appDisplay;
-	const earlyLayout = earlyDisplay?._grid?.layout_manager;
-	if (earlyLayout != null) {
-		const proto = Object.getPrototypeOf(earlyLayout);
-		const origFind = proto._findBestIconSize;
-		proto._findBestIconSize = function () {
-			let seen = 'none';
-			try {
-				const [child] = this._container;
-				if (child != null)
-					seen = child.get_preferred_size().map(v => Math.round(v)).join('/');
-			} catch (e) {
-				seen = String(e);
-			}
-			const size = origFind.call(this);
-			let after = 'none';
-			try {
-				const [child] = this._container;
-				if (child != null)
-					after = child.get_preferred_size().map(v => Math.round(v)).join('/');
-			} catch (e) {
-				after = String(e);
-			}
-			smokeLog('bestIcon ' + size
-				+ ' seen=' + seen
-				+ ' after=' + after
-				+ ' page=' + this._pageWidth + 'x' + this._pageHeight
-				+ ' cols=' + this.columns_per_page
-				+ ' rows=' + this.rows_per_page
-				+ ' col=' + this.column_spacing);
-			return size;
-		};
-	}
-
 	const globalObj = Shell.Global.get();
 	const stage = globalObj.stage;
 	main.overview.show();
@@ -254,15 +220,28 @@ async function run() {
 			+ ' pad=' + (pad ? pad.top + ',' + pad.right + ',' + pad.bottom + ',' + pad.left : 'null')
 			+ ' item0=' + pref
 			+ ' baseIcon=' + (first.icon?.iconSize ?? -1));
-	}
-	if (first != null && layout?._findBestIconSize != null) {
-		const chosen = layout._findBestIconSize();
-		for (const item of items) {
-			if (item.icon?.setIconSize)
-				item.icon.setIconSize(chosen);
+		function nodeSize(actor) {
+			if (actor == null)
+				return 'null';
+			let pref = 'err';
+			try {
+				pref = actor.get_preferred_size().map(v => Math.round(v)).join('/');
+			} catch (e) {
+				pref = 'err';
+			}
+			const [w, h] = actor.get_transformed_size();
+			const name = actor.constructor?.name ?? 'actor';
+			return name + ' pref=' + pref
+				+ ' box=' + Math.round(w) + 'x' + Math.round(h)
+				+ ' n=' + actor.get_n_children();
 		}
-		smokeLog('applyIcon ' + chosen);
-		await delay(800);
+		const base = first.icon;
+		smokeLog('tree item=' + nodeSize(first)
+			+ ' base=' + nodeSize(base)
+			+ ' box=' + nodeSize(base?._box)
+			+ ' iconBin=' + nodeSize(base?._iconBin)
+			+ ' tex=' + nodeSize(base?.icon)
+			+ ' label=' + nodeSize(base?.label));
 	}
 	const settled = [];
 	for (let i = 0; i < items.length && i < 12; i++) {

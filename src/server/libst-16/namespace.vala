@@ -11,6 +11,7 @@ namespace Gsr.Server.St
 		DrawingArea.rpc_register();
 		ViewportActor.rpc_register();
 		Viewport.rpc_register();
+		SquareBin.rpc_register();
 		FocusManager.rpc_register();
 		OLLMrpc.Bin.register_alias("St-Widget", typeof(Clutter.Actor));
 		register_boxed_types();

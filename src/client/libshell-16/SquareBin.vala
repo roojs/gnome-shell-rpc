@@ -1,8 +1,10 @@
 /**
  * Owned {@code Shell.SquareBin} — stock shell-square-bin (0.7.7 T-033).
  *
- * Extends {@link St.Bin}; preferred width follows preferred height so the
- * actor stays square. Lease is {@code St-Bin.new} (same server type).
+ * Extends {@link St.Bin}. Preferred width follows preferred height.
+ * {@link Clutter.Actor} construct leases {@code Gsr-St-SquareBin.new}
+ * for this type. This construct does that only when nothing
+ * is leased yet.
  */
 namespace Shell
 {
@@ -17,9 +19,11 @@ namespace Shell
 				return;
 			}
 			var response = Gsr.Client.Rpc.call_value(
-				"St-Bin.new");
+				"Gsr-St-SquareBin.new", null,
+				OLLMrpc.args("t", (uint64) 0));
 			var stub = response.retval.get_object() as OLLMrpc.Live.Interface;
 			this.rpc_lid = stub.rpc_lid;
+			Gsr.Client.Rpc.register_handle(this);
 		}
 
 		public override void get_preferred_width_vfunc(

@@ -26,4 +26,10 @@ namespace St {
 		[CCode (has_construct_function = false)]
 		protected Viewport ();
 	}
+
+	[CCode (cname = "StBin", type_id = "st_bin_get_type ()", cheader_filename = "st-widget-peer.h")]
+	public class Bin : Widget {
+		[CCode (has_construct_function = false)]
+		protected Bin ();
+	}
 }
