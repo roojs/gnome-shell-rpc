@@ -106,6 +106,15 @@
 		}
 
 		construct {
+			if (this.rpc_lid == 0) {
+				var subclass = this is DrawingArea
+					&& this.get_type() != typeof(DrawingArea);
+				this.open_drawing_area_lease(subclass);
+				if (this.rpc_lid != 0) {
+					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+					this.prop_batch_open = true;
+				}
+			}
 			if (this.rpc_lid == 0 || this.get_type() == typeof(DrawingArea)) {
 				return;
 			}

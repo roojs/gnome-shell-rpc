@@ -1,8 +1,10 @@
 # Actor construct lease is a switch
 
-**Status:** ✔️ applied. `Clutter.Actor.construct` calls `rpc_construct`. Each special class overrides that virtual. Not user-confirmed.
+**Status:** ✔️ applied, then a Wayland regression. `Gjs_ui_barLevel_BarLevel` and `Gjs_ui_slider_Slider` stay at `rpc_lid` 0. Exact `St.DrawingArea` still leases. Not user-confirmed.
 
-**Next:** Review.
+**Next:** The constructor fallback did not change what the session shows. Log `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log` session `09:05:11`. App grid: `createIcon in BaseIcon` 168 times, first at `09:05:12.937074`. Overview: `ClutterActorBox` undefined and `clutter_margin_copy` missing at `09:05:20.541775`. One `create_launcher`, at startup `09:05:13.621268`.
+
+Child, not applied: [`2026-10-23-construct-style-during-init.md`](2026-10-23-construct-style-during-init.md). Signal `rpc_lease`, no body. Handlers connect with `Signal.override_class_handler`.
 
 **Proposal:** ✔️ applied. [Proposed changes](#proposed-changes). Each special class overrides `rpc_construct`. The default walk only calls `alias + ".new"`. A parent calls `base.rpc_construct()` when a derived type is the registered one, so `St.Button` still gets `St-Button.new`. Two deviations are in the 08:30 effort.
 
@@ -952,3 +954,39 @@ Vala rejected a second `construct` on `Actor`. The `queue_relayout` connect is t
 `bind_vfunc` is `protected`. `St.Viewport` and `St.DrawingArea` call it from another shared library. `internal` is invisible there. `prop_batch_open` stays `internal`. `Actor.construct` sets it after `rpc_construct` returns.
 
 `gsr-st-boxed` compiles `st-rpc-16.vapi`. `libmutter-16.deps` loads system `mutter-clutter-16`, so `Clutter.Actor` there has no `rpc_construct`. That target uses `mutter-clutter-rpc-16` and `gsr-rpc-16`.
+
+### 2026-10-23 08:26 constructor dispatch
+
+Wayland session `08:21:24` in `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log`. `Gjs_ui_barLevel_BarLevel` (`St.DrawingArea` subclass) and `Gjs_ui_slider_Slider` log `no rpc_lid`. `Gsr-St-DrawingArea.create` never appears. `St-DrawingArea.new` does, for exact drawing areas. `Gsr-St-SquareBin.new` appears, so a Vala override does run.
+
+Generated `clutter_actor_rpc_construct` uses `CLUTTER_ACTOR_GET_CLASS(self)->rpc_construct`. `base.rpc_construct()` in `St.Widget` is `st_widget_parent_class->rpc_construct`, the parent function pointer. That call does not re-enter `Widget.rpc_construct`. A null slot returns without a lease. That matches the GJS actors.
+
+`style_class` is an ordinary property, applied after the constructor returns. The only types that stay at `rpc_lid` 0 are `Gjs_ui_barLevel_BarLevel`, `Gjs_ui_slider_Slider` (extends that bar), and `Gjs_ui_messageList_MessageView` (extends `St.Viewport`). Before this change, `DrawingArea.construct` called `open_drawing_area_lease` whenever `rpc_lid` was still 0. That constructor runs for a JavaScript subclass. The lease now lives only in `rpc_construct`, and that call does not run for these subclasses. The constructor that remains returns immediately when `rpc_lid` is 0.
+
+### 2026-10-23 08:42 constructor fallback
+
+`rpc_construct` stays. `DrawingArea.construct` calls `open_drawing_area_lease` when `rpc_lid` is still 0. `Viewport.construct` calls `create_viewport(true)` in that same case. `signal_overrides` is `protected`. `prop_batch_open` is `public` so those libraries can set it. `mutter-clutter-rpc-16` and `st-rpc-16` compiled.
+
+### 2026-10-23 09:06 session after the fallback
+
+Wayland log `09:05:11`–`09:06:32`. `Gsr-St-DrawingArea.create` is at `09:05:11.842915`, just after `get_theme_node` failed on `BarLevel`. The lease is late. `createIcon in BaseIcon` is 168 times, from `iconGrid.js` `vfunc_style_changed` during `BaseIcon._init`, before `createIcon` is assigned. `layout_manager is null` is 4 times, from `IconGrid._init`. At `09:05:20` the overview update throws `ClutterActorBox` undefined in `overviewControls.js` `vfunc_allocate`, then `clutter_margin_copy` is missing from `libmutter-clutter-rpc-16.so` in `AppGrid._updatePadding`. `Meta-StartupNotification.create_launcher` appears once, at `09:05:13`, during startup.
+
+### 2026-10-23 09:37 speculative fix pulled
+
+A parent-type lease table, a held `style-changed`, and `clutter_margin_copy` were written into `src/` and compiled. They were removed the same morning. `src/` is back to the constructor fallback.
+
+### 2026-10-23 09:50 large draft rejected
+
+That draft is not the proposal.
+
+### 2026-10-23 09:55 function-pointer cast rejected
+
+`RpcConstructSlot` is out. The child proposal was signal `lease`.
+
+### 2026-10-23 10:07 `rpc_lease` has no body
+
+The signal is `rpc_lease`. Nothing runs inside the declaration. `Actor.construct` emits it. The classes that already override `rpc_construct` connect a class handler.
+
+### 2026-10-23 10:14 signal taken back out
+
+That signal was written into `src/` and removed. It is a GIR symbol unless the generator emits `[CCode (gir = false)]`. Left in the child proposal.

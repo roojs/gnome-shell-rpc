@@ -114,7 +114,7 @@
 		get; set; default = new Gee.HashMap<string, GLib.Value?>();
 	}
 
-	internal bool prop_batch_open = false;
+	public bool prop_batch_open = false;
 
 	protected void create_with_overrides()
 	{
@@ -183,7 +183,7 @@
 	 * @param t parent type to compare against this object
 	 * @param names signal names gathered on the way down
 	 */
-	private void signal_overrides(GLib.Type t, Gee.ArrayList<string> names)
+	protected void signal_overrides(GLib.Type t, Gee.ArrayList<string> names)
 	{
 		if (t == GLib.Type.INVALID) {
 			return;
