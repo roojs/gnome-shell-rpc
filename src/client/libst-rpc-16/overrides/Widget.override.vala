@@ -1,3 +1,20 @@
+		/**
+		 * Helper peer when this widget is the registered type.
+		 * A derived stub calls the base walk.
+		 */
+		public override void rpc_construct()
+		{
+			var t = this.get_type();
+			while (t != GLib.Type.INVALID && t != typeof(Widget)) {
+				if (OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
+					base.rpc_construct();
+					return;
+				}
+				t = t.parent();
+			}
+			this.create_with_overrides();
+		}
+
 		construct {
 			this.signal_style_changed.connect(() => {
 				this.style_changed_vfunc();

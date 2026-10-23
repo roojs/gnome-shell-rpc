@@ -36,104 +36,61 @@
 	}
 
 	/**
-	 * Lease like the generator parent-walk ({@code Actor.new} denied).
-	 * First Bin-registered ancestor; {@code St-Widget} and
-	 * {@code Meta-WindowActor} → {@code this.create_with_overrides()}.
+	 * Local {@code new} calls {@link rpc_construct}. Wire import
+	 * already has {@code rpc_lid} and returns above that call.
+	 * After a lease, subscribe overridden signals and open the
+	 * property batch.
 	 *
-	 * {@code Meta-BackgroundActor}: leave {@code rpc_lid == 0} for the leaf
-	 * Helper construct. Stock ctor needs display+monitor; null-arg
-	 * {@code Meta-BackgroundActor.new} is -32602. Do not walk to
-	 * {@code Clutter-Actor} (wrong peer / double mint).
+	 * A replaced {@code queue_relayout} slot is connected here.
+	 * {@link Gsr.Client.Rpc.VfuncRelay.overridden} caches that.
+	 * Vala allows one {@code construct} block on this class.
 	 */
 	construct {
-		this.signal_queue_relayout.connect(() => {
-			var baseline = GLib.Type.from_name("StWidget");
-			if (baseline != GLib.Type.INVALID
-					&& OLLMrpc.Gi.vfunc_slot(this.get_type(), "Clutter", "Actor", "queue_relayout")
-					!= OLLMrpc.Gi.vfunc_slot(baseline, "Clutter", "Actor", "queue_relayout")) {
-						
+		var over = Gsr.Client.Rpc.VfuncRelay.overridden(
+			this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
+		if (over.contains("queue_relayout")) {
+			this.signal_queue_relayout.connect(() => {
 				Gsr.Client.Rpc.vfunc_call_void(
-					this, OLLMrpc.Gi.vfunc_offset("Clutter", "Actor", "queue_relayout"));
-			}
-		});
-
+					this, OLLMrpc.Gi.vfunc_offset(
+						"Clutter", "Actor", "queue_relayout"));
+			});
+		}
 		if (this.rpc_lid != 0) {
 			return;
 		}
+		this.rpc_construct();
+		if (this.rpc_lid == 0) {
+			return;
+		}
+		this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+		this.prop_batch_open = true;
+	}
+
+	/**
+	 * Lease the server peer on a local {@code new}.
+	 *
+	 * Walk {@code Bin.gtype_to_alias} and call {@code alias.new}.
+	 * A subclass of exact {@code Clutter.Actor} with no registered
+	 * type of its own uses {@code create_with_overrides}.
+	 * Other peers override this method.
+	 */
+	protected virtual void rpc_construct()
+	{
 		var t = this.get_type();
 		while (t != GLib.Type.INVALID) {
-			if (OLLMrpc.Bin.gtype_to_alias == null
-					|| !OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
+			if (!OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
 				t = t.parent();
 				continue;
 			}
-			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
-			switch (alias) {
-				case "Meta-BackgroundActor": // leaf Helper
-				case "Clutter-Clone": // Clone.override new(source)
-				case "St-DrawingArea": // DrawingArea.construct
-					return;
-				case "Meta-WindowActor": // no Meta-WindowActor.new
-				case "St-Widget":
-					this.create_with_overrides();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
-				case "St-Viewport":
-					/* Exact Viewport uses St-Viewport.new below.
-					   A subclass leases ViewportActor. */
-					if (this.get_type() == t) {
-						break;
-					}
-					this.create_viewport();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
-				case "St-Bin":
-					// Exact bin uses St-Bin.new below. Shell.SquareBin leases the 
-					//  square peer before the icon is built. 
-					//  This is very hacky however - and probably needs a better design.
-					if (this.get_type() == t) {
-						break;
-					}
-					var scan = this.get_type();
-					var square = false;
-					while (scan != GLib.Type.INVALID) {
-						if (scan.name() == "ShellSquareBin") {
-							square = true;
-							break;
-						}
-						scan = scan.parent();
-					}
-					if (!square) {
-						break;
-					}
-					var response = Gsr.Client.Rpc.call_value("Gsr-St-SquareBin.new", null,
-						OLLMrpc.args("t", (uint64) 0));
-
-					this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-					Gsr.Client.Rpc.register_handle(this);
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
-				case "Clutter-Actor":
-					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
-					if (this.get_type() == typeof(Actor)) {
-						break;
-					}
-					this.create_with_overrides();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
-				default:
-					break;
+			if (t == typeof(Actor) && this.get_type() != typeof(Actor)) {
+				this.create_with_overrides();
+				return;
 			}
+			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			var response = Gsr.Client.Rpc.call_value(alias + ".new");
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
 			Gsr.Client.Rpc.register_handle(this);
-			this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-			this.prop_batch_open = true;
 			return;
 		}
 		GLib.error("lease construct: no Bin-registered ancestor for %s",
@@ -159,7 +116,7 @@
 
 	internal bool prop_batch_open = false;
 
-	void create_with_overrides()
+	protected void create_with_overrides()
 	{
 		Gsr.Client.Rpc.hook_rows =
 			new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
@@ -208,124 +165,6 @@
 			var id = ids.get_child_value(i).get_uint64();
 			Gsr.Client.Rpc.handlers.set((int) id,
 				Gsr.Client.Rpc.hook_rows.get(i));
-		}
-		Gsr.Client.Rpc.hook_rows = null;
-	}
-
-	/**
-	 * {@code subclass} is decided by {@link St.DrawingArea}, where
-	 * {@code typeof(DrawingArea)} exists. A subclass gets the
-	 * drawing-area peer. The exact type gets {@code St-DrawingArea.new}.
-	 */
-	protected void open_drawing_area_lease(bool subclass)
-	{
-		if (subclass) {
-			this.create_drawing_area();
-			this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-			this.prop_batch_open = true;
-			return;
-		}
-		var response = Gsr.Client.Rpc.call_value("St-DrawingArea.new");
-		this.rpc_lid =
-			(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-		Gsr.Client.Rpc.register_handle(this);
-		this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-		this.prop_batch_open = true;
-	}
-
-	/**
-	 * Peer is {@link Gsr.Server.St.DrawingAreaActor}, not a plain
-	 * {@code StDrawingArea}. Preferred-size vfuncs are hooked so a
-	 * slider's JS height is the allocation. Repaint stays the
-	 * stock allocate emission.
-	 */
-	void create_drawing_area()
-	{
-		Gsr.Client.Rpc.hook_rows = new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
-		var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(
-			this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
-			
-		string[] names = {};
-		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
-		foreach (var name in overridden) {
-			if (name != "get_preferred_width" && name != "get_preferred_height") {
-				continue;
-			}
-			var vfunc_id = -1;
-			var hook_id = this.bind_vfunc(name, out vfunc_id);
-			if (hook_id == 0) {
-				continue;
-			}
-			names += name;
-			vfunc_ids.add("i", vfunc_id);
-		}
-		var response = Gsr.Client.Rpc.call_value("Gsr-St-DrawingArea.create", null,
-			OLLMrpc.args("s", this.get_type().name()));
-			
-		this.rpc_lid = response.args.get(0).get_uint64();
-		Gsr.Client.Rpc.register_handle(this);
-		if (names.length == 0) {
-			Gsr.Client.Rpc.hook_rows = null;
-			return;
-		}
-		var hooks = Gsr.Client.Rpc.call_value("Gsr-St-DrawingArea.add_hooks", this,
-			OLLMrpc.args("Sv", names, vfunc_ids.end()));
-			
-		var ids = hooks.args.get(0).get_variant();
-		if (Gsr.Client.Rpc.handlers == null) {
-			Gsr.Client.Rpc.handlers = new Gee.HashMap<int,	Gsr.Client.Rpc.InvokeRow>();
-		}
-		var n = (int) ids.n_children();
-		for (var i = 0; i < n; i++) {
-			var id = ids.get_child_value(i).get_uint64();
-			Gsr.Client.Rpc.handlers.set((int) id, Gsr.Client.Rpc.hook_rows.get(i));
-		}
-		Gsr.Client.Rpc.hook_rows = null;
-	}
-
-	/**
-	 * GJS {@code St.Viewport} subclass. Peer is
-	 * {@link Gsr.Server.St.ViewportActor}. Only {@code allocate}
-	 * is hooked. {@code helper_attached} stays false.
-	 */
-	void create_viewport()
-	{
-		Gsr.Client.Rpc.hook_rows = new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
-		var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(
-			this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
-			
-		string[] names = {};
-		var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
-		foreach (var name in overridden) {
-			if (name != "allocate") {
-				continue;
-			}
-			var vfunc_id = -1;
-			var hook_id = this.bind_vfunc(name, out vfunc_id);
-			if (hook_id == 0) {
-				continue;
-			}
-			names += name;
-			vfunc_ids.add("i", vfunc_id);
-		}
-		var response = Gsr.Client.Rpc.call_value("Gsr-St-Viewport.create", null);
-			
-		this.rpc_lid = response.args.get(0).get_uint64();
-		Gsr.Client.Rpc.register_handle(this);
-		if (names.length == 0) {
-			Gsr.Client.Rpc.hook_rows = null;
-			return;
-		}
-		var hooks = Gsr.Client.Rpc.call_value("Gsr-St-Viewport.add_hooks", this,
-			OLLMrpc.args("Sv", names, vfunc_ids.end()));
-			
-		var ids = hooks.args.get(0).dup_variant();
-		if (Gsr.Client.Rpc.handlers == null) {
-			Gsr.Client.Rpc.handlers = new Gee.HashMap<int,	Gsr.Client.Rpc.InvokeRow>();
-		}
-		var n = (int) ids.n_children();
-		for (var i = 0; i < n; i++) {
-			Gsr.Client.Rpc.handlers.set((int) ids.get_child_value(i).get_uint64(), Gsr.Client.Rpc.hook_rows.get(i));
 		}
 		Gsr.Client.Rpc.hook_rows = null;
 	}

@@ -28,12 +28,84 @@
 			Gsr.Client.Rpc.call_value("Gsr-St-DrawingArea.queue_repaint", this);
 		}
 
-		construct {
-			if (this.rpc_lid == 0) {
-				var subclass = this is DrawingArea
-					&& this.get_type() != typeof(DrawingArea);
-				this.open_drawing_area_lease(subclass);
+		/**
+		 * Exact type uses {@code St-DrawingArea.new}.
+		 * A subclass uses the drawing-area peer.
+		 */
+		void open_drawing_area_lease(bool subclass)
+		{
+			if (subclass) {
+				this.create_drawing_area();
+				return;
 			}
+			var response = Gsr.Client.Rpc.call_value("St-DrawingArea.new");
+			this.rpc_lid =
+				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
+			Gsr.Client.Rpc.register_handle(this);
+		}
+
+		/**
+		 * Peer is {@link Gsr.Server.St.DrawingAreaActor}, not a plain
+		 * {@code StDrawingArea}. Preferred-size vfuncs are hooked so a
+		 * slider's JS height is the allocation. Repaint stays the
+		 * stock allocate emission.
+		 */
+		void create_drawing_area()
+		{
+			Gsr.Client.Rpc.hook_rows = new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
+			var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(
+				this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
+			string[] names = {};
+			var vfunc_ids = new GLib.VariantBuilder(new GLib.VariantType("ai"));
+			foreach (var name in overridden) {
+				if (name != "get_preferred_width" && name != "get_preferred_height") {
+					continue;
+				}
+				var vfunc_id = -1;
+				var hook_id = this.bind_vfunc(name, out vfunc_id);
+				if (hook_id == 0) {
+					continue;
+				}
+				names += name;
+				vfunc_ids.add("i", vfunc_id);
+			}
+			var response = Gsr.Client.Rpc.call_value(
+				"Gsr-St-DrawingArea.create", null,
+				OLLMrpc.args("s", this.get_type().name()));
+			this.rpc_lid = response.args.get(0).get_uint64();
+			Gsr.Client.Rpc.register_handle(this);
+			if (names.length == 0) {
+				Gsr.Client.Rpc.hook_rows = null;
+				return;
+			}
+			var hooks = Gsr.Client.Rpc.call_value(
+				"Gsr-St-DrawingArea.add_hooks", this,
+				OLLMrpc.args("Sv", names, vfunc_ids.end()));
+			var ids = hooks.args.get(0).get_variant();
+			if (Gsr.Client.Rpc.handlers == null) {
+				Gsr.Client.Rpc.handlers = new Gee.HashMap<int, Gsr.Client.Rpc.InvokeRow>();
+			}
+			var n = (int) ids.n_children();
+			for (var i = 0; i < n; i++) {
+				Gsr.Client.Rpc.handlers.set(
+					(int) ids.get_child_value(i).get_uint64(),
+					Gsr.Client.Rpc.hook_rows.get(i));
+			}
+			Gsr.Client.Rpc.hook_rows = null;
+		}
+
+		/**
+		 * Exact type uses {@code St-DrawingArea.new}.
+		 * A subclass uses the drawing-area peer.
+		 */
+		public override void rpc_construct()
+		{
+			var subclass = this is DrawingArea
+				&& this.get_type() != typeof(DrawingArea);
+			this.open_drawing_area_lease(subclass);
+		}
+
+		construct {
 			if (this.rpc_lid == 0 || this.get_type() == typeof(DrawingArea)) {
 				return;
 			}

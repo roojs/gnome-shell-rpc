@@ -1,10 +1,10 @@
 # Actor construct lease is a switch
 
-**Status:** ⏳ open. `Clutter.Actor.construct` chooses the server object with a switch on the alias. A new peer means another arm.
+**Status:** ✔️ applied. `Clutter.Actor.construct` calls `rpc_construct`. Each special class overrides that virtual. Not user-confirmed.
 
-**Next:** The class that needs a different lease answers that itself. Construct calls `rpc_construct`. The switch does not grow an arm per type.
+**Next:** Review.
 
-**Proposal:** ⏳ not applied. [Proposed changes](#proposed-changes). Each special class overrides `rpc_construct`. The default walk only calls `alias + ".new"`. A parent calls `base.rpc_construct()` when a derived type is the registered one, so `St.Button` still gets `St-Button.new`.
+**Proposal:** ✔️ applied. [Proposed changes](#proposed-changes). Each special class overrides `rpc_construct`. The default walk only calls `alias + ".new"`. A parent calls `base.rpc_construct()` when a derived type is the registered one, so `St.Button` still gets `St-Button.new`. Two deviations are in the 08:30 effort.
 
 Split from [`done/2026-10-12-applications-picker-not-working.md`](done/2026-10-12-applications-picker-not-working.md).
 
@@ -148,7 +148,7 @@ Edits are **Remove** / **Replace with** / **Add**. Verify the surrounding lines 
 - 🔷 `Shell.SquareBin`, `St.Widget`, `St.Viewport`, `Meta.WindowActor`, `Meta.BackgroundActor`, `Clutter.Clone`, and `St.DrawingArea` each override `rpc_construct` with the lease that used to be their switch arm.
 - 🔷 A parent override calls `base.rpc_construct()` when a more-derived type is already in `gtype_to_alias`. `St.Button` inherits `St.Widget.rpc_construct` and that call reaches `St-Button.new`.
 - 🔷 Exact `Clutter.Actor` versus a subclass with no registered type stays in `Actor.rpc_construct`. That rule is Actor's own.
-- 🔷 `signal_queue_relayout` stays on `Actor`, in its own `construct` next to `queue_relayout()`. Connect only when `VfuncRelay.overridden` says this type replaced that slot. The handler does not compare slots. A non-widget subclass still reaches it because the block is on `Actor`.
+- 🔷 `signal_queue_relayout` stays on `Actor`. Connect only when `VfuncRelay.overridden` says this type replaced that slot. The handler does not compare slots. A non-widget subclass still reaches it because the block is on `Actor`. Vala allows one `construct` on the class, so this connect is the first part of the lease `construct`, before the `rpc_lid` guard.
 - 🚫 Defer set, mint kind on `Bin.register`, a `GType` callback map, generating the switch, and a second lease in every leaf `construct`.
 
 ### 1. `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala` — `construct` calls `rpc_construct`
@@ -459,34 +459,24 @@ Subclasses in `St` and `Meta` call this from their `rpc_construct`.
 	}
 ```
 
-**Why:** The lease `construct` should not compare vfunc slots. `VfuncRelay.overridden` already caches that compare against `StWidget`. Connect only for a type that replaced `queue_relayout`. The handler is the vfunc call.
+**Why:** The lease `construct` should not compare vfunc slots. `VfuncRelay.overridden` already caches that compare against `StWidget`. Connect only for a type that replaced `queue_relayout`. The handler is the vfunc call. A second `construct` on `Actor` does not compile (`class already contains a constructor`), so the connect is the start of the lease `construct`. The `rpc_lid` guard stays after it, so wire import still connects.
 
-**Where:** Immediately above the doc comment on `queue_relayout()`.
+**Where:** The start of the lease `construct` in §1.
 
-**Depends on:** none. The old connect is removed with the lease `construct` above.
+**Depends on:** §1.
 
-#### Add — above the `queue_relayout` doc comment
+#### Add — start of the lease `construct`
 
 ```vala
-	/**
-	 * Run a replaced {@code queue_relayout} vfunc when the
-	 * signal fires. Stock slots are not connected.
-	 * {@link Gsr.Client.Rpc.VfuncRelay.overridden} caches the
-	 * {@code StWidget} compare.
-	 */
-	construct {
 		var over = Gsr.Client.Rpc.VfuncRelay.overridden(
 			this.get_type(), "Clutter", "Actor", "StWidget", new string[0]);
-		if (!over.contains("queue_relayout")) {
-			return;
+		if (over.contains("queue_relayout")) {
+			this.signal_queue_relayout.connect(() => {
+				Gsr.Client.Rpc.vfunc_call_void(
+					this, OLLMrpc.Gi.vfunc_offset(
+						"Clutter", "Actor", "queue_relayout"));
+			});
 		}
-		this.signal_queue_relayout.connect(() => {
-			Gsr.Client.Rpc.vfunc_call_void(
-				this, OLLMrpc.Gi.vfunc_offset(
-					"Clutter", "Actor", "queue_relayout"));
-		});
-	}
-
 ```
 
 ### 2. `src/client/libshell-16/SquareBin.vala` — `rpc_construct` leases the square peer
@@ -952,3 +942,13 @@ Proposed changes are in this file. Not applied. The first draft left the switch 
 ### 2026-10-23 08:03 queue_relayout connect
 
 The slot compare leaves the lease `construct`. A second `construct` next to `queue_relayout()` connects only when `VfuncRelay.overridden` contains `queue_relayout`. Not applied.
+
+### 2026-10-23 08:30 applied
+
+Applied. `mutter-clutter-rpc-16`, `mutter-rpc-16`, `st-rpc-16`, `gsr-st-boxed`, and `shell-16` compiled.
+
+Vala rejected a second `construct` on `Actor`. The `queue_relayout` connect is the first part of the lease `construct`, before the `rpc_lid` guard.
+
+`bind_vfunc` is `protected`. `St.Viewport` and `St.DrawingArea` call it from another shared library. `internal` is invisible there. `prop_batch_open` stays `internal`. `Actor.construct` sets it after `rpc_construct` returns.
+
+`gsr-st-boxed` compiles `st-rpc-16.vapi`. `libmutter-16.deps` loads system `mutter-clutter-16`, so `Clutter.Actor` there has no `rpc_construct`. That target uses `mutter-clutter-rpc-16` and `gsr-rpc-16`.

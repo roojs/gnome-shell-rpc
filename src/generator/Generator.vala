@@ -1897,7 +1897,7 @@ $(minted)				this.rpc_ctor_clear();
 			}
 			if (relayed.size > 0) {
 				stream.puts(@"
-		internal uint64 bind_vfunc(string name, out int vfunc_id) {
+		protected uint64 bind_vfunc(string name, out int vfunc_id) {
 			vfunc_id = -1;
 			switch (name) {
 ");
