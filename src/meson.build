@@ -895,9 +895,6 @@ st_rpc_lib = shared_library(
 # Same split as the Clutter boxed library: St records stay out of the
 # Shell GIR compilation. The server has no St vapi, so it does not
 # link this.
-# St.Widget.rpc_construct overrides Clutter.Actor. libmutter-16.deps
-# loads system mutter-clutter-16, a second Clutter namespace, so this
-# target uses mutter-clutter-rpc-16 and gsr-rpc-16.
 gsr_st_boxed_lib = static_library(
   'gsr-st-boxed',
   'boxed/namespace.vala',
@@ -907,34 +904,13 @@ gsr_st_boxed_lib = static_library(
     dependency('gee-0.8'),
     dependency('graphene-gobject-1.0'),
     dependency('gdk-pixbuf-2.0'),
-    dependency('mutter-mtk-16'),
-    dependency('mutter-cogl-16'),
-    dependency('gio-2.0'),
-    dependency('gobject-2.0'),
-    dependency('glib-2.0'),
-    dependency('atk'),
-    dependency('pango'),
-    dependency('cairo'),
-    dependency('x11'),
-    dependency('json-glib-1.0'),
-  ],
+  ] + mutter_dep,
   link_with: st_rpc_lib,
-  vala_args: ocrpc_vala_args + [
-    '--pkg=mutter-clutter-rpc-16',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
-    '--pkg=gobject-introspection-1.0',
-    '--pkg=xfixes-4.0',
-    '--pkg=gdesktopenums-3.0',
-    '--pkg=posix',
+  vala_args: mutter_vala_args + ocrpc_vala_args + [
     '--pkg=gee-0.8',
     '--pkg=graphene-gobject-1.0',
-    '--pkg=gsr-rpc-16',
     '--pkg=st-rpc-16',
-    '--vapidir', meson.project_build_root() / 'vapi',
-    '--vapidir', meson.project_source_root() / 'vapi',
     '--vapidir', meson.current_build_dir(),
-    '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
   ],
   c_args: [
     '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',

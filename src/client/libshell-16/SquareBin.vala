@@ -2,19 +2,22 @@
  * Owned {@code Shell.SquareBin} — stock shell-square-bin (0.7.7 T-033).
  *
  * Extends {@link St.Bin}. Preferred width follows preferred height.
- * {@code rpc_construct} leases {@code Gsr-St-SquareBin.new}.
- * A GJS subclass inherits this override.
+ * {@link Clutter.Actor} construct leases {@code Gsr-St-SquareBin.new}
+ * for this type. This construct does that only when nothing
+ * is leased yet.
  */
 namespace Shell
 {
 	public class SquareBin : St.Bin
 	{
-		/**
-		 * Square peer. {@code St-Bin.new} stays a plain bin.
-		 * {@code Actor.construct} subscribes signals after this.
-		 */
-		public override void rpc_construct()
-		{
+		construct {
+			if (this.rpc_lid != 0) {
+				return;
+			}
+			var t = this.get_type();
+			if (t != typeof(SquareBin) && !t.name().has_prefix("Gjs_")) {
+				return;
+			}
 			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-St-SquareBin.new", null,
 				OLLMrpc.args("t", (uint64) 0));

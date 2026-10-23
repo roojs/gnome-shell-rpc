@@ -1,12 +1,12 @@
 # Actor construct lease is a switch
 
-**Status:** ✔️ applied, then a Wayland regression. `Gjs_ui_barLevel_BarLevel` and `Gjs_ui_slider_Slider` stay at `rpc_lid` 0. Exact `St.DrawingArea` still leases. Not user-confirmed.
+**Status:** ⏳ open. The full refactor proposal below was applied as one change, caused major constructor-order regressions, and was backed out. Product source is restored to the pre-refactor `2e70d04` constructor semantics. The restored baseline builds and reached `weston-gsr-autolaunch: prove ec=0`.
 
-**Next:** The constructor fallback did not change what the session shows. Log `~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log` session `09:05:11`. App grid: `createIcon in BaseIcon` 168 times, first at `09:05:12.937074`. Overview: `ClutterActorBox` undefined and `clutter_margin_copy` missing at `09:05:20.541775`. One `create_launcher`, at startup `09:05:13.621268`.
+**Next:** Reapply the existing [Proposed changes](#proposed-changes) in parts to identify which step introduces each regression. Apply one section or switch arm at a time, then rebuild and pass the focused gate and Weston proof before proceeding.
 
-Child, not applied: [`2026-10-23-construct-style-during-init.md`](2026-10-23-construct-style-during-init.md). Signal `rpc_lease`, no body. Handlers connect with `Signal.override_class_handler`.
+The separate child `2026-10-23-construct-style-during-init.md` has been removed. This document remains the planning and effort-history surface for the refactor.
 
-**Proposal:** ✔️ applied. [Proposed changes](#proposed-changes). Each special class overrides `rpc_construct`. The default walk only calls `alias + ".new"`. A parent calls `base.rpc_construct()` when a derived type is the registered one, so `St.Button` still gets `St-Button.new`. Two deviations are in the 08:30 effort.
+**Proposal:** ⚠️ tried and reverted. [Proposed changes](#proposed-changes). Each special class overrides `rpc_construct`. The default walk only calls `alias + ".new"`. A parent calls `base.rpc_construct()` when a derived type is the registered one, so `St.Button` still gets `St-Button.new`. It must now be reapplied incrementally; the failed wholesale application and regression findings remain recorded in [LLM efforts](#llm-efforts).
 
 Split from [`done/2026-10-12-applications-picker-not-working.md`](done/2026-10-12-applications-picker-not-working.md).
 
@@ -990,3 +990,11 @@ The signal is `rpc_lease`. Nothing runs inside the declaration. `Actor.construct
 ### 2026-10-23 10:14 signal taken back out
 
 That signal was written into `src/` and removed. It is a GIR symbol unless the generator emits `[CCode (gir = false)]`. Left in the child proposal.
+
+### 2026-10-23 16:32 restored baseline and proposal
+
+Product source was rolled forward back to the pre-refactor `2e70d04` constructor semantics. The separate child `2026-10-23-construct-style-during-init.md` was removed, and the complete proposal and effort history were restored here as the only planning surface.
+
+`meson compile -C build` passed. `./scripts/weston-gsr-prove.sh` reached `weston-gsr-autolaunch: prove ec=0`; the wrapper then stopped Weston and exited 137 as part of that stop. The later end-of-stream and `no rpc_lid` flood is teardown after the successful prove, not the live acceptance result.
+
+Future work must apply the proposal gradually, one section or switch arm at a time. Before each product stage, add a focused gate for that arm; after each stage, rebuild and pass the Weston proof before proceeding.

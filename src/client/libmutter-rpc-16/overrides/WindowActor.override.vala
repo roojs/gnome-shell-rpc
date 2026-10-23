@@ -1,21 +1,4 @@
 		/**
-		 * Helper peer. There is no {@code Meta-WindowActor.new}.
-		 * A registered derived type uses the base walk.
-		 */
-		public override void rpc_construct()
-		{
-			var t = this.get_type();
-			while (t != GLib.Type.INVALID && t != typeof(WindowActor)) {
-				if (OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
-					base.rpc_construct();
-					return;
-				}
-				t = t.parent();
-			}
-			this.create_with_overrides();
-		}
-
-		/**
 		 * Set when hydrating a leased window actor
 		 * ({@link Window.get_compositor_private},
 		 * {@link Compositor.get_window_actors}). Unset means the getter

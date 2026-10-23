@@ -6,11 +6,13 @@
 		public int monitor { get; construct; }
 
 		/**
-		 * Null-arg {@code Meta-BackgroundActor.new} is -32602.
-		 * Lease the Helper. Bind the content peer it returns.
+		 * Actor parent-walk defers here (null-arg {@code .new} is -32602).
+		 * Wire import already has {@code rpc_lid} — skip remint.
 		 */
-		public override void rpc_construct()
-		{
+		construct {
+			if (this.rpc_lid != 0) {
+				return;
+			}
 			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-BackgroundActor.create",
 				null,
