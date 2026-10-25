@@ -81,18 +81,6 @@
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			switch (alias) {
-				case "St-Widget":
-					/* Widget.rpc_construct already leased an exact
-					   widget. A later entry must not mint again. */
-					if (this.rpc_lid != 0) {
-						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-						this.prop_batch_open = true;
-						return;
-					}
-					this.create_with_overrides();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
 				case "St-Viewport":
 					/* Exact Viewport uses St-Viewport.new below.
 					   A subclass leases ViewportActor.

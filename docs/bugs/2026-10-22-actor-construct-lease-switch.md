@@ -1,14 +1,14 @@
 # Actor construct lease is a switch
 
-**Status:** ⏳ open. The `Meta-WindowActor` label is out of the switch. `help-click-smoke: ok` at 11:23:34.617. yelp `state=2`, `windows=1`, `normal=1`. No `Meta-WindowActor.new`.
+**Status:** ⏳ open. The `St-Widget` arm is out of the switch. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. No `St-Widget.new`.
 
 ## Purpose
 
 - 🔷 Delete the switch in `Actor.rpc_construct` (`src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala`).
-- 🔷 ⏳ One deletion, then `GI_META_SMOKE=help-click/ui/init ./scripts/agent-nested-smoke-prove.sh`. Pass line is `help-click-smoke: ok`.
+- 🔷 ⏳ Each arm names the activity that added it. The pass for that phase is that activity. The Help click does not stand in for it.
 - ✔️ Phase 1 deleted the `Clutter-Clone`, `Meta-BackgroundActor`, and `St-DrawingArea` returns together. `help-click-smoke: ok` at 11:06:42.046.
 - ✔️ The `Meta-WindowActor` label is out. `help-click-smoke: ok` at 11:23:34.617. No `Meta-WindowActor.new`. The `-32602` lines in that log are `St-Widget.set_label_actor`.
-- 🔷 ⏳ Phase 3 is the `St-Widget` arm, on its own.
+- ✔️ The `St-Widget` arm is out. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`.
 
 ## What we have
 
@@ -26,18 +26,6 @@
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			switch (alias) {
-				case "St-Widget":
-					/* Widget.rpc_construct already leased an exact
-					   widget. A later entry must not mint again. */
-					if (this.rpc_lid != 0) {
-						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-						this.prop_batch_open = true;
-						return;
-					}
-					this.create_with_overrides();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
 				case "St-Viewport":
 					/* Exact Viewport uses St-Viewport.new below.
 					   A subclass leases ViewportActor.
@@ -121,6 +109,9 @@
 ## Phase 1 — delete the three returns
 
 - ✔️ The `Clutter-Clone`, `Meta-BackgroundActor`, and `St-DrawingArea` cases are gone. Each class already leases in its own `rpc_construct` and does not call the base. `help-click-smoke: ok` at 11:06:42.046. `Clutter-Clone.new` 2. `Gsr-Mutter-BackgroundActor.create` 15. `Gsr-St-DrawingArea.create` 5. `St-DrawingArea.new` 9. No `Meta-BackgroundActor.new`.
+- ℹ️ `St-DrawingArea` is the quick settings bars. `BarLevel` and `Slider` stayed at `rpc_lid` 0 when this lease was missing (session `08:21:24` in this file). The activity is those sliders having a height. `tests/gjs-embed/slider-grab-smoke.js` drives two sliders.
+- ℹ️ `Clutter-Clone` is a window clone. A null-arg `Clutter-Clone.new` is `-32602`. The 2026-10-24 overview prove did not construct a Clone. The activity is an overview window thumbnail.
+- ℹ️ `Meta-BackgroundActor` is the desktop background. A null-arg `.new` is `-32602`. It needs the display and the monitor. The activity is the wallpaper on screen after boot.
 - 🔷 Pass is `help-click-smoke: ok`.
 - 💩 If `Clutter-Clone.new` or `Meta-BackgroundActor.new` comes back `-32602`, or `Gsr-St-DrawingArea.create` or `St-DrawingArea.new` drops to zero, the switch was still the mint. Put the cases back.
 
@@ -143,6 +134,7 @@
 ## Phase 2 — delete the `Meta-WindowActor` case
 
 - ✔️ The label is gone. `Meta.WindowActor.rpc_construct` still leases, then calls the base. `help-click-smoke: ok` at 11:23:34.617. yelp `state=2`, `windows=1`, `normal=1`. No `Meta-WindowActor.new`.
+- ℹ️ This is the compositor actor for a real window. There is no `Meta-WindowActor.new`. The 11:23 Help log has no `WindowActor` line, so that click did not show this lease. The activity is a window mapped on screen.
 - 💩 This label shares its body with `St-Widget`. Removing the label lets `Meta-WindowActor` fall through to the stock `alias + ".new"` path. A lease that already exists hits the `rpc_lid` check under the switch and only subscribes signals.
 - 🔷 Pass is `help-click-smoke: ok`.
 - 💩 `-32602` on `Meta-WindowActor.new` means the switch was still the mint. Put the label back.
@@ -162,8 +154,16 @@
 
 ## Phase 3 — delete the `St-Widget` arm
 
+- ✔️ The `St-Widget` arm is gone. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `visible=true`, `mapped=true`, `items=147`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`. Prove exit 137 is the wrapper timeout. That pass line is not in `SMOKE_OK_PAT`.
+
+```bash
+GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 \
+  GSR_NESTED_TIMEOUT=90 ./scripts/agent-nested-smoke-prove.sh
+```
+
+That is `tests/gjs-embed/shell-boot/ui/init.js`, which imports `applications-picker-smoke.js`. Direct `GI_META_SMOKE=applications-picker-smoke` never reaches the grid. The pass line is in the log. It is not in `SMOKE_OK_PAT`, so the prove exit code is not the pass. A miss on this arm is `applications-picker-smoke: miss state`.
 - 🔷 ⏳ Depends on phase 2. `St.Widget.rpc_construct` already leases an exact widget, then calls the base. A registered subclass such as `St.Button` is not this arm. Its alias is `St-Button`, and that stays `alias + ".new"`.
-- 🔷 Pass is `help-click-smoke: ok`.
+- ℹ️ The click in that smoke is the Show Applications button (`Gjs_ui_dash_ShowAppsIcon`). The 12:29 log sent that type, and `Gjs_ui_layout_UiActor`, through this arm (`Gsr-Clutter-Actor.create`).
 - 💩 If an exact `St.Widget` reaches this with `rpc_lid` still 0, it would call `St-Widget.new` instead of `create_with_overrides`. Put the arm back.
 
 #### Remove
@@ -193,7 +193,8 @@
 ## Phase 4 — delete the `St-Viewport` arm
 
 - 🔷 ⏳ Depends on phase 3. Exact `St.Viewport` already falls through to `St-Viewport.new`. A subclass is leased by `St.Viewport.rpc_construct` before the base runs.
-- 🔷 Pass is `help-click-smoke: ok`.
+- ℹ️ Show Applications. The app grid is a GJS `St.Viewport`. The page stayed `0x0` until a subclass leased `ViewportActor` and `allocate` ran. Record: `docs/bugs/done/2026-10-12-applications-picker-not-working.md`. Changing page is still `docs/bugs/2026-10-22-app-grid-pagination.md`.
+- 🔷 ⏳ Same command as phase 3. Needs to pass `applications-picker-smoke: ok`. A miss on this arm is `applications-picker-smoke: miss page-size`.
 - 💩 If `Gsr-St-Viewport.create` drops to zero, the arm was still the mint. Put it back.
 
 #### Remove
@@ -226,8 +227,9 @@
 
 ## Phase 5 — delete the `St-Bin` arm
 
-- 🔷 ⏳ Depends on phase 4. This is the Help icon. `Shell.SquareBin.rpc_construct` already leases `Gsr-St-SquareBin.new`, then calls the base. Exact `St.Bin` falls through to `St-Bin.new`.
-- 🔷 Pass is `help-click-smoke: ok`.
+- 🔷 ⏳ Depends on phase 4. `Shell.SquareBin.rpc_construct` already leases `Gsr-St-SquareBin.new`, then calls the base. Exact `St.Bin` falls through to `St-Bin.new`.
+- ℹ️ Show Applications icons. Added 2026-10-22 in the same picker record. Without this lease the icons overlapped and the labels were one character wide. The Help dash icon is the same type, which is why that click sees it. The activity that added the arm is the app grid icons.
+- 🔷 ⏳ Same command as phase 3. Needs to pass `applications-picker-smoke: ok`. A miss on this arm is `applications-picker-smoke: miss overlap`.
 - 💩 If `Gsr-St-SquareBin.new` drops, or `base-child` is null, the arm was still the mint. Put it back.
 
 #### Remove
@@ -279,10 +281,11 @@
 ## Phase 6 — `Clutter-Actor` leaves the switch
 
 - 🔷 ⏳ Depends on phase 5. This arm is last, on its own.
-- 💩 It does not become `Clutter-Actor.new`. An unregistered subclass still uses `create_with_overrides`. Exact `Actor` uses `alias + ".new"`, which is the path already under the switch.
-- 🔷 Pass is `help-click-smoke: ok`.
+- ℹ️ A GJS or Vala actor that is not a registered St type. The arm comment says those need the helper hooks. Exact `Actor` uses `.new`. The boot count of those helpers is in `docs/bugs/done/2026-09-29-rpc-call-volume.md`. The activity is the shell finishing boot with its plain actors.
+- 💩 It does not become `Clutter-Actor.new`. An unregistered subclass still uses `create_with_overrides`.
+- 🔷 ⏳ Same command as phase 3. Needs to pass `applications-picker-smoke: ok`. A miss on this arm is `applications-picker-smoke: miss controls`.
 - 🔷 The `queue_relayout` compare in `Actor.construct` stays. User 2026-10-24.
-- ℹ️ `alias + ".new"` stays. That is `St-Button.new` and the other stock constructors. It is not one of these deletions.
+- ℹ️ `alias + ".new"` stays. That is `St-Button.new` for the dash and the other buttons. It is not one of these deletions.
 
 #### Remove
 
@@ -622,3 +625,7 @@ The square arm returns when `rpc_lid != 0`, before `Gsr-St-SquareBin.new`. The c
 ### 2026-10-25 11:23 Meta-WindowActor label removed
 
 The `Meta-WindowActor` case label is gone. The `St-Widget` body stays. `meson compile -C build` passed. `GI_META_SMOKE=help-click/ui/init ./scripts/agent-nested-smoke-prove.sh`. `help-click-smoke: ok` at 11:23:34.617. yelp `state=2`, `windows=1`, `normal=1`. No `Meta-WindowActor.new`. The `-32602` lines are `St-Widget.set_label_actor`. No `actor is null`.
+
+### 2026-10-25 11:42 St-Widget arm removed
+
+The `St-Widget` case is gone. `St.Widget.rpc_construct` still leases an exact widget and an unregistered subclass with `create_with_overrides`, then calls the base. The base walk, with `rpc_lid` already set, subscribes signals and does not mint. `meson compile -C build` passed. `GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 GSR_NESTED_TIMEOUT=90 ./scripts/agent-nested-smoke-prove.sh`. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`. Prove exit 137 is the wrapper timeout.
