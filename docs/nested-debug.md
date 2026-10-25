@@ -15,17 +15,14 @@ file) for the prove-script line, **not** the last RPC in the client log.
 
 | Log line | What happened | Crash? |
 | -------- | ------------- | ------ |
-| `nested-weston-prove: stop (prepare-started)` | Script saw `Meta.is_restart` (A4) and **SIGKILL**’d the tree | **No** |
-| `nested-weston-prove: stop (READY=1+settle)` | Script waited `GSR_NESTED_SETTLE` after `READY=1`, then **SIGKILL** | **No** |
+| `nested-weston-prove: stop (picker-up)` | Overview page was up (`GNOME Shell started at`), script held a few seconds, then **SIGKILL** | **No** |
+| `nested-weston-prove: stop (prepare-started)` | Old script saw `Meta.is_restart` and **SIGKILL**’d before the overview was up | **No** |
 | `nested-weston-prove: stop (smoke-ok)` | Named smoke printed `…: ok` / `…: done` | **No** |
 | `nested-weston-prove: stop (timeout)` | Hit `GSR_NESTED_TIMEOUT` — nest was still running | **No** (bar may still be wrong) |
 | `nested-weston-prove: mutter exited ec=N` | Mutter actually exited. **Then** decode `N` | Maybe |
 | `nested-weston-hold: mutter exited ec=N` | Session/hold — **no** settle SIGKILL | Maybe |
 
-`./scripts/weston-gsr-prove.sh` **always** early-stops on A4 unless you set
-`GSR_NESTED_STAYUP=1` or `GSR_NESTED_NO_A4=1`. The script even says: early
-stop SIGKILLs mutter; the client log then looks like a crash (socket closed,
-pending RPC).
+`./scripts/weston-gsr-prove.sh` stops a few seconds after the overview page is up (`GNOME Shell started at` in the log). It does not stop on `Meta.is_restart`. `GSR_NESTED_STAYUP=1` runs until the nest timeout instead. The stop still **SIGKILL**s mutter; the client log then looks like a crash (socket closed, pending RPC).
 
 **Stay-up look** (did the nest die on its own?):
 

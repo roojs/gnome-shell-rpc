@@ -90,7 +90,7 @@ To force the flow, edit the shell JavaScript the client actually loads, and in t
 
 Those edits are the reproduction harness. They trigger the path and end the run. They are not the permanent change, and `vendor/gnome-shell/` is not the place to keep them.
 
-Read the stop reason at the end of `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log` before treating a death as a crash. [`nested-debug.md`](nested-debug.md). `stop (prepare-started)`, `stop (READY=1+settle)`, `stop (smoke-ok)`, and `stop (timeout)` are the script ending the nest.
+Read the stop reason at the end of `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log` before treating a death as a crash. [`nested-debug.md`](nested-debug.md). `stop (picker-up)`, `stop (smoke-ok)`, and `stop (timeout)` are the script ending the nest. `picker-up` means the overview page was on screen.
 
 Stage 3 is done when that log shows the same failure. Write the command and the line into the top of the bug file, and append the run under `## LLM efforts`. Leave `src/` as it was.
 

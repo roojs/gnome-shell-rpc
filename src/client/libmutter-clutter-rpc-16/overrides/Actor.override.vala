@@ -36,14 +36,9 @@
 	}
 
 	/**
-	 * Lease like the generator parent-walk ({@code Actor.new} denied).
-	 * First Bin-registered ancestor; {@code St-Widget} and
-	 * {@code Meta-WindowActor} → {@code this.create_with_overrides()}.
-	 *
-	 * {@code Meta-BackgroundActor}: leave {@code rpc_lid == 0} for the leaf
-	 * Helper construct. Stock ctor needs display+monitor; null-arg
-	 * {@code Meta-BackgroundActor.new} is -32602. Do not walk to
-	 * {@code Clutter-Actor} (wrong peer / double mint).
+	 * Local {@code new} calls the chain. That calls
+	 * {@link rpc_construct}, which still holds the lease switch.
+	 * Wire import already has {@code rpc_lid} and returns first.
 	 */
 	construct {
 		this.signal_queue_relayout.connect(() => {
@@ -60,6 +55,23 @@
 		if (this.rpc_lid != 0) {
 			return;
 		}
+		clutter_actor_rpc_construct_chain(this);
+	}
+
+	/**
+	 * Lease like the generator parent-walk ({@code Actor.new} denied).
+	 * The chain calls this function for every class that has not
+	 * overridden it. First Bin-registered ancestor;
+	 * {@code St-Widget} and {@code Meta-WindowActor} →
+	 * {@code this.create_with_overrides()}.
+	 *
+	 * {@code Meta-BackgroundActor}: leave {@code rpc_lid == 0} for the leaf
+	 * Helper construct. Stock ctor needs display+monitor; null-arg
+	 * {@code Meta-BackgroundActor.new} is -32602. Do not walk to
+	 * {@code Clutter-Actor} (wrong peer / double mint).
+	 */
+	protected virtual void rpc_construct()
+	{
 		var t = this.get_type();
 		while (t != GLib.Type.INVALID) {
 			if (OLLMrpc.Bin.gtype_to_alias == null
@@ -69,21 +81,29 @@
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			switch (alias) {
-				case "Meta-BackgroundActor": // leaf Helper
-				case "Clutter-Clone": // Clone.override new(source)
-				case "St-DrawingArea": // DrawingArea.construct
-					return;
-				case "Meta-WindowActor": // no Meta-WindowActor.new
 				case "St-Widget":
+					/* Widget.rpc_construct already leased an exact
+					   widget. A later entry must not mint again. */
+					if (this.rpc_lid != 0) {
+						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+						this.prop_batch_open = true;
+						return;
+					}
 					this.create_with_overrides();
 					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
 					this.prop_batch_open = true;
 					return;
 				case "St-Viewport":
 					/* Exact Viewport uses St-Viewport.new below.
-					   A subclass leases ViewportActor. */
+					   A subclass leases ViewportActor.
+					   Viewport.rpc_construct may already have leased. */
 					if (this.get_type() == t) {
 						break;
+					}
+					if (this.rpc_lid != 0) {
+						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+						this.prop_batch_open = true;
+						return;
 					}
 					this.create_viewport();
 					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
@@ -108,6 +128,13 @@
 					if (!square) {
 						break;
 					}
+					/* Already leased, including by SquareBin.rpc_construct.
+					   Subscribe once. A second mint drops the child. */
+					if (this.rpc_lid != 0) {
+						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+						this.prop_batch_open = true;
+						return;
+					}
 					var response = Gsr.Client.Rpc.call_value("Gsr-St-SquareBin.new", null,
 						OLLMrpc.args("t", (uint64) 0));
 
@@ -128,6 +155,11 @@
 				default:
 					break;
 			}
+			if (this.rpc_lid != 0) {
+				this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+				this.prop_batch_open = true;
+				return;
+			}
 			var response = Gsr.Client.Rpc.call_value(alias + ".new");
 			this.rpc_lid =
 				(response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
@@ -139,6 +171,14 @@
 		GLib.error("lease construct: no Bin-registered ancestor for %s",
 			this.get_type().name());
 	}
+
+	/**
+	 * Call {@link rpc_construct} on this class, or on the
+	 * nearest parent class that has one. The object is
+	 * always this instance.
+	 */
+	[CCode (cname = "clutter_actor_rpc_construct_chain")]
+	public static extern void clutter_actor_rpc_construct_chain(Actor self);
 
 	protected bool helper_attached;
 	bool relayout_queued;
@@ -159,7 +199,7 @@
 
 	internal bool prop_batch_open = false;
 
-	void create_with_overrides()
+	protected void create_with_overrides()
 	{
 		Gsr.Client.Rpc.hook_rows =
 			new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
@@ -288,7 +328,7 @@
 	 * {@link Gsr.Server.St.ViewportActor}. Only {@code allocate}
 	 * is hooked. {@code helper_attached} stays false.
 	 */
-	void create_viewport()
+	protected void create_viewport()
 	{
 		Gsr.Client.Rpc.hook_rows = new Gee.ArrayList<Gsr.Client.Rpc.InvokeRow>();
 		var overridden = Gsr.Client.Rpc.VfuncRelay.overridden(

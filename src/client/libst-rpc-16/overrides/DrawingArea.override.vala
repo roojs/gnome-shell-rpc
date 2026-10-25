@@ -28,12 +28,23 @@
 			Gsr.Client.Rpc.call_value("Gsr-St-DrawingArea.queue_repaint", this);
 		}
 
-		construct {
-			if (this.rpc_lid == 0) {
-				var subclass = this is DrawingArea
-					&& this.get_type() != typeof(DrawingArea);
-				this.open_drawing_area_lease(subclass);
+		/**
+		 * The chain stops on this class for a drawing area and for
+		 * a JavaScript subclass whose own slot differs.
+		 * {@link Clutter.Actor.open_drawing_area_lease} leases and
+		 * subscribes signals. {@code construct} only watches repaint
+		 * on a subclass that already has a lease.
+		 */
+		public override void rpc_construct()
+		{
+			if (this.rpc_lid != 0) {
+				return;
 			}
+			var subclass = this.get_type() != typeof(DrawingArea);
+			this.open_drawing_area_lease(subclass);
+		}
+
+		construct {
 			if (this.rpc_lid == 0 || this.get_type() == typeof(DrawingArea)) {
 				return;
 			}

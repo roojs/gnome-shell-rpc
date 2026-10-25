@@ -8,17 +8,17 @@
 #
 # Env:
 #   GSR_MUTTER_RPC=…/build/src/mutter-rpc
-#   GSR_NESTED_TIMEOUT=25          # hard cap (seconds) — used by weston-gsr-prove.sh
-#   GSR_NESTED_SETTLE=10           # seconds after READY=1 before stop (A4 window)
-#   GSR_NESTED_STAYUP=1            # no READY+settle / A4 early-stop — run to TIMEOUT
+#   GSR_NESTED_TIMEOUT=35          # hard cap (seconds) — used by weston-gsr-prove.sh
+#   GSR_NESTED_STAYUP=1            # no picker stop — run to TIMEOUT
 #                                  # (stay-up; or use weston-gsr-session.sh hold)
 #   GSR_MUTTER_WAYLAND_DISPLAY=wayland-mutter-gsr
 #   GI_RPC_JS_OVERRIDE_DIR=…     # optional debug overlay only — do not default
 #   GI_META_SMOKE=key-smoke      # optional gjs-embed smoke (B1); early-stop on ok
 #
 # Prefer: ./scripts/weston-gsr-prove.sh (short) or ./scripts/weston-gsr-session.sh (hold).
-# Stops early on A4 marker (when defined), smoke ok, or READY=1 + settle — does not
-# sit idle for the full timeout when init already passed the bar.
+# Stops when the overview page is up (bottom bar finished rising), then holds
+# a few seconds so the calls on that page are in the log. Smoke ok still stops
+# first. Stay-up runs to the timeout.
 # ℹ️ Early stop SIGKILLs mutter — client log looks like a crash (socket closed,
 # pending RPC). Session/hold has no settle kill; if that dies, mutter exited for real.
 # Classify the stop before gdb: docs/nested-debug.md
@@ -36,13 +36,12 @@ fi
 if [[ -z "${GSR_TYPELIB_DIR:-}" ]]; then
 	export GSR_TYPELIB_DIR="$(dirname "$MUTTER_RPC")"
 fi
-TIMEOUT_SEC="${GSR_NESTED_TIMEOUT:-25}"
-SETTLE_SEC="${GSR_NESTED_SETTLE:-10}"
+TIMEOUT_SEC="${GSR_NESTED_TIMEOUT:-35}"
+# Seconds to keep the nest after the overview page is up.
+PICKER_HOLD_SEC="${GSR_NESTED_PICKER_HOLD:-3}"
 STAYUP=0
 if [[ "${GSR_NESTED_STAYUP:-0}" == "1" ]]; then
 	STAYUP=1
-	# Stay-up also skips A4 early-stop (same as GSR_NESTED_NO_A4=1).
-	export GSR_NESTED_NO_A4=1
 fi
 RT="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 # Mutter's own Wayland socket (must not collide with Weston's wayland-gsr).
@@ -53,17 +52,13 @@ TEE_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/gnome-shell-rpc/nested-weston-prove.tee
 # Truncate so stale A4 / smoke markers from prior runs cannot early-stop.
 : >"$CLIENT_LOG"
 : >"$TEE_LOG"
-# Stock path: Server-Rpc-SpawnClient.is_restart means _prepareStartupAnimation ran (A4 proxy until
-# a non-override startup-complete marker exists).
-# GSR_NESTED_NO_A4=1 — keep running after A4 (stay-up / post-READY extension spawn).
-A4_PAT='method=Server-Rpc-SpawnClient\.is_restart'
-if [[ "${GSR_NESTED_NO_A4:-0}" == "1" ]]; then
-	A4_PAT='__gsr_no_a4_early_stop__'
-fi
+# layout.js emits startup-complete after the dash has risen. main.js then logs
+# this line. That is the overview page with the bottom bar, not an earlier boot marker.
+PICKER_PAT='GNOME Shell started at'
 # Phase B1/B2: GI_META_SMOKE=key-smoke → key-smoke: ok
 # Phase B3: GI_META_SMOKE=panel-click-smoke → panel-click-smoke: ok
 # Phase B4: GI_META_SMOKE=focus-smoke → focus-smoke: ok
-SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok|focus-smoke: ok|meta-smoke: put:|layout-allocate-smoke: done|constraint-allocate-smoke: done|actor-allocate-box-smoke: done|adjustment-animatable-smoke: done|layout-expansion-smoke: done|startup-allocate-smoke: done|workspace-dot-align-smoke: done|transformed-geom-smoke: done|allocate-segv-smoke: done|interval-peek-smoke: done|st-temp-smoke: ok|captured-event-smoke: ok|workspace-background-allocate-smoke: done|workarea-panel-inset-smoke: done|workarea-panel-chrome-smoke: done|workarea-reentrant-emit-smoke: done|app-search-smoke: done|app-launch-boundary-smoke: ok|wayland-launch-smoke: ok|date-menu-open-smoke: ok|style-reenter-smoke: ok|dash-hover-style-smoke: ok|quicksettings-layout-neg-smoke: ok|picker-second-launch: ok|thumbnail-smoke: ok|drawing-area-reenter-smoke: ok|drawing-area-smoke: ok|slider-grab-smoke: ok|workspace-select-smoke: ok|overview-window-activate-smoke: ok|overview-thumbnail-drag-smoke: ok|scale-transition-gap-smoke: ok|overview-search-double-key: ok|viewport-scroll-child-smoke: done|viewport-scroll-child-smoke: ok)'
+SMOKE_OK_PAT='(key-smoke: ok|panel-click-smoke: ok|focus-smoke: ok|meta-smoke: put:|layout-allocate-smoke: done|constraint-allocate-smoke: done|actor-allocate-box-smoke: done|adjustment-animatable-smoke: done|layout-expansion-smoke: done|startup-allocate-smoke: done|workspace-dot-align-smoke: done|transformed-geom-smoke: done|allocate-segv-smoke: done|interval-peek-smoke: done|st-temp-smoke: ok|captured-event-smoke: ok|workspace-background-allocate-smoke: done|workarea-panel-inset-smoke: done|workarea-panel-chrome-smoke: done|workarea-reentrant-emit-smoke: done|app-search-smoke: done|app-launch-boundary-smoke: ok|wayland-launch-smoke: ok|date-menu-open-smoke: ok|style-reenter-smoke: ok|dash-hover-style-smoke: ok|quicksettings-layout-neg-smoke: ok|picker-second-launch: ok|help-click-smoke: ok|thumbnail-smoke: ok|drawing-area-reenter-smoke: ok|drawing-area-smoke: ok|slider-grab-smoke: ok|workspace-select-smoke: ok|overview-window-activate-smoke: ok|overview-thumbnail-drag-smoke: ok|scale-transition-gap-smoke: ok|overview-search-double-key: ok|viewport-scroll-child-smoke: done|viewport-scroll-child-smoke: ok)'
 # When proving a smoke script, do not early-stop on A4 (init is not running).
 SMOKE_MODE=0
 if [[ -n "${GI_META_SMOKE:-}" && "${GI_META_SMOKE}" != "init" && "${GI_META_SMOKE}" != "init.js" ]]; then
@@ -84,7 +79,7 @@ if [[ -z "${DISPLAY:-}" ]]; then
 	exit 2
 fi
 
-echo "nested-weston-prove: DISPLAY=$DISPLAY weston=$WESTON_WL mutter_wl=$MUTTER_WL timeout=${TIMEOUT_SEC}s settle=${SETTLE_SEC}s${STAYUP:+ stayup=1}${GI_META_SMOKE:+ smoke=$GI_META_SMOKE}${GI_RPC_JS_OVERRIDE_DIR:+ override=$GI_RPC_JS_OVERRIDE_DIR}"
+echo "nested-weston-prove: DISPLAY=$DISPLAY weston=$WESTON_WL mutter_wl=$MUTTER_WL timeout=${TIMEOUT_SEC}s picker_hold=${PICKER_HOLD_SEC}s${STAYUP:+ stayup=1}${GI_META_SMOKE:+ smoke=$GI_META_SMOKE}${GI_RPC_JS_OVERRIDE_DIR:+ override=$GI_RPC_JS_OVERRIDE_DIR}"
 
 stop_tree() {
 	local pid="$1"
@@ -193,12 +188,12 @@ dbus-run-session --config-file="$DBUS_CONFIG" -- \
 MPID=$!
 
 deadline=$((SECONDS + TIMEOUT_SEC))
-ready_at=""
+picker_at=""
 reason="timeout"
 
-seen_a4() {
-	rg -q "$A4_PAT" "$CLIENT_LOG" 2>/dev/null \
-		|| rg -q "$A4_PAT" "$TEE_LOG" 2>/dev/null
+seen_picker() {
+	rg -q "$PICKER_PAT" "$CLIENT_LOG" 2>/dev/null \
+		|| rg -q "$PICKER_PAT" "$TEE_LOG" 2>/dev/null
 }
 
 seen_smoke_ok() {
@@ -248,17 +243,12 @@ while kill -0 "$MPID" 2>/dev/null; do
 		sleep 0.2
 		break
 	fi
-	if [[ "$SMOKE_MODE" -eq 0 ]] && seen_a4; then
-		reason="prepare-started"
-		sleep 0.3
-		break
+	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ "$STAYUP" -eq 0 ]] && [[ -z "$picker_at" ]] && seen_picker; then
+		picker_at=$SECONDS
+		echo "nested-weston-prove: overview up — hold ${PICKER_HOLD_SEC}s"
 	fi
-	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ "$STAYUP" -eq 0 ]] && [[ -z "$ready_at" ]] && [[ -f "$CLIENT_LOG" ]] && rg -q 'READY=1' "$CLIENT_LOG" 2>/dev/null; then
-		ready_at=$SECONDS
-		echo "nested-weston-prove: READY=1 — settle ${SETTLE_SEC}s for prepare/startup"
-	fi
-	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ "$STAYUP" -eq 0 ]] && [[ -n "$ready_at" ]] && [[ $((SECONDS - ready_at)) -ge $SETTLE_SEC ]]; then
-		reason="READY=1+settle"
+	if [[ "$SMOKE_MODE" -eq 0 ]] && [[ "$STAYUP" -eq 0 ]] && [[ -n "$picker_at" ]] && [[ $((SECONDS - picker_at)) -ge $PICKER_HOLD_SEC ]]; then
+		reason="picker-up"
 		break
 	fi
 	sleep 0.2

@@ -10,6 +10,31 @@ namespace Shell
 {
 	public class SquareBin : St.Bin
 	{
+		/**
+		 * Square peer for this class and a GJS subclass.
+		 * A later call sees {@code rpc_lid} and returns.
+		 * {@code base.rpc_construct} is the switch: the
+		 * square arm skips the mint and subscribes signals.
+		 */
+		public override void rpc_construct()
+		{
+			if (this.rpc_lid != 0) {
+				return;
+			}
+			var t = this.get_type();
+			if (t != typeof(SquareBin) && !t.name().has_prefix("Gjs_")) {
+				base.rpc_construct();
+				return;
+			}
+			var response = Gsr.Client.Rpc.call_value(
+				"Gsr-St-SquareBin.new", null,
+				OLLMrpc.args("t", (uint64) 0));
+			var stub = response.retval.get_object() as OLLMrpc.Live.Interface;
+			this.rpc_lid = stub.rpc_lid;
+			Gsr.Client.Rpc.register_handle(this);
+			base.rpc_construct();
+		}
+
 		construct {
 			if (this.rpc_lid != 0) {
 				return;

@@ -3,12 +3,12 @@
 #
 #   ./scripts/weston-gsr-prove.sh
 #
-# Nest timeout 25s / settle 10s after READY=1 (debug logging is slow; do not
-# stop on READY alone before prepare/A4 can run). Hard wall = 40s.
+# Stays up until the overview page is on screen, then a few seconds.
+# Nest timeout 35s. Hard wall = 50s.
 #
-# Early-stop still wins if A4 marker appears. Hold without auto-kill:
+# Hold without auto-kill:
 # ./scripts/weston-gsr-session.sh
-# Stay-up (no READY/A4 early-stop, run to nest timeout):
+# Stay-up (run to nest timeout, do not stop when the overview is up):
 #   GSR_NESTED_STAYUP=1 ./scripts/weston-gsr-prove.sh
 # Classify prove SIGKILL vs real death before gdb: docs/nested-debug.md
 set -euo pipefail
@@ -16,6 +16,5 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export GSR_WESTON_MODE=prove
 export GSR_WESTON_AUTO_CLOSE=1
-export GSR_NESTED_TIMEOUT="${GSR_NESTED_TIMEOUT:-25}"
-export GSR_NESTED_SETTLE="${GSR_NESTED_SETTLE:-10}"
-exec timeout --foreground -k 2 40 "$ROOT/scripts/weston-gsr-session.sh"
+export GSR_NESTED_TIMEOUT="${GSR_NESTED_TIMEOUT:-35}"
+exec timeout --foreground -k 2 50 "$ROOT/scripts/weston-gsr-session.sh"

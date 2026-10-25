@@ -1,3 +1,27 @@
+		/**
+		 * A registered subclass uses the base walk ({@code St-Button.new}
+		 * and the rest). Exact {@code St.Widget} leases the helper here.
+		 * The base arm subscribes signals and does not mint again.
+		 */
+		public override void rpc_construct()
+		{
+			if (this.rpc_lid != 0) {
+				base.rpc_construct();
+				return;
+			}
+			var t = this.get_type();
+			while (t != GLib.Type.INVALID && t != typeof(Widget)) {
+				if (OLLMrpc.Bin.gtype_to_alias != null
+						&& OLLMrpc.Bin.gtype_to_alias.has_key(t)) {
+					base.rpc_construct();
+					return;
+				}
+				t = t.parent();
+			}
+			this.create_with_overrides();
+			base.rpc_construct();
+		}
+
 		construct {
 			this.signal_style_changed.connect(() => {
 				this.style_changed_vfunc();

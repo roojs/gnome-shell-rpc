@@ -6,10 +6,12 @@
 		public int monitor { get; construct; }
 
 		/**
-		 * Actor parent-walk defers here (null-arg {@code .new} is -32602).
-		 * Wire import already has {@code rpc_lid} — skip remint.
+		 * Null-arg {@code Meta-BackgroundActor.new} is -32602.
+		 * Lease the Helper. Bind the content peer it returns.
+		 * A later call keeps the lease.
 		 */
-		construct {
+		public override void rpc_construct()
+		{
 			if (this.rpc_lid != 0) {
 				return;
 			}
