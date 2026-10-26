@@ -1,5 +1,11 @@
 # gnome-shell-rpc
 
+Demo of the current progress:
+
+<video src="https://github.com/user-attachments/assets/8fd6bb3f-5274-49bd-9db4-05b9de49607d" controls width="100%"></video>
+
+If the video does not display, [watch it here](https://github.com/user-attachments/assets/8fd6bb3f-5274-49bd-9db4-05b9de49607d).
+
 Today, GNOME Shell and Mutter run in one process: the shell’s JavaScript calls
 straight into the compositor. If the shell crashes, the whole session goes down.
 
