@@ -81,22 +81,6 @@
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			switch (alias) {
-				case "St-Viewport":
-					/* Exact Viewport uses St-Viewport.new below.
-					   A subclass leases ViewportActor.
-					   Viewport.rpc_construct may already have leased. */
-					if (this.get_type() == t) {
-						break;
-					}
-					if (this.rpc_lid != 0) {
-						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-						this.prop_batch_open = true;
-						return;
-					}
-					this.create_viewport();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
 				case "St-Bin":
 					// Exact bin uses St-Bin.new below. Shell.SquareBin leases the
 					// square peer before the icon is built.

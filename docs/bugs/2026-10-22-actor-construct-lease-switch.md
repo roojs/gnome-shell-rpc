@@ -8,7 +8,7 @@
 - 🔷 ⏳ Each arm names the activity that added it. The pass for that phase is that activity. The Help click does not stand in for it.
 - ✔️ Phase 1 deleted the `Clutter-Clone`, `Meta-BackgroundActor`, and `St-DrawingArea` returns together. `help-click-smoke: ok` at 11:06:42.046.
 - ✔️ The `Meta-WindowActor` label is out. `help-click-smoke: ok` at 11:23:34.617. No `Meta-WindowActor.new`. The `-32602` lines in that log are `St-Widget.set_label_actor`.
-- ✔️ The `St-Widget` arm is out. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`.
+- ✅ The `St-Widget` arm is out. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`.
 
 ## What we have
 
@@ -26,22 +26,6 @@
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
 			switch (alias) {
-				case "St-Viewport":
-					/* Exact Viewport uses St-Viewport.new below.
-					   A subclass leases ViewportActor.
-					   Viewport.rpc_construct may already have leased. */
-					if (this.get_type() == t) {
-						break;
-					}
-					if (this.rpc_lid != 0) {
-						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-						this.prop_batch_open = true;
-						return;
-					}
-					this.create_viewport();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
 				case "St-Bin":
 					// Exact bin uses St-Bin.new below. Shell.SquareBin leases the
 					// square peer before the icon is built.
@@ -154,7 +138,7 @@
 
 ## Phase 3 — delete the `St-Widget` arm
 
-- ✔️ The `St-Widget` arm is gone. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `visible=true`, `mapped=true`, `items=147`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`. Prove exit 137 is the wrapper timeout. That pass line is not in `SMOKE_OK_PAT`.
+- ✅ The `St-Widget` arm is gone. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `visible=true`, `mapped=true`, `items=147`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`. Prove exit 137 is the wrapper timeout. That pass line is not in `SMOKE_OK_PAT`.
 
 ```bash
 GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 \
@@ -195,6 +179,7 @@ That is `tests/gjs-embed/shell-boot/ui/init.js`, which imports `applications-pic
 - 🔷 ⏳ Depends on phase 3. Exact `St.Viewport` already falls through to `St-Viewport.new`. A subclass is leased by `St.Viewport.rpc_construct` before the base runs.
 - ℹ️ Show Applications. The app grid is a GJS `St.Viewport`. The page stayed `0x0` until a subclass leased `ViewportActor` and `allocate` ran. Record: `docs/bugs/done/2026-10-12-applications-picker-not-working.md`. Changing page is still `docs/bugs/2026-10-22-app-grid-pagination.md`.
 - 🔷 ⏳ Same command as phase 3. Needs to pass `applications-picker-smoke: ok`. A miss on this arm is `applications-picker-smoke: miss page-size`.
+- ℹ️ The overlap line is not this arm. With the arm out, the icon boxes stayed `145x145` for 45s (`redraw 0` through `redraw 44`, `matched=0`) and the page stayed `800x299`. With the arm back in, the same wait did the same thing: `145x145` for 45s, `late state` page `800x299`, `pickable=30`, `miss overlap` at 08:08:54.237. Preferred size stayed `73`. The shot after that wait shows the grid drawn. The arm is out.
 - 💩 If `Gsr-St-Viewport.create` drops to zero, the arm was still the mint. Put it back.
 
 #### Remove
@@ -629,3 +614,19 @@ The `Meta-WindowActor` case label is gone. The `St-Widget` body stays. `meson co
 ### 2026-10-25 11:42 St-Widget arm removed
 
 The `St-Widget` case is gone. `St.Widget.rpc_construct` still leases an exact widget and an unregistered subclass with `create_with_overrides`, then calls the base. The base walk, with `rpc_lid` already set, subscribes signals and does not mint. `meson compile -C build` passed. `GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 GSR_NESTED_TIMEOUT=90 ./scripts/agent-nested-smoke-prove.sh`. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`. Prove exit 137 is the wrapper timeout.
+
+### 2026-10-25 12:02 St-Viewport arm removed, grid overlaps
+
+The `St-Viewport` case is gone. `meson compile -C build` passed. Same picker command. `applications-picker-smoke: miss overlap` at 12:02:49.574. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. `Gsr-St-Viewport.create` 5. No `St-Viewport.new`. Settled icons `145x145` at a stride of about 88. Phase 3 settled `73x73` and logged ok. `Gsr-St-SquareBin.new` 168. A burst of `too much recursion` in `quickSettings.js` `_syncIndicatorsVisible` at 12:02:44. The shot at `~/.cache/gnome-shell-rpc/applications-picker.png` shows the icons piled up. The same deletion, run again, logged `miss overlap` at 12:14:25.126 with the same `145x145` boxes.
+
+### 2026-10-25 12:16 arm restored, same early grid
+
+The `St-Viewport` case was put back. Same picker command. Click at 12:16:15.803. `applications-picker-smoke: miss overlap` at 12:16:56.512. Icons still `145x145`. Page `800x299`, `pickable=30`. The 11:42 `73x73` line was about 62s after its click. This one was about 40s after the click. The grid had not finished redrawing. The overlap line is not a verdict on the arm.
+
+### 2026-10-26 08:08 the 145 box does not move
+
+The smoke now waits up to 45s for the first twelve icons' transformed size to match their preferred size. Arm out: `redraw 0` at 08:05:16.478 and `redraw 44` at 08:06:02.419 are both `145x145`, `matched=0`. `late state` page `800x299`, `pickable=30`, `stable=0`. `miss overlap` at 08:06:03.463. Preferred `73/73/73/73`. Arm put back and the same wait run: `redraw 0` at 08:08:07.165 and `redraw 44` at 08:08:53.230 are both `145x145`. `miss overlap` at 08:08:54.237. Page `800x299`, `pickable=30`. The shot after the wait shows the grid drawn. The overlap line is the same with the arm in or out. The arm is out again.
+
+### 2026-10-25 12:18 the restore was not a stop
+
+The overlap line is the same with the arm in or out, and it is read before the grid has finished redrawing. The deletion stays. Page size on those runs was `800x299`. `Gsr-St-Viewport.create` 5. No `St-Viewport.new`.

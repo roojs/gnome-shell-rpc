@@ -252,6 +252,43 @@ async function run() {
 			+ ' ' + Math.round(iw) + 'x' + Math.round(ih));
 	}
 	smokeLog('settled ' + settled.join(' | '));
+	let iconStable = 0;
+	let lastIcons = '';
+	for (let i = 0; i < 45 && iconStable < 3; i++) {
+		await delay(1000);
+		const now = [];
+		let matched = 0;
+		for (let n = 0; n < items.length && n < 12; n++) {
+			const item = items[n];
+			const [ix, iy] = item.get_transformed_position();
+			const [iw, ih] = item.get_transformed_size();
+			let pw = 0;
+			let ph = 0;
+			try {
+				const pref = item.get_preferred_size();
+				pw = pref[2];
+				ph = pref[3];
+			} catch (e) {
+				pw = 0;
+				ph = 0;
+			}
+			if (pw > 0 && Math.abs(iw - pw) < 8 && Math.abs(ih - ph) < 8)
+				matched++;
+			now.push(n + '@' + Math.round(ix) + ',' + Math.round(iy)
+				+ ' ' + Math.round(iw) + 'x' + Math.round(ih));
+		}
+		const line = now.join(' | ');
+		iconStable = line === lastIcons && matched >= 8 ? iconStable + 1 : 0;
+		lastIcons = line;
+		smokeLog('redraw ' + i + ' matched=' + matched
+			+ ' stable=' + iconStable + ' ' + line);
+	}
+	const lateIds = countPickableApps(stage);
+	smokeLog('late state=' + stateAdjustment.value
+		+ ' checked=' + button.checked
+		+ ' page=' + (layout?._pageWidth ?? -1) + 'x' + (layout?._pageHeight ?? -1)
+		+ ' pickable=' + lateIds.size
+		+ ' stable=' + iconStable);
 	try {
 		const path = GLib.get_home_dir()
 			+ '/.cache/gnome-shell-rpc/applications-picker.png';
@@ -285,7 +322,7 @@ async function run() {
 		smokeLog('miss page-size');
 	else if (overlap)
 		smokeLog('miss overlap');
-	else if (ids.size === 0)
+	else if (lateIds.size === 0)
 		smokeLog('miss pickable-icons');
 	else
 		smokeLog('ok');
