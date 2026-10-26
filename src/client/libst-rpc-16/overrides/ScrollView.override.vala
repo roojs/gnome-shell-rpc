@@ -13,6 +13,10 @@
 				Gsr.Client.Rpc.call_value(
 					"St-ScrollView.set_child", this,
 					OLLMrpc.args("o", value));
+				if (value != null) {
+					value.set_adjustments(
+						this.hadjustment, this.vadjustment);
+				}
 			}
 		}
 

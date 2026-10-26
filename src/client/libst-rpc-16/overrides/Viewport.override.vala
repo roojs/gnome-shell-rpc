@@ -26,23 +26,27 @@
 			base.rpc_construct();
 		}
 
-		/* Row 12 bisect: fieldless property stubs. */
+		private Adjustment client_hadjustment;
+		private Adjustment client_vadjustment;
+
 		public Adjustment hadjustment {
-			get { return null; }
-			set { }
+			get { return this.client_hadjustment; }
+			set { this.client_hadjustment = value; }
 		}
 
 		public Adjustment vadjustment {
-			get { return null; }
-			set { }
+			get { return this.client_vadjustment; }
+			set { this.client_vadjustment = value; }
 		}
 
 		public void get_adjustments(out Adjustment hadjustment, out Adjustment vadjustment)
 		{
-			hadjustment = null;
-			vadjustment = null;
+			hadjustment = this.client_hadjustment;
+			vadjustment = this.client_vadjustment;
 		}
 
 		public void set_adjustments(Adjustment hadjustment, Adjustment vadjustment)
 		{
+			this.client_hadjustment = hadjustment;
+			this.client_vadjustment = vadjustment;
 		}

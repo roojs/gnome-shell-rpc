@@ -2,7 +2,7 @@
 
 **Status:** ✅ closed 2026-10-22. Show Applications opens and the icons are visible. Pagination and the wait before the next click stay open. The actor construct switch is closed. This file is the archive.
 
-- [App grid pagination](../2026-10-22-app-grid-pagination.md)
+- [App grid pagination](2026-10-22-app-grid-pagination.md)
 - [App grid performance](../2026-10-22-app-grid-performance.md)
 - [Actor construct lease switch](2026-10-22-actor-construct-lease-switch.md)
 

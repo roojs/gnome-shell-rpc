@@ -264,6 +264,35 @@ async function run() {
 	} catch (e) {
 		smokeLog('shot miss ' + e);
 	}
+	const pageButtons = appDisplay._pageIndicators.get_children();
+	let pageChanged = false;
+	if (pageButtons.length > 1) {
+		const secondPage = pageButtons[1];
+		const [px, py] = secondPage.get_transformed_position();
+		const [pw, ph] = secondPage.get_transformed_size();
+		const targetX = px + pw / 2;
+		const targetY = py + ph / 2;
+		const beforePage = appDisplay._grid.currentPage;
+		const beforeAdjustment = appDisplay._adjustment.value;
+		const [beforeX, beforeY] = items[0].get_transformed_position();
+		smokeLog('page-click target=' + targetX + ',' + targetY
+			+ ' size=' + pw + 'x' + ph
+			+ ' pick=' + actorChain(stage.get_actor_at_pos(
+				Clutter.PickMode.REACTIVE, targetX, targetY))
+			+ ' before=' + beforePage + '/' + beforeAdjustment
+			+ ' item0=' + beforeX + ',' + beforeY);
+		globalObj.pointer_click(targetX + 38, targetY + 59);
+		await delay(1200);
+		const afterPage = appDisplay._grid.currentPage;
+		const afterAdjustment = appDisplay._adjustment.value;
+		const [afterX, afterY] = items[0].get_transformed_position();
+		pageChanged = afterPage === 1 && afterAdjustment > beforeAdjustment;
+		smokeLog('page-click after=' + afterPage + '/' + afterAdjustment
+			+ ' item0=' + afterX + ',' + afterY
+			+ ' changed=' + pageChanged);
+	} else {
+		smokeLog('page-click miss buttons=' + pageButtons.length);
+	}
 	let overlap = false;
 	for (let i = 0; i < items.length - 1 && i < 40; i++) {
 		const [ax, ay] = items[i].get_transformed_position();
@@ -283,6 +312,8 @@ async function run() {
 		smokeLog('miss items');
 	else if ((layout?._pageWidth ?? 0) <= 0 || (layout?._pageHeight ?? 0) <= 0)
 		smokeLog('miss page-size');
+	else if (!pageChanged)
+		smokeLog('miss page-navigation');
 	else if (overlap)
 		smokeLog('miss overlap');
 	else if (ids.size === 0)

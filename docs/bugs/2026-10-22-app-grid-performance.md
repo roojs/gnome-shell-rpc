@@ -6,7 +6,7 @@
 
 Split from [`done/2026-10-12-applications-picker-not-working.md`](done/2026-10-12-applications-picker-not-working.md).
 
-- Pagination: [`2026-10-22-app-grid-pagination.md`](2026-10-22-app-grid-pagination.md)
+- Pagination: [`done/2026-10-22-app-grid-pagination.md`](done/2026-10-22-app-grid-pagination.md)
 - Construct switch: [`done/2026-10-22-actor-construct-lease-switch.md`](done/2026-10-22-actor-construct-lease-switch.md)
 
 ```bash

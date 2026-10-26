@@ -138,7 +138,7 @@ That is `tests/gjs-embed/shell-boot/ui/init.js`, which imports `applications-pic
 ## Phase 4 — delete the `St-Viewport` arm
 
 - 🔷 ⏳ Depends on phase 3. Exact `St.Viewport` already falls through to `St-Viewport.new`. A subclass is leased by `St.Viewport.rpc_construct` before the base runs.
-- ℹ️ Show Applications. The app grid is a GJS `St.Viewport`. The page stayed `0x0` until a subclass leased `ViewportActor` and `allocate` ran. Record: `docs/bugs/done/2026-10-12-applications-picker-not-working.md`. Changing page is still `docs/bugs/2026-10-22-app-grid-pagination.md`.
+- ℹ️ Show Applications. The app grid is a GJS `St.Viewport`. The page stayed `0x0` until a subclass leased `ViewportActor` and `allocate` ran. Record: `docs/bugs/done/2026-10-12-applications-picker-not-working.md`. Changing page is closed in `docs/bugs/done/2026-10-22-app-grid-pagination.md`.
 - 🔷 ⏳ Same command as phase 3. Needs to pass `applications-picker-smoke: ok`. A miss on this arm is `applications-picker-smoke: miss page-size`.
 - ℹ️ The overlap line is not this arm. With the arm out, the icon boxes stayed `145x145` for 45s (`redraw 0` through `redraw 44`, `matched=0`) and the page stayed `800x299`. With the arm back in, the same wait did the same thing: `145x145` for 45s, `late state` page `800x299`, `pickable=30`, `miss overlap` at 08:08:54.237. Preferred size stayed `73`. The shot after that wait shows the grid drawn. The arm is out.
 - 💩 If `Gsr-St-Viewport.create` drops to zero, the arm was still the mint. Put it back.
