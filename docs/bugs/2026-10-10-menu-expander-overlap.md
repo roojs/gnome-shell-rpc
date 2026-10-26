@@ -1,8 +1,34 @@
 # Menu expander sits on the opened list
 
-**Status:** ⏳ open. No `src/` edit. The power list and the volume list are drawn on the control that opened them. On a normal desktop each list starts underneath that control.
+**Status:** ⏳ open. No `src/` edit. Every visible collapsible submenu is drawn at the top of the quick-settings overlay. On a normal desktop each list starts under the control that opened it.
 
-The volume control is the arrow on the volume row. The power control is the shutdown button, which opens the list that contains Log Out. The slider paint is [Volume slider](done/2026-10-08-volume-slider-drawing.md), closed. The menu staying open is [Panel menu closes on the click that opens it](done/2026-10-10-menu-closes-on-open-click.md), closed.
+Three lists are on screen. The system row holds the shutdown button (`ShutdownItem`), which opens Suspend, Restart, Power Off, and Log Out. The volume row is the visible `QuickSlider`. The other collapsible submenu is the Keyboard toggle (`KeyboardBrightnessToggle` in `vendor/gnome-shell/js/ui/status/backlight.js`). All three are `QuickToggleMenu`. Brightness, Bluetooth, Power Mode, and background apps use the same menu and are hidden in this nest. The screen brightness row is hidden.
+
+`Clutter.BindConstraint` places the list at `source.y + offset`. Here `source.y` is 0 for every control, and `offset` stays 0. The volume row's allocation is 50 pixels down and the keyboard toggle's allocation is 90 pixels down, but `.y` on each of those actors is 0. Mutter's `clutter_actor_get_y` returns 0 while `needs_allocation` is set, and returns the allocation only after that flag is clear. The constraint reads `.y`, so it never sees 50 or 90.
+
+The shell copies the control's height into `offset` with `bind_property('height', constraints, 'offset')`. That binding connects in C. It does not go through the JS `connect` wrap, so the server `notify::height` is never subscribed and `offset` stays 0. Writing the height into `offset` moves the list down by that height and no further. The system row is already at y 0, so that lands its list correctly. Volume stays 50 pixels too high. Keyboard stays 90 pixels too high.
+
+**Reproduction:**
+
+```bash
+GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh
+```
+
+2026-10-26 15:45, `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`:
+
+```text
+menu-expander-overlap/ui/init: quick-settings-system-item relative=19,0 y=0
+menu-expander-overlap/ui/init: quick-settings-system-item source=411,57 364x38 menu=392,57 402x222 gap=-38 height=38 menuY=0
+menu-expander-overlap/ui/init: quick-settings-system-item-trial ... gap=0 height=38 menuY=38
+menu-expander-overlap/ui/init: quick-slider relative=19,50 y=0
+menu-expander-overlap/ui/init: quick-slider source=411,107 364x28 menu=392,57 402x38 gap=-78 height=28 menuY=0
+menu-expander-overlap/ui/init: quick-slider-trial ... gap=-50 height=28 menuY=28
+menu-expander-overlap/ui/init: Keyboard relative=207,90 y=0
+menu-expander-overlap/ui/init: Keyboard source=599,147 176x48 menu=392,57 402x0 gap=-138 height=48 menuY=0
+menu-expander-overlap/ui/init: miss overlap
+```
+
+The trial line replaces the shell constraint with one whose `offset` is the control's height. `src/` was not edited. `alan@192.168.88.197` was not read.
 
 ## Steps
 
@@ -61,7 +87,7 @@ Here that works. Volume height 28, and the list then started 28 pixels down insi
 **Reproduction** of the failure, after that trial was taken off:
 
 ```bash
-GI_META_SMOKE=menu-expander-overlap ./scripts/weston-gsr-prove.sh
+GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh
 ```
 
 2026-10-11 10:23, `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`:
@@ -107,3 +133,29 @@ The allocation notice was delivered with `add_signals` only, without re-emitting
 ### 2026-10-11 10:23 after the revert
 
 The smoke in the reproduction block. Power list 222 pixels tall, starting on the 38 pixel button. `miss overlap`. `stop (smoke-fail) after 19s`.
+
+### 2026-10-26 15:20 logs already on disk
+
+`~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log` ends at 14:58 with `g_signal_handler_disconnect` criticals. `nested-weston-prove.tee.log` is from 15:20. Neither file contains `menu-expander-overlap`. No new prove of this failure. `src/` was not edited.
+
+`QuickToggleMenu` is the only collapsible submenu. Callers with `hasMenu: true`: the volume row and the brightness row (`QuickSlider`), the shutdown button (`ShutdownItem`), background apps (`BackgroundAppsToggle`), and `QuickMenuToggle`. The volume arrow and the shutdown button are the two that are on screen in the system menu. The list is pushed down only by `sourceActor.bind_property('height', constraints, 'offset')`. That call is `GObject.bind_property`, which connects in C. The JS `connect` wrap in `src/client/gresource/signals.js` is what subscribes `notify::` on the server. This binding never goes through that wrap, so a later server `notify::height` is not delivered to the client binding, and `offset` stays 0. Not yet re-proven on Weston.
+
+### 2026-10-26 15:28 direct smoke
+
+`GI_META_SMOKE=menu-expander-overlap ./scripts/weston-gsr-prove.sh`. The script path does not end in `ui/init.js`, so `begin_shell_startup` does not run. Mutter logs `ClutterBoxLayout child unnamed [GsrServerClutterActor] minimum height: -12.000000 < 0 for width 182.000000`, the client socket closes during `Clutter-Actor.allocate`, and the smoke logs `miss start TypeError: global.stage.context is null`. That is the empty-grid abort, before either list is measured. `src/` not edited.
+
+### 2026-10-26 15:31 boot through ui/init.js
+
+`GI_META_SMOKE=menu-expander-overlap/ui/init`. The shell stays up. Visible submenus: `quick-settings-system-item`, one `quick-slider` (`menuEnabled` false until the smoke turns it on), and `Keyboard`. Brightness hidden. Power list `gap=-38`, `menuY=0`. Volume source box was infinity on that first open. `miss overlap`.
+
+### 2026-10-26 15:34 all three lists
+
+Same command. System row `411,57 364x38`, list `392,57`, `gap=-38`, `menuY=0`. Volume slider `411,107 364x28`, list still `392,57`, `gap=-78`, `menuY=0`. Keyboard `599,147 176x48`, list `392,57`, `gap=-138`, `menuY=0`. `miss overlap`.
+
+### 2026-10-26 15:38 offset trial
+
+The smoke cleared each list's constraints and added a new Y bind whose `offset` was the control's height. System row `menuY=38`, `gap=0`. Volume `menuY=28`, `gap=-50` (still short by the row's 50). Keyboard `menuY=48`, `gap=-90` (still short by the toggle's 90). The list moves by `offset` and no further. `src/` not edited.
+
+### 2026-10-26 15:45 `.y` against the allocation
+
+Same command. Volume `relative=19,50 y=0` with allocation y 50. Keyboard `relative=207,90 y=0` with allocation y 90. System row `y=0` and allocation y 0. Mutter 48 `clutter_bind_constraint_update_allocation` sets the list to `clutter_actor_get_y(source) + offset`. `clutter_actor_get_y` returns 0 while `needs_allocation` is set. The volume trial again: `menuY=28`, `gap=-50`. Keyboard's list box came back with height 0 on this pass; the 15:38 pass is the one that moved it to `menuY=48`. `miss overlap`. `src/` not edited.
