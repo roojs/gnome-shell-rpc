@@ -1,6 +1,6 @@
 # Actor construct lease is a switch
 
-**Status:** ⏳ open. The `St-Widget` arm is out of the switch. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. No `St-Widget.new`.
+**Status:** ✅ closed 2026-10-26. The switch in `Actor.rpc_construct` is gone. The user closed this.
 
 ## Purpose
 
@@ -9,6 +9,8 @@
 - ✔️ Phase 1 deleted the `Clutter-Clone`, `Meta-BackgroundActor`, and `St-DrawingArea` returns together. `help-click-smoke: ok` at 11:06:42.046.
 - ✔️ The `Meta-WindowActor` label is out. `help-click-smoke: ok` at 11:23:34.617. No `Meta-WindowActor.new`. The `-32602` lines in that log are `St-Widget.set_label_actor`.
 - ✅ The `St-Widget` arm is out. `applications-picker-smoke: ok` at 11:42:39.384. `state=2`, `checked=true`, `page=800x299`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `St-Button.new` 509. No `St-Widget.new`.
+- ✔️ The square-bin case is out. Show Applications opened at 08:22:52.168. Page `800x299`, `items=147`, `pickable=30`. `Gsr-St-SquareBin.new` 168. `St-Bin.new` 246. The smoke still logs `miss overlap`. That line is the old icon size.
+- ✔️ The last case is out. There is no switch. A plain actor that is not the stock `Actor` still uses `create_with_overrides`. Show Applications opened at 08:34:29.758. Page `800x299`, `items=147`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `Clutter-Actor.new` 75. The smoke still logs `miss overlap`. That line is the old icon size.
 
 ## What we have
 
@@ -25,52 +27,11 @@
 				continue;
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
-			switch (alias) {
-				case "St-Bin":
-					// Exact bin uses St-Bin.new below. Shell.SquareBin leases the
-					// square peer before the icon is built.
-					// This is very hacky however - and probably needs a better design.
-					if (this.get_type() == t) {
-						break;
-					}
-					var scan = this.get_type();
-					var square = false;
-					while (scan != GLib.Type.INVALID) {
-						if (scan.name() == "ShellSquareBin") {
-							square = true;
-							break;
-						}
-						scan = scan.parent();
-					}
-					if (!square) {
-						break;
-					}
-					/* Already leased, including by SquareBin.rpc_construct.
-					   Subscribe once. A second mint drops the child. */
-					if (this.rpc_lid != 0) {
-						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-						this.prop_batch_open = true;
-						return;
-					}
-					var response = Gsr.Client.Rpc.call_value("Gsr-St-SquareBin.new", null,
-						OLLMrpc.args("t", (uint64) 0));
-
-					this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-					Gsr.Client.Rpc.register_handle(this);
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
-				case "Clutter-Actor":
-					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
-					if (this.get_type() == typeof(Actor)) {
-						break;
-					}
-					this.create_with_overrides();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
-				default:
-					break;
+			if (alias == "Clutter-Actor" && this.get_type() != typeof(Actor)) {
+				this.create_with_overrides();
+				this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+				this.prop_batch_open = true;
+				return;
 			}
 			if (this.rpc_lid != 0) {
 				this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
@@ -212,7 +173,7 @@ That is `tests/gjs-embed/shell-boot/ui/init.js`, which imports `applications-pic
 
 ## Phase 5 — delete the `St-Bin` arm
 
-- 🔷 ⏳ Depends on phase 4. `Shell.SquareBin.rpc_construct` already leases `Gsr-St-SquareBin.new`, then calls the base. Exact `St.Bin` falls through to `St-Bin.new`.
+- ✔️ The square-bin case is gone. `Shell.SquareBin` still leases `Gsr-St-SquareBin.new`, then calls the base. Show Applications opened at 08:22:52.168. Page `800x299`, `items=147`, `pickable=30`. `Gsr-St-SquareBin.new` 168. `St-Bin.new` 246. The smoke still logs `miss overlap`. That is the old icon size.
 - ℹ️ Show Applications icons. Added 2026-10-22 in the same picker record. Without this lease the icons overlapped and the labels were one character wide. The Help dash icon is the same type, which is why that click sees it. The activity that added the arm is the app grid icons.
 - 🔷 ⏳ Same command as phase 3. Needs to pass `applications-picker-smoke: ok`. A miss on this arm is `applications-picker-smoke: miss overlap`.
 - 💩 If `Gsr-St-SquareBin.new` drops, or `base-child` is null, the arm was still the mint. Put it back.
@@ -265,7 +226,7 @@ That is `tests/gjs-embed/shell-boot/ui/init.js`, which imports `applications-pic
 
 ## Phase 6 — `Clutter-Actor` leaves the switch
 
-- 🔷 ⏳ Depends on phase 5. This arm is last, on its own.
+- ✔️ The last case is gone. The switch is gone. A type whose first registered ancestor is `Clutter-Actor`, and which is not the stock `Actor`, still calls `create_with_overrides`. The stock `Actor` still uses `alias + ".new"`. Show Applications opened at 08:34:29.758. Page `800x299`, `items=147`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `Clutter-Actor.new` 75. The smoke still logs `miss overlap`. That is the old icon size.
 - ℹ️ A GJS or Vala actor that is not a registered St type. The arm comment says those need the helper hooks. Exact `Actor` uses `.new`. The boot count of those helpers is in `docs/bugs/done/2026-09-29-rpc-call-volume.md`. The activity is the shell finishing boot with its plain actors.
 - 💩 It does not become `Clutter-Actor.new`. An unregistered subclass still uses `create_with_overrides`.
 - 🔷 ⏳ Same command as phase 3. Needs to pass `applications-picker-smoke: ok`. A miss on this arm is `applications-picker-smoke: miss controls`.
@@ -630,3 +591,15 @@ The smoke now waits up to 45s for the first twelve icons' transformed size to ma
 ### 2026-10-25 12:18 the restore was not a stop
 
 The overlap line is the same with the arm in or out, and it is read before the grid has finished redrawing. The deletion stays. Page size on those runs was `800x299`. `Gsr-St-Viewport.create` 5. No `St-Viewport.new`.
+
+### 2026-10-26 08:22 square-bin case removed
+
+The `St-Bin` case is gone. `Shell.SquareBin.rpc_construct` still calls `Gsr-St-SquareBin.new`, then the base. The base walk, with the lease already set, subscribes signals and does not mint again. `meson compile -C build` passed. `GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 GSR_NESTED_TIMEOUT=90 ./scripts/agent-nested-smoke-prove.sh`. Show Applications opened at 08:22:52.168. `state=2`, `checked=true`, `page=800x299`, `items=147`, `pickable=30`. `Gsr-St-SquareBin.new` 168. `St-Bin.new` 246. The smoke logs `miss overlap`. That line is the old icon size.
+
+### 2026-10-26 08:34 the last case left the switch
+
+The `Clutter-Actor` case is gone, and the `switch` with it. A type that is not the stock `Actor`, whose first registered ancestor is `Clutter-Actor`, still calls `create_with_overrides`. The stock `Actor` still uses `alias + ".new"`. `meson compile -C build` passed. `GI_META_SMOKE=shell-boot/ui/init GSR_WESTON_PIXMAN=1 GSR_NESTED_TIMEOUT=90 ./scripts/agent-nested-smoke-prove.sh`. Show Applications opened at 08:34:29.758. `state=2`, `checked=true`, `page=800x299`, `items=147`, `pickable=30`. `Gsr-Clutter-Actor.create` 591. `Clutter-Actor.new` 75. The smoke logs `miss overlap`. That line is the old icon size.
+
+### 2026-10-26 closed
+
+The user closed this. The switch is gone. This file moves to `docs/bugs/done/`.

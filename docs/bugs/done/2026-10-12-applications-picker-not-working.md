@@ -1,10 +1,10 @@
 # Applications picker does not work
 
-**Status:** ✅ closed 2026-10-22. Show Applications opens and the icons are visible. Pagination, the wait before the next click, and the actor construct switch are the open bugs. This file is the archive.
+**Status:** ✅ closed 2026-10-22. Show Applications opens and the icons are visible. Pagination and the wait before the next click stay open. The actor construct switch is closed. This file is the archive.
 
 - [App grid pagination](../2026-10-22-app-grid-pagination.md)
 - [App grid performance](../2026-10-22-app-grid-performance.md)
-- [Actor construct lease switch](../2026-10-22-actor-construct-lease-switch.md)
+- [Actor construct lease switch](2026-10-22-actor-construct-lease-switch.md)
 
 The sections below are how the grid got to a visible set of icons.
 

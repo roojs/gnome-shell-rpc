@@ -7,7 +7,7 @@
 Split from [`done/2026-10-12-applications-picker-not-working.md`](done/2026-10-12-applications-picker-not-working.md).
 
 - Performance: [`2026-10-22-app-grid-performance.md`](2026-10-22-app-grid-performance.md)
-- Construct switch: [`2026-10-22-actor-construct-lease-switch.md`](2026-10-22-actor-construct-lease-switch.md)
+- Construct switch: [`done/2026-10-22-actor-construct-lease-switch.md`](done/2026-10-22-actor-construct-lease-switch.md)
 
 ```bash
 GSR_WESTON_SOCKET=wayland-gsr-apppick \

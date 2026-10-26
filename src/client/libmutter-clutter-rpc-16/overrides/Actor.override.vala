@@ -80,52 +80,11 @@
 				continue;
 			}
 			var alias = OLLMrpc.Bin.gtype_to_alias.get(t);
-			switch (alias) {
-				case "St-Bin":
-					// Exact bin uses St-Bin.new below. Shell.SquareBin leases the
-					// square peer before the icon is built.
-					// This is very hacky however - and probably needs a better design.
-					if (this.get_type() == t) {
-						break;
-					}
-					var scan = this.get_type();
-					var square = false;
-					while (scan != GLib.Type.INVALID) {
-						if (scan.name() == "ShellSquareBin") {
-							square = true;
-							break;
-						}
-						scan = scan.parent();
-					}
-					if (!square) {
-						break;
-					}
-					/* Already leased, including by SquareBin.rpc_construct.
-					   Subscribe once. A second mint drops the child. */
-					if (this.rpc_lid != 0) {
-						this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-						this.prop_batch_open = true;
-						return;
-					}
-					var response = Gsr.Client.Rpc.call_value("Gsr-St-SquareBin.new", null,
-						OLLMrpc.args("t", (uint64) 0));
-
-					this.rpc_lid = (response.retval.get_object() as OLLMrpc.Live.Interface).rpc_lid;
-					Gsr.Client.Rpc.register_handle(this);
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
-				case "Clutter-Actor":
-					/* Exact Actor → .new. GJS/Vala subclasses need Helper hooks. */
-					if (this.get_type() == typeof(Actor)) {
-						break;
-					}
-					this.create_with_overrides();
-					this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
-					this.prop_batch_open = true;
-					return;
-				default:
-					break;
+			if (alias == "Clutter-Actor" && this.get_type() != typeof(Actor)) {
+				this.create_with_overrides();
+				this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
+				this.prop_batch_open = true;
+				return;
 			}
 			if (this.rpc_lid != 0) {
 				this.signal_overrides(this.get_type(), new Gee.ArrayList<string>());
