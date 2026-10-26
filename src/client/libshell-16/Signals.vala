@@ -154,9 +154,9 @@ namespace Shell
 		 * Subscribe ''signal_name'' on the peer, or every name in
 		 * {@link pending_signals} when that list is not empty.
 		 *
-		 * The list is cleared first. The array, one name or many, is
-		 * one ''Gsr-Clutter-Actor.add_signals''. A name already in
-		 * {@link subs} only bumps {@link refs}.
+		 * The list is cleared first. The requested name is sent
+		 * with that list when the list does not already contain
+		 * it. A name already in {@link subs} only bumps {@link refs}.
 		 *
 		 * @param obj leased stub
 		 * @param signal_name signal or ''notify::'' property
@@ -197,8 +197,7 @@ namespace Shell
 			}
 			var lid = (int) handle.rpc_lid;
 			Signals.init();
-			if (Signals.subs.has_key(lid)
-					&& Signals.subs.get(lid).has_key(signal_name)) {
+			if (Signals.subs.has_key(lid) && Signals.subs.get(lid).has_key(signal_name)) {
 				var hid = Signals.subs.get(lid).get(signal_name);
 				Signals.refs.set(hid, Signals.refs.get(hid) + 1);
 				if (gjs_handler_id != 0) {
@@ -211,8 +210,23 @@ namespace Shell
 			}
 			string[] signal_names = { signal_name };
 			if (Signals.pending_signals.length > 0) {
-				signal_names = Signals.pending_signals;
+				var queued = Signals.pending_signals;
 				Signals.pending_signals = {};
+				var listed = false;
+				foreach (var queued_name in queued) {
+					if (queued_name == signal_name) {
+						listed = true;
+						break;
+					}
+				}
+				signal_names = new string[queued.length + 1];
+				signal_names[0] = signal_name;
+				for (var i = 0; i < queued.length; i++) {
+					signal_names[i + 1] = queued[i];
+				}
+				if (listed) {
+					signal_names = queued;
+				}
 			}
 			Gsr.Client.Rpc.client.proxies.set(lid, obj);
 			Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_signals", obj, OLLMrpc.args("S", signal_names));
