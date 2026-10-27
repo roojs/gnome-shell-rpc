@@ -1,12 +1,8 @@
 # Menu expander sits on the opened list
 
-**Status:** ⏳ open. No `src/` edit. The allocation proposal was tested and rejected: its historical regression gates pass, but it does not restore the volume or Keyboard source Y. Every visible collapsible submenu is drawn too high in the quick-settings overlay.
+**Status:** The three visible lists sit under their controls. The stock `QuickToggleMenu` constraint is what the smoke scores. `allocate_public` stays out: it does not restore source Y.
 
-Three lists are on screen. The system row holds the shutdown button (`ShutdownItem`), which opens Suspend, Restart, Power Off, and Log Out. The volume row is the visible `QuickSlider`. The other collapsible submenu is the Keyboard toggle (`KeyboardBrightnessToggle` in `vendor/gnome-shell/js/ui/status/backlight.js`). All three are `QuickToggleMenu`. Brightness, Bluetooth, Power Mode, and background apps use the same menu and are hidden in this nest. The screen brightness row is hidden.
-
-`Clutter.BindConstraint` places the list at `source.y + offset`. Here `source.y` is 0 for every control, and `offset` stays 0. The volume row's allocation is 50 pixels down and the keyboard toggle's allocation is 90 pixels down, but `.y` on each of those actors is 0. Mutter's `clutter_actor_get_y` returns 0 while `needs_allocation` is set, and returns the allocation only after that flag is clear. The constraint reads `.y`, so it never sees 50 or 90.
-
-The shell copies the control's height into `offset` with `bind_property('height', constraints, 'offset')`. That binding connects in C. It does not go through the JS `connect` wrap, so the server `notify::height` is never subscribed and `offset` stays 0. Writing the height into `offset` moves the list down by that height and no further. The system row is already at y 0, so that lands its list correctly. Volume stays 50 pixels too high. Keyboard stays 90 pixels too high.
+`Clutter.BindConstraint` places the list at `source.y + offset`. `clutter_actor_get_y` returns 0 while `needs_allocation` is set, so the volume row and the Keyboard toggle were read as y 0. The stored transform into the menu's parent still has that y. `Clutter.BindConstraint` is sealed, so `gsr_bind_constraint_install` in `src/server/libmutter-clutter-16/bind-constraint-place.c` only replaces the class vfunc and calls the stock allocation. `Constraint.gsr_bind_constraint_place` then adds that transform when `get_x` or `get_y` is 0, for a position bind only. It writes the same `Clutter.ActorBox` the vfunc received. The shell copies the control's height into `offset` with `bind_property('height', constraints, 'offset')`. That binding connects in C. The client `BindConstraint` subscribes `notify::height` on its source so the binding runs. `signals.js` does not know about this binding.
 
 **Reproduction:**
 
@@ -15,21 +11,17 @@ GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init \
   ./scripts/weston-gsr-prove.sh
 ```
 
-2026-10-26 15:45, `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`:
+2026-10-27 15:56, `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`. `weston-autolaunch-prove.log` ends `stop (smoke-ok) after 13s`.
 
 ```text
 menu-expander-overlap/ui/init: quick-settings-system-item relative=19,0 y=0
-menu-expander-overlap/ui/init: quick-settings-system-item source=411,57 364x38 menu=392,57 402x222 gap=-38 height=38 menuY=0
-menu-expander-overlap/ui/init: quick-settings-system-item-trial ... gap=0 height=38 menuY=38
+menu-expander-overlap/ui/init: quick-settings-system-item ... gap=0 height=38 menuY=38 high=false
 menu-expander-overlap/ui/init: quick-slider relative=19,50 y=0
-menu-expander-overlap/ui/init: quick-slider source=411,107 364x28 menu=392,57 402x38 gap=-78 height=28 menuY=0
-menu-expander-overlap/ui/init: quick-slider-trial ... gap=-50 height=28 menuY=28
-menu-expander-overlap/ui/init: Keyboard relative=207,90 y=0
-menu-expander-overlap/ui/init: Keyboard source=599,147 176x48 menu=392,57 402x0 gap=-138 height=48 menuY=0
-menu-expander-overlap/ui/init: miss overlap
+menu-expander-overlap/ui/init: quick-slider ... gap=-0.0006 height=28 menuY=78 high=false
+menu-expander-overlap/ui/init: Keyboard relative=207,50 y=0
+menu-expander-overlap/ui/init: Keyboard ... gap=0 height=48 menuY=98 high=false
+menu-expander-overlap/ui/init: ok
 ```
-
-The trial line replaces the shell constraint with one whose `offset` is the control's height. `src/` was not edited. `alan@192.168.88.197` was not read.
 
 ## Rejected allocation proposal
 
@@ -198,3 +190,31 @@ Replaced the replay with the stock `Actor.allocate_preferred_size(sourceBox.x1, 
 ### 2026-10-27 final off-product pass
 
 The smoke retains the failing stock constraint, then replaces it with the proven source-position-plus-height trial. Its post-change wait is 800 ms because 300 ms produced one run where the system menu had not reallocated yet. `GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh`: system `gap=0`, volume `gap=-0.0006`, Keyboard `gap=-0.0006`, then `menu-expander-overlap/ui/init: ok`. No `src/` edit. The major stock-boundary change is proposed above for review.
+
+### 2026-10-27 stock constraint uses the stored Y plus the height binding
+
+`allocate_public` stays reverted. The server bind constraint, for a position bind only, reads the source through `clutter_actor_apply_relative_transform_to_point` into the list's parent when `get_x` or `get_y` is 0. `signals.js` subscribes `notify::height` when `bind_property` copies `height` onto `offset`.
+
+The first build subscribed every `bind_property`. Boot reached a `notify::icon-name` / `St-Icon.set_icon_name` loop and the client exited at 14:49:41, before any list was measured. `stop` was the 50s wall, exit 124. That subscribe was narrowed to height-onto-offset.
+
+Same command again. System `y=0` `menuY=38` `gap=0`. Volume `y=0` `relative y=50` `menuY=78` `gap=-0.0006`. Keyboard `y=0` `relative y=90` `menuY=138` `gap=-0.0006`. The smoke printed `ok`. `stop (smoke-ok) after 16s`. The shell's own constraint was left in place.
+
+### 2026-10-27 height subscribe leaves signals.js
+
+A height-to-offset filter in `signals.js` is not a general connect wrap. Subscribing every `bind_property` looped `notify::icon-name`. The filter came out. The client `BindConstraint` subscribes `notify::height` on its source instead, which is the actor the shell binds onto `offset`.
+
+`Clutter.BindConstraint` is sealed, so a Vala subclass does not compile (`cannot inherit from sealed class`). The position fix stays `gsr_bind_constraint_install`.
+
+Same command. System `gap=0` `menuY=38`. Volume `gap=-0.0006` `menuY=78`. Keyboard `gap=0` `menuY=98`. `menu-expander-overlap/ui/init: ok`. `stop (smoke-ok) after 13s`.
+
+### 2026-10-27 stock vfunc writes the box
+
+The position fix was a copy of mutter's allocation switch. `Clutter.BindConstraint` is sealed, so that body cannot move to a Vala override. `gsr_bind_constraint_update_allocation` now calls the saved stock vfunc and adds the stored parent position when `get_x` or `get_y` is 0, for X, Y, position, and all only.
+
+Same command. System `gap=0` `menuY=38`. Volume `gap=-0.0006` `menuY=78`. Keyboard `gap=0` `menuY=98`. `menu-expander-overlap/ui/init: ok`. `stop (smoke-ok) after 13s`.
+
+### 2026-10-27 placement is Vala
+
+`bind-constraint-place.c` now only installs the class vfunc and calls the stock function. `Constraint.gsr_bind_constraint_place` receives that same `Clutter.ActorBox` by reference and adds the stored parent position. A second struct is not required. The mutter vapi's `apply_relative_transform_to_point` returns a `Vertex`; the call uses the mutter 16 out-parameter form.
+
+Same command. System `gap=0` `menuY=38`. Volume `gap=-0.0006` `menuY=78`. Keyboard `gap=0` `menuY=98`. `menu-expander-overlap/ui/init: ok`. `stop (smoke-ok) after 13s`.

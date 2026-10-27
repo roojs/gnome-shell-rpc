@@ -7,7 +7,6 @@
  */
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
-import Clutter from 'gi://Clutter';
 import Graphene from 'gi://Graphene';
 import St from 'gi://St';
 
@@ -171,11 +170,9 @@ function runProve(main) {
 			global.context.terminate();
 			return;
 		}
-		const scoreAt = (index, sawOverlap, trialHigh) => {
+		const scoreAt = (index, anyHigh) => {
 			if (index >= rows.length) {
-				smokeLog(sawOverlap && !trialHigh
-					? 'ok'
-					: `miss overlap=${sawOverlap} trial-high=${trialHigh}`);
+				smokeLog(anyHigh ? 'miss overlap' : 'ok');
 				global.context.terminate();
 				return;
 			}
@@ -183,28 +180,17 @@ function runProve(main) {
 			if (row.item.menuEnabled === false)
 				row.item.menuEnabled = true;
 			row.item.menu.open(0);
-			later(300, () => {
+			later(800, () => {
 				const parent = row.item.menu.actor.get_parent();
 				const rel = row.item.apply_relative_transform_to_point(
 					parent, new Graphene.Point3D());
 				smokeLog(`${row.label} relative=${rel.x},${rel.y} y=${row.item.y}`);
 				const high = report(row.label, row.item, row.item.menu);
-				/* Same objects the shell already created, with the source
-				 * position and height written into the offset. */
-				row.item.menu.actor.clear_constraints();
-				row.item.menu.actor.add_constraint(new Clutter.BindConstraint({
-					coordinate: Clutter.BindCoordinate.Y,
-					source: row.item,
-					offset: rel.y + row.item.height,
-				}));
-				later(800, () => {
-					const stillHigh = report(row.label + '-trial', row.item, row.item.menu);
-					row.item.menu.close(0);
-					scoreAt(index + 1, sawOverlap || high, trialHigh || stillHigh);
-				});
+				row.item.menu.close(0);
+				scoreAt(index + 1, anyHigh || high);
 			});
 		};
-		scoreAt(0, false, false);
+		scoreAt(0, false);
 	});
 }
 

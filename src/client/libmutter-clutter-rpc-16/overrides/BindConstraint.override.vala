@@ -46,6 +46,13 @@
 			Gsr.Client.Rpc.call_value(
 				"Clutter-BindConstraint.set_source", this,
 				OLLMrpc.args("o", this.priv_source));
+			if (this.priv_source == null) {
+				return;
+			}
+			/* bind_property('height', this, 'offset') connects in C.
+			 * Subscribe so that notify reaches the binding. */
+			Gsr.Client.Rpc.ensure_signal_subscribe(
+				this.priv_source, "notify::height");
 		}
 
 		private void sync_coordinate()

@@ -60,6 +60,7 @@ compositor_sources = files(
   'server/libmutter-clutter-16/PickContextOverride.vala',
   'server/libmutter-clutter-16/RegionOverride.vala',
   'server/libmutter-clutter-16/shader-uniform-apply.c',
+  'server/libmutter-clutter-16/bind-constraint-place.c',
   'server/libst-16/namespace.vala',
   'server/libst-16/BoxedTypeOverrides.vala',
   'server/libst-16/St.vala',
