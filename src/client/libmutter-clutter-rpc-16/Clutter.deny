@@ -83,6 +83,12 @@ value_take_paint_node
 # notify::allocation-relay does not call it.
 Actor.allocation
 
+# Actor.override owns height. A plain Clutter.Actor with a BinLayout was
+# given a height request of 0, so the quick settings overlay stayed 0 tall
+# while its open menu's preferred height was the list. Stock leaves that
+# request unset. The setter sends -1 for that actor.
+Actor.height
+
 # InputDevice.override owns device_type. A rebuilt X11 device stores the
 # type locally. A leased device still asks the server.
 InputDevice.device_type

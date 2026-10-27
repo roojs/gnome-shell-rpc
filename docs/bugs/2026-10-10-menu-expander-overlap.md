@@ -1,6 +1,8 @@
 # Menu expander sits on the opened list
 
-**Status:** The three visible lists sit under their controls. The stock `QuickToggleMenu` constraint is what the smoke scores. `allocate_public` stays out: it does not restore source Y.
+**Status:** The expander lists sit under their controls. Power content is 173px with a 12px gap under the button. Volume gap is 12px. Keyboard gap is 11px. The smoke prints `ok`. Dash samples stay `showApps=509+91`. `allocate_public` stays out.
+
+The quick settings overlay is a plain `Clutter.Actor` with a `BinLayout`. It was given a height request of 0, so `get_preferred_height` returned 0 before the layout ran. The open list's preferred height was 222 and the first row still painted. `Actor.height` in `Actor.override.vala` stores that 0 request as -1, which leaves the request unset. The layout then reports the list. An `St.Widget` that sets height 0, including the menu actor, is unchanged.
 
 `Clutter.BindConstraint` places the list at `source.y + offset`. `clutter_actor_get_y` returns 0 while `needs_allocation` is set, so the volume row and the Keyboard toggle were read as y 0. The stored transform into the menu's parent still has that y. `Clutter.BindConstraint` is sealed, so `gsr_bind_constraint_install` in `src/server/libmutter-clutter-16/bind-constraint-place.c` only replaces the class vfunc and calls the stock allocation. `Constraint.gsr_bind_constraint_place` then adds that transform when `get_x` or `get_y` is 0, for a position bind only. It writes the same `Clutter.ActorBox` the vfunc received. The shell copies the control's height into `offset` with `bind_property('height', constraints, 'offset')`. That binding connects in C. The client `BindConstraint` subscribes `notify::height` on its source so the binding runs. `signals.js` does not know about this binding.
 
@@ -11,15 +13,13 @@ GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init \
   ./scripts/weston-gsr-prove.sh
 ```
 
-2026-10-27 15:56, `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`. `weston-autolaunch-prove.log` ends `stop (smoke-ok) after 13s`.
+2026-10-27 17:07, `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`. The smoke prints `ok`. The opens are `menu.open()`, the same call the power button makes.
 
 ```text
-menu-expander-overlap/ui/init: quick-settings-system-item relative=19,0 y=0
-menu-expander-overlap/ui/init: quick-settings-system-item ... gap=0 height=38 menuY=38 high=false
-menu-expander-overlap/ui/init: quick-slider relative=19,50 y=0
-menu-expander-overlap/ui/init: quick-slider ... gap=-0.0006 height=28 menuY=78 high=false
-menu-expander-overlap/ui/init: Keyboard relative=207,50 y=0
-menu-expander-overlap/ui/init: Keyboard ... gap=0 height=48 menuY=98 high=false
+menu-expander-overlap/ui/init: quick-settings-system-item painted button=57+38 content=107+173 gap=12 heightProp=185
+menu-expander-overlap/ui/init: quick-slider painted button=107+28 content=147+26 gap=12 heightProp=38
+menu-expander-overlap/ui/init: Keyboard painted button=147+48 content=206+62 gap=11 heightProp=74
+menu-expander-overlap/ui/init: dash sample=4 translation=0 showApps=509+91 dash=509+91
 menu-expander-overlap/ui/init: ok
 ```
 
@@ -218,3 +218,29 @@ Same command. System `gap=0` `menuY=38`. Volume `gap=-0.0006` `menuY=78`. Keyboa
 `bind-constraint-place.c` now only installs the class vfunc and calls the stock function. `Constraint.gsr_bind_constraint_place` receives that same `Clutter.ActorBox` by reference and adds the stored parent position. A second struct is not required. The mutter vapi's `apply_relative_transform_to_point` returns a `Vertex`; the call uses the mutter 16 out-parameter form.
 
 Same command. System `gap=0` `menuY=38`. Volume `gap=-0.0006` `menuY=78`. Keyboard `gap=0` `menuY=98`. `menu-expander-overlap/ui/init: ok`. `stop (smoke-ok) after 13s`.
+
+### 2026-10-27 the ok smoke was the wrong check
+
+The user sees the power list covering the quick settings menu, and the Show Applications icon jumping when the app picker opens. The earlier `ok` scored the menu container's Y. Those containers were height 0. The smoke never opened the app picker.
+
+The smoke now also records the painted menu box and five dash samples after `overview.showApps()`. `GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh`. System painted `content=95+0` against preferred height 222. Volume `content=135+1` against 38. Keyboard `content=195+1` against 72. `high=true unopened=true`. Dash samples stayed `translation=0 showApps=509+91`. `menu-expander-overlap/ui/init: miss overlap`. `stop (smoke-fail) after 14s`. `src/` was not edited in this step.
+
+### 2026-10-27 button open is still an empty box
+
+`open(0)` is `PopupAnimation.NONE`. The power button calls `menu.open()` with no argument. The smoke now does that. Same command. Power `heightProp=0` `content=95+0` preferred 222. Volume `heightProp=1`. Keyboard `heightProp=0`. Dash samples stay `showApps=509+91`. `miss overlap`. `src/` was not edited.
+
+### 2026-10-27 the panel has a box and the overlay does not
+
+Same command, still `menu.open()`. `popup actor=0x0 boxPointer=402x182`. The power list's first row is `item=108+54`. The power button is `button=57+38`, so that row starts 13px below the button. The list container stays `content=95+0`. `miss overlap`. A follow-up that assigned the preferred height onto the menu actor did not reach its log line: Weston segfaulted, exit 139, after the popup line and before any menu measurement. That assignment was taken back out of the smoke. `src/` was not edited.
+
+### 2026-10-27 button open is still an empty box
+
+`open(0)` is `PopupAnimation.NONE`. The power button calls `menu.open()` with no argument. The smoke now does that. Same command. Power `heightProp=0` `content=95+0` preferred 222. Volume `heightProp=1`. Keyboard `heightProp=0`. Dash samples stay `showApps=509+91`. `miss overlap`. `src/` was not edited.
+
+### 2026-10-27 the overlay height request was 0
+
+Same command. `allocate_available_size` on the overlay with the box pointer's 402×182 left the overlay at 402×0. The grid itself was 364×98. Setting the overlay's height to the menu's preferred height made the overlay 402×183, the power list `content=107+171` `gap=12`, and the smoke `ok`. Setting the menu actor's height to that preferred height, or to -1, left the overlay preferred height at 0. `queue_relayout` on the overlay also left it at 0. Setting the overlay's height to -1 made its preferred height 222, the allocation 402×222, and the power list `content=107+210` `gap=12`.
+
+The overlay is a plain `Clutter.Actor` with a `BinLayout`. Its height setter was called with 0. `get_preferred_height` then returns that request and does not ask the layout, so the visible menu's 222 is ignored. `Actor.height` now sends -1 for that actor. An `St.Widget` height of 0 is unchanged.
+
+Same command after that setter landed. Power `content=107+173` `gap=12` `heightProp=185`. Volume `content=147+26` `gap=12` `heightProp=38`. Keyboard `content=206+62` `gap=11` `heightProp=74`. Dash sample 4 `translation=0 showApps=509+91`. `menu-expander-overlap/ui/init: ok`. Exit 137 is the prove killing Weston.

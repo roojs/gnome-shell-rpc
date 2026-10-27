@@ -57,27 +57,59 @@ function place(actor) {
  * @param {object} source
  * @param {object} menu
  */
+/**
+ * Stage pixels, including translation. The allocation chain misses that.
+ *
+ * @param {object} actor
+ */
+function transformed(actor) {
+	const [x, y] = actor.get_transformed_position();
+	const [w, h] = actor.get_transformed_size();
+	return {x, y, w, h};
+}
+
+/**
+ * @param {string} label
+ * @param {object} source
+ * @param {object} menu
+ */
 function report(label, source, menu) {
 	const s = place(source);
 	const m = place(menu.actor);
+	const contentActor = menu.box ?? menu.actor;
+	const button = transformed(source);
+	const content = transformed(contentActor);
+	let item = 'none';
+	const first = contentActor.get_first_child?.() ?? null;
+	if (first != null) {
+		const kid = transformed(first);
+		item = `${kid.y}+${kid.h}`;
+	}
 	const [, nat] = menu.actor.get_preferred_height(-1);
 	const gap = m.y - (s.y + s.h);
+	const paintedGap = content.y - (button.y + button.h);
 	const finite = [s.y, s.h, m.x, m.y, m.w, m.h].every(Number.isFinite);
 	const own = menu.actor.get_allocation_box();
 	const sourceHeight = source.height;
 	/* The list belongs at or below the control. A negative gap means
-	 * the list starts on the control. When the control's box is not
-	 * finite, the list's own Y is the constraint offset: it should be
-	 * the control's height, not 0. */
+	 * the list starts on the control. The container allocation can be
+	 * height 0 while menu.box is the painted list. */
 	const gapHigh = finite && gap < -2;
+	const paintedHigh = [button.y, button.h, content.y].every(Number.isFinite)
+		&& paintedGap < -2;
+	const unopened = Number.isFinite(nat) && nat > 20
+		&& Number.isFinite(content.h) && content.h < 2;
 	const unpushed = !finite
 		&& Number.isFinite(sourceHeight) && sourceHeight > 2
 		&& Number.isFinite(own.y1) && own.y1 + 2 < sourceHeight;
-	const high = gapHigh || unpushed;
+	const high = gapHigh || paintedHigh || unopened || unpushed;
 	smokeLog(`${label} source=${s.x},${s.y} ${s.w}x${s.h}`
 		+ ` menu=${m.x},${m.y} ${m.w}x${m.h}`
 		+ ` nat=${nat} gap=${gap} height=${sourceHeight} menuY=${own.y1}`
-		+ ` open=${menu.isOpen} finite=${finite} high=${high}`);
+		+ ` open=${menu.isOpen} finite=${finite} high=${high} unopened=${unopened}`);
+	smokeLog(`${label} painted button=${button.y}+${button.h}`
+		+ ` content=${content.y}+${content.h} gap=${paintedGap}`
+		+ ` heightProp=${menu.actor.height} item=${item}`);
 	smokeLog(`${label} source-chain ${s.chain}`);
 	smokeLog(`${label} menu-chain ${m.chain}`);
 	return high;
@@ -163,30 +195,64 @@ function runProve(main) {
 	if (brightness?.menu == null || !brightness.visible)
 		smokeLog('brightness hidden');
 	const rows = visibleMenus(qs.menu._grid);
-	qs.menu.open(0);
+	qs.menu.open();
 	later(400, () => {
 		if (!qs.menu.isOpen) {
 			smokeLog('miss quick-settings-closed');
 			global.context.terminate();
 			return;
 		}
+		const popup = qs.menu;
+		const pointer = transformed(popup._boxPointer);
+		const host = transformed(popup.actor);
+		smokeLog(`popup actor=${host.w}x${host.h} boxPointer=${pointer.w}x${pointer.h}`);
+		const scoreDash = (anyHigh) => {
+			const dash = main.overview?.dash;
+			const showApps = dash?.showAppsButton;
+			if (dash == null || showApps == null) {
+				smokeLog('miss no-dash');
+				global.context.terminate();
+				return;
+			}
+			main.overview.showApps();
+			const samples = [];
+			const sample = (index) => {
+				const icon = transformed(showApps);
+				const host = transformed(dash);
+				samples.push(icon.y);
+				smokeLog(`dash sample=${index} translation=${dash.translation_y}`
+					+ ` showApps=${icon.y}+${icon.h} dash=${host.y}+${host.h}`);
+				if (index < 4) {
+					later(200, () => sample(index + 1));
+					return;
+				}
+				let jumped = false;
+				for (let i = 1; i < samples.length; i++) {
+					if (samples[i - 1] - samples[i] > 160)
+						jumped = true;
+				}
+				if (jumped)
+					smokeLog('miss dash-jump ' + samples.join(','));
+				else if (anyHigh)
+					smokeLog('miss overlap');
+				else
+					smokeLog('ok');
+				global.context.terminate();
+			};
+			later(200, () => sample(0));
+		};
 		const scoreAt = (index, anyHigh) => {
 			if (index >= rows.length) {
-				smokeLog(anyHigh ? 'miss overlap' : 'ok');
-				global.context.terminate();
+				scoreDash(anyHigh);
 				return;
 			}
 			const row = rows[index];
 			if (row.item.menuEnabled === false)
 				row.item.menuEnabled = true;
-			row.item.menu.open(0);
+			row.item.menu.open();
 			later(800, () => {
-				const parent = row.item.menu.actor.get_parent();
-				const rel = row.item.apply_relative_transform_to_point(
-					parent, new Graphene.Point3D());
-				smokeLog(`${row.label} relative=${rel.x},${rel.y} y=${row.item.y}`);
 				const high = report(row.label, row.item, row.item.menu);
-				row.item.menu.close(0);
+				row.item.menu.close();
 				scoreAt(index + 1, anyHigh || high);
 			});
 		};
