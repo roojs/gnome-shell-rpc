@@ -5,9 +5,11 @@
  *
  *   GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh
  */
+import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Graphene from 'gi://Graphene';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import 'resource:///org/gnome/shell/ui/environment.js';
@@ -176,6 +178,106 @@ function visibleMenus(grid) {
 	return rows;
 }
 
+/**
+ * @param {object} actor
+ * @returns {string}
+ */
+function actorBits(actor) {
+	if (actor == null)
+		return 'null';
+	const box = transformed(actor);
+	const style = actor.style_class ?? '';
+	const access = actor.accessible_name ?? '';
+	const icon = actor.icon_name ?? '';
+	return `${style} access=${access} icon=${icon}`
+		+ ` ${Math.round(box.w)}x${Math.round(box.h)}`
+		+ ` opacity=${actor.opacity} visible=${actor.visible}`;
+}
+
+/**
+ * @param {object} actor
+ * @returns {string}
+ */
+function themeAlpha(actor) {
+	if (actor == null)
+		return 'null';
+	try {
+		const node = actor.get_theme_node?.();
+		if (node == null)
+			return 'no-theme';
+		const color = node.get_background_color();
+		return `a=${color.alpha} rgb=${color.red},${color.green},${color.blue}`;
+	} catch (e) {
+		return 'theme-err ' + e;
+	}
+}
+
+/**
+ * @param {object} grid
+ * @returns {string}
+ */
+function rowLine(grid) {
+	const parts = [];
+	for (const child of grid) {
+		const p = transformed(child);
+		const flag = child.visible ? '' : ' hidden';
+		parts.push(`${child.style_class ?? 'row'}@${Math.round(p.y)}+${Math.round(p.h)}${flag}`);
+	}
+	return parts.join(' ');
+}
+
+/**
+ * @param {object} systemItem
+ * @returns {object|null}
+ */
+function findShutdown(systemItem) {
+	const box = systemItem?.child;
+	if (box == null)
+		return null;
+	for (const child of box) {
+		if ((child.accessible_name ?? '') === 'Power Off Menu')
+			return child;
+	}
+	return null;
+}
+
+/**
+ * @param {object} qs
+ */
+function logChrome(qs) {
+	const box = qs._system?._systemItem?.child;
+	if (box != null) {
+		for (const child of box) {
+			const glyph = child._icon ?? child.child ?? null;
+			smokeLog('chrome ' + actorBits(child) + ' glyph=' + actorBits(glyph));
+		}
+	}
+	const slider = qs._volumeOutput?._output;
+	if (slider != null) {
+		smokeLog('volume ' + actorBits(slider._iconButton)
+			+ ' glyph=' + actorBits(slider._icon));
+	}
+}
+
+/**
+ * @param {string} path
+ */
+function shoot(path) {
+	try {
+		const stream = Gio.File.new_for_path(path).replace(
+			null, false, Gio.FileCreateFlags.NONE, null);
+		const shot = new Shell.Screenshot();
+		shot.screenshot(false, stream).then(() => {
+			stream.close(null);
+			smokeLog('shot ' + path);
+		}).catch(e => {
+			smokeLog('shot miss ' + e);
+		});
+	} catch (e) {
+		smokeLog('shot miss ' + formatError(e));
+	}
+}
+
 function runProve(main) {
 	const qs = main.panel.statusArea.quickSettings;
 	const brightness = main.panel._brightness?.quickSettingsItems?.[0];
@@ -205,7 +307,25 @@ function runProve(main) {
 		const popup = qs.menu;
 		const pointer = transformed(popup._boxPointer);
 		const host = transformed(popup.actor);
-		smokeLog(`popup actor=${host.w}x${host.h} boxPointer=${pointer.w}x${pointer.h}`);
+		smokeLog(`popup actor=${host.w}x${host.h} boxPointer=${pointer.w}x${pointer.h}`
+			+ ` bg=${themeAlpha(popup._boxPointer)} opacity=${popup.actor.opacity}`);
+		logChrome(qs);
+		const shutdown = findShutdown(qs._system?._systemItem);
+		smokeLog('before rows ' + rowLine(popup._grid));
+		const cache = GLib.get_home_dir() + '/.cache/gnome-shell-rpc/';
+		shoot(cache + 'menu-expander-panel.png');
+		if (shutdown != null) {
+			const b = transformed(shutdown);
+			const px = b.x + b.w / 2;
+			const py = b.y + b.h / 2;
+			const hit = global.stage.get_actor_at_pos(
+				Clutter.PickMode.REACTIVE, px, py);
+			smokeLog('power-pick ' + actorBits(hit)
+				+ ` at ${Math.round(px)},${Math.round(py)}`);
+			shutdown.emit('clicked', shutdown);
+		} else {
+			smokeLog('miss no-power-button');
+		}
 		const scoreDash = (anyHigh) => {
 			const dash = main.overview?.dash;
 			const showApps = dash?.showAppsButton;
@@ -256,7 +376,21 @@ function runProve(main) {
 				scoreAt(index + 1, anyHigh || high);
 			});
 		};
-		scoreAt(0, false);
+		later(1600, () => {
+			const menu = shutdown?.menu ?? null;
+			const hostNow = transformed(popup.actor);
+			const [, overlayNat] = popup._overlay.get_preferred_height(-1);
+			smokeLog('after-click open=' + (menu?.isOpen ?? false)
+				+ ' actor=' + themeAlpha(menu?.actor)
+				+ ' box=' + themeAlpha(menu?.box)
+				+ ` boxOpacity=${menu?.box?.opacity ?? 'null'}`
+				+ ` actorOpacity=${menu?.actor?.opacity ?? 'null'}`
+				+ ` popup=${Math.round(hostNow.w)}x${Math.round(hostNow.h)}`
+				+ ` overlayNat=${overlayNat}`);
+			smokeLog('after rows ' + rowLine(popup._grid));
+			shoot(cache + 'menu-expander-power.png');
+			scoreAt(0, false);
+		});
 	});
 }
 

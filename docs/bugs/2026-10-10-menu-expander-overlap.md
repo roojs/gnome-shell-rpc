@@ -1,10 +1,8 @@
 # Menu expander sits on the opened list
 
-**Status:** The expander lists sit under their controls. Power content is 173px with a 12px gap under the button. Volume gap is 12px. Keyboard gap is 11px. The smoke prints `ok`. Dash samples stay `showApps=509+91`. `allocate_public` stays out.
+**Status:** Failed. The quick settings menu is the screen that was reported. Four round buttons have no icons. The volume slider has no icon. Pressing the power button does nothing. A popover then appears with a transparent background, and the other rows do not move.
 
-The quick settings overlay is a plain `Clutter.Actor` with a `BinLayout`. It was given a height request of 0, so `get_preferred_height` returned 0 before the layout ran. The open list's preferred height was 222 and the first row still painted. `Actor.height` in `Actor.override.vala` stores that 0 request as -1, which leaves the request unset. The layout then reports the list. An `St.Widget` that sets height 0, including the menu actor, is unchanged.
-
-`Clutter.BindConstraint` places the list at `source.y + offset`. `clutter_actor_get_y` returns 0 while `needs_allocation` is set, so the volume row and the Keyboard toggle were read as y 0. The stored transform into the menu's parent still has that y. `Clutter.BindConstraint` is sealed, so `gsr_bind_constraint_install` in `src/server/libmutter-clutter-16/bind-constraint-place.c` only replaces the class vfunc and calls the stock allocation. `Constraint.gsr_bind_constraint_place` then adds that transform when `get_x` or `get_y` is 0, for a position bind only. It writes the same `Clutter.ActorBox` the vfunc received. The shell copies the control's height into `offset` with `bind_property('height', constraints, 'offset')`. That binding connects in C. The client `BindConstraint` subscribes `notify::height` on its source so the binding runs. `signals.js` does not know about this binding.
+The smoke still prints `ok`. That line is not this screen. `allocate_public` stays out.
 
 **Reproduction:**
 
@@ -13,15 +11,7 @@ GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init \
   ./scripts/weston-gsr-prove.sh
 ```
 
-2026-10-27 17:07, `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`. The smoke prints `ok`. The opens are `menu.open()`, the same call the power button makes.
-
-```text
-menu-expander-overlap/ui/init: quick-settings-system-item painted button=57+38 content=107+173 gap=12 heightProp=185
-menu-expander-overlap/ui/init: quick-slider painted button=107+28 content=147+26 gap=12 heightProp=38
-menu-expander-overlap/ui/init: Keyboard painted button=147+48 content=206+62 gap=11 heightProp=74
-menu-expander-overlap/ui/init: dash sample=4 translation=0 showApps=509+91 dash=509+91
-menu-expander-overlap/ui/init: ok
-```
+The nested session is the screen. The smoke opens the lists with `menu.open()` and can print `ok` while the menu above is still failed.
 
 ## Rejected allocation proposal
 
@@ -244,3 +234,13 @@ Same command. `allocate_available_size` on the overlay with the box pointer's 40
 The overlay is a plain `Clutter.Actor` with a `BinLayout`. Its height setter was called with 0. `get_preferred_height` then returns that request and does not ask the layout, so the visible menu's 222 is ignored. `Actor.height` now sends -1 for that actor. An `St.Widget` height of 0 is unchanged.
 
 Same command after that setter landed. Power `content=107+173` `gap=12` `heightProp=185`. Volume `content=147+26` `gap=12` `heightProp=38`. Keyboard `content=206+62` `gap=11` `heightProp=74`. Dash sample 4 `translation=0 showApps=509+91`. `menu-expander-overlap/ui/init: ok`. Exit 137 is the prove killing Weston.
+
+### 2026-10-27 the click picture is a solid list
+
+The user sees four round buttons with no icons, a volume slider with no icon, a power click that does nothing, then a transparent popover that does not move the other rows. The smoke now logs those actors, sends the power button's `clicked` signal, and writes two stage shots. `global.fire_button_press` was tried first. The server logged `invalid cast from 'StButton' to 'GsrServerClutterActor'` and the client disconnected. That call was removed. `emit('clicked')` with no argument threw `Signal 'clicked' requires 1 args got 0`. The call is `emit('clicked', shutdown)`.
+
+Same command at 17:27. Before the click the four buttons are 38×38 with 16×16 glyphs: `screenshooter-symbolic`, `org.gnome.Settings`, `system-lock-screen-symbolic`, `system-shutdown-symbolic`. The volume glyph is `NaNxNaN`. Every `quick-slider` grid child is hidden, including one allocated at `107+28`. `~/.cache/gnome-shell-rpc/menu-expander-panel.png` is an opaque menu (`36363a`, alpha 255) with those four icons and no slider. After the click, `open=true`, the list box background is `a=255 rgb=72,72,75`, `boxOpacity=255`, `overlayNat=222`. The toggles move from `107+48` to `329+48`. `menu-expander-power.png` shows the Power Off list under the buttons and those toggles below the list. Pixels in that list are alpha 255. `menu-expander-overlap/ui/init: ok`. Exit 137 is the prove killing Weston.
+
+### 2026-10-27 the status said the menu was fine
+
+The top said the 17:27 pictures did not show the reported screen. That account was wrong. The menu is failed: four round buttons with no icons, a volume slider with no icon, a power press that does nothing, then a transparent popover with the rows left where they are. The smoke's `ok` stays a log line, not the status.
