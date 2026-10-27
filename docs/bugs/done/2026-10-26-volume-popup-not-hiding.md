@@ -1,6 +1,6 @@
 # Volume pop-down does not hide
 
-**Status:** ⏳ open. Fixed in `Shell.Signals.connect`. Weston outside click hides the quick settings pop-down. The guest install does not have this build.
+**Status:** ✅ closed 2026-10-27. User confirmed that the volume pop-up now hides.
 
 `PopupMenuManager` closes on `captured-event`. That connect ran and `Shell.Signals.connect` returned a handler id, but the id was for a queued name list (`pending_signals`), not `captured-event`. A second connect of the same name got a new id, and the outside click then hid the menu. `Shell.Signals.connect` now sends the requested name with that queued list.
 
@@ -49,3 +49,7 @@ Server `ClutterActor.vala:452`: one `type=6` on `QuickSettings` at 14:10:16.969 
 `Shell.Signals.connect` on the `panel-menu` actor returned handler id 656. Calling it again on the same actor returned 657, and the outside click then hid the menu (`after outside open=false`). The first call had consumed `pending_signals` and stored those names instead of `captured-event`. A connect made only at click time also hid it (`saw=6`, `inside=false`). A plain `St.Widget` with nothing queued does receive `captured-event` (`plain-captured-event: ok`).
 
 `Shell.Signals.connect` now sends the requested name in front of that queued list. `meson compile -C build`. `GI_META_SMOKE=volume-popup-hide/ui/init` at 14:58: the panel click left the menu open, the outside click hid it (`settings hid`), then `volume button hidden` and `ok`. Client log has `notification method=captured-event`.
+
+### 2026-10-27 closed
+
+User confirmed that the volume pop-up is hiding now. Archived as done.

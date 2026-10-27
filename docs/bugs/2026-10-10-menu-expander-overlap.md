@@ -1,6 +1,6 @@
 # Menu expander sits on the opened list
 
-**Status:** ⏳ open. No `src/` edit. Every visible collapsible submenu is drawn at the top of the quick-settings overlay. On a normal desktop each list starts under the control that opened it.
+**Status:** ⏳ open. No `src/` edit. The allocation proposal was tested and rejected: its historical regression gates pass, but it does not restore the volume or Keyboard source Y. Every visible collapsible submenu is drawn too high in the quick-settings overlay.
 
 Three lists are on screen. The system row holds the shutdown button (`ShutdownItem`), which opens Suspend, Restart, Power Off, and Log Out. The volume row is the visible `QuickSlider`. The other collapsible submenu is the Keyboard toggle (`KeyboardBrightnessToggle` in `vendor/gnome-shell/js/ui/status/backlight.js`). All three are `QuickToggleMenu`. Brightness, Bluetooth, Power Mode, and background apps use the same menu and are hidden in this nest. The screen brightness row is hidden.
 
@@ -11,7 +11,8 @@ The shell copies the control's height into `offset` with `bind_property('height'
 **Reproduction:**
 
 ```bash
-GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh
+GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init \
+  ./scripts/weston-gsr-prove.sh
 ```
 
 2026-10-26 15:45, `~/.cache/gnome-shell-rpc/nested-weston-prove.tee.log`:
@@ -29,6 +30,19 @@ menu-expander-overlap/ui/init: miss overlap
 ```
 
 The trial line replaces the shell constraint with one whose `offset` is the control's height. `src/` was not edited. `alan@192.168.88.197` was not read.
+
+## Rejected allocation proposal
+
+The replaced client-owned layout-manager shortcut came from commit `b5f0a319` and [`2026-09-15-gjs-layoutmanager-null-allocate.md`](done/2026-09-15-gjs-layoutmanager-null-allocate.md). Its gate is `layout-allocate-smoke`. The helper `allocate_public` branch came from commit `81fffd57` and [`2026-09-16-allocate-follow-reference.md`](done/2026-09-16-allocate-follow-reference.md). Its gates are `workspace-dot-align-smoke` and `startup-allocate-smoke` F. `constraint-allocate-smoke` covers public allocation updating constraints.
+
+The proposed broad `allocate_public` path plus the `notify::height` subscription compiled. The historical gates did not regress:
+
+- `layout-allocate-smoke`: GJS layout manager step 2 hit once; subclass step 3 hit; all allocate calls returned. Its deliberate step 4 clear still emits the expected `CLUTTER_IS_LAYOUT_MANAGER` criticals.
+- `workspace-dot-align-smoke`: A, B, and C PASS.
+- `startup-allocate-smoke`: A resolved; E PASS; F PASS with `hits=1`. B and C remain the smoke's known diagnostic failures.
+- `constraint-allocate-smoke`: PASS with two `vfunc_update_allocation` hits.
+
+It did not fix this bug. On the real menu smoke, the height subscription moved the system menu to `menuY=38`, but volume remained `source.y=0`, `menuY=28`, `gap=-50.0006`; Keyboard remained `source.y=0`, `menuY=48`, `gap=-90.0006`. Broadening `allocate_public` therefore does not establish the missing Y for these actors. All three `src/` experiments were reverted. The only complete off-product pass remains the smoke constraint whose offset is source Y relative to the overlay plus source height.
 
 ## Steps
 
@@ -87,7 +101,8 @@ Here that works. Volume height 28, and the list then started 28 pixels down insi
 **Reproduction** of the failure, after that trial was taken off:
 
 ```bash
-GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh
+GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init \
+  ./scripts/weston-gsr-prove.sh
 ```
 
 2026-10-11 10:23, `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`:
@@ -159,3 +174,27 @@ The smoke cleared each list's constraints and added a new Y bind whose `offset` 
 ### 2026-10-26 15:45 `.y` against the allocation
 
 Same command. Volume `relative=19,50 y=0` with allocation y 50. Keyboard `relative=207,90 y=0` with allocation y 90. System row `y=0` and allocation y 0. Mutter 48 `clutter_bind_constraint_update_allocation` sets the list to `clutter_actor_get_y(source) + offset`. `clutter_actor_get_y` returns 0 while `needs_allocation` is set. The volume trial again: `menuY=28`, `gap=-50`. Keyboard's list box came back with height 0 on this pass; the 15:38 pass is the one that moved it to `menuY=48`. `miss overlap`. `src/` not edited.
+
+### 2026-10-27 user reconfirmed and Weston reproduced
+
+The user identified the visible affected controls as the volume expander and the power expander containing Log Out; the existing smoke also finds the visible Keyboard expander.
+
+`GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh`. System list: source y 57, menu y 57, `gap=-38`, `high=true`. Volume list: source y 292, menu y 57, `gap=-263`, `high=true`. The smoke printed `miss overlap`. Its old height-only trial still left both lists high. Keyboard's menu allocation was infinite on this pass. The outer command ended with exit 137 while shutting down Weston instead of recording the usual stop line. `src/` was not edited.
+
+### 2026-10-27 source position plus height trial
+
+Changed only the smoke's replacement constraint: its offset is now the source's Y relative to the menu actor's parent plus the source height. The same run first reproduced the system overlap (`gap=-38`), then the trial moved it to `gap=0`. It reproduced the volume overlap (`gap=-263.0006`), then moved it to `gap=-0.0006`. The Keyboard overlap was `gap=-323.0006`; the outer command's five-minute kill closed the RPC socket before that trial could be measured, so this is not yet a pass. `src/` was not edited.
+
+Reran the same command in the foreground. System moved from `gap=-38` to `gap=0`, volume from `gap=-263.0006` to `gap=-0.0006`, and Keyboard from `gap=-323.0006` to `gap=-0.0006`. The smoke printed `ok`. This proves the full required offset is the source's position in the overlay plus its height; height alone is insufficient while the peer reports every source `.y` as zero.
+
+### 2026-10-27 replaying `Actor.allocate` does not clear the source
+
+Changed the smoke trial to call `row.item.allocate(row.item.get_allocation_box())`, then install a normal bind constraint with only the source height as offset. `GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh`: system passed because its source Y is zero; volume remained `y=0`, `menuY=28`, `gap=-50.0006`, and the smoke printed `miss overlap=true trial-high=true`. The stub's client-owned layout-manager shortcut runs its `allocate_vfunc` directly and does not enter public `clutter_actor_allocate` on the source peer, so replaying the current stub call cannot clear the peer's `needs_allocation`. `src/` was not edited.
+
+### 2026-10-27 `allocate_preferred_size` trial
+
+Replaced the replay with the stock `Actor.allocate_preferred_size(sourceBox.x1, sourceBox.y1)` and retained the height-only constraint. The peer still reported `.y=0`; volume remained high (`menuY=28`, `gap=-235.0006` after the other menus changed the grid height). This method does not establish the missing parent-assigned allocation boundary for these RPC actors. The passing source-position-plus-height trial was restored. `src/` was not edited.
+
+### 2026-10-27 final off-product pass
+
+The smoke retains the failing stock constraint, then replaces it with the proven source-position-plus-height trial. Its post-change wait is 800 ms because 300 ms produced one run where the system menu had not reallocated yet. `GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh`: system `gap=0`, volume `gap=-0.0006`, Keyboard `gap=-0.0006`, then `menu-expander-overlap/ui/init: ok`. No `src/` edit. The major stock-boundary change is proposed above for review.

@@ -171,9 +171,11 @@ function runProve(main) {
 			global.context.terminate();
 			return;
 		}
-		const scoreAt = (index, anyHigh) => {
+		const scoreAt = (index, sawOverlap, trialHigh) => {
 			if (index >= rows.length) {
-				smokeLog(anyHigh ? 'miss overlap' : 'ok');
+				smokeLog(sawOverlap && !trialHigh
+					? 'ok'
+					: `miss overlap=${sawOverlap} trial-high=${trialHigh}`);
 				global.context.terminate();
 				return;
 			}
@@ -187,23 +189,22 @@ function runProve(main) {
 					parent, new Graphene.Point3D());
 				smokeLog(`${row.label} relative=${rel.x},${rel.y} y=${row.item.y}`);
 				const high = report(row.label, row.item, row.item.menu);
-				/* Same objects the shell already created, with the height
-				 * written into offset. Asks whether a live constraint
-				 * then sits the list under the control. */
+				/* Same objects the shell already created, with the source
+				 * position and height written into the offset. */
 				row.item.menu.actor.clear_constraints();
 				row.item.menu.actor.add_constraint(new Clutter.BindConstraint({
 					coordinate: Clutter.BindCoordinate.Y,
 					source: row.item,
-					offset: row.item.height,
+					offset: rel.y + row.item.height,
 				}));
-				later(300, () => {
+				later(800, () => {
 					const stillHigh = report(row.label + '-trial', row.item, row.item.menu);
 					row.item.menu.close(0);
-					scoreAt(index + 1, anyHigh || high || stillHigh);
+					scoreAt(index + 1, sawOverlap || high, trialHigh || stillHigh);
 				});
 			});
 		};
-		scoreAt(0, false);
+		scoreAt(0, false, false);
 	});
 }
 
