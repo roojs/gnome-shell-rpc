@@ -1,8 +1,6 @@
 # Menu expander sits on the opened list
 
-**Status:** Proposal ready for review. The failure is proved on the pre-expander product baseline. All previous product changes remain reverted; the eight affected `src/` paths exactly match commit `8bed1cb`, and `meson compile -C build` passes.
-
-The minimized smoke at `tests/gjs-embed/menu-expander-placement.js` first reproduces all three overlaps, then replaces only the Y constraint with the client-known source position plus source height. The system gap moves from `-38` to `0`, volume from `-78` to `0`, and Keyboard from `-138` to `-1`; it prints `ok`. No product fix is applied.
+**Status:** The client-side proposal below was applied, measured, and reverted. `src/` is the pre-expander baseline (`git diff --exit-code -- src` on `207c419`). The stock overlap is still proved. The smoke's replacement constraint still corrects only the system menu.
 
 **Reproduction:**
 
@@ -11,41 +9,43 @@ GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init \
   ./scripts/weston-gsr-prove.sh
 ```
 
-2026-10-28 08:44, `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`:
+2026-10-28 16:26, `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`, after the proposal was reverted:
 
 ```text
 menu-expander-overlap/ui/init: quick-settings-system-item ... gap=-38 ... high=true
-menu-expander-overlap/ui/init: quick-slider ... gap=-78.00062561035156 ... high=true
-menu-expander-overlap/ui/init: Keyboard ... gap=-138.00062561035156 ... high=true
-menu-expander-overlap/ui/init: miss overlap
+menu-expander-overlap/ui/init: quick-settings-system-item-trial ... gap=0 ... high=false
+menu-expander-overlap/ui/init: quick-slider ... menu=392,57 402x0 menuY=0 ... gap=-78.00062561035156 ... high=true
+menu-expander-overlap/ui/init: quick-slider-trial ... menu=392,57 402x0 menuY=0 ... gap=-78.00062561035156 ... high=true
+menu-expander-overlap/ui/init: Keyboard ... menu=Infinity,Infinity ... gap=Infinity ... high=true
+menu-expander-overlap/ui/init: Keyboard-trial ... menu=Infinity,Infinity ... gap=Infinity ... high=true
+menu-expander-overlap/ui/init: miss failure=true trial-high=true
+nested-weston-prove: stop (smoke-fail) after 16s
 ```
 
-The power screenshot is `~/.cache/gnome-shell-rpc/menu-expander-power.png`. The list begins at the top of the quick-settings panel and covers the controls above it. The outer command exited 137 while stopping Weston after the failure marker; that shutdown status is not the test result.
+The system list still starts on the button. Replacing its Y constraint with the source Y relative to the overlay plus the source height still moves that one list to `gap=0`. The volume list allocates 402×0, and the same replacement leaves `menuY=0`. Keyboard's menu box is not finite before or after the replacement.
 
-## Pause summary — 2026-10-28
+## Pause summary — 2026-10-28 16:26
 
-- Product code is back at the pre-expander baseline. `git diff --exit-code 8bed1cb -- src` passes; the visible `src/` diff is the rollback of the committed experiments, not a new fix.
-- The failure is real and repeatable: the stock constraints place system, volume, and Keyboard menus at the overlay top instead of below their controls.
-- The missing value is the source control's client-known Y relative to the overlay. The server-facing `source.y` is zero even though the client allocation chain contains Y values `0`, `50`, and `90`.
-- Height-only fixes are insufficient. They leave volume 50 pixels high and Keyboard 90 pixels high.
-- Replaying `set_allocation`, emitting `notify::height`, reopening the menu, and queueing relayout did not reliably repair the existing stock constraint.
-- A replacement constraint with effective offset `source Y relative to overlay + source height` passes the minimized smoke for all three controls. The latest run moved gaps `-38 → 0`, `-78 → 0`, and `-138 → -1`, then printed `menu-expander-overlap/ui/init: ok`.
-- The proposed product design below reproduces that proven calculation on the client without restoring the rejected server-wide BindConstraint vfunc replacement. It is proposed code only; it has not been compiled or applied.
-- Resume point: review the two-file proposal, especially whether `Actor.constraints` is the correct single attachment boundary. If accepted, apply it, compile, run the historical allocation gates, then rerun the Weston command above.
+- Product code is back at the pre-expander baseline.
+- The proposal below was applied and is not the fix. At 16:05, before the revert, system was `gap=0` and volume was `menuY=78` `gap≈0`, but the volume menu was 402×1 and Keyboard's box was not finite. The smoke printed `miss`.
+- The first applied run at 15:39 placed the system list 38px too low (`menuY=76`). The parent walk added the box-pointer Y on top of a height offset that had already fired.
+- Resume point: why the volume menu allocates at height 0, and why Keyboard's menu box is not finite. `tests/gjs-embed/menu-expander-placement.js` now logs the height property, preferred height, and relative Y, and sets `height = -1` when the allocated box is empty. That smoke has not been run.
 
 ## Proposed client-side position relay
 
-The off-product pass proves that the stock height offset is only half of the value needed by this split-process client. The source's client allocation has the missing parent-relative Y while the server-side `source.y` used by `Clutter.BindConstraint` remains zero. Keep the stock constraint and server vfunc. When a client source height changes, send an effective Y offset consisting of the stock offset plus the source's client allocation walked to the constrained actor's parent.
+Applied 2026-10-28 and reverted the same day. Not an open proposal. The fences are what ran.
 
-### 1. `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala` — emit local height changes and attach the target
+The off-product pass proves that the stock height offset is only half of the value needed by this split-process client. The source's client allocation has the missing parent-relative Y while the server-side `source.y` used by `Clutter.BindConstraint` remains zero. Keep the stock constraint and server vfunc, and **do not** subscribe `notify::height` on the server (when `notify::height` arrives from the server, `libocrpc` `Client.vala` calls `set_property("height")` on the client proxy, which invokes `Clutter-Actor.set_height` back on the server and pins explicit height requests such as `0` on `_overlay`). Instead, emit `notify::height` locally when `Actor.allocate` changes a client-allocated actor's height or Y position, refresh the attached `BindConstraint` locally in `Actor.show()` when a constrained submenu actor is shown (so server-allocated sources like `ShutdownItem` inside `SystemItem` also fire their client `GBinding`), and send an effective Y offset consisting of the stock offset plus the source's client allocation walked to the constrained actor's parent.
 
-**Why:** The stock `bind_property('height', constraints, 'offset')` is local to the client. It needs a local `notify::height` when `Actor.allocate` changes the client allocation. The `BindConstraint` also needs its constrained actor so it can stop the allocation walk at that actor's parent.
+### 1. `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala` — emit local height/Y changes, attach the target, and refresh on `show()`
 
-**Where:** `Actor.allocate(ActorBox)` and the write-only `constraints` property.
+**Why:** The stock `bind_property('height', constraints, 'offset')` is local to the client. It needs a local `notify::height` when `Actor.allocate` changes the client allocation's height or `y1`, and when a constrained submenu actor is shown (`QuickToggleMenu.open()` calls `this.actor.show()`, which covers `ShutdownItem` whose allocation happens inside `SystemItem`'s server-side `St.BoxLayout` rather than client `Actor.allocate`). The `BindConstraint` also needs its constrained actor so it can stop the allocation walk at that actor's parent.
+
+**Where:** `Actor.allocate(ActorBox)`, `Actor.show()`, and the write-only `constraints` property.
 
 **Depends on:** proposal 2.
 
-##### Part 1 — remember whether allocation changed height
+##### Part 1 — remember whether allocation changed height or y1
 
 #### Remove
 ```vala
@@ -55,9 +55,12 @@ The off-product pass proves that the stock height offset is only half of the val
 
 #### Replace with
 ```vala
+		var previous_y1 = this.allocation_priv.y1;
 		var previous_height =
 			this.allocation_priv.y2 - this.allocation_priv.y1;
 		var height = box.y2 - box.y1;
+		var notify_height = previous_height != height
+			|| (height > 0 && previous_y1 != box.y1);
 		this.allocation_priv = box;
 		if (this.helper_attached) {
 ```
@@ -68,12 +71,45 @@ The off-product pass proves that the stock height offset is only half of the val
 After each allocation call, immediately before that branch returns, and after the final `Clutter-Actor.allocate` call:
 
 ```vala
-			if (previous_height != height) {
+			if (notify_height) {
 				this.notify_property("height");
 			}
 ```
 
-##### Part 3 — give a bind constraint its constrained actor
+##### Part 3 — refresh an attached bind constraint when the constrained actor is shown
+
+#### Remove
+```vala
+	public void show()
+	{
+		this.actor_visible = true;
+		if (this.prop_batch_open) {
+			Gsr.Client.Clutter.Batch.call_value("Clutter-Actor.show", this, "visible",
+				OLLMrpc.args("b", true));
+		}
+		Gsr.Client.Rpc.call_value("Clutter-Actor.show", this);
+	}
+```
+
+#### Replace with
+```vala
+	private BindConstraint? priv_bind_constraint;
+
+	public void show()
+	{
+		this.actor_visible = true;
+		if (this.prop_batch_open) {
+			Gsr.Client.Clutter.Batch.call_value("Clutter-Actor.show", this, "visible",
+				OLLMrpc.args("b", true));
+		}
+		if (this.priv_bind_constraint != null) {
+			this.priv_bind_constraint.refresh_from_source();
+		}
+		Gsr.Client.Rpc.call_value("Clutter-Actor.show", this);
+	}
+```
+
+##### Part 4 — give a bind constraint its constrained actor
 
 #### Remove
 ```vala
@@ -88,20 +124,21 @@ After each allocation call, immediately before that branch returns, and after th
 				this.add_constraint(value);
 				var bind = value as BindConstraint;
 				if (bind != null) {
+					this.priv_bind_constraint = bind;
 					bind.attach(this);
 				}
 			}
 ```
 
-### 2. `src/client/libmutter-clutter-rpc-16/overrides/BindConstraint.override.vala` — include missing client Y
+### 2. `src/client/libmutter-clutter-rpc-16/overrides/BindConstraint.override.vala` — include missing client Y and refresh locally from source
 
-**Why:** The minimized smoke proves `relative source Y + source height`; height alone leaves volume 50 pixels and Keyboard 90 pixels high. This computes that same effective offset only for a Y bind whose server-facing source Y is zero. Other coordinates and already-positioned peers retain stock behavior.
+**Why:** The minimized smoke proves `relative source Y + source height`; height alone leaves volume 50 pixels and Keyboard 90 pixels high. `refresh_from_source()` emits a local-only `notify::height` on `priv_source` (triggering the C `GBinding` to read `source.height` from the server without subscribing server `notify::height`) and calls `sync_offset()`. `sync_offset()` computes the effective offset only for a Y bind whose server-facing source Y is zero. Other coordinates and already-positioned peers retain stock behavior.
 
-**Where:** private fields, a new internal attachment method, and `sync_offset()`.
+**Where:** private fields, `attach()`, `refresh_from_source()`, and `sync_offset()`.
 
 **Depends on:** proposal 1.
 
-##### Part 1 — retain the constrained actor
+##### Part 1 — retain the constrained actor and refresh from source
 
 #### Add
 After `priv_offset`:
@@ -113,6 +150,15 @@ After `priv_offset`:
 		{
 			this.priv_actor = actor;
 			this.sync_offset();
+		}
+
+		internal void refresh_from_source()
+		{
+			if (this.priv_coordinate == BindCoordinate.y
+					&& this.priv_source != null) {
+				this.priv_source.notify_property("height");
+				this.sync_offset();
+			}
 		}
 ```
 
@@ -395,3 +441,14 @@ The first source-position-plus-height run at 08:54 moved system `gap=-38 → 0`,
 Tested narrower alternatives before proposing product code. `set_allocation` plus a height-only replacement constraint passed once because constructing the new constraint forced allocation. Reusing the existing stock constraint with `set_allocation` and `notify::height` left volume at `gap=-50`; adding immediate `queue_relayout`, or closing and reopening, was not reliable. Those are rejected.
 
 The minimized source-position-plus-height smoke initially exposed infinite boxes when the next menu opened immediately. Added an 800 ms close-to-next-open settle, then reran the same Weston command at 09:57. System moved `-38 → 0`, volume `-78 → 0`, Keyboard `-138 → -1`, and the smoke printed `menu-expander-overlap/ui/init: ok` at 09:58:19. Product `src/` remained at the rollback baseline. The two-file client-side proposal at the top is based on this pass and has not been applied.
+
+### 2026-10-28 proposal review and update
+
+Reviewed the two-file proposal against `vendor/gnome-shell/js/ui/status/system.js`, `quickSettings.js`, the client Clutter overrides, and the `88f1bae` / `465b480` failure logs (`org.gnome.ShellRpc.debug.log:18776`):
+1. `ShutdownItem` (the power button) is a child of `SystemItem`'s `St.BoxLayout` (`system.js:291`), and `SystemItem.menu = shutdownItem.menu` (`system.js:294`). Its `QuickToggleMenu` binds `ShutdownItem`'s `height` to the constraint's `offset`, not `SystemItem`'s. Because `SystemItem` allocates its `St.BoxLayout` and `ShutdownItem` on the server, client-side `Actor.allocate` never runs on `ShutdownItem`.
+2. Why `88f1bae` failed when it subscribed `notify::height` on the server: whenever `notify::<prop>` arrives from the server, `libocrpc` (`Client.vala:1257-1275`) calls `proxy.set_property(prop_name, value)` on the client stub. On `Clutter.Actor`, the `height` property setter calls `Clutter-Actor.set_height` back on the server (`org.gnome.ShellRpc.debug.log:18776-18777`), which pins the server actor's explicit height request (`height-set = true`) — pinning `_overlay` to `0` when collapsed and locking sizes on any actor whose `notify::height` is subscribed.
+3. To handle both `ShutdownItem` and client-allocated rows without subscribing `notify::height` on the server:
+   - Keep `notify_property("height")` local-only on the client (which fires `GBinding` without calling `set_property("height")` or `Clutter-Actor.set_height`).
+   - In `Actor.allocate`, emit `notify_property("height")` when either `height` or `y1` (with `height > 0`) changes.
+   - In `Actor.show()`, when a constrained actor (`QuickToggleMenu.actor`) is shown (`QuickToggleMenu.open()` starts with `this.actor.show()`), call `priv_bind_constraint.refresh_from_source()`, which emits local `this.priv_source.notify_property("height")` (so `GBinding` reads `ShutdownItem.height` from the server) and calls `this.sync_offset()`. No `src/` files were modified.
+

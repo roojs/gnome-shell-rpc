@@ -109,28 +109,59 @@ function run(main) {
 			item.menu.open(0);
 			later(500, () => {
 				const high = report(label, item, item.menu);
+				const menu = item.menu.actor;
+				const parent = menu.get_parent();
+				const box = menu.get_allocation_box();
+				let relY = NaN;
+				if (parent != null) {
+					relY = item.apply_relative_transform_to_point(
+						parent, new Graphene.Point3D()).y;
+				}
+				const [minH, natH] = menu.get_preferred_height(-1);
+				smokeLog(`${label} detail heightProp=${menu.height}`
+					+ ` visible=${menu.visible} mapped=${menu.mapped}`
+					+ ` nat=${natH} min=${minH} relY=${relY}`
+					+ ` boxY=${box.y1} boxH=${box.y2 - box.y1}`
+					+ ` parentH=${parent?.height} children=${item.menu.box.get_n_children()}`);
 
 				/* Trial only: the effective Y offset is the source's
 				 * client allocation relative to the overlay plus the
 				 * height copied by the stock GBinding. */
-				const parent = item.menu.actor.get_parent();
-				const relative = item.apply_relative_transform_to_point(
-					parent, new Graphene.Point3D());
-				item.menu.actor.clear_constraints();
-				item.menu.actor.add_constraint(new Clutter.BindConstraint({
+				menu.clear_constraints();
+				menu.add_constraint(new Clutter.BindConstraint({
 					coordinate: Clutter.BindCoordinate.Y,
 					source: item,
-					offset: relative.y + item.height,
+					offset: relY + item.height,
 				}));
 
 				later(800, () => {
 					const stillHigh = report(`${label}-trial`, item, item.menu);
-					item.menu.close(0);
+					const after = menu.get_allocation_box();
+					const empty = !Number.isFinite(after.y1)
+						|| (after.y2 - after.y1) < 2;
+					if (!empty) {
+						item.menu.close(0);
+						later(800, () => {
+							check(
+								index + 1,
+								sawFailure || high,
+								trialHigh || stillHigh);
+						});
+						return;
+					}
+					menu.height = -1;
+					menu.queue_relayout();
 					later(800, () => {
-						check(
-							index + 1,
-							sawFailure || high,
-							trialHigh || stillHigh);
+						const recovered = report(`${label}-height`, item, item.menu);
+						smokeLog(`${label}-height prop=${menu.height}`
+							+ ` nat=${menu.get_preferred_height(-1)[1]}`);
+						item.menu.close(0);
+						later(800, () => {
+							check(
+								index + 1,
+								sawFailure || high,
+								trialHigh || stillHigh || recovered);
+						});
 					});
 				});
 			});
