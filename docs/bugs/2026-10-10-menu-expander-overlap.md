@@ -1,8 +1,8 @@
 # Menu expander sits on the opened list
 
-**Status:** Failed. The quick settings menu is the screen that was reported. Four round buttons have no icons. The volume slider has no icon. Pressing the power button does nothing. A popover then appears with a transparent background, and the other rows do not move.
+**Status:** Proposal ready for review. The failure is proved on the pre-expander product baseline. All previous product changes remain reverted; the eight affected `src/` paths exactly match commit `8bed1cb`, and `meson compile -C build` passes.
 
-The smoke still prints `ok`. That line is not this screen. `allocate_public` stays out.
+The minimized smoke at `tests/gjs-embed/menu-expander-placement.js` first reproduces all three overlaps, then replaces only the Y constraint with the client-known source position plus source height. The system gap moves from `-38` to `0`, volume from `-78` to `0`, and Keyboard from `-138` to `-1`; it prints `ok`. No product fix is applied.
 
 **Reproduction:**
 
@@ -11,7 +11,142 @@ GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init \
   ./scripts/weston-gsr-prove.sh
 ```
 
-The nested session is the screen. The smoke opens the lists with `menu.open()` and can print `ok` while the menu above is still failed.
+2026-10-28 08:44, `~/.cache/gnome-shell-rpc/weston-autolaunch-prove.log`:
+
+```text
+menu-expander-overlap/ui/init: quick-settings-system-item ... gap=-38 ... high=true
+menu-expander-overlap/ui/init: quick-slider ... gap=-78.00062561035156 ... high=true
+menu-expander-overlap/ui/init: Keyboard ... gap=-138.00062561035156 ... high=true
+menu-expander-overlap/ui/init: miss overlap
+```
+
+The power screenshot is `~/.cache/gnome-shell-rpc/menu-expander-power.png`. The list begins at the top of the quick-settings panel and covers the controls above it. The outer command exited 137 while stopping Weston after the failure marker; that shutdown status is not the test result.
+
+## Pause summary — 2026-10-28
+
+- Product code is back at the pre-expander baseline. `git diff --exit-code 8bed1cb -- src` passes; the visible `src/` diff is the rollback of the committed experiments, not a new fix.
+- The failure is real and repeatable: the stock constraints place system, volume, and Keyboard menus at the overlay top instead of below their controls.
+- The missing value is the source control's client-known Y relative to the overlay. The server-facing `source.y` is zero even though the client allocation chain contains Y values `0`, `50`, and `90`.
+- Height-only fixes are insufficient. They leave volume 50 pixels high and Keyboard 90 pixels high.
+- Replaying `set_allocation`, emitting `notify::height`, reopening the menu, and queueing relayout did not reliably repair the existing stock constraint.
+- A replacement constraint with effective offset `source Y relative to overlay + source height` passes the minimized smoke for all three controls. The latest run moved gaps `-38 → 0`, `-78 → 0`, and `-138 → -1`, then printed `menu-expander-overlap/ui/init: ok`.
+- The proposed product design below reproduces that proven calculation on the client without restoring the rejected server-wide BindConstraint vfunc replacement. It is proposed code only; it has not been compiled or applied.
+- Resume point: review the two-file proposal, especially whether `Actor.constraints` is the correct single attachment boundary. If accepted, apply it, compile, run the historical allocation gates, then rerun the Weston command above.
+
+## Proposed client-side position relay
+
+The off-product pass proves that the stock height offset is only half of the value needed by this split-process client. The source's client allocation has the missing parent-relative Y while the server-side `source.y` used by `Clutter.BindConstraint` remains zero. Keep the stock constraint and server vfunc. When a client source height changes, send an effective Y offset consisting of the stock offset plus the source's client allocation walked to the constrained actor's parent.
+
+### 1. `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala` — emit local height changes and attach the target
+
+**Why:** The stock `bind_property('height', constraints, 'offset')` is local to the client. It needs a local `notify::height` when `Actor.allocate` changes the client allocation. The `BindConstraint` also needs its constrained actor so it can stop the allocation walk at that actor's parent.
+
+**Where:** `Actor.allocate(ActorBox)` and the write-only `constraints` property.
+
+**Depends on:** proposal 2.
+
+##### Part 1 — remember whether allocation changed height
+
+#### Remove
+```vala
+		this.allocation_priv = box;
+		if (this.helper_attached) {
+```
+
+#### Replace with
+```vala
+		var previous_height =
+			this.allocation_priv.y2 - this.allocation_priv.y1;
+		var height = box.y2 - box.y1;
+		this.allocation_priv = box;
+		if (this.helper_attached) {
+```
+
+##### Part 2 — notify after each allocation path completes
+
+#### Add
+After each allocation call, immediately before that branch returns, and after the final `Clutter-Actor.allocate` call:
+
+```vala
+			if (previous_height != height) {
+				this.notify_property("height");
+			}
+```
+
+##### Part 3 — give a bind constraint its constrained actor
+
+#### Remove
+```vala
+			if (value != null) {
+				this.add_constraint(value);
+			}
+```
+
+#### Replace with
+```vala
+			if (value != null) {
+				this.add_constraint(value);
+				var bind = value as BindConstraint;
+				if (bind != null) {
+					bind.attach(this);
+				}
+			}
+```
+
+### 2. `src/client/libmutter-clutter-rpc-16/overrides/BindConstraint.override.vala` — include missing client Y
+
+**Why:** The minimized smoke proves `relative source Y + source height`; height alone leaves volume 50 pixels and Keyboard 90 pixels high. This computes that same effective offset only for a Y bind whose server-facing source Y is zero. Other coordinates and already-positioned peers retain stock behavior.
+
+**Where:** private fields, a new internal attachment method, and `sync_offset()`.
+
+**Depends on:** proposal 1.
+
+##### Part 1 — retain the constrained actor
+
+#### Add
+After `priv_offset`:
+
+```vala
+		private Actor? priv_actor;
+
+		internal void attach(Actor actor)
+		{
+			this.priv_actor = actor;
+			this.sync_offset();
+		}
+```
+
+##### Part 2 — send the client-relative effective offset
+
+#### Remove
+```vala
+			Gsr.Client.Rpc.call_value(
+				"Clutter-BindConstraint.set_offset", this,
+				OLLMrpc.args("f", (double) this.priv_offset));
+```
+
+#### Replace with
+```vala
+			var offset = this.priv_offset;
+			var source = this.priv_source;
+			var actor = this.priv_actor;
+			if (this.priv_coordinate == BindCoordinate.y
+					&& source != null
+					&& actor != null
+					&& source.y == 0) {
+				var parent = actor.get_parent();
+				if (parent != null) {
+					Actor? current = source;
+					while (current != null && current != parent) {
+						offset += current.allocation.y1;
+						current = current.get_parent();
+					}
+				}
+			}
+			Gsr.Client.Rpc.call_value(
+				"Clutter-BindConstraint.set_offset", this,
+				OLLMrpc.args("f", (double) offset));
+```
 
 ## Rejected allocation proposal
 
@@ -244,3 +379,19 @@ Same command at 17:27. Before the click the four buttons are 38×38 with 16×16 
 ### 2026-10-27 the status said the menu was fine
 
 The top said the 17:27 pictures did not show the reported screen. That account was wrong. The menu is failed: four round buttons with no icons, a volume slider with no icon, a power press that does nothing, then a transparent popover with the rows left where they are. The smoke's `ok` stays a log line, not the status.
+
+### 2026-10-28 rollback and fresh failure prove
+
+Inspected commits `20b783a` through `7b49b8e`. The product experiments were the bind-constraint signal subscriptions and server vfunc replacement from `88f1bae`, plus the actor-height special case from `465b480`; the source-only comment added in `20b783a` was rolled back with them. Reverted those eight `src/` paths in the working tree to their state at `8bed1cb`. The reproduction harness and bug record were retained. `git diff --exit-code 8bed1cb -- <eight paths>` passed, and `meson compile -C build` passed.
+
+Ran `GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh`. The system list had `gap=-38`, the volume list `gap=-78.00062561035156`, and Keyboard `gap=-138.00062561035156`; all three logged `high=true`, followed by `menu-expander-overlap/ui/init: miss overlap`. The power screenshot shows the list covering the controls at the top of the quick-settings panel. The outer command exited 137 during Weston shutdown after the failure marker. No candidate fix was tried and no `src/` change remains beyond the rollback.
+
+### 2026-10-28 minimized off-product fix
+
+Added `tests/gjs-embed/menu-expander-placement.js` and pointed the existing `menu-expander-overlap/ui/init.js` entry point at it. The minimized smoke retains each failing stock menu long enough to record its position, then changes only the reproduction's constraint.
+
+The first source-position-plus-height run at 08:54 moved system `gap=-38 → 0`, volume `gap=-78.0006 → -0.0006`, and Keyboard `gap=-138.0006 → -0.0006`, and printed `ok`. The stage image `~/.cache/gnome-shell-rpc/menu-expander-trial.png` showed the power list below the controls.
+
+Tested narrower alternatives before proposing product code. `set_allocation` plus a height-only replacement constraint passed once because constructing the new constraint forced allocation. Reusing the existing stock constraint with `set_allocation` and `notify::height` left volume at `gap=-50`; adding immediate `queue_relayout`, or closing and reopening, was not reliable. Those are rejected.
+
+The minimized source-position-plus-height smoke initially exposed infinite boxes when the next menu opened immediately. Added an 800 ms close-to-next-open settle, then reran the same Weston command at 09:57. System moved `-38 → 0`, volume `-78 → 0`, Keyboard `-138 → -1`, and the smoke printed `menu-expander-overlap/ui/init: ok` at 09:58:19. Product `src/` remained at the rollback baseline. The two-file client-side proposal at the top is based on this pass and has not been applied.

@@ -70,9 +70,6 @@
 					"Clutter-BindConstraint.set_offset", bind,
 					OLLMrpc.args("f", (double) bind.offset));
 
-				Gsr.Client.Rpc.ensure_signal_subscribe(
-					bind.source, "notify::height");
-					
 				return;
 			}
 			if (this.get_type().is_a(typeof(SnapConstraint))) {

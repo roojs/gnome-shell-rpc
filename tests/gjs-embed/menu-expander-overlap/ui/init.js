@@ -5,4 +5,4 @@
  *
  *   GI_META_SMOKE=menu-expander-overlap/ui/init ./scripts/weston-gsr-prove.sh
  */
-import '../../menu-expander-overlap.js';
+import '../../menu-expander-placement.js';

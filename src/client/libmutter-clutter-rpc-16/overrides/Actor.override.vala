@@ -888,37 +888,6 @@
 	}
 
 	/**
-	 * GIR {@code ClutterActor:height}. The getter and setter are the
-	 * stock RPC. A plain actor whose layout is a {@link BinLayout}
-	 * and whose height is set to 0 is stored as -1 instead.
-	 *
-	 * The quick settings overlay is that actor. A 0 request makes
-	 * {@code get_preferred_height} return 0 before the layout runs, so
-	 * the open list's box stays empty and paints over the panel. -1
-	 * leaves the request unset, and the layout reports the list.
-	 * An {@link St.Widget} that passes height 0, including the menu
-	 * actor, is unchanged.
-	 */
-	public float height {
-		get {
-			var response = Gsr.Client.Rpc.call_value("Clutter-Actor.get_height", this);
-			return (float) response.retval.get_float();
-		}
-		set {
-			var height = value;
-			var lm = this.layout_manager;
-			if (height == 0
-					&& this.get_type() == typeof(Actor)
-					&& lm is BinLayout) {
-				height = -1;
-			}
-			Gsr.Client.Rpc.call_value(
-				"Clutter-Actor.set_height", this,
-				OLLMrpc.args("f", (double) height));
-		}
-	}
-
-	/**
 	 * Weird one. The {@code allocation} property is read-only, so there is
 	 * no property setter. Shell JavaScript still calls {@code set_allocation}.
 	 * That is a separate GIR method, legal only inside {@code allocate}, and

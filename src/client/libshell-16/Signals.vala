@@ -219,7 +219,6 @@ namespace Shell
 						break;
 					}
 				}
-				/* FIXME: Vala 0.56 has no string[] slice, so the requested name is copied in front. */
 				signal_names = new string[queued.length + 1];
 				signal_names[0] = signal_name;
 				for (var i = 0; i < queued.length; i++) {
