@@ -758,7 +758,7 @@ After `priv_offset`:
 
 Inactive. This sat above the effort log, after the position relay. It is the earlier `allocate_public` attempt.
 
-The replaced client-owned layout-manager shortcut came from commit `b5f0a319` and [`2026-09-15-gjs-layoutmanager-null-allocate.md`](done/2026-09-15-gjs-layoutmanager-null-allocate.md). Its gate is `layout-allocate-smoke`. The helper `allocate_public` branch came from commit `81fffd57` and [`2026-09-16-allocate-follow-reference.md`](done/2026-09-16-allocate-follow-reference.md). Its gates are `workspace-dot-align-smoke` and `startup-allocate-smoke` F. `constraint-allocate-smoke` covers public allocation updating constraints.
+The replaced client-owned layout-manager shortcut came from commit `b5f0a319` and [`2026-09-15-gjs-layoutmanager-null-allocate.md`](2026-09-15-gjs-layoutmanager-null-allocate.md). Its gate is `layout-allocate-smoke`. The helper `allocate_public` branch came from commit `81fffd57` and [`2026-09-16-allocate-follow-reference.md`](2026-09-16-allocate-follow-reference.md). Its gates are `workspace-dot-align-smoke` and `startup-allocate-smoke` F. `constraint-allocate-smoke` covers public allocation updating constraints.
 
 The proposed broad `allocate_public` path plus the `notify::height` subscription compiled. The historical gates did not regress:
 

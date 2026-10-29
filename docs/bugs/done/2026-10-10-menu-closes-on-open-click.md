@@ -1,6 +1,6 @@
 # Panel menu closes on the click that opens it
 
-**Status:** ✅ closed 2026-10-10. User: the menu stays open. A panel click used to run `vfunc_event` twice, so the menu toggled open and then shut. `event` and `captured-event` are no longer subscribed in `signal_overrides`. The relay hook is the one vfunc call. The expander drawn over the opened list is [Menu expander overlap](../2026-10-10-menu-expander-overlap.md).
+**Status:** ✅ closed 2026-10-10. User: the menu stays open. A panel click used to run `vfunc_event` twice, so the menu toggled open and then shut. `event` and `captured-event` are no longer subscribed in `signal_overrides`. The relay hook is the one vfunc call. The expander drawn over the opened list is [Menu expander overlap](2026-10-10-menu-expander-overlap.md).
 
 `panel-menu-stay-smoke` at 11:26: `date open` four seconds after the clock click. Quick Settings then got one `BUTTON_PRESS` (`hook=1`) and `Clutter-Stage.grab`, with no `Clutter-Grab.dismiss` before the nest was stopped. The volume device arrow (`QuickSlider._menuButton` `clicked`) was not scored.
 
