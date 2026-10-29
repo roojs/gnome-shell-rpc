@@ -1,6 +1,6 @@
 # Startup paints the overview, then the desktop, then the overview
 
-**Status:** ⏳ open. User 2026-10-29. Split from the closed picker-button ticket [`done/2026-09-30-overview-boot-flicker.md`](done/2026-09-30-overview-boot-flicker.md). Proposal below. Not applied.
+**Status:** ⏳ open. User 2026-10-29. Split from the closed picker-button ticket [`done/2026-09-30-overview-boot-flicker.md`](done/2026-09-30-overview-boot-flicker.md). The clock waits on the client main loop's poll. Product `src/` is unchanged. The wake from that poll to the server clock is not written.
 
 **Plan:** [`../plans/1.0-run-to-end.md`](../plans/1.0-run-to-end.md) row 0.1.
 
@@ -154,25 +154,27 @@ The 63-frame full-screen workspace and the 17-frame window picker are gone. Ever
 
 ## Shrink
 
-`tests/call-sync-repro/startup-paint-gap-gate.vala`. Show, a short quiet, the opacity write, another short quiet, then a long quiet. `current` presents during the short quiet. `flow-idle` stops the clock while the exchange is still going and starts it when that flow goes idle. An input event during the hold is handled. `poll` is the same paint rule and blocks the read loop. No mode links `src/`.
+`tests/call-sync-repro/startup-paint-gap-gate.vala`. Show, a short quiet, the opacity write. `current` presents during the short quiet. `main-poll` does not. Its client is a `GLib.MainLoop` whose poll func is `GLib.MainContext.set_poll_func`. The frame runs from that func, after the idle source has returned. The idle does not send the frame. An input byte during the idle is handled. `flow-idle` still presents after a long quiet. That duration is not the rule. No mode links `src/`.
 
 ```bash
 ./build/tests/call-sync-repro/startup-paint-gap-gate current
+./build/tests/call-sync-repro/startup-paint-gap-gate main-poll
 ./build/tests/call-sync-repro/startup-paint-gap-gate flow-idle
-./build/tests/call-sync-repro/startup-paint-gap-gate poll
 ```
 
-2026-10-29. `current` exit 1. `flow-idle` exit 0: `PASS flow-idle: clock started when the flow went idle, input ran while it was stopped`. `poll` exit 0. `poll-short` exit 1.
+2026-10-29. `current` exit 1. `main-poll` exit 0: `PASS main-poll: frame ran when the main loop polled, after the source returned`. `flow-idle` exit 0. `poll` exit 0. `poll-short` exit 1.
 
 ## Proposed behavior
 
 No JavaScript change. `signals.js` stays the connect relay. `vendor/gnome-shell` stays as it is. The smoke's opacity write before `show` is not a fix. No `GLib.Idle.add`. The read-loop poll is withdrawn: it stops the compositor main loop, not only the clock.
 
-The clock stops while the signal flow is busy and starts when that flow is idle. A pointer event already works this way. `filter_notification` in `src/server/rpc/Server.vala` drops `before-update` while `clutter_get_current_event()` is set and reschedules the frame. `event-scope` in `tests/call-sync-repro/signal-reentrancy-gate.vala` holds frames for the open event and lets a later idle frame run. `server-gap` still sends the frame, because no signal is open between the two calls.
+In one process the frame clock is another source on the shell's main context. It does not run while a source callback is on the stack. The startup animation's synchronous prefix is that callback. It returns at `await this.layout_manager.ensureAllocation()`, and the loop then polls. That poll is the block. Nothing in the shell decides that the stage should wait.
 
-Startup is that gap. On the 15:50 prove the client sent `St-Widget.get_theme_node` id 10537 0.4ms after `RPC-Live-Callback.reply` id 10536. The server had already left the signal wait and the frame clock ran for 73ms before it read the follow-up. The callback reply looked like idle. The flow had not stopped.
+Our client runs that callback on its own context. `call_poll` waits with `GLib.poll` and does not enter the main context poll, so the gaps between RPCs are still inside the callback. The server context is free in those gaps, and its frame clock runs. `emit_wait_poll` is the same kind of wait, and it ends when the signal reply is read. The follow-up `St-Widget.get_theme_node` (id 10537, 0.4ms after reply 10536) was the callback continuing, not the main loop polling.
 
-`flow-idle` on the gate is that rule. The short quiet is still the same exchange, so the clock stays stopped, and an input event in that quiet is handled. The long quiet is the flow going idle, and the first frame is opacity 0. Product `src/` is unchanged. The idle edge has to be that flow going quiet, not a sleep on the main loop.
+`main-poll` hooks `GLib.MainContext.set_poll_func`. The short quiet is still the callback, so it does not paint. Input during the callback is handled. The frame is opacity 0, and it runs from the poll func after the idle returns. `flow-idle` reaches the same picture by waiting out a quiet. That wait is a guess at this poll, and it is not the hook.
+
+The poll func has to wake the server without `call_poll`. `call_poll` is the inner wait, and it removes the client's read watch. The server answers that wake by letting the frame clock run, then the poll func blocks in the real poll so a blocking `before-update` can be read. Product `src/` is unchanged. That wake is not written.
 
 ## Not this bug
 
@@ -205,3 +207,5 @@ The Activities button staying highlighted while the overview is closed, and the 
 **2026-10-29.** User: an idle will not be approved. The idle proposal is withdrawn. 15:50 prove, client id 10537 `St-Widget.get_theme_node` was sent 0.4ms after `RPC-Live-Callback.reply` id 10536; the server read it 73ms later. In 15:50:06–09, where the server read within 2ms of the send, seven gaps were 5ms or more and the longest was 10.6ms, all before `show-return`. `poll` exit 0. `poll-short` exit 1. Product `src/` unchanged.
 
 **2026-10-29.** User: the read-loop poll is too risky. Withdrawn. The clock should stop while the signal flow is busy and start when that flow is idle, the way a current pointer event already holds `before-update`. `flow-idle` exit 0, and the input event in the hold was handled. Product `src/` unchanged. No fences.
+
+**2026-10-29.** User: do not second-guess the stage, and do not intercept it. Hook the wait the shell already blocks in. `flow-idle`'s quiet duration is that guess. `main-poll` sets `GLib.MainContext.set_poll_func` on the client loop. The idle source writes show, the short quiet, input, and opacity. It does not write the frame. Exit 0: `PASS main-poll: frame ran when the main loop polled, after the source returned`. The first `GLib.Idle.add` attached to the global context and the private loop polled forever; the idle is an `IdleSource` attached to that loop. Product `src/` unchanged. The wake from the poll func to the server clock is not written.
