@@ -549,6 +549,14 @@ executable('button-release-deliver-gate',
   install: false,
 )
 
+# Crash-screen Log Out text: hover does not change the cursor sprite,
+# and the click may miss. src/ stays unchanged.
+executable('logout-text-pointer-gate',
+  'logout-text-pointer-gate.c',
+  dependencies: [libmutter_dep],
+  install: false,
+)
+
 # StWidget is rejected by StScrollView.set_child. A StViewport subclass
 # is accepted and its allocate sees the scroll box. src/ stays unchanged.
 executable('viewport-scrollable-peer-gate',

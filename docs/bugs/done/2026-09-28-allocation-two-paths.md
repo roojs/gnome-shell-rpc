@@ -1,6 +1,6 @@
 # Layout stores a box, then tells the client
 
-**Status:** ✔️ archived 2026-09-30 — taken off the board. Layout that is still wrong is [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). The notes below are the earlier two-path writeup.
+**Status:** ✔️ archived 2026-09-30 — taken off the board. Layout that is still wrong is [`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md). The notes below are the earlier two-path writeup.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 

@@ -1,10 +1,10 @@
 # Overview flashes during boot, then the picker button lies
 
-> **Do not stop** to narrate a prove, a dead end, or a rebuild. Update this bug and take the next phase. Stop only if you need the user, or if OPC is the problem (FAIL gate, then stop).
+**Status:** ✔️ closed 2026-10-29. User. The Activities button staying lit, and the rest of this ticket, are off the board. The startup picture — overview, then the desktop, then the overview — is [`../2026-10-29-startup-overview-then-desktop.md`](../2026-10-29-startup-overview-then-desktop.md).
 
-**Status:** ⏳ open. User 2026-09-30. Only UI bug. RPC call batching is archived: [`done/2026-09-30-rpc-call-volume.md`](done/2026-09-30-rpc-call-volume.md).
+RPC call batching is archived: [`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md).
 
-**Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
+**Plan:** [`../../plans/done/0.8-init-complete-and-interaction.md`](../../plans/done/0.8-init-complete-and-interaction.md)
 
 ## Works
 
@@ -39,7 +39,7 @@ Shots 14:31. Left: our nest. Right: GNOME Shell.
 
 ## Dash icons
 
-Fixed. [`done/2026-10-03-dash-icon-size.md`](done/2026-10-03-dash-icon-size.md).
+Fixed. [`2026-10-03-dash-icon-size.md`](2026-10-03-dash-icon-size.md).
 
 ## Phases
 

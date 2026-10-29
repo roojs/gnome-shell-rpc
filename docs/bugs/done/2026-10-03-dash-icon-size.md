@@ -1,6 +1,6 @@
 # Dash icons the wrong size
 
-**Status:** ✔️ fixed 2026-10-03. Archived. User 2026-09-30 and 2026-10-03. Was phase 6 of [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md).
+**Status:** ✔️ fixed 2026-10-03. Archived. User 2026-09-30 and 2026-10-03. Was phase 6 of [`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md).
 
 ## Seen
 

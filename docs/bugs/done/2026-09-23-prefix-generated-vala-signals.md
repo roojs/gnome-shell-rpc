@@ -31,7 +31,7 @@ is gone: a class field that is also a signal is a plain virtual at the
 typelib byte, and the signal is not virtual
 ([Virtual functions](../vfuncs.md)). Do not put `virtual signal` back.
 Icon launch is closed. The live UI bug is
-[`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md).
+[`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md).
 The old overview ticket is
 [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md).
 

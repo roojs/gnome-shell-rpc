@@ -79,7 +79,7 @@ That is the old exposure, not this hang. Do not “fix” it by clamping.
 These already exist and do not name this stall:
 
 - `tests/gjs-embed/style-reenter-smoke.js` — SquareBin `style-changed` re-entry. Passes. Not the 15:09 full-shell recursion.
-- `tests/gjs-embed/dash-hover-style-smoke.js` — app-grid `_redisplay` → `BaseIcon.vfunc_style_changed`. Written for the 2026-10-02 recursion crash in [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). That crash is `too much recursion`, then SIGSEGV. This log has neither.
+- `tests/gjs-embed/dash-hover-style-smoke.js` — app-grid `_redisplay` → `BaseIcon.vfunc_style_changed`. Written for the 2026-10-02 recursion crash in [`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md). That crash is `too much recursion`, then SIGSEGV. This log has neither.
 
 ## Not done
 

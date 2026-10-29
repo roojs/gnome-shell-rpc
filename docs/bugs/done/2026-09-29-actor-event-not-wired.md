@@ -1,6 +1,6 @@
 # Typing in overview search aborts the client
 
-**Status:** ✔️ archived 2026-09-30 — taken off the board. Not re-reported that day. Live UI is [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). The notes below are the earlier abort.
+**Status:** ✔️ archived 2026-09-30 — taken off the board. Not re-reported that day. Live UI is [`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md). The notes below are the earlier abort.
 
 **Plan:** [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md)
 

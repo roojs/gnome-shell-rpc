@@ -147,4 +147,4 @@ Guard 3 dies once two outer frames both unref the inner trampoline. Guard 1 keep
 
 Do not patch the `Laters` queue. Do not skip disposed callbacks. Do not Idle in place of before-redraw. Guard 4 is the change that belongs on `Laters.add`: `ensure_before_update` can reenter `add` before it returns.
 
-The reproduced crash no longer blocks the overview snapshot. The leftover warning is [`2026-09-26-warning-laters-closure-unref.md`](2026-09-26-warning-laters-closure-unref.md). Current UI work is [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). The old overview ticket is [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md).
+The reproduced crash no longer blocks the overview snapshot. The leftover warning is [`2026-09-26-warning-laters-closure-unref.md`](2026-09-26-warning-laters-closure-unref.md). Current UI work is [`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md). The old overview ticket is [`2026-09-24-overview-picker-preview-gone.md`](2026-09-24-overview-picker-preview-gone.md).

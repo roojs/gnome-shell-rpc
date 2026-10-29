@@ -1,6 +1,6 @@
 # Volume grab still owns the pointer when the microphone slider is used
 
-**Status:** Open. Product code is unchanged. `src/client/libshell-16/Signals.vala` matches git HEAD. The code below is for discussion. It is not applied.
+**Status:** ✔️ closed 2026-10-29. User. The volume grab is being dealt with. This ticket is off the board. Product code in this tree was not changed. The discussion draft below stays as the record.
 
 After a click on the volume slider, the next click still belongs to that slider. Dragging the microphone slider moves the volume slider. Output and input are separate sliders.
 
@@ -329,3 +329,5 @@ A notification without the bool is still emitted immediately. Replies are not no
 2026-10-09 16:53. Removed the written proposal. It had the client detect a Clutter event in the notification, a static list created in the field declaration, a process-wide hold on signals, and a Clutter event check inside the RPC library. All of that was rejected. Product code was not changed.
 
 2026-10-09 16:55. Put a discussion draft back in the bug. The RPC library only copies a bool the caller set. This server sets that bool for a signal whose argument is a Clutter event. The client only reads the bool. Not applied.
+
+2026-10-29. User: close this volume grab; it is being dealt with. Archived. No product change in this tree.

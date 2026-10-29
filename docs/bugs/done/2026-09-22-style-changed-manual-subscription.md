@@ -1,6 +1,6 @@
 # `style-changed` is manually repaired in `Clutter.Actor`
 
-**Status:** ✔️ archived 2026-09-30 — taken off the board. Not claimed removed from the tree. Live UI is [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md).
+**Status:** ✔️ archived 2026-09-30 — taken off the board. Not claimed removed from the tree. Live UI is [`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md).
 
 **Scope:** `src/gi-stub/overrides-clutter/Actor.override.vala` and the
 `local_emit_after` setters in `St.overrides`.

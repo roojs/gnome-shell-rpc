@@ -233,6 +233,14 @@ namespace Gsr.Server.Rpc
 			};
 			logout.add_constraint(new global::Clutter.AlignConstraint(
 				stage, global::Clutter.AlignAxis.X_AXIS, 1.0f));
+			logout.enter_event.connect((e) => {
+				this.display.set_cursor(global::Meta.Cursor.POINTER);
+				return false;
+			});
+			logout.leave_event.connect((e) => {
+				this.display.set_cursor(global::Meta.Cursor.DEFAULT);
+				return false;
+			});
 			logout.button_release_event.connect((e) => {
 				logout.reactive = false;
 				this.on_crash_logout.begin();

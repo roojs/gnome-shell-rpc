@@ -2,7 +2,7 @@
 
 **User goal:** nested mutter-rpc + gnome-shell-rpc stays up and the boot overview matches stock WINDOW_PICKER, and clicking an app icon launches it. From [`../plans/0.8-init-complete-and-interaction.md`](../plans/0.8-init-complete-and-interaction.md).
 
-**Status:** ✔️ archived 2026-09-30. User: an icon click launches a program. Boot flicker, the highlighted picker button, and overview layout are [`../2026-09-30-overview-boot-flicker.md`](../2026-09-30-overview-boot-flicker.md). The table below is the old score, not the live one.
+**Status:** ✔️ archived 2026-09-30. User: an icon click launches a program. Boot flicker, the highlighted picker button, and overview layout are [`2026-09-30-overview-boot-flicker.md`](2026-09-30-overview-boot-flicker.md). The table below is the old score, not the live one.
 
 2026-09-29 15:58: a click launched GNOME Settings inside mutter (`Updating client: name='GNOME Settings'`). The shell then died:
 
