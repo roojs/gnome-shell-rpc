@@ -790,12 +790,17 @@
 	 * {@code actor.visible} share one cached state. Not virtual: extra
 	 * Class slots shift St.* GIR offsets (clicked vs style_changed).
 	 */
+	private BindConstraint? priv_bind_constraint;
+
 	public void show()
 	{
 		this.actor_visible = true;
 		if (this.prop_batch_open) {
 			Gsr.Client.Clutter.Batch.call_value("Clutter-Actor.show", this, "visible",
 				OLLMrpc.args("b", true));
+		}
+		if (this.priv_bind_constraint != null) {
+			this.priv_bind_constraint.copy_source_height();
 		}
 		Gsr.Client.Rpc.call_value("Clutter-Actor.show", this);
 	}
@@ -1065,6 +1070,9 @@
 		set {
 			if (value != null) {
 				this.add_constraint(value);
+				if (value is BindConstraint) {
+					this.priv_bind_constraint = (BindConstraint) value;
+				}
 			}
 		}
 	}

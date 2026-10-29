@@ -8,6 +8,17 @@
 		private BindCoordinate priv_coordinate = BindCoordinate.all;
 		private float priv_offset = 0;
 
+		/**
+		 * Emit the local height notification used by the existing binding.
+		 */
+		internal void copy_source_height()
+		{
+			if (this.priv_coordinate != BindCoordinate.y || this.priv_source == null) {
+				return;
+			}
+			this.priv_source.notify_property("height");
+		}
+
 		public Actor? source {
 			get {
 				return this.priv_source;
