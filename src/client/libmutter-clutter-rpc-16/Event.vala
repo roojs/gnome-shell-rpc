@@ -44,6 +44,8 @@ namespace Clutter
 		public uint32 flags;
 		/** {@code -1} when the event has no touch sequence. */
 		public int sequence_slot = -1;
+		/** Packed {@code clutter_event_get_key_unicode}. Zero when this event is not a key. */
+		public uint32 key_unicode;
 
 		public Event.local(
 			EventType type,
@@ -161,6 +163,7 @@ namespace Clutter
 			ev.scroll_dy = this.scroll_dy;
 			ev.flags = this.flags;
 			ev.sequence_slot = this.sequence_slot;
+			ev.key_unicode = this.key_unicode;
 			return ev;
 		}
 
@@ -186,6 +189,7 @@ namespace Clutter
 				case EventType.key_release:
 					this.keyval = state.key_symbol;
 					this.state = state.state;
+					this.key_unicode = state.key_unicode;
 					break;
 				case EventType.motion:
 					this.x = (float) state.x;
@@ -271,6 +275,15 @@ namespace Clutter
 		[CCode (cname = "clutter_event_get_key_symbol")]
 		public uint get_key_symbol() {
 			return this.keyval;
+		}
+
+		/**
+		 * Stock {@code clutter_event_get_key_unicode}. The character packed
+		 * with a key event. Zero when this event is not a key.
+		 */
+		[CCode (cname = "clutter_event_get_key_unicode")]
+		public uint32 get_key_unicode() {
+			return this.key_unicode;
 		}
 
 		/**

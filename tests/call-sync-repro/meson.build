@@ -900,6 +900,41 @@ foreach mode : ['ease-gap', 'frame-plain', 'start-on-stopped', 'hold-until-click
   )
 endforeach
 
+# Show then opacity in one client turn. current paints in the quiet gap.
+# poll presents only after a quiet longer than the in-turn gap.
+# poll-short expires during that gap and still paints opacity 255.
+startup_paint_gap_gate = executable('startup-paint-gap-gate',
+  'startup-paint-gap-gate.vala',
+  dependencies: [dependency('gio-unix-2.0')],
+  vala_args: ['--pkg=posix'],
+  install: false,
+)
+
+test(
+  'startup-paint-gap-current',
+  startup_paint_gap_gate,
+  args: ['current'],
+  should_fail: true,
+  timeout: 5,
+)
+
+foreach mode : ['in-process', 'hold-turn', 'poll', 'flow-idle']
+  test(
+    'startup-paint-gap-' + mode,
+    startup_paint_gap_gate,
+    args: [mode],
+    timeout: 5,
+  )
+endforeach
+
+test(
+  'startup-paint-gap-poll-short',
+  startup_paint_gap_gate,
+  args: ['poll-short'],
+  should_fail: true,
+  timeout: 5,
+)
+
 # Nested poke: one callback removes itself and runs the queue again, which
 # calls the next SourceFunc. Then the JS wrapper is dropped and poke runs.
 test(

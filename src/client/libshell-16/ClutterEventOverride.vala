@@ -102,6 +102,7 @@ namespace Shell
 				case Clutter.EventType.key_press:
 				case Clutter.EventType.key_release:
 					state.key_symbol = ev.get_key_symbol();
+					state.key_unicode = ev.get_key_unicode();
 					state.state = (uint) ev.get_state();
 					break;
 				case Clutter.EventType.scroll:
