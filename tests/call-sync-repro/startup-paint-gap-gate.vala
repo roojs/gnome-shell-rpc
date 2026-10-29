@@ -9,8 +9,10 @@
  * hold-turn keeps a frame until the turn yields. It needs a yield signal,
  * which is not a product path. poll blocks the read loop until a quiet
  * expires. flow-idle stops the clock while the exchange is still going
- * and starts it when that flow goes idle, and an input event during the
- * hold is still handled. None of the modes link product source.
+ * and starts it when a quiet lasts long enough. That duration is a guess.
+ * main-poll starts the clock from the main loop's own poll, which runs
+ * only after the source callback has returned. An input event during the
+ * callback is still handled. None of the modes link product source.
  */
 
 private enum Policy
@@ -21,6 +23,7 @@ private enum Policy
 	POLL,
 	POLL_SHORT,
 	FLOW_IDLE,
+	MAIN_POLL,
 }
 
 private class Harness
@@ -32,6 +35,8 @@ private class Harness
 	private const uint8 END = (uint8) 'X';
 	private const uint8 ACK = (uint8) 'K';
 	private const uint8 INPUT = (uint8) 'I';
+	private const uint8 POLL_ENTER = (uint8) 'P';
+	private const uint8 POLL_LEAVE = (uint8) 'L';
 	private const uint8 IN_TURN = 2;
 	private const uint8 AFTER_TURN = 20;
 	private const int POLL_LIMIT = 8;
@@ -51,6 +56,12 @@ private class Harness
 	public int bad_frames;
 	public int good_frames;
 	public int input_ran;
+	public bool poll_during_callback;
+
+	private GLib.MainLoop loop;
+	private bool turn_done;
+	private bool callback_open;
+	private bool turn_ok;
 
 	public Harness(Policy policy)
 	{
@@ -125,6 +136,9 @@ private class Harness
 			this.present();
 			return;
 		}
+		if (this.policy == Policy.MAIN_POLL) {
+			return;
+		}
 		if (this.hold_while_open() && this.handler_open) {
 			this.deferred = true;
 			return;
@@ -165,6 +179,13 @@ private class Harness
 				this.input_ran++;
 				continue;
 			}
+			if (message == Harness.POLL_ENTER) {
+				this.present();
+				continue;
+			}
+			if (message == Harness.POLL_LEAVE) {
+				continue;
+			}
 			if (message == Harness.YIELD) {
 				this.handler_open = false;
 				if (this.deferred) {
@@ -180,7 +201,7 @@ private class Harness
 		}
 	}
 
-	private bool run_client()
+	private bool turn_body()
 	{
 		if (!Harness.write_byte(this.client_write, Harness.SHOW)) {
 			return false;
@@ -214,6 +235,86 @@ private class Harness
 			return false;
 		}
 		return Harness.write_byte(this.client_write, Harness.END);
+	}
+
+	private static Harness polling;
+
+	private static int poll_main(GLib.PollFD[] fds, int timeout)
+	{
+		var self = Harness.polling;
+		if (self.callback_open || GLib.MainContext.current_source() != null) {
+			self.poll_during_callback = true;
+		}
+		if (!Harness.write_byte(self.client_write, Harness.POLL_ENTER)) {
+			return -1;
+		}
+		if (self.turn_done) {
+			if (!Harness.write_byte(self.client_write, Harness.END)) {
+				return -1;
+			}
+			self.loop.quit();
+			return 0;
+		}
+		var ready = GLib.poll(fds, timeout);
+		if (!Harness.write_byte(self.client_write, Harness.POLL_LEAVE)) {
+			return -1;
+		}
+		return ready;
+	}
+
+	private bool run_client_poll()
+	{
+		var ctx = new GLib.MainContext();
+		ctx.push_thread_default();
+		this.loop = new GLib.MainLoop(ctx, false);
+		Harness.polling = this;
+		ctx.set_poll_func(Harness.poll_main);
+		var idle = new GLib.IdleSource();
+		idle.set_callback(() => {
+			this.callback_open = true;
+			this.turn_ok = this.turn_body_until_yield();
+			this.callback_open = false;
+			this.turn_done = true;
+			return false;
+		});
+		idle.attach(ctx);
+		this.loop.run();
+		ctx.pop_thread_default();
+		return this.turn_ok;
+	}
+
+	/**
+	 * Show, the in-turn quiet, input, and the opacity write.
+	 * The main loop poll, not this function, ends the turn.
+	 */
+	private bool turn_body_until_yield()
+	{
+		if (!Harness.write_byte(this.client_write, Harness.SHOW)) {
+			return false;
+		}
+		uint8 ack;
+		if (!Harness.read_byte(this.client_read, out ack) || ack != Harness.ACK) {
+			return false;
+		}
+		if (!Harness.write_byte(this.client_write, Harness.QUIET)
+				|| !Harness.write_byte(this.client_write, Harness.IN_TURN)) {
+			return false;
+		}
+		if (!Harness.write_byte(this.client_write, Harness.INPUT)) {
+			return false;
+		}
+		if (!Harness.write_byte(this.client_write, Harness.OPACITY)) {
+			return false;
+		}
+		return Harness.read_byte(this.client_read, out ack) && ack == Harness.ACK;
+	}
+
+	private bool run_client()
+	{
+		if (this.policy == Policy.MAIN_POLL) {
+			return this.run_client_poll();
+		}
+		return this.turn_body();
 	}
 
 	public bool run()
@@ -265,6 +366,9 @@ private static bool parse_policy(string name, out Policy policy)
 	case "flow-idle":
 		policy = Policy.FLOW_IDLE;
 		return true;
+	case "main-poll":
+		policy = Policy.MAIN_POLL;
+		return true;
 	default:
 		policy = Policy.SPLIT;
 		return false;
@@ -276,7 +380,7 @@ int main(string[] args)
 	Policy policy = Policy.SPLIT;
 	if (args.length != 2 || !parse_policy(args[1], out policy)) {
 		stderr.printf(
-			"usage: %s current|in-process|hold-turn|poll|poll-short|flow-idle\n",
+			"usage: %s current|in-process|hold-turn|poll|poll-short|flow-idle|main-poll\n",
 			args[0]);
 		return 2;
 	}
@@ -297,6 +401,23 @@ int main(string[] args)
 				"PASS current: no frame at opacity 255 before the turn yielded\n");
 			return 0;
 		}
+	}
+	if (args[1] == "main-poll") {
+		if (harness.poll_during_callback) {
+			stderr.printf(
+				"FAIL main-poll: main loop polled while the source callback was still running\n");
+			return 1;
+		}
+		if (harness.bad_frames == 0 && harness.good_frames > 0
+				&& harness.input_ran > 0) {
+			stderr.printf(
+				"PASS main-poll: frame ran when the main loop polled, after the source returned\n");
+			return 0;
+		}
+		stderr.printf(
+			"FAIL main-poll: bad=%d good=%d input=%d\n",
+			harness.bad_frames, harness.good_frames, harness.input_ran);
+		return 1;
 	}
 	if (args[1] == "flow-idle") {
 		if (harness.bad_frames == 0 && harness.good_frames > 0

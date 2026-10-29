@@ -918,7 +918,7 @@ test(
   timeout: 5,
 )
 
-foreach mode : ['in-process', 'hold-turn', 'poll', 'flow-idle']
+foreach mode : ['in-process', 'hold-turn', 'poll', 'flow-idle', 'main-poll']
   test(
     'startup-paint-gap-' + mode,
     startup_paint_gap_gate,
