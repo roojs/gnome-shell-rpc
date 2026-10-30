@@ -1,6 +1,6 @@
 # Startup paints the overview, then the desktop, then the overview
 
-**Status:** ⏳ open. Landed 2026-10-30, then rolled back. Weston 16:04 still painted the full-screen overview (27 frames) and the picker (13 frames). `new St.Widget` mints through `Gsr-Clutter-Actor.create`, not `St.mint`, so this hold never watched `overviewGroup`. Product `src/` is back to what it was. Proposal below is that attempt.
+**Status:** ⏳ open. User 2026-10-30: leave the hold in. Weston 16:04 still painted the full-screen overview (27 frames) and the picker (13 frames). `new St.Widget` mints through `Gsr-Clutter-Actor.create`, not `St.mint`, so this watch may never see `overviewGroup`. The hold is back in `src/` anyway.
 
 **Plan:** [`../plans/1.0-run-to-end.md`](../plans/1.0-run-to-end.md) row 0.1.
 
@@ -423,3 +423,5 @@ GSR_NESTED_TIMEOUT=40 \
 ```
 
 16:04:18, `stop (smoke-fail)` after 33s, wrapper exit 137. `show-return v=0 o=255`. `miss desktop,overview,clear,move`. `samples desktop@ov=0 v=0.00 o=255 n=23 | desktop@ov=1 v=0.00 o=255 n=27 | overview@ov=1 v=1.00 o=255 n=13 | clear@ov=1 v=1.00 o=0 n=3 | move@ov=1 v=1.00 o=16 n=17 | move@ov=1 v=1.00 o=16 n=0`. The full-screen overview and the picker are still there. `St.Widget.rpc_construct` calls `create_with_overrides`, which is `Gsr-Clutter-Actor.create` (`Gsr.Server.Clutter.Actor`, an `St.Widget`). `St.mint` does not run for `overviewGroup`, so the hold never watched it. Rolled back. Product `src/` matches the tree from before the landing.
+
+**2026-10-30.** User: not sure the hold made a real difference, leave it in. Restored `OverviewPaintHold`, the `St` helper field, and the `compositor_sources` line. `gsr-server` linked.

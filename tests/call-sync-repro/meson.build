@@ -915,6 +915,32 @@ test(
   timeout: 5,
 )
 
+# finish() writes the request after finished(). The handler drops the
+# only other ref. bad is the use-after-free. held keeps the instance.
+polkit_request_finish_hold = executable(
+  'polkit-request-finish-hold',
+  'polkit-request-finish-hold.vala',
+  dependencies: [dependency('gobject-2.0')],
+  c_args: ['-fsanitize=address', '-fno-omit-frame-pointer'],
+  link_args: ['-fsanitize=address'],
+  install: false,
+)
+
+test(
+  'polkit-request-finish-bad',
+  polkit_request_finish_hold,
+  args: ['bad'],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'polkit-request-finish-held',
+  polkit_request_finish_hold,
+  args: ['held'],
+  timeout: 5,
+)
+
 # Nested Later.add: the inner add runs before the outer add returns.
 # GJS 1.82 CallbackIn::release then unrefs the inner trampoline.
 test(

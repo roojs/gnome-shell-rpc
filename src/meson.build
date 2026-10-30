@@ -7,6 +7,7 @@ compositor_sources = files(
   'server/rpc/LiveCallback.vala',
   'server/Cancellable.vala',
   'server/StartupFrameLock.vala',
+  'server/OverviewPaintHold.vala',
   'server/namespace.vala',
   'server/rpc/namespace.vala',
   'server/rpc/Connection.vala',

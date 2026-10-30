@@ -1,6 +1,6 @@
 # Lock screen opens, password does not unlock
 
-**Status:** in the tree. Weston 15:36: `Gsr-St-SpinnerContent.create` replied, then `Clutter-Actor.set_content` replied, smoke `ok submitted` with GDM’s rejection. Guest library from 15:05 does not have it.
+**Status:** ✅ closed 2026-10-30. User. Enter reaches GDM. Weston `ok submitted`. A second lock shows the password page again (`ok second-prompt`).
 
 Enter calls `Spinner.play()` → `set_content(new St.SpinnerContent())`. That threw, so `answerQuery` never ran.
 
@@ -321,3 +321,5 @@ After `'client/libst-rpc-16/overrides/ImageContent.override.vala',` in `st_gener
 **2026-10-30 15:36.** Alias removed. Same smoke. `Gsr-St-SpinnerContent.create` id=18764 replied, then `Clutter-Actor.set_content` id=18765 replied. `ok submitted` with the GDM rejection. `stop (smoke-ok)`.
 
 **2026-10-30 16:07.** `GI_META_SMOKE=lock-screen-second-lock-smoke/ui/init`. First lock: `first-prompt`. Left the shield, locked again: `second-prompt` then `ok second-prompt opacity=0 active=false`. `stop (smoke-ok) after 14s`. The password page comes back. The 15:42 guest black screen was `gsr-client` pid 13668 SIGSEGV in the upgrade polkit dialog. logind recorded no lock.
+
+**2026-10-30 16:14.** User closed this.

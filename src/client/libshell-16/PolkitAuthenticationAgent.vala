@@ -108,32 +108,33 @@ namespace Shell
 
 			public void finish(bool dismissed)
 			{
-				var is_current = this == this.agent.current_request;
+				var held = this;
+				var is_current = held == held.agent.current_request;
 				if (!is_current) {
-					this.agent.scheduled_requests.remove(this);
+					held.agent.scheduled_requests.remove(held);
 				}
 				if (is_current) {
-					this.agent.current_request = null;
+					held.agent.current_request = null;
 				}
 
-				if (this.cancellable != null && this.handler_id != 0) {
-					this.cancellable.disconnect(this.handler_id);
-					this.handler_id = 0;
+				if (held.cancellable != null && held.handler_id != 0) {
+					held.cancellable.disconnect(held.handler_id);
+					held.handler_id = 0;
 				}
 
-				this.dismissed = dismissed;
-				this.finished();
-				this.identities.clear();
+				held.dismissed = dismissed;
+				held.finished();
+				held.identities.clear();
 
 				if (!is_current) {
 					return;
 				}
-				if (this.agent.current_request != null || this.agent.scheduled_requests.size == 0) {
+				if (held.agent.current_request != null || held.agent.scheduled_requests.size == 0) {
 					return;
 				}
-				this.agent.current_request = this.agent.scheduled_requests.get(0);
-				this.agent.scheduled_requests.remove_at(0);
-				this.agent.current_request.initiate();
+				held.agent.current_request = held.agent.scheduled_requests.get(0);
+				held.agent.scheduled_requests.remove_at(0);
+				held.agent.current_request.initiate();
 			}
 
 			public void dismiss()

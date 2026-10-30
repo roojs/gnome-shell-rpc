@@ -12,9 +12,14 @@ namespace Gsr.Server.St
 {
 	public class St : GLib.Object
 	{
+		/**
+		 * Startup overview paint hold for actors this helper mints.
+		 */
+		private OverviewPaintHold paint_hold;
+
 		public static void rpc_register()
 		{
-			var helper = new St();
+			var helper = new St(new OverviewPaintHold());
 			OLLMrpc.Request.add_class("St-Widget", typeof(St), "new", "");
 			OLLMrpc.Request.register_live("St-Widget", helper);
 			OLLMrpc.Request.add_class("St-DrawingArea", typeof(St), "new", "");
@@ -24,8 +29,9 @@ namespace Gsr.Server.St
 		}
 
 		[CCode (cname = "gnome_shell_rpc_rpc_helper_st_create")]
-		public St()
+		public St(OverviewPaintHold paint_hold)
 		{
+			this.paint_hold = paint_hold;
 		}
 
 		/**
@@ -54,6 +60,12 @@ namespace Gsr.Server.St
 			}
 			var created = GLib.Object.new(gtype);
 			request.connection.export(created);
+			var actor = created as global::Clutter.Actor;
+			if (actor != null) {
+				this.paint_hold.watch(
+					actor,
+					(Gsr.Server.Rpc.Connection) request.connection);
+			}
 			request.reply(new OLLMrpc.Response() {
 				retval = OLLMrpc.val("o", created),
 			});
