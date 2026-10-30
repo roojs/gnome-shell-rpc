@@ -19,11 +19,6 @@ PaintNode.add_texture_rectangles noop
 ActorBox.from_vertices noop
 Actor.get_abs_allocation_vertices noop
 
-# Mock a11y: GenericAccessible has no rpc_lid. Undeny when Atk peers leased.
-Actor.accessible
-Actor.get_accessible
-Actor.set_accessible
-
 # Not wireable (no dbus letter / unmapped type). Generator aborts on these
 # unless they are denied. Undeny and implement; do not leave them here.
 Actor.bind_model
@@ -40,13 +35,9 @@ BindingPool.install_action
 BindingPool.override_action
 EOTF.get_default_luminance
 Gesture.get_point_event
-# Lease via Gsr-Clutter-GestureAction.create with client vfunc hooks.
-GestureAction.new
-GestureAction.get_last_event
 GestureAction.get_sequence
 InputFocus.filter_event
 InputFocus.process_event
-InputMethod.notify_key_event
 Interval.compute
 # St Adjustment / Widget overrides call this. Flag keeps the method;
 # a bare deny drops the name and the client does not compile.
@@ -215,6 +206,22 @@ Stage.get_event_actor
 
 # Caller buffer has no length. Body is Stage.override paint_to_buffer.
 Stage.paint_to_buffer
+
+# Actor.override owns accessible. Stand-in Atk.GObjectAccessible until a
+# server Atk peer exists. GenericAccessible has no rpc_lid.
+Actor.accessible
+Actor.get_accessible
+Actor.set_accessible
+
+# GestureAction.override construct leases Gsr-Clutter-GestureAction.create.
+GestureAction.new
+
+# GestureAction.override — compact Event. swipeTracker reads get_time().
+GestureAction.get_last_event
+
+# InputMethod.override — IBus did not filter the key. Compositor requeues
+# it. The GJS InputMethod has no rpc_lid.
+InputMethod.notify_key_event
 
 # Transition.override — capital-V on stock set_*_value (Gi pin).
 # varargs set_to/set_from stay denied (GIR skip → set_*_value).

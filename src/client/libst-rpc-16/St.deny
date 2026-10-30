@@ -13,12 +13,9 @@
 # Not wireable (no dbus letter / unmapped type). Generator aborts on these
 # unless they are denied. Undeny and implement; do not leave them here.
 Clipboard.get_content
-Clipboard.get_text
-Clipboard.set_content
 IconColors.equal
 IconInfo.load_icon_async
 IconInfo.load_symbolic_async
-ImageContent.set_bytes
 Shadow.equal
 Shadow.get_box
 ShadowHelper.paint
@@ -26,7 +23,6 @@ ShadowHelper.update
 TextureCache.load_file_to_cairo_surface
 ThemeContext.get_font
 ThemeContext.set_font
-ThemeNode.new
 ThemeNode.get_element_type
 ThemeNode.get_font
 ThemeNodePaintState.init
@@ -130,3 +126,15 @@ DrawingArea.queue_repaint
 
 # GIR factory named `new` (returns Clutter.Content) — Vala C symbol clash.
 SpinnerContent.new
+
+# Clipboard.override — text callback and GLib.Bytes are not wire types.
+Clipboard.get_text
+Clipboard.set_content
+
+# ImageContent.override — unwrap GLib.Bytes onto set_data's memfd path.
+ImageContent.set_bytes
+
+# ThemeNode.override — eight-argument constructor. Compositor calls
+# st_theme_node_new. GType is not a wire type, so the generator cannot
+# emit this.
+ThemeNode.new

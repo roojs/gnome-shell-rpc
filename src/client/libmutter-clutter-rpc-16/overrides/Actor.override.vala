@@ -1195,9 +1195,10 @@
 	}
 
 	/**
-	 * TEMPORARY — mock a11y only. GIR {@code get/set_accessible} denied;
-	 * BarLevel's {@link St.GenericAccessible} has no {@code rpc_lid}. Undeny
-	 * when server Atk peers are leased. Role / name / state stay RPC.
+	 * Actor.override owns {@code accessible}. Stand-in
+	 * {@code Atk.GObjectAccessible} until a server Atk peer exists.
+	 * BarLevel's {@link St.GenericAccessible} has no {@code rpc_lid}.
+	 * Role / name / state stay RPC.
 	 *
 	 * Lazy-mint so GJS {@code get_accessible()} is never null (quickSettings
 	 * {@code add_relationship}, etc.). Explicit set (GenericAccessible) wins.

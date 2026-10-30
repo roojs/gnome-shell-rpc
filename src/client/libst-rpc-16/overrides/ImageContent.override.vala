@@ -1,6 +1,24 @@
 		[CCode (cname = "memfd_create", cheader_filename = "sys/mman.h")]
 		private static extern int memfd_create(string name, uint flags);
 
+		/**
+		 * Stock {@code st_image_content_set_bytes}. Screenshot notifications
+		 * pass a {@link GLib.Bytes}. The pixels take the same memfd path as
+		 * {@link set_data}.
+		 */
+		public bool set_bytes(
+			Cogl.Context cogl_context,
+			GLib.Bytes data,
+			Cogl.PixelFormat pixel_format,
+			uint width,
+			uint height,
+			uint row_stride
+		) throws GLib.Error {
+			unowned uint8[] pixels = data.get_data();
+			return this.set_data(cogl_context, pixels, pixel_format,
+				width, height, row_stride);
+		}
+
 		public static Clutter.Content new_with_preferred_size(int32 width, int32 height)
 		{
 			var response = Gsr.Client.Rpc.call_value(

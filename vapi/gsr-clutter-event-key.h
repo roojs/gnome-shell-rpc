@@ -32,6 +32,15 @@ ClutterEvent * gsr_clutter_event_key_insert (ClutterEventType type,
                                              uint32_t keyval,
                                              ClutterModifierType modifiers);
 
+/* IBus did not consume the key. Requeue it with INPUT_METHOD set.
+ * time_ms is clutter_event_get_time. unicode 0 becomes the keysym's
+ * character. */
+ClutterEvent * gsr_clutter_event_key_im (ClutterEventType type,
+                                         uint32_t time_ms,
+                                         ClutterModifierType modifiers,
+                                         uint32_t keyval,
+                                         gunichar unicode_value);
+
 /* Mutter clutter-stage.c. Declaration only; libmutter defines it.
  * Not in the public clutter headers. */
 void _clutter_stage_process_queued_events (ClutterStage *stage);

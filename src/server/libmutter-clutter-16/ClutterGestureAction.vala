@@ -10,13 +10,17 @@ namespace Gsr.Server.Clutter
 			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
 		}
 
-		public static void rpc_register()
+		private Clutter? events;
+
+		public static void rpc_register(Clutter events)
 		{
 			var helper = new GestureAction();
+			helper.events = events;
 			OLLMrpc.Request.add_class(
 				"Gsr-Clutter-GestureAction", typeof(GestureAction),
 				"create", "",
 				"add_hooks", "v",
+				"get_last_event", "u",
 				null);
 			OLLMrpc.Request.register_live("Gsr-Clutter-GestureAction", helper);
 			GestureActionVfuncIds.register_vfunc_ids();
@@ -55,6 +59,23 @@ namespace Gsr.Server.Clutter
 			request.reply(new OLLMrpc.Response() {
 				args = OLLMrpc.args("v", ids.end()),
 			});
+		}
+
+		/**
+		 * ''Gsr-Clutter-GestureAction.get_last_event'' — stock
+		 * {@code clutter_gesture_action_get_last_event}. SwipeTracker reads
+		 * {@code get_time()} on the result.
+		 */
+		public void get_last_event(OLLMrpc.Request request, uint point)
+		{
+			var action = request.connection.leases.get((int) request.lease_id)
+				as global::Clutter.GestureAction;
+			if (action == null || this.events == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			this.events.reply_event(request, action.get_last_event(point));
 		}
 
 		public override bool gesture_begin(global::Clutter.Actor actor)

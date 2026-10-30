@@ -25,17 +25,19 @@ namespace Gsr.Server.Clutter
 		[CCode (cname = "_clutter_stage_process_queued_events", cheader_filename = "gsr-clutter-event-key.h")]
 		private static extern void _clutter_stage_process_queued_events(global::Clutter.Stage stage);
 
-		public static void rpc_register()
+		public static Clutter rpc_register()
 		{
+			var helper = new Clutter();
 			OLLMrpc.Request.add_class(
 				"Gsr-Clutter", typeof(Clutter),
 				"get_current_event", "",
 				"event_get", "",
 				"event_add_filter", "tt",
 				"event_remove_filter", "u",
+				"notify_key_event", "iuuuu",
 				null
 			);
-			OLLMrpc.Request.register_live("Gsr-Clutter", new Clutter());
+			OLLMrpc.Request.register_live("Gsr-Clutter", helper);
 			/* A pointer burst queues motions. Delivering one blocks on the
 			 * client, and the main loop takes the rest of the burst while
 			 * that delivery is still on the stack. Flush again when it
@@ -66,6 +68,7 @@ namespace Gsr.Server.Clutter
 				} while (flush_again);
 				return false;
 			});
+			return helper;
 		}
 
 		/**
@@ -143,7 +146,45 @@ namespace Gsr.Server.Clutter
 			});
 		}
 
-		private void reply_event(
+		[CCode (cname = "gsr_clutter_event_key_im", cheader_filename = "gsr-clutter-event-key.h")]
+		private static extern global::Clutter.Event gsr_clutter_event_key_im(
+			global::Clutter.EventType type,
+			uint32 time_ms,
+			global::Clutter.ModifierType modifiers,
+			uint32 keyval,
+			uint32 unicode_value
+		);
+
+		/**
+		 * ''Gsr-Clutter.notify_key_event'' — stock
+		 * {@code clutter_input_method_notify_key_event} when IBus did not
+		 * filter the key. The client InputMethod is not leased. The
+		 * compositor queues a key with {@code CLUTTER_EVENT_FLAG_INPUT_METHOD}.
+		 */
+		public void notify_key_event(
+			OLLMrpc.Request request,
+			int event_type,
+			uint time_ms,
+			uint keyval,
+			uint state,
+			uint unicode_value
+		) {
+			var ev = gsr_clutter_event_key_im(
+				(global::Clutter.EventType) event_type,
+				time_ms,
+				(global::Clutter.ModifierType) state,
+				keyval,
+				unicode_value);
+			if (ev != null) {
+				ev.put();
+				ev.free();
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		internal void reply_event(
 			OLLMrpc.Request request,
 			global::Clutter.Event? ev
 		) {

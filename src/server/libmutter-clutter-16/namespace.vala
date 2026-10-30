@@ -12,11 +12,11 @@ namespace Gsr.Server.Clutter
 		Text.rpc_register();
 		ShaderEffect.rpc_register();
 		ClutterThreads.rpc_register();
-		Clutter.rpc_register();
+		var events = Clutter.rpc_register();
 		Interval.rpc_register();
 		Constraint.rpc_register();
 		Actor.rpc_register();
-		GestureAction.rpc_register();
+		GestureAction.rpc_register(events);
 		LayoutManager.rpc_register();
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();

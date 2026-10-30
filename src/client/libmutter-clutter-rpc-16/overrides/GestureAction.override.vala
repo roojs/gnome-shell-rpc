@@ -44,3 +44,21 @@
 		 * {@code bind_property('enabled', …)}.
 		 */
 		public bool enabled { get; set construct; default = true; }
+
+		private Event? last_event_cache;
+
+		/**
+		 * Stock {@code clutter_gesture_action_get_last_event}. Compact
+		 * {@link Event}; swipeTracker only reads {@code get_time()}.
+		 */
+		public unowned Event? get_last_event(uint point)
+		{
+			var response = Gsr.Client.Rpc.call_value(
+				"Gsr-Clutter-GestureAction.get_last_event", this,
+				OLLMrpc.args("u", point));
+			if (response.args.size < 5) {
+				return null;
+			}
+			this.last_event_cache = event_from_values(response.args);
+			return this.last_event_cache;
+		}

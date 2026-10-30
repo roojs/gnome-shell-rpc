@@ -23,18 +23,10 @@ Background.set_blend noop
 ShapedTexture.set_mask_texture noop
 MultiTexture.new temporary
 MultiTexture.new_simple temporary
-# Hand: WaylandClient.override.vala + Gsr-Mutter-WaylandClient
-WaylandClient.new
-WaylandClient.spawnv
 
 # Not wireable (no dbus letter / unmapped type). Generator aborts on these
 # unless they are denied. Undeny and implement; do not leave them here.
 FrameBorders.clear
-KeyBinding.get_mask
-KeyBinding.get_modifiers
-KeyBinding.get_name
-KeyBinding.is_builtin
-KeyBinding.is_reversed
 
 # ************************************************************************
 # PERMANENT — not deferred RPC work
@@ -133,6 +125,19 @@ Plugin.manager_set_plugin_type noop
 # X11 GHashTable helpers for XIDs; gnome-shell JS never calls them.
 unsigned_long_equal noop
 unsigned_long_hash noop
+
+# WaylandClient.override.vala owns the constructor and spawn.
+# Gsr-Mutter-WaylandClient builds the client on the compositor.
+WaylandClient.new
+WaylandClient.spawnv
+
+# key-binding-wire.c owns these. The stub record is one byte; the fields
+# live beside it. windowManager.js calls is_builtin and is_reversed.
+KeyBinding.get_mask
+KeyBinding.get_modifiers
+KeyBinding.get_name
+KeyBinding.is_builtin
+KeyBinding.is_reversed
 
 # PERMANENT — a hand override owns this boxed type, so we do not
 # generate another one.
