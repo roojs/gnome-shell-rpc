@@ -852,13 +852,29 @@ test(
 )
 
 # Shell.PolkitAuthenticationAgent.initiate. length is the Vala default
-# (GStrv + int). GJS aborts. strv registers the stock five-arg GStrv signal.
+# (GStrv + int). GJS aborts. strv registers five parameters ending in
+# G_TYPE_STRV from polkit-initiate-shape-strv.c.
 polkit_initiate_shape_fixture = shared_library(
   'polkit-initiate-shape-1.0',
   'polkit-initiate-shape.vala',
+  'polkit-initiate-shape-strv.c',
   dependencies: [dependency('gobject-2.0')],
   vala_gir: 'PolkitInitiateShape-1.0.gir',
   install: false,
+)
+
+polkit_initiate_shape_gir = custom_target(
+  'PolkitInitiateShape-1.0.injected.gir',
+  output: 'PolkitInitiateShape-1.0.injected.gir',
+  command: [
+    find_program('xsltproc'),
+    '--nonet', '--novalid',
+    '--output', '@OUTPUT@',
+    files('polkit-initiate-shape-inject.xsl'),
+    meson.current_build_dir() / 'PolkitInitiateShape-1.0.gir',
+  ],
+  depends: polkit_initiate_shape_fixture,
+  build_by_default: true,
 )
 
 polkit_initiate_shape_typelib = custom_target(
@@ -868,9 +884,9 @@ polkit_initiate_shape_typelib = custom_target(
     find_program('g-ir-compiler'),
     '--output', '@OUTPUT@',
     '--shared-library', 'libpolkit-initiate-shape-1.0.so',
-    meson.current_build_dir() / 'PolkitInitiateShape-1.0.gir',
+    meson.current_build_dir() / 'PolkitInitiateShape-1.0.injected.gir',
   ],
-  depends: polkit_initiate_shape_fixture,
+  depends: polkit_initiate_shape_gir,
   build_by_default: true,
 )
 

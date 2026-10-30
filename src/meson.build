@@ -998,6 +998,7 @@ shell_gi_lib = shared_library(
     'client/libshell-16/NetworkAgent.vala',
     'client/libshell-16/MountOperation.vala',
     'client/libshell-16/PolkitAuthenticationAgent.vala',
+    'client/libshell-16/polkit-authentication-agent-signals.c',
     'client/libshell-16/SecureTextBuffer.vala',
     'client/libshell-16/KeyringPrompt.vala',
     'client/libshell-16/PerfLog.vala',

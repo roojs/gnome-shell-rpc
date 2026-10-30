@@ -8,6 +8,9 @@
  */
 namespace Shell
 {
+	[CCode (cname = "shell_polkit_authentication_agent_register_initiate")]
+	public extern void polkit_authentication_agent_register_initiate(GLib.Type type);
+
 	public class PolkitAuthenticationAgent : PolkitAgent.Listener
 	{
 		/**
@@ -98,8 +101,9 @@ namespace Shell
 					user_names += pwd.pw_name;
 				}
 
-				this.agent.initiate(this.action_id, this.message,
-					this.icon_name, this.cookie, user_names);
+				GLib.Signal.emit_by_name(this.agent, "initiate",
+					this.action_id, this.message, this.icon_name,
+					this.cookie, user_names);
 			}
 
 			public void finish(bool dismissed)
@@ -155,14 +159,11 @@ namespace Shell
 		private void* handle;
 
 		public signal void cancel();
-		public signal void initiate(
-			string action_id,
-			string message,
-			string icon_name,
-			string cookie,
-			[CCode (array_length = false, array_null_terminated = true)]
-			string[] user_names
-		);
+
+		static construct
+		{
+			polkit_authentication_agent_register_initiate(typeof(PolkitAuthenticationAgent));
+		}
 
 		public PolkitAuthenticationAgent()
 		{

@@ -319,3 +319,5 @@ After `'client/libst-rpc-16/overrides/ImageContent.override.vala',` in `st_gener
 **2026-10-30 15:34.** Server `Gsr-St-SpinnerContent.create` plus `register_alias("St-SpinnerContent")`. Smoke still `ok submitted`, but the log is `uncaught error: duplicate register of type 'StSpinnerContent'` and `no handler for 'Gsr-St-SpinnerContent'`. Create never ran. GI already registers that GType.
 
 **2026-10-30 15:36.** Alias removed. Same smoke. `Gsr-St-SpinnerContent.create` id=18764 replied, then `Clutter-Actor.set_content` id=18765 replied. `ok submitted` with the GDM rejection. `stop (smoke-ok)`.
+
+**2026-10-30 16:07.** `GI_META_SMOKE=lock-screen-second-lock-smoke/ui/init`. First lock: `first-prompt`. Left the shield, locked again: `second-prompt` then `ok second-prompt opacity=0 active=false`. `stop (smoke-ok) after 14s`. The password page comes back. The 15:42 guest black screen was `gsr-client` pid 13668 SIGSEGV in the upgrade polkit dialog. logind recorded no lock.

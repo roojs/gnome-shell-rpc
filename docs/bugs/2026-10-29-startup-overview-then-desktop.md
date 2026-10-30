@@ -1,6 +1,6 @@
 # Startup paints the overview, then the desktop, then the overview
 
-**Status:** ⏳ open. User 2026-10-30. Freeze drawing when `overviewGroup` is shown. Allow it again when the controls actor sets opacity to 0. Once, at startup. Gate `overview-hold` passed. Product `src/` is unchanged. Proposal below.
+**Status:** ⏳ open. Landed 2026-10-30, then rolled back. Weston 16:04 still painted the full-screen overview (27 frames) and the picker (13 frames). `new St.Widget` mints through `Gsr-Clutter-Actor.create`, not `St.mint`, so this hold never watched `overviewGroup`. Product `src/` is back to what it was. Proposal below is that attempt.
 
 **Plan:** [`../plans/1.0-run-to-end.md`](../plans/1.0-run-to-end.md) row 0.1.
 
@@ -109,7 +109,7 @@ Proved off `src/` by `startup-paint-gap-gate overview-hold`, exit 0. No frame wh
 
 One object, same shape as `StartupFrameLock`. `St.rpc_register` constructs it and keeps it on the helper that mints widgets. `spent`, `held`, the signal ids, the controls actor, the clocks, and the connection are fields on that object.
 
-The frame-clock lookup is a `static extern` named `clutter_stage_view_get_frame_clock`. That is the C function. There is no `[CCode (cname = ...)]` rename.
+The frame-clock lookup is a namespace `extern` named `clutter_stage_view_get_frame_clock`. That is the C function, and it is the name at the call. `[CCode (cname = "clutter_stage_view_get_frame_clock")]` repeats that name. Without it Vala emits `gsr_server_clutter_stage_view_get_frame_clock`.
 
 **Where:** New file.
 
@@ -122,6 +122,9 @@ New file `src/server/OverviewPaintHold.vala`.
 ```vala
 namespace Gsr.Server
 {
+	[CCode (cname = "clutter_stage_view_get_frame_clock", cheader_filename = "clutter/clutter.h")]
+	extern unowned global::Clutter.FrameClock clutter_stage_view_get_frame_clock(global::Clutter.StageView view);
+
 	/**
 	 * Stops stage updates from the first {@code overviewGroup} show
 	 * until the controls actor sets opacity to 0.
@@ -147,9 +150,6 @@ namespace Gsr.Server
 		private global::Clutter.Actor? controls;
 		private global::Clutter.FrameClock[] clocks = {};
 		private Gsr.Server.Rpc.Connection? connection;
-
-		[CCode (cheader_filename = "clutter/clutter.h")]
-		private static extern unowned global::Clutter.FrameClock clutter_stage_view_get_frame_clock(global::Clutter.StageView view);
 
 		/**
 		 * Watch one newly minted actor for the overview-group name.
@@ -189,7 +189,7 @@ namespace Gsr.Server
 			if (this.added_id != 0) {
 				return;
 			}
-			this.added_id = group.actor_added.connect((child) => {
+			this.added_id = group.child_added.connect((child) => {
 				if (this.spent || this.held) {
 					return;
 				}
@@ -413,3 +413,13 @@ The Activities button staying highlighted while the overview is closed, and the 
 **2026-10-30.** User: that proposal leans on static variables. `OverviewPaintHold` is one object. `St.rpc_register` constructs it and stores it on the helper. `mint` calls `watch` on that object. The frame-clock lookup stays a `static extern`, as on `StartupFrameLock`. Product `src/` unchanged.
 
 **2026-10-30.** User: renaming an extern C method hides where it came from. The hold's frame-clock binding is `clutter_stage_view_get_frame_clock`, with no `[CCode (cname = ...)]`. Product `src/` unchanged.
+
+**2026-10-30.** User: land the proposal. `gsr-server` built. `actor_added` is `child_added` on this Clutter. A class or namespace `extern` is prefixed unless `[CCode (cname = "clutter_stage_view_get_frame_clock")]` repeats the C name. Weston:
+
+```bash
+GSR_NESTED_TIMEOUT=40 \
+  GI_META_SMOKE=startup-overview-sequence/ui/init \
+  ./scripts/weston-gsr-prove.sh
+```
+
+16:04:18, `stop (smoke-fail)` after 33s, wrapper exit 137. `show-return v=0 o=255`. `miss desktop,overview,clear,move`. `samples desktop@ov=0 v=0.00 o=255 n=23 | desktop@ov=1 v=0.00 o=255 n=27 | overview@ov=1 v=1.00 o=255 n=13 | clear@ov=1 v=1.00 o=0 n=3 | move@ov=1 v=1.00 o=16 n=17 | move@ov=1 v=1.00 o=16 n=0`. The full-screen overview and the picker are still there. `St.Widget.rpc_construct` calls `create_with_overrides`, which is `Gsr-Clutter-Actor.create` (`Gsr.Server.Clutter.Actor`, an `St.Widget`). `St.mint` does not run for `overviewGroup`, so the hold never watched it. Rolled back. Product `src/` matches the tree from before the landing.
