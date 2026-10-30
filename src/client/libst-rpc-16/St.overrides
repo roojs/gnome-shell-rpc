@@ -10,6 +10,11 @@ Adjustment implements=Clutter.Animatable
 # Stock St.ImageContent implements Clutter.Content (Actor.content).
 ImageContent implements=Clutter.Content
 
+# Stock St.SpinnerContent implements Clutter.Content. AuthPrompt spins
+# this on password submit. Deny drops the iface, so GJS refuses
+# Actor.set_content and the password is never answered.
+SpinnerContent implements=Clutter.Content
+
 # Class vfunc slots (Button.clicked/transition, Widget.get_focus_chain, …).
 # Signal class closures are signal_* virtual signals (this class's GIR signal).
 Namespace emit_class_slots=1

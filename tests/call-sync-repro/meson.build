@@ -852,7 +852,7 @@ test(
 )
 
 # Shell.PolkitAuthenticationAgent.initiate. length is the Vala default
-# (GStrv + int). GJS aborts. strv is the stock five-arg GStrv signal.
+# (GStrv + int). GJS aborts. strv registers the stock five-arg GStrv signal.
 polkit_initiate_shape_fixture = shared_library(
   'polkit-initiate-shape-1.0',
   'polkit-initiate-shape.vala',

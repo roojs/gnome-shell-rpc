@@ -8,6 +8,7 @@ namespace Gsr.Server.St
 		Icon.rpc_register();
 		IconTheme.rpc_register();
 		ImageContent.rpc_register();
+		SpinnerContent.rpc_register();
 		DrawingAreaActor.rpc_register();
 		DrawingArea.rpc_register();
 		ViewportActor.rpc_register();

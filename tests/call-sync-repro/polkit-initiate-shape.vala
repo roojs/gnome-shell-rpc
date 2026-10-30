@@ -2,14 +2,13 @@
  * Signal shape of {@code Shell.PolkitAuthenticationAgent.initiate}.
  *
  * {@link LengthAgent} is the Vala default: a {@code GStrv} plus a length.
- * {@link StrvAgent} is the stock C shape: a {@code GStrv} and no length.
- * GJS aborts on the length shape inside
- * {@code gjs_value_from_array_and_length_values}.
+ * GJS aborts on that shape. {@link StrvAgent} marks {@code user_names} as a
+ * null-terminated string array.
  */
 namespace PolkitInitiateShape
 {
 	/**
-	 * Emits {@code initiate} the way the current Vala signal does.
+	 * Emits {@code initiate} the way the Vala signal does.
 	 */
 	public class LengthAgent : GLib.Object
 	{
@@ -40,7 +39,7 @@ namespace PolkitInitiateShape
 	}
 
 	/**
-	 * Emits {@code initiate} the way stock {@code g_signal_new} does.
+	 * Same signal, with {@code user_names} null-terminated and no length.
 	 */
 	public class StrvAgent : GLib.Object
 	{
@@ -57,7 +56,7 @@ namespace PolkitInitiateShape
 		);
 
 		/**
-		 * Emit one user name. GJS should deliver it as a string array.
+		 * Emit one user name.
 		 */
 		public void fire()
 		{

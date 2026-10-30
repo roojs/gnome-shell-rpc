@@ -109,7 +109,7 @@ Proved off `src/` by `startup-paint-gap-gate overview-hold`, exit 0. No frame wh
 
 One object, same shape as `StartupFrameLock`. `St.rpc_register` constructs it and keeps it on the helper that mints widgets. `spent`, `held`, the signal ids, the controls actor, the clocks, and the connection are fields on that object.
 
-The `clutter_stage_view_get_frame_clock` binding stays a `static extern`. It is a C function, the same as on `StartupFrameLock`.
+The frame-clock lookup is a `static extern` named `clutter_stage_view_get_frame_clock`. That is the C function. There is no `[CCode (cname = ...)]` rename.
 
 **Where:** New file.
 
@@ -148,8 +148,8 @@ namespace Gsr.Server
 		private global::Clutter.FrameClock[] clocks = {};
 		private Gsr.Server.Rpc.Connection? connection;
 
-		[CCode (cname = "clutter_stage_view_get_frame_clock", cheader_filename = "clutter/clutter.h")]
-		private static extern unowned global::Clutter.FrameClock view_frame_clock(global::Clutter.StageView view);
+		[CCode (cheader_filename = "clutter/clutter.h")]
+		private static extern unowned global::Clutter.FrameClock clutter_stage_view_get_frame_clock(global::Clutter.StageView view);
 
 		/**
 		 * Watch one newly minted actor for the overview-group name.
@@ -231,7 +231,7 @@ namespace Gsr.Server
 				return;
 			}
 			foreach (var view in stage.peek_stage_views()) {
-				var clock = view_frame_clock(view);
+				var clock = clutter_stage_view_get_frame_clock(view);
 				clock.inhibit();
 				this.clocks += clock;
 			}
@@ -411,3 +411,5 @@ The Activities button staying highlighted while the overview is closed, and the 
 **2026-10-30.** User: proposal for that pair. `startup-paint-gap-gate overview-hold` exit 0: frozen from show through a child opacity, a frame at opacity 0 on the controls write, a later show still draws. `current` still exit 1. Proposal written in the bug. Product `src/` unchanged.
 
 **2026-10-30.** User: that proposal leans on static variables. `OverviewPaintHold` is one object. `St.rpc_register` constructs it and stores it on the helper. `mint` calls `watch` on that object. The frame-clock lookup stays a `static extern`, as on `StartupFrameLock`. Product `src/` unchanged.
+
+**2026-10-30.** User: renaming an extern C method hides where it came from. The hold's frame-clock binding is `clutter_stage_view_get_frame_clock`, with no `[CCode (cname = ...)]`. Product `src/` unchanged.

@@ -3,6 +3,7 @@
  * The shield has to leave the locked state.
  *
  * Pass: `lock-screen-unlock-smoke/ui/init: ok`
+ * A dummy password is `ok submitted` when GDM answers.
  * Fail: `lock-screen-unlock-smoke/ui/init: miss <reason>`
  *
  *   GSR_NESTED_TIMEOUT=45 \
@@ -223,9 +224,19 @@ function typePassword(shield) {
 				finish('ok unlocked ' + state);
 				return GLib.SOURCE_REMOVE;
 			}
+			const auth = shield._dialog?._authPrompt ?? null;
+			let message = '';
+			try {
+				message = auth?._message?.text ?? '';
+			} catch (e) {
+				message = '';
+			}
+			if (message.length > 0) {
+				finish('ok submitted ' + state);
+				return GLib.SOURCE_REMOVE;
+			}
 			if (GLib.get_monotonic_time() < afterAt)
 				return GLib.SOURCE_CONTINUE;
-			const auth = shield._dialog?._authPrompt ?? null;
 			const len = auth?._entry?.get_text?.().length ?? -1;
 			if (len < 1)
 				finish('miss entry-empty ' + state);
