@@ -222,7 +222,7 @@ signal, so the server's later emission can reach GJS `.connect` handlers.
 
 See [Prefix generated Vala signals](bugs/done/2026-09-23-prefix-generated-vala-signals.md)
 and [Overview picker](bugs/done/2026-09-24-overview-picker-preview-gone.md).
-The live overview complaint is [startup overview, then desktop](bugs/2026-10-29-startup-overview-then-desktop.md).
+The startup overview, then desktop, is closed: [startup overview, then desktop](bugs/done/2026-10-29-startup-overview-then-desktop.md).
 [`style-changed` manual subscription](bugs/done/2026-09-22-style-changed-manual-subscription.md)
 was taken off the board on 2026-09-30. The setter bridge above is still the code.
 Archived: [search click](bugs/done/2026-09-22-search-result-click-no-launch.md).

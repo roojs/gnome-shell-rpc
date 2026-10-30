@@ -1,6 +1,6 @@
 # Lock screen opens, password does not unlock
 
-**Status:** ✅ closed 2026-10-30. User. Enter reaches GDM. Weston `ok submitted`. A second lock shows the password page again (`ok second-prompt`).
+**Status:** ✅ closed 2026-10-30. User. Enter reaches GDM. Weston `ok submitted`. A second lock shows the password page again (`ok second-prompt`). Archived as done.
 
 Enter calls `Spinner.play()` → `set_content(new St.SpinnerContent())`. That threw, so `answerQuery` never ran.
 

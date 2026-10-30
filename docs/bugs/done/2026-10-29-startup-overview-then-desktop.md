@@ -1,8 +1,8 @@
 # Startup paints the overview, then the desktop, then the overview
 
-**Status:** ⏳ open. User 2026-10-30: leave the hold in. Weston 16:04 still painted the full-screen overview (27 frames) and the picker (13 frames). `new St.Widget` mints through `Gsr-Clutter-Actor.create`, not `St.mint`, so this watch may never see `overviewGroup`. The hold is back in `src/` anyway.
+**Status:** ✅ closed 2026-10-30. User. Archived as done.
 
-**Plan:** [`../plans/1.0-run-to-end.md`](../plans/1.0-run-to-end.md) row 0.1.
+**Plan:** [`../../plans/1.0-run-to-end.md`](../../plans/1.0-run-to-end.md) row 0.1.
 
 ## The difference
 

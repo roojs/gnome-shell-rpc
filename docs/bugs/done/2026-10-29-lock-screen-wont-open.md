@@ -1,6 +1,6 @@
 # Lock screen cannot be opened
 
-**Status:** ✅ proved 2026-10-29 16:43. A key on the clock page opens the password page. Applied in `Event.vala`.
+**Status:** ✅ closed 2026-10-30. User. A key on the clock page opens the password page. Archived as done.
 
 The lock button does lock. The screen fades to black, and a pointer motion brings the clock back. A key then has to open the password page. Before the fix, that key threw and the page stayed on the clock.
 

@@ -1,6 +1,6 @@
 # Overview flashes during boot, then the picker button lies
 
-**Status:** ✔️ closed 2026-10-29. User. The Activities button staying lit, and the rest of this ticket, are off the board. The startup picture — overview, then the desktop, then the overview — is [`../2026-10-29-startup-overview-then-desktop.md`](../2026-10-29-startup-overview-then-desktop.md).
+**Status:** ✔️ closed 2026-10-29. User. The Activities button staying lit, and the rest of this ticket, are off the board. The startup picture — overview, then the desktop, then the overview — is [`2026-10-29-startup-overview-then-desktop.md`](2026-10-29-startup-overview-then-desktop.md).
 
 RPC call batching is archived: [`2026-09-30-rpc-call-volume.md`](2026-09-30-rpc-call-volume.md).
 
