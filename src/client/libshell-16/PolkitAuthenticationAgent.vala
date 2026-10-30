@@ -160,6 +160,7 @@ namespace Shell
 			string message,
 			string icon_name,
 			string cookie,
+			[CCode (array_length = false, array_null_terminated = true)]
 			string[] user_names
 		);
 

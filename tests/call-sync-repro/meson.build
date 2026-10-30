@@ -851,6 +851,54 @@ test(
   depends: [later_callback_hold_fixture, later_callback_hold_typelib],
 )
 
+# Shell.PolkitAuthenticationAgent.initiate. length is the Vala default
+# (GStrv + int). GJS aborts. strv is the stock five-arg GStrv signal.
+polkit_initiate_shape_fixture = shared_library(
+  'polkit-initiate-shape-1.0',
+  'polkit-initiate-shape.vala',
+  dependencies: [dependency('gobject-2.0')],
+  vala_gir: 'PolkitInitiateShape-1.0.gir',
+  install: false,
+)
+
+polkit_initiate_shape_typelib = custom_target(
+  'PolkitInitiateShape-1.0.typelib',
+  output: 'PolkitInitiateShape-1.0.typelib',
+  command: [
+    find_program('g-ir-compiler'),
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libpolkit-initiate-shape-1.0.so',
+    meson.current_build_dir() / 'PolkitInitiateShape-1.0.gir',
+  ],
+  depends: polkit_initiate_shape_fixture,
+  build_by_default: true,
+)
+
+test(
+  'polkit-initiate-shape-length',
+  find_program('gjs'),
+  args: [files('polkit-initiate-shape.js'), 'length'],
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [polkit_initiate_shape_fixture, polkit_initiate_shape_typelib],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'polkit-initiate-shape-strv',
+  find_program('gjs'),
+  args: [files('polkit-initiate-shape.js'), 'strv'],
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [polkit_initiate_shape_fixture, polkit_initiate_shape_typelib],
+  timeout: 5,
+)
+
 # Nested Later.add: the inner add runs before the outer add returns.
 # GJS 1.82 CallbackIn::release then unrefs the inner trampoline.
 test(

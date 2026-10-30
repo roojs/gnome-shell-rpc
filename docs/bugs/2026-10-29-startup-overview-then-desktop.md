@@ -107,6 +107,10 @@ Proved off `src/` by `startup-paint-gap-gate overview-hold`, exit 0. No frame wh
 
 **Why:** `showOverview()` shows `overviewGroup`. `ControlsManager` (`style_class` `controls-manager`) then sets `opacity` to 0. The slide between those two calls is on the server and keeps scheduling frames. Inhibiting the stage-view clocks for that span stops those frames. `uninhibit` plus `schedule_update` is the frame `ensureAllocation()` waits on.
 
+One object, same shape as `StartupFrameLock`. `St.rpc_register` constructs it and keeps it on the helper that mints widgets. `spent`, `held`, the signal ids, the controls actor, the clocks, and the connection are fields on that object.
+
+The `clutter_stage_view_get_frame_clock` binding stays a `static extern`. It is a C function, the same as on `StartupFrameLock`.
+
 **Where:** New file.
 
 **Depends on:** none.
@@ -125,31 +129,40 @@ namespace Gsr.Server
 	 * One shot. A later overview show does not take the hold.
 	 * A child opacity is not the release. Do not call this from a
 	 * frame: virtio keeps scanning a frame that was inhibited.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var hold = new OverviewPaintHold();
+	 * hold.watch(actor, connection);
+	 * }}}
 	 */
 	public class OverviewPaintHold : GLib.Object
 	{
-		private static bool spent;
-		private static bool held;
-		private static ulong opacity_id;
-		private static ulong stopped_id;
-		private static ulong added_id;
-		private static global::Clutter.Actor? controls;
-		private static global::Clutter.FrameClock[] clocks = {};
-		private static Gsr.Server.Rpc.Connection? connection;
+		private bool spent;
+		private bool held;
+		private ulong opacity_id;
+		private ulong stopped_id;
+		private ulong added_id;
+		private global::Clutter.Actor? controls;
+		private global::Clutter.FrameClock[] clocks = {};
+		private Gsr.Server.Rpc.Connection? connection;
 
 		[CCode (cname = "clutter_stage_view_get_frame_clock", cheader_filename = "clutter/clutter.h")]
 		private static extern unowned global::Clutter.FrameClock view_frame_clock(global::Clutter.StageView view);
 
 		/**
 		 * Watch one newly minted actor for the overview-group name.
+		 *
+		 * @param actor widget just minted
+		 * @param connection shell connection that minted it
 		 */
-		public static void watch(
+		public void watch(
 			global::Clutter.Actor actor,
-			Gsr.Server.Rpc.Connection connection
-		)
+			Gsr.Server.Rpc.Connection connection)
 		{
 			actor.notify.connect((pspec) => {
-				if (OverviewPaintHold.spent) {
+				if (this.spent) {
 					return;
 				}
 				if (pspec.name != "visible" && pspec.name != "name") {
@@ -158,36 +171,36 @@ namespace Gsr.Server
 				if (actor.name != "overviewGroup" || !actor.visible) {
 					return;
 				}
-				OverviewPaintHold.connection = connection;
-				OverviewPaintHold.on_shown(actor);
+				this.connection = connection;
+				this.on_shown(actor);
 			});
 		}
 
-		private static void on_shown(global::Clutter.Actor group)
+		private void on_shown(global::Clutter.Actor group)
 		{
-			if (OverviewPaintHold.spent || OverviewPaintHold.held) {
+			if (this.spent || this.held) {
 				return;
 			}
-			var found = OverviewPaintHold.find_controls(group);
+			var found = this.find_controls(group);
 			if (found != null) {
-				OverviewPaintHold.hold(group, found);
+				this.hold(group, found);
 				return;
 			}
-			if (OverviewPaintHold.added_id != 0) {
+			if (this.added_id != 0) {
 				return;
 			}
-			OverviewPaintHold.added_id = group.actor_added.connect((child) => {
-				if (OverviewPaintHold.spent || OverviewPaintHold.held) {
+			this.added_id = group.actor_added.connect((child) => {
+				if (this.spent || this.held) {
 					return;
 				}
-				var late = OverviewPaintHold.find_controls(group);
+				var late = this.find_controls(group);
 				if (late != null) {
-					OverviewPaintHold.hold(group, late);
+					this.hold(group, late);
 				}
 			});
 		}
 
-		private static global::Clutter.Actor? find_controls(global::Clutter.Actor actor)
+		private global::Clutter.Actor? find_controls(global::Clutter.Actor actor)
 		{
 			var widget = actor as global::St.Widget;
 			if (widget != null) {
@@ -201,7 +214,7 @@ namespace Gsr.Server
 				if (child == null) {
 					continue;
 				}
-				var found = OverviewPaintHold.find_controls(child);
+				var found = this.find_controls(child);
 				if (found != null) {
 					return found;
 				}
@@ -209,57 +222,55 @@ namespace Gsr.Server
 			return null;
 		}
 
-		private static void hold(
+		private void hold(
 			global::Clutter.Actor group,
-			global::Clutter.Actor controls
-		)
+			global::Clutter.Actor controls)
 		{
 			var stage = group.get_stage() as global::Clutter.Stage;
 			if (stage == null || stage.peek_stage_views().length() == 0) {
 				return;
 			}
 			foreach (var view in stage.peek_stage_views()) {
-				var clock = OverviewPaintHold.view_frame_clock(view);
+				var clock = view_frame_clock(view);
 				clock.inhibit();
-				OverviewPaintHold.clocks += clock;
+				this.clocks += clock;
 			}
-			OverviewPaintHold.controls = controls;
-			OverviewPaintHold.held = true;
-			OverviewPaintHold.opacity_id = controls.notify["opacity"].connect(() => {
+			this.controls = controls;
+			this.held = true;
+			this.opacity_id = controls.notify["opacity"].connect(() => {
 				if (controls.opacity != 0) {
 					return;
 				}
-				OverviewPaintHold.release(stage);
+				this.release(stage);
 			});
-			if (OverviewPaintHold.connection != null) {
-				OverviewPaintHold.stopped_id =
-					OverviewPaintHold.connection.stopped.connect(() => {
-						OverviewPaintHold.release(stage);
-					});
+			if (this.connection != null) {
+				this.stopped_id = this.connection.stopped.connect(() => {
+					this.release(stage);
+				});
 			}
 		}
 
-		private static void release(global::Clutter.Stage stage)
+		private void release(global::Clutter.Stage stage)
 		{
-			if (!OverviewPaintHold.held) {
+			if (!this.held) {
 				return;
 			}
-			if (OverviewPaintHold.controls != null && OverviewPaintHold.opacity_id != 0) {
-				OverviewPaintHold.controls.disconnect(OverviewPaintHold.opacity_id);
-				OverviewPaintHold.opacity_id = 0;
+			if (this.controls != null && this.opacity_id != 0) {
+				this.controls.disconnect(this.opacity_id);
+				this.opacity_id = 0;
 			}
-			if (OverviewPaintHold.connection != null && OverviewPaintHold.stopped_id != 0) {
-				OverviewPaintHold.connection.disconnect(OverviewPaintHold.stopped_id);
-				OverviewPaintHold.stopped_id = 0;
+			if (this.connection != null && this.stopped_id != 0) {
+				this.connection.disconnect(this.stopped_id);
+				this.stopped_id = 0;
 			}
-			foreach (var clock in OverviewPaintHold.clocks) {
+			foreach (var clock in this.clocks) {
 				clock.uninhibit();
 			}
-			OverviewPaintHold.clocks = {};
-			OverviewPaintHold.controls = null;
-			OverviewPaintHold.connection = null;
-			OverviewPaintHold.held = false;
-			OverviewPaintHold.spent = true;
+			this.clocks = {};
+			this.controls = null;
+			this.connection = null;
+			this.held = false;
+			this.spent = true;
 			stage.schedule_update();
 		}
 	}
@@ -282,20 +293,62 @@ After `server/StartupFrameLock.vala`.
   'server/OverviewPaintHold.vala',
 ```
 
-### 3. `src/server/libst-16/St.vala` — `mint()`: watch each new widget
+### 3. `src/server/libst-16/St.vala` — the helper owns the hold and watches each new widget
 
-**Why:** `overviewGroup` is an `St.Widget` minted here, before its name and its later `show()`.
+**Why:** `overviewGroup` is an `St.Widget` minted here, before its name and its later `show()`. `rpc_register` already builds one helper. That helper owns the hold. `mint` calls `watch` on it.
 
-**Where:** `mint`, immediately after `request.connection.export(created)`.
+**Where:** the field, `rpc_register`, the constructor, and `mint` immediately after `request.connection.export(created)`.
 
 **Depends on:** §1.
 
+#### Remove
+
+```vala
+		public static void rpc_register()
+		{
+			var helper = new St();
+```
+
+#### Replace with
+
+```vala
+		/**
+		 * Startup overview paint hold for actors this helper mints.
+		 */
+		private OverviewPaintHold paint_hold;
+
+		public static void rpc_register()
+		{
+			var helper = new St(new OverviewPaintHold());
+```
+
+#### Remove
+
+```vala
+		[CCode (cname = "gnome_shell_rpc_rpc_helper_st_create")]
+		public St()
+		{
+		}
+```
+
+#### Replace with
+
+```vala
+		[CCode (cname = "gnome_shell_rpc_rpc_helper_st_create")]
+		public St(OverviewPaintHold paint_hold)
+		{
+			this.paint_hold = paint_hold;
+		}
+```
+
 #### Add
+
+In `mint`, immediately after `request.connection.export(created)`.
 
 ```vala
 			var actor = created as global::Clutter.Actor;
 			if (actor != null) {
-				OverviewPaintHold.watch(
+				this.paint_hold.watch(
 					actor,
 					(Gsr.Server.Rpc.Connection) request.connection);
 			}
@@ -356,3 +409,5 @@ The Activities button staying highlighted while the overview is closed, and the 
 **2026-10-30.** User: freeze on the overview show and enable framing at opacity 0. That pair works once, at startup. A later overview show does not set the controls opacity to 0, and an earlier opacity 0 on a child (the thumbnails) would release while the controls are still fully visible. Product `src/` unchanged. No fences.
 
 **2026-10-30.** User: proposal for that pair. `startup-paint-gap-gate overview-hold` exit 0: frozen from show through a child opacity, a frame at opacity 0 on the controls write, a later show still draws. `current` still exit 1. Proposal written in the bug. Product `src/` unchanged.
+
+**2026-10-30.** User: that proposal leans on static variables. `OverviewPaintHold` is one object. `St.rpc_register` constructs it and stores it on the helper. `mint` calls `watch` on that object. The frame-clock lookup stays a `static extern`, as on `StartupFrameLock`. Product `src/` unchanged.
