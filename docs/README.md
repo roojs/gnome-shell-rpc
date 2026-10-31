@@ -5,6 +5,7 @@ User-facing docs (no plan numbers):
 | Path | What |
 | ---- | ---- |
 | [`build.md`](build.md) | Prerequisites, meson/ninja, nested run, install |
+| [`qemu-test-guest.md`](qemu-test-guest.md) | libvirt/QEMU Ubuntu test guest |
 | [`weston-nested-test-env.md`](weston-nested-test-env.md) | Why Weston-in-X11 is the default nested prove env |
 | [`debugging.md`](debugging.md) | LLM instructions for a fix: read logs, reproduce, shrink, fix the repro, then land |
 | [`nested-debug.md`](nested-debug.md) | Prove SIGKILL vs real death; do not gdb your own kill |

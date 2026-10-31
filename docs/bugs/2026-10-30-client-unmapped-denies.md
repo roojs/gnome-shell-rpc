@@ -14,7 +14,7 @@ The generator cannot write these. The argument or the return is a callback, an e
 
 ## Written
 
-2026-10-30. These five are in the libraries. Their deny lines are in the permanent section.
+2026-10-31. These are in the libraries. Their deny lines are in the permanent section.
 
 | | What the shell does | Method | C function | Caller |
 | --- | --- | --- | --- | --- |
@@ -24,8 +24,12 @@ The generator cannot write these. The argument or the return is a callback, an e
 | ✔️ | A screenshot places image bytes on the clipboard. | `Clipboard.set_content` | `st_clipboard_set_content` | `vendor/gnome-shell/js/ui/screenshot.js` |
 | ✔️ | The screenshot notification builds its icon from those bytes, on the path `set_data` already uses. | `ImageContent.set_bytes` | `st_image_content_set_bytes` | `vendor/gnome-shell/js/ui/screenshot.js` |
 | ✔️ | A theme node is created with its context, parent, theme, element type, and style strings. The compositor builds the node. | `ThemeNode.new` | `st_theme_node_new` | Shell C creates nodes from widgets. JavaScript reads them with `get_theme_node()`. |
+| ✔️ | The notification stack paints its children newest-first. The user-name widget paints only the visible label. The client symbol returns: the lease has no paint node, and paint is not relayed. | `Actor.paint` | `clutter_actor_paint` | `vendor/gnome-shell/js/ui/messageList.js`, `vendor/gnome-shell/js/ui/userWidget.js` |
+| ✔️ | The notification stack picks its children in that same order. The client symbol returns: the lease has no pick log, and pick is not relayed. | `Actor.pick` | `clutter_actor_pick` | `vendor/gnome-shell/js/ui/messageList.js` |
 
 Copy from a text entry calls `Clipboard.set_text`. That one is generated, and it is already in the library.
+
+`messageList.js` and `userWidget.js` also override `vfunc_paint`. `messageList.js` overrides `vfunc_pick`. Those are the virtuals. The rows above are `Actor.paint` and `Actor.pick`.
 
 ## Deny line moved
 
@@ -38,16 +42,7 @@ Copy from a text entry calls `Clipboard.set_text`. That one is generated, and it
 | ✔️ | `WaylandClient.new` / `spawnv` | `WaylandClient.override.vala` |
 | ✔️ | `KeyBinding.get_mask` / `get_modifiers` / `get_name` / `is_builtin` / `is_reversed` | `key-binding-wire.c`. `windowManager.js` calls `is_builtin` and `is_reversed`. |
 
-## The shell calls two of the missing methods
-
-Looked through `vendor/gnome-shell/js` and `src/client/libshell-16` on 2026-10-30. These two are real calls. Everything else in the tables below does not appear there.
-
-| | What the shell does | Method | Caller |
-| --- | --- | --- | --- |
-| | The notification stack paints its children newest-first. The user-name widget paints only the visible label. | `Actor.paint` | `vendor/gnome-shell/js/ui/messageList.js`, `vendor/gnome-shell/js/ui/userWidget.js` |
-| | The notification stack picks its children in that same order. | `Actor.pick` | `vendor/gnome-shell/js/ui/messageList.js` |
-
-`messageList.js` and `userWidget.js` also override `vfunc_paint`. `messageList.js` overrides `vfunc_pick`. Those are the virtuals, not `Actor.paint` / `Actor.pick`.
+Looked through `vendor/gnome-shell/js` and `src/client/libshell-16` on 2026-10-30. `Actor.paint` and `Actor.pick` were the real calls. They are in the Written table. Everything in the tables below does not appear there.
 
 The shell does use the clipboard, theme nodes, the texture cache, and window frame rectangles. It does not call the missing methods on those objects. Paste uses `Clipboard.get_text`. Screenshots use `Clipboard.set_content`. Theme nodes are asked for padding, border, length, and color. The texture cache is asked for `load_file_async` and the icon-theme-changed signal. Windows are asked for `get_frame_rect`.
 
@@ -55,7 +50,7 @@ The shell does use the clipboard, theme nodes, the texture cache, and window fra
 
 `src/client/libmutter-clutter-rpc-16/Clutter.deny`
 
-The shell does not call these, apart from `Actor.paint` and `Actor.pick` above.
+The shell does not call these.
 
 | Method | C function | Why the generator skips it |
 | --- | --- | --- |

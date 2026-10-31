@@ -733,6 +733,30 @@
 	}
 
 	/**
+	 * An implementation is not needed because the compositor draws the
+	 * frame itself and never enters the JavaScript that calls this.
+	 * That JavaScript paints one child now, into the context already
+	 * open. The notification stack does that newest-first. The user
+	 * name paints only the visible label. This call is not what puts
+	 * pixels on screen.
+	 */
+	public void paint(PaintContext paint_context)
+	{
+		return;
+	}
+
+	/**
+	 * An implementation is not needed because the compositor hit-tests
+	 * the frame itself and never enters the JavaScript that calls this.
+	 * That JavaScript hit-tests one child now, in that same order. This
+	 * call is not what decides the click.
+	 */
+	public void pick(PickContext pick_context)
+	{
+		return;
+	}
+
+	/**
 	 * Stock-offset Class fallthrough ({@code allocate_vfunc} etc.). GJS
 	 * replaces the Class slot; these run only when no JS override.
 	 */

@@ -26,8 +26,6 @@ Actor.continue_paint
 Actor.continue_pick
 Actor.get_paint_volume
 Actor.get_transformed_paint_volume
-Actor.paint
-Actor.pick
 Actor.pick_box
 Actor.should_pick
 BindingPool.get_for_class
@@ -199,6 +197,16 @@ Actor.get_transition
 # the first key (searchController.startSearch). Gsr-Clutter-Actor.deliver_event
 # runs clutter_actor_event.
 Actor.event
+
+# Actor.override — stock paint builds a Cogl actor node on the
+# compositor. This lease has no framebuffer, and paint is not a
+# relayed vfunc, so the client symbol returns.
+Actor.paint
+
+# Actor.override — stock pick writes the compositor pick log.
+# This lease has no pick context, and pick is not a relayed
+# vfunc, so the client symbol returns.
+Actor.pick
 
 # Stage.override — Event is Compact / not wireable; pick at event coords
 # (captured-event-smoke / PopupMenuManager close).
