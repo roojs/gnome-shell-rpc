@@ -3,6 +3,7 @@
 /bisect-js/
 /js-override/
 /vendor/gnome-shell/
+/vendor/debian/
 *.o
 *.vala.c
 *.vala.h
