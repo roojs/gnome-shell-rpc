@@ -6,20 +6,6 @@
 namespace Clutter
 {
 	/**
-	 * Opaque sequence handle. {@link get_slot} is still a stub.
-	 */
-	public struct EventSequence
-	{
-		public uint8 _unused;
-
-		public int get_slot()
-		{
-			GLib.error("gi-stub: Clutter-EventSequence.get_slot not implemented");
-			return -1;
-		}
-	}
-
-	/**
 	 * Compact {@code ClutterEvent}. {@code copy_function} is required
 	 * for Vala to emit {@code clutter_event_get_type}.
 	 */
@@ -93,6 +79,12 @@ namespace Clutter
 		/* One client device per type. dnd.js compares get_device() with !==,
 		 * and the two unpack paths must hand back that same object. */
 		private static Gee.HashMap<int, InputDevice>? devices_by_type;
+
+		/**
+		 * Sequence for {@link get_event_sequence}. Null until a touch
+		 * or crossing event with a packed slot builds it.
+		 */
+		public EventSequence? sequence;
 
 		/**
 		 * Scroll source, source-device type, then event time, packed after
@@ -323,11 +315,30 @@ namespace Clutter
 		}
 
 		/**
-		 * A pointer button has no touch sequence, so this is null.
-		 * Slider {@code startDragging} reads it before it moves the handle.
+		 * Stock {@code clutter_event_get_event_sequence}. Touch and
+		 * crossing events return the sequence for the packed slot.
+		 * Every other type returns null. A slot below zero is no sequence.
 		 */
+		[CCode (cname = "clutter_event_get_event_sequence")]
 		public unowned EventSequence? get_event_sequence() {
-			return null;
+			switch (this.event_type) {
+				case EventType.touch_begin:
+				case EventType.touch_update:
+				case EventType.touch_end:
+				case EventType.touch_cancel:
+				case EventType.enter:
+				case EventType.leave:
+					break;
+				default:
+					return null;
+			}
+			if (this.sequence_slot < 0) {
+				return null;
+			}
+			if (this.sequence == null) {
+				this.sequence = new EventSequence(this.sequence_slot);
+			}
+			return this.sequence;
 		}
 
 		/**

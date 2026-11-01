@@ -1,6 +1,7 @@
 /*
  * C symbols Vala does not emit.
- * clutter_event_get_type and clutter_frame_get_type are boxed GTypes.
+ * clutter_event_get_type, clutter_frame_get_type, and
+ * clutter_event_sequence_get_type are boxed GTypes.
  * clutter_shader_effect_set_uniform is varargs (GIR introspectable=0).
  */
 #include <glib-object.h>
@@ -12,6 +13,8 @@
 
 gpointer clutter_frame_copy (gpointer frame);
 void clutter_frame_free (gpointer frame);
+gpointer clutter_event_sequence_copy (gpointer sequence);
+void clutter_event_sequence_free (gpointer sequence);
 
 GType
 clutter_event_get_type (void)
@@ -24,6 +27,22 @@ clutter_event_get_type (void)
 			"ClutterEvent",
 			(GBoxedCopyFunc) clutter_event_copy,
 			(GBoxedFreeFunc) clutter_event_free);
+		g_once_init_leave (&init, 1);
+	}
+	return type;
+}
+
+GType
+clutter_event_sequence_get_type (void)
+{
+	static gsize init = 0;
+	static GType type = 0;
+
+	if (g_once_init_enter (&init)) {
+		type = g_boxed_type_register_static (
+			"ClutterEventSequence",
+			(GBoxedCopyFunc) clutter_event_sequence_copy,
+			(GBoxedFreeFunc) clutter_event_sequence_free);
 		g_once_init_leave (&init, 1);
 	}
 	return type;

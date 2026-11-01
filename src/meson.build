@@ -546,7 +546,8 @@ mutter_clutter_rpc_lib = shared_library(
   clutter_generated,
   files(
     'client/libmutter-clutter-rpc-16/namespace.vala',
-    'client/libmutter-clutter-rpc-16/Event.vala',
+    'client/libmutter-clutter-rpc-18/Event.vala',
+    'client/libmutter-clutter-rpc-18/EventSequence.vala',
     'client/libmutter-clutter-rpc-16/Batch.vala',
     'client/libmutter-clutter-rpc-16/c-clutter-abi.c',
     'client/libmutter-clutter-rpc-16/c-rpc-construct-chain.c',

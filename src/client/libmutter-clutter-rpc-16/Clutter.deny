@@ -336,7 +336,8 @@ Clone.set_source
 BindingPool.install_closure
 BindingPool.override_closure
 
-# Hand-written in Event.vala (sole Clutter GIR union → Compact).
+# Hand-written Compact. Event.vala is the union.
+# EventSequence.vala stores the packed slot.
 Event
 EventSequence
 
