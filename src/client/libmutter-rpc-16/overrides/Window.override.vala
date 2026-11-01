@@ -24,9 +24,10 @@
 					return existing;
 				}
 			}
-			var actor = new WindowActor();
-			actor.rpc_lid = actor_lid;
-			actor.bound_meta_window = this;
+			var actor = new WindowActor() {
+				rpc_lid = actor_lid,
+				bound_meta_window = this,
+			};
 			Gsr.Client.Rpc.register_handle(actor);
 			return actor;
 		}

@@ -287,6 +287,10 @@ Backend.input_method
 Backend.get_input_method
 Backend.set_input_method
 
+# 18 Backend.override — sprite lease. Mutter 16 has neither method.
+Backend.get_sprite
+Backend.get_pointer_sprite
+
 # Stock C symbol in header-overrides/clutter-main.h — Clutter.override.vala.
 get_default_text_direction
 

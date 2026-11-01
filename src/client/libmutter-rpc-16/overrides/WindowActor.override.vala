@@ -29,7 +29,7 @@
 		 * {@link Compositor.get_window_actors}). Unset means the getter
 		 * calls the server.
 		 */
-		internal Window? bound_meta_window;
+		internal Window? bound_meta_window { get; set; }
 
 		public Window? meta_window {
 			[CCode (cname = "meta_window_actor_get_meta_window")]

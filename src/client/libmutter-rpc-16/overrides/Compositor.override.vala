@@ -36,9 +36,10 @@
 					? Gsr.Client.Rpc.client.proxies.get((int) actor_lid) as WindowActor
 					: null;
 				if (actor == null) {
-					actor = new WindowActor();
-					actor.rpc_lid = actor_lid;
-					actor.bound_meta_window = win;
+					actor = new WindowActor() {
+						rpc_lid = actor_lid,
+						bound_meta_window = win,
+					};
 					Gsr.Client.Rpc.register_handle(actor);
 				} else if (actor.bound_meta_window == null) {
 					actor.bound_meta_window = win;
