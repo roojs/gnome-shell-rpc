@@ -1033,6 +1033,22 @@ test(
 
 # Nested poke: one callback removes itself and runs the queue again, which
 # calls the next SourceFunc. Then the JS wrapper is dropped and poke runs.
+# 1.0 require then gjs_context_new prints the GIRepository critical and
+# does not return. The 2.0 require returns ok. Not a default test: the
+# failing binary hangs, same as gsr-client on 26.04.
+executable('gi-repository-gate-fail',
+  'gi-repository-gate.c',
+  dependencies: [dependency('gobject-introspection-1.0'), dependency('gjs-1.0')],
+  install: false,
+)
+gi_repository_gate_fix = executable('gi-repository-gate-fix',
+  'gi-repository-gate.c',
+  c_args: ['-DGATE_GI2'],
+  dependencies: [dependency('girepository-2.0'), dependency('gjs-1.0')],
+  install: false,
+)
+test('gi-repository-gate-fix', gi_repository_gate_fix, timeout: 8)
+
 test(
   'later-callback-reenter',
   find_program('gjs'),
