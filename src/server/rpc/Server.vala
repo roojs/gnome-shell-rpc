@@ -37,9 +37,9 @@ namespace Gsr.Server.Rpc
 
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
-			OLLMrpc.Gi.register("Meta", "16");
-			OLLMrpc.Gi.register("Clutter", "16");
-			OLLMrpc.Gi.register("St", "16");
+			OLLMrpc.Gi.register("Meta", MUTTER_API_VERSION);
+			OLLMrpc.Gi.register("Clutter", MUTTER_API_VERSION);
+			OLLMrpc.Gi.register("St", MUTTER_API_VERSION);
 			/* Opaque boxed ClutterStage::before-update arg. */
 			OLLMrpc.Bin.register("Clutter-Frame", typeof(global::Clutter.Frame));
 

@@ -159,6 +159,7 @@ rpc_config = configure_file(
   output: 'Config.vala',
   configuration: configuration_data({
     'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
+    'MUTTER_API_VERSION': mutter_api_version,
     'GNOME_SHELL_CLIENT_TYPELIB_DIR': gnome_shell_client_typelibdir,
     'GNOME_SHELL_PKGLIBDIR': gnome_shell_pkglibdir,
   }),
