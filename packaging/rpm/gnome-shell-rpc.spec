@@ -18,7 +18,6 @@ BuildRequires: gcc
 BuildRequires: vala
 BuildRequires: gobject-introspection
 BuildRequires: gobject-introspection-devel
-BuildRequires: python3
 BuildRequires: libxslt
 BuildRequires: git-core
 BuildRequires: systemd-rpm-macros

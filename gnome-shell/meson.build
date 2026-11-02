@@ -45,19 +45,16 @@ if vendor_gnome_shell.disabled()
   )
 endif
 
-# Read upstream project() version from vendor meson.build (empty if missing).
+# First "version:" line in vendor meson.build is project(). Empty if missing.
 vendor_version = ''
 if fs.exists(vendor_root / 'meson.build')
-  vendor_ver_cmd = run_command(
-    'python3', '-c',
-    'import re, sys\n' +
-    'text = open(sys.argv[1], encoding="utf-8").read()\n' +
-    'm = re.search(r"project\\(\\s*[\'\\"]gnome-shell[\'\\"][^)]*?version:\\s*[\'\\"]([^\'\\"]+)[\'\\"]", text, re.S)\n' +
-    'print(m.group(1) if m else "")\n',
-    vendor_root / 'meson.build',
-    check: true,
-  )
-  vendor_version = vendor_ver_cmd.stdout().strip()
+  foreach line : fs.read(vendor_root / 'meson.build').split('\n')
+    stripped = line.strip()
+    if stripped.startswith('version:')
+      vendor_version = stripped.contains('\'') ? stripped.split('\'')[1] : stripped.split('"')[1]
+      break
+    endif
+  endforeach
 endif
 
 need_clone = not fs.exists(vendor_js)
@@ -98,16 +95,14 @@ if need_fetch
   endif
   message(fetch_cmd.stdout().strip())
   # Re-read version after fetch/checkout.
-  vendor_ver_cmd = run_command(
-    'python3', '-c',
-    'import re, sys\n' +
-    'text = open(sys.argv[1], encoding="utf-8").read()\n' +
-    'm = re.search(r"project\\(\\s*[\'\\"]gnome-shell[\'\\"][^)]*?version:\\s*[\'\\"]([^\'\\"]+)[\'\\"]", text, re.S)\n' +
-    'print(m.group(1) if m else "")\n',
-    vendor_root / 'meson.build',
-    check: true,
-  )
-  vendor_version = vendor_ver_cmd.stdout().strip()
+  vendor_version = ''
+  foreach line : fs.read(vendor_root / 'meson.build').split('\n')
+    stripped = line.strip()
+    if stripped.startswith('version:')
+      vendor_version = stripped.contains('\'') ? stripped.split('\'')[1] : stripped.split('"')[1]
+      break
+    endif
+  endforeach
 elif fs.exists(vendor_root / '.git')
   sha_cmd = run_command('git', '-C', vendor_root, 'rev-parse', '--short', 'HEAD', check: true)
   message(

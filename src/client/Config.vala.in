@@ -12,6 +12,12 @@ namespace Gsr.Client
 	/** Distro mutter typelib dir. */
 	public const string MUTTER_TYPELIB_DIR = "@MUTTER_TYPELIB_DIR@";
 
+	/**
+	 * Typelib version the client requires. ''16'' or ''18'',
+	 * the mutter this configure found.
+	 */
+	public const string MUTTER_API_VERSION = "@MUTTER_API_VERSION@";
+
 	/** Distro gnome-shell pkglibdir (Gvc). */
 	public const string GNOME_SHELL_PKGLIBDIR = "@GNOME_SHELL_PKGLIBDIR@";
 }

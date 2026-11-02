@@ -196,6 +196,7 @@ gjs_embed_config = configure_file(
     'APPLICATION_ID': 'org.gnome.ShellRpc.GjsEmbed',
     'TYPELIB_INSTALL_DIR': get_option('prefix') / mutter_rpc_typelib_install_dir,
     'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
+    'MUTTER_API_VERSION': mutter_api_version,
     'GNOME_SHELL_PKGLIBDIR': gnome_shell_pkglibdir,
   }),
 )
@@ -208,6 +209,7 @@ gnome_shell_rpc_config = configure_file(
     'APPLICATION_ID': 'org.gnome.ShellRpc',
     'TYPELIB_INSTALL_DIR': get_option('prefix') / mutter_rpc_typelib_install_dir,
     'MUTTER_TYPELIB_DIR': mutter_typelib_dir,
+    'MUTTER_API_VERSION': mutter_api_version,
     'GNOME_SHELL_PKGLIBDIR': gnome_shell_pkglibdir,
   }),
 )

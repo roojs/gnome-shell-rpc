@@ -96,8 +96,8 @@ namespace Gsr.Client
 			 * still returns Gio.Subprocess; GJS finds our methods by GType.
 			 */
 			GI.Repository.get_default().require("Gsr", "1.0", 0);
-			GI.Repository.get_default().require("Clutter", "16", 0);
-			GI.Repository.get_default().require("Shell", "16", 0);
+			GI.Repository.get_default().require("Clutter", MUTTER_API_VERSION, 0);
+			GI.Repository.get_default().require("Shell", MUTTER_API_VERSION, 0);
 
 			Gsr.Client.Rpc.register();
 			global::Shell.Global.bind_display(global::Meta.get_display());
