@@ -8,6 +8,7 @@ xsl=$3
 gstrv=$4
 appinfo=$5
 xsltproc=$6
+expect=${7:-Gio.DesktopAppInfo}
 
 in_real=$(realpath "$in")
 out_real=$(realpath -m "$out")
@@ -25,8 +26,8 @@ if grep -q 'GLib.DesktopAppInfo' "$out"; then
 	echo "FAIL gir-inject: GLib.DesktopAppInfo still in $out" >&2
 	exit 1
 fi
-if ! grep -q 'Gio.DesktopAppInfo' "$out"; then
-	echo "FAIL gir-inject: Gio.DesktopAppInfo missing from $out" >&2
+if ! grep -q "$expect" "$out"; then
+	echo "FAIL gir-inject: $expect missing from $out" >&2
 	exit 1
 fi
 if ! grep -q 'c:identifier="shell_app_system_search"' "$out"; then

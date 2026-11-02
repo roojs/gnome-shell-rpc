@@ -12,13 +12,13 @@ namespace Gsr.Server.Clutter
 		Text.rpc_register();
 		ShaderEffect.rpc_register();
 		ClutterThreads.rpc_register();
-		var events = Clutter.rpc_register();
+		Clutter.rpc_register();
 		Interval.rpc_register();
 		Constraint.rpc_register();
 		Actor.rpc_register();
-		GestureAction.rpc_register(events);
 		LayoutManager.rpc_register();
 		ClutterPaintContext.rpc_register();
+		/* 16 ClutterStage registers GestureAction. Mutter 18 has no such type. */
 		ClutterStage.rpc_register();
 		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
 		OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());
@@ -28,7 +28,6 @@ namespace Gsr.Server.Clutter
 		/* Clutter-Frame stays immediately after Gi.register in Server.start. */
 		// OLLMrpc.Bin.register("Clutter-Frame", typeof(global::Clutter.Frame));
 		OLLMrpc.Bin.register_alias("Clutter-Constraint", typeof(Constraint));
-		OLLMrpc.Bin.register_alias("Clutter-GestureAction", typeof(GestureAction));
 		OLLMrpc.Bin.register_alias("Clutter-LayoutManager", typeof(LayoutManager));
 	}
 

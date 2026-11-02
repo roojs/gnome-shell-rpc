@@ -7,12 +7,12 @@
             xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
   <include name="GObject" version="2.0"/>
   <include name="Gio" version="2.0"/>
-  <include name="Clutter" version="16"/>
-  <include name="Mtk" version="16"/>
+  <include name="Clutter" version="@MUTTER_API_VERSION@"/>
+  <include name="Mtk" version="@MUTTER_API_VERSION@"/>
   <include name="Graphene" version="1.0"/>
   <namespace name="Meta"
-             version="16"
-             shared-library="libmutter-rpc-16.so"
+             version="@MUTTER_API_VERSION@"
+             shared-library="libmutter-rpc-@MUTTER_API_VERSION@.so"
              c:identifier-prefixes="Meta"
              c:symbol-prefixes="meta">
     <class name="Display"

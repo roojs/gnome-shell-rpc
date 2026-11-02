@@ -7,6 +7,9 @@ Compositor.get_window_actors list_elem=WindowActor
 # Opaque MetaSettings record — GObject class + Settings.override.vala (0.7.1).
 Settings emit=opaque-as-class
 
+# Opaque MetaKeymapDescription. Methods are KeymapDescription.override.vala.
+KeymapDescription emit=opaque-as-class
+
 # Stock implements Clutter.Content. emit_implements is off for the namespace.
 BackgroundContent implements=Clutter.Content
 

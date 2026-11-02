@@ -14,17 +14,14 @@ compositor_sources = files(
   'server/rpc/Lease.vala',
   'server/rpc/Listen.vala',
   'server/rpc/Server.vala',
-  'server/rpc/SpawnClient.vala',
   'shared/namespace.vala',
   'shared/Rectangle.vala',
   'shared/ClutterEventState.vala',
   'shared/Window.vala',
   'shared/Workspace.vala',
   'server/libmutter-16/namespace.vala',
-  'server/libmutter-16/Display.vala',
   'server/libmutter-16/Compositor.vala',
   'server/libmutter-16/Keybinding.vala',
-  'server/libmutter-16/Window.vala',
   'server/libmutter-16/WindowActor.vala',
   'server/libmutter-16/Context.vala',
   'server/libmutter-16/Settings.vala',
@@ -40,15 +37,12 @@ compositor_sources = files(
   'server/libmutter-16/Barrier.vala',
   'server/libmutter-16/BarrierEventOverride.vala',
   'server/libmutter-16/KeyBindingOverride.vala',
-  'server/libmutter-16/WaylandClient.vala',
   'server/libmutter-16/AppLaunch.vala',
   'server/libmutter-clutter-18/namespace.vala',
   'server/libmutter-clutter-18/ClutterActor.vala',
   'server/libmutter-clutter-18/Clutter.vala',
-  'server/libmutter-clutter-16/ClutterStage.vala',
   'server/libmutter-clutter-18/ClutterThreads.vala',
   'server/libmutter-clutter-18/ClutterLayoutManager.vala',
-  'server/libmutter-clutter-16/ClutterGestureAction.vala',
   'server/libmutter-clutter-18/ClutterPaintContext.vala',
   'server/libmutter-clutter-18/Constraint.vala',
   'server/libmutter-clutter-18/Interval.vala',
@@ -83,16 +77,43 @@ compositor_sources = files(
   'server/libshell-16/InvertLightnessEffect.vala',
 )
 
+if mutter_api_version == '18'
+  compositor_sources += files(
+    'server/libmutter-18/SpawnClient.vala',
+    'server/libmutter-18/Display.vala',
+    'server/libmutter-18/Window.vala',
+    'server/libmutter-18/WaylandClient.vala',
+    'server/libmutter-18/Keymap.vala',
+    'server/libst-16/DndStart.vala',
+    'server/libmutter-18/IdleWatch.vala',
+    'server/libmutter-clutter-18/ClutterStage.vala',
+    'server/libmutter-clutter-18/ClickGesture.vala',
+    'server/libmutter-clutter-18/PressGesture.vala',
+    'server/libmutter-clutter-18/PanGesture.vala',
+    'server/libmutter-clutter-18/LongPressGesture.vala',
+    'server/libmutter-clutter-18/Backend.vala',
+  )
+else
+  compositor_sources += files(
+    'server/rpc/SpawnClient.vala',
+    'server/libmutter-16/Display.vala',
+    'server/libmutter-16/Window.vala',
+    'server/libmutter-16/WaylandClient.vala',
+    'server/libmutter-clutter-16/ClutterStage.vala',
+    'server/libmutter-clutter-16/ClutterGestureAction.vala',
+  )
+endif
+
 rpc_gdb_spawn = get_option('rpc_gdb_spawn')
 if rpc_gdb_spawn
   compositor_sources += files('server/GdbSpawnWrap.vala')
 endif
 
 mutter_vala_args = [
-  '--pkg=libmutter-16',
-  '--pkg=mutter-clutter-16',
-  '--pkg=mutter-cogl-16',
-  '--pkg=mutter-mtk-16',
+  '--pkg=libmutter-' + mutter_api_version,
+  '--pkg=mutter-clutter-' + mutter_api_version,
+  '--pkg=mutter-cogl-' + mutter_api_version,
+  '--pkg=mutter-mtk-' + mutter_api_version,
   '--pkg=gobject-introspection-1.0',
   '--pkg=xfixes-4.0',
   '--pkg=gdesktopenums-3.0',
@@ -105,20 +126,20 @@ mutter_vala_args = [
 # ../tests/meta-mini/*.vala uses Clutter / Mtk / Graphene types in a few hand stubs.
 meta_mini_deps = [
   dependency('graphene-gobject-1.0'),
-  dependency('mutter-clutter-16'),
-  dependency('mutter-mtk-16'),
+  dependency('mutter-clutter-' + mutter_api_version),
+  dependency('mutter-mtk-' + mutter_api_version),
 ]
 
 meta_mini_vala_args = [
   '--pkg=posix',
-  '--pkg=mutter-clutter-16',
-  '--pkg=mutter-mtk-16',
+  '--pkg=mutter-clutter-' + mutter_api_version,
+  '--pkg=mutter-mtk-' + mutter_api_version,
   '--vapidir', meson.project_build_root() / 'vapi',
   '--vapidir', meson.project_source_root() / 'vapi',
 ]
 
 # Legacy client Shell/St from vendor; disabled by default (Phase C uses St RPC stubs).
-mutter_rpc_gir_name = 'mutter-rpc-16'
+mutter_rpc_gir_name = 'mutter-rpc-' + mutter_api_version
 mutter_rpc_typelib_install_dir = get_option('libdir') / mutter_rpc_gir_name
 gnome_shell_client_libdir = meson.project_build_root() / 'gnome-shell' / 'client-libs'
 gnome_shell_client_typelibdir = get_option('gnome_shell_client_libs').enabled() and gnome_shell_vendor_root != '' ? gnome_shell_client_libdir : ''
@@ -346,7 +367,6 @@ meta_override_files = files(
   'client/libmutter-rpc-16/overrides/Workspace.override.vala',
   'client/libmutter-rpc-16/overrides/WorkspaceManager.override.vala',
   'client/libmutter-rpc-16/overrides/Display.override.vala',
-  'client/libmutter-rpc-16/overrides/Window.override.vala',
   'client/libmutter-rpc-16/overrides/Meta.override.vala',
   'client/libmutter-rpc-16/overrides/WindowActor.override.vala',
   'client/libmutter-rpc-16/overrides/Selection.override.vala',
@@ -354,9 +374,24 @@ meta_override_files = files(
   'client/libmutter-rpc-16/overrides/SelectionSourceMemory.override.vala',
   'client/libmutter-rpc-16/overrides/ShapedTexture.override.vala',
   'client/libmutter-rpc-16/overrides/WaylandCompositor.override.vala',
-  'client/libmutter-rpc-16/overrides/WaylandClient.override.vala',
   'client/libmutter-rpc-16/overrides/Compositor.override.vala',
 )
+if mutter_api_version == '18'
+  meta_override_files += files(
+    'client/libmutter-rpc-18/overrides/Window.override.vala',
+    'client/libmutter-rpc-18/overrides/WaylandClient.override.vala',
+    'client/libmutter-rpc-18/overrides/Backend.override.vala',
+    'client/libmutter-rpc-18/overrides/IdleMonitor.override.vala',
+    'client/libmutter-rpc-18/overrides/KeymapDescription.override.vala',
+  )
+  meta_deny_file = files('client/libmutter-rpc-18/Meta.deny')
+  meta_override_dir = meson.current_source_dir() / 'client/libmutter-rpc-18/overrides' + ':' + meta_override_dir
+else
+  meta_override_files += files(
+    'client/libmutter-rpc-16/overrides/Window.override.vala',
+    'client/libmutter-rpc-16/overrides/WaylandClient.override.vala',
+  )
+endif
 
 meta_window_generated = custom_target('Meta_window_generated.vala',
   output: 'Meta_window_generated.vala',
@@ -368,7 +403,7 @@ meta_window_generated = custom_target('Meta_window_generated.vala',
     '--deny-file=@INPUT0@',
     '--overrides-file=@INPUT1@',
     '--override-path=' + meta_override_dir,
-    'emit', 'Meta', '16',
+    'emit', 'Meta', mutter_api_version,
   ],
   input: [meta_deny_file, meta_overrides_file] + meta_override_files,
   depends: [gi_stub_gen],
@@ -377,19 +412,19 @@ meta_window_generated = custom_target('Meta_window_generated.vala',
 
 mutter_includedir = join_paths(
   libmutter_dep.get_variable('includedir'),
-  'mutter-16',
+  'mutter-' + mutter_api_version,
 )
 
 # C deps for our Clutter/Meta stubs (cogl/atk/…).
 # Stock mutter-16/clutter is only for compiling our Clutter .so C gaps
 # (varargs shim) until/alongside the Vala header; St uses clutter-rpc incdir.
 mutter_clutter_cflags_raw = run_command(
-  'pkg-config', '--cflags', 'mutter-clutter-16', check: true,
+  'pkg-config', '--cflags', 'mutter-clutter-' + mutter_api_version, check: true,
 ).stdout().split()
 mutter_clutter_dep_cflags = []
 mutter_clutter_stock_inc = []
 foreach f : mutter_clutter_cflags_raw
-  if f.contains('mutter-16/clutter')
+  if f.contains('mutter-' + mutter_api_version + '/clutter')
     mutter_clutter_stock_inc += f
   else
     mutter_clutter_dep_cflags += f
@@ -398,7 +433,13 @@ endforeach
 mutter_clutter_cflags = mutter_clutter_dep_cflags
 
 clutter_deny_file = files('client/libmutter-clutter-rpc-16/Clutter.deny')
-clutter_overrides_file = files('client/libmutter-clutter-rpc-16/Clutter.overrides')
+clutter_overrides_file = configure_file(
+  input: 'client/libmutter-clutter-rpc-16/Clutter.overrides',
+  output: 'Clutter.overrides',
+  configuration: {
+    'MUTTER_API_VERSION': mutter_api_version,
+  },
+)
 batch_whitelist = files('client/libmutter-clutter-rpc-16/batch.whitelist')
 clutter_override_dir = meson.current_source_dir() / 'client/libmutter-clutter-rpc-16/overrides'
 clutter_override_files = files(
@@ -411,12 +452,9 @@ clutter_override_files = files(
   'client/libmutter-clutter-rpc-16/overrides/Constraint.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/ActorBox.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/ClickAction.override.vala',
-  'client/libmutter-clutter-rpc-16/overrides/GestureAction.override.vala',
-  'client/libmutter-clutter-rpc-16/overrides/Stage.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/Actor.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/LayoutManager.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/LayoutMeta.override.vala',
-  'client/libmutter-clutter-rpc-16/overrides/Backend.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/SnapConstraint.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/ActorIter.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/PipelineNode.override.vala',
@@ -430,6 +468,20 @@ clutter_override_files = files(
   'client/libmutter-clutter-rpc-16/overrides/ShaderEffect.override.vala',
   'client/libmutter-clutter-rpc-16/overrides/TextureContent.override.vala',
 )
+if mutter_api_version == '18'
+  clutter_override_files += files(
+    'client/libmutter-clutter-rpc-18/overrides/Stage.override.vala',
+    'client/libmutter-clutter-rpc-18/overrides/Backend.override.vala',
+  )
+  clutter_deny_file = files('client/libmutter-clutter-rpc-18/Clutter.deny')
+  clutter_override_dir = meson.current_source_dir() / 'client/libmutter-clutter-rpc-18/overrides' + ':' + clutter_override_dir
+else
+  clutter_override_files += files(
+    'client/libmutter-clutter-rpc-16/overrides/GestureAction.override.vala',
+    'client/libmutter-clutter-rpc-16/overrides/Stage.override.vala',
+    'client/libmutter-clutter-rpc-16/overrides/Backend.override.vala',
+  )
+endif
 # Two single-output emits — Meson 1.7 Vala cannot compile CustomTargetIndex
 # (clutter_generated[0] / [1]) as a source.
 clutter_generated = custom_target('Clutter_generated.vala',
@@ -443,7 +495,7 @@ clutter_generated = custom_target('Clutter_generated.vala',
     '--batch-file=' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + clutter_override_dir,
-    'emit', 'Clutter', '16',
+    'emit', 'Clutter', mutter_api_version,
   ],
   input: [clutter_deny_file, clutter_overrides_file, batch_whitelist] + clutter_override_files,
   depends: [gi_stub_gen],
@@ -460,7 +512,7 @@ clutter_helper_vfunc_ids = custom_target('Clutter_helper_vfunc_ids.vala',
     '--batch-file=' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + clutter_override_dir,
-    'emit', 'Clutter', '16',
+    'emit', 'Clutter', mutter_api_version,
   ],
   input: [clutter_deny_file, clutter_overrides_file, batch_whitelist] + clutter_override_files,
   depends: [gi_stub_gen],
@@ -539,11 +591,11 @@ gsr_rpc_dep = declare_dependency(
 )
 
 # Stub Clutter (separate from Meta — stock-like mutter-clutter split).
-mutter_clutter_rpc_gir_name = 'mutter-clutter-rpc-16'
+mutter_clutter_rpc_gir_name = 'mutter-clutter-rpc-' + mutter_api_version
 mutter_clutter_rpc_incdir = meson.current_build_dir() / 'clutter-include'
 
 mutter_clutter_rpc_lib = shared_library(
-  'mutter-clutter-rpc-16',
+  'mutter-clutter-rpc-' + mutter_api_version,
   clutter_generated,
   files(
     'client/libmutter-clutter-rpc-16/namespace.vala',
@@ -562,8 +614,8 @@ mutter_clutter_rpc_lib = shared_library(
     dependency('pango'),
     dependency('pangocairo'),
     dependency('graphene-gobject-1.0'),
-    dependency('mutter-cogl-16'),
-    dependency('mutter-mtk-16'),
+    dependency('mutter-cogl-' + mutter_api_version),
+    dependency('mutter-mtk-' + mutter_api_version),
   ],
   vala_args: ocrpc_vala_args + [
     '--pkg=posix',
@@ -571,8 +623,8 @@ mutter_clutter_rpc_lib = shared_library(
     '--pkg=atk',
     '--pkg=pango',
     '--pkg=pangocairo',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
+    '--pkg=mutter-cogl-' + mutter_api_version,
+    '--pkg=mutter-mtk-' + mutter_api_version,
     '--pkg=gsr-rpc-16',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
@@ -582,9 +634,10 @@ mutter_clutter_rpc_lib = shared_library(
   ],
   c_args: [
     '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
+    '-DMUTTER_CLUTTER_RPC_HEADER="mutter-clutter-rpc-' + mutter_api_version + '.h"',
   ] + mutter_clutter_cflags + mutter_clutter_stock_inc,
-  vala_header: 'mutter-clutter-rpc-16.h',
-  vala_vapi: 'mutter-clutter-rpc-16.vapi',
+  vala_header: 'mutter-clutter-rpc-' + mutter_api_version + '.h',
+  vala_vapi: 'mutter-clutter-rpc-' + mutter_api_version + '.vapi',
   build_rpath: ocrpc_rpath,
   # Actor overrides write Shell.Signals symbols defined in libshell-16.
   link_args: ['-Wl,--unresolved-symbols=ignore-all'],
@@ -603,7 +656,6 @@ clutter_header_override_files = files(
   'client/libmutter-clutter-rpc-16/header-overrides/PaintContext.methods.h',
   'client/libmutter-clutter-rpc-16/header-overrides/PaintNode.methods.h',
   'client/libmutter-clutter-rpc-16/header-overrides/ShaderEffect.methods.h',
-  'client/libmutter-clutter-rpc-16/header-overrides/Stage.methods.h',
   'client/libmutter-clutter-rpc-16/header-overrides/TextBuffer.h',
   'client/libmutter-clutter-rpc-16/header-overrides/TextBuffer.methods.h',
   'client/libmutter-clutter-rpc-16/header-overrides/clutter-keysyms.h',
@@ -615,13 +667,22 @@ clutter_header_override_files = files(
   'client/libmutter-clutter-rpc-16/header-overrides/pango/clutter-text-buffer.h',
   'client/libmutter-clutter-rpc-16/header-overrides/pango/clutter-text-node.h',
 )
+if mutter_api_version == '18'
+  clutter_header_override_files += files(
+    'client/libmutter-clutter-rpc-18/header-overrides/Stage.methods.h',
+  )
+else
+  clutter_header_override_files += files(
+    'client/libmutter-clutter-rpc-16/header-overrides/Stage.methods.h',
+  )
+endif
 stage_clutter_headers = custom_target(
   'clutter-rpc-headers',
   output: 'clutter-headers.stamp',
   input: [clutter_headers_config] + clutter_header_override_files,
   command: [
     'sh', '-c',
-    'mkdir -p "$2" && "$1" --typelib-dir="$3" --outdir="$2" --headers-config="$4" emit-headers Clutter 16 && touch "$5"',
+    'mkdir -p "$2" && "$1" --typelib-dir="$3" --outdir="$2" --headers-config="$4" emit-headers Clutter ' + mutter_api_version + ' && touch "$5"',
     'sh',
     gi_stub_gen,
     mutter_clutter_rpc_incdir,
@@ -642,7 +703,7 @@ meson.add_install_script(
 
 configure_file(
   input: 'libmutter-clutter-rpc-16.pc.in',
-  output: 'libmutter-clutter-rpc-16.pc',
+  output: 'libmutter-clutter-rpc-' + mutter_api_version + '.pc',
   configuration: {
     'prefix': meson.project_build_root(),
     'libdir': meson.current_build_dir(),
@@ -651,13 +712,14 @@ configure_file(
     'girdir': mutter_typelib_dir,
     'dep_cflags': ' '.join(mutter_clutter_dep_cflags),
     'version': meson.project_version(),
+    'MUTTER_API_VERSION': mutter_api_version,
   },
 )
 
 pkg = import('pkgconfig')
 pkg.generate(
   mutter_clutter_rpc_lib,
-  filebase: 'libmutter-clutter-rpc-16',
+  filebase: 'libmutter-clutter-rpc-' + mutter_api_version,
   name: 'mutter-clutter-rpc',
   description: 'Mutter-shaped RPC Clutter client (Vala stubs)',
   requires: [
@@ -665,8 +727,8 @@ pkg.generate(
     'gobject-2.0',
     'atk',
     'pango',
-    'mutter-cogl-16',
-    'mutter-mtk-16',
+    'mutter-cogl-' + mutter_api_version,
+    'mutter-mtk-' + mutter_api_version,
   ],
   variables: [
     'typelibdir=${libdir}/' + mutter_rpc_gir_name,
@@ -685,8 +747,8 @@ mutter_clutter_rpc_link_dep = declare_dependency(
     gsr_rpc_dep,
     ocrpc_dep,
     dependency('gee-0.8'),
-    dependency('mutter-mtk-16'),
-    dependency('mutter-cogl-16'),
+    dependency('mutter-mtk-' + mutter_api_version),
+    dependency('mutter-cogl-' + mutter_api_version),
     dependency('atk'),
     dependency('pango'),
   ],
@@ -717,7 +779,7 @@ gsr_meta_shell_gaps = static_library(
   ],
 )
 
-mutter_rpc_lib = shared_library('mutter-rpc-16',
+mutter_rpc_lib = shared_library('mutter-rpc-' + mutter_api_version,
   files(
     'client/libmutter-rpc-16/namespace.vala',
     'client/libmutter-rpc-16/PaintedContent.vala',
@@ -736,8 +798,8 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     dependency('atk'),
     dependency('pango'),
     dependency('graphene-gobject-1.0'),
-    dependency('mutter-cogl-16'),
-    dependency('mutter-mtk-16'),
+    dependency('mutter-cogl-' + mutter_api_version),
+    dependency('mutter-mtk-' + mutter_api_version),
     dependency('x11'),
   ],
   link_whole: gsr_meta_shell_gaps,
@@ -746,8 +808,8 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     '--pkg=gdesktopenums-3.0',
     '--pkg=atk',
     '--pkg=pango',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
+    '--pkg=mutter-cogl-' + mutter_api_version,
+    '--pkg=mutter-mtk-' + mutter_api_version,
     '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '--pkg=gsr-clutter-effect-abi',
     '--pkg=gsr-rpc-16',
@@ -760,12 +822,12 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
     '-I' + mutter_includedir,
     '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     # Vala Clutter types for Meta .c — not the generated clutter-include tree.
-    '-include', 'mutter-clutter-rpc-16.h',
+    '-include', 'mutter-clutter-rpc-' + mutter_api_version + '.h',
   ] + mutter_clutter_cflags,
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
   link_args: ['-L' + mutter_typelib_dir],
-  vala_header: 'mutter-rpc-16.h',
-  vala_vapi: 'mutter-rpc-16.vapi',
+  vala_header: 'mutter-rpc-' + mutter_api_version + '.h',
+  vala_vapi: 'mutter-rpc-' + mutter_api_version + '.vapi',
   install: true,
   install_rpath: mutter_typelib_dir,
 )
@@ -776,13 +838,13 @@ mutter_rpc_lib = shared_library('mutter-rpc-16',
 # Hand ../tests/meta-mini/Meta-16.gir stays for docs / early smokes; typelib must list
 # Background etc. for init.js.
 # RpcSubprocess peer: separate Gsr-1.0.gir — do not patch stock Meta.
-mutter_meta_gir = mutter_typelib_dir / 'Meta-16.gir'
+mutter_meta_gir = mutter_typelib_dir / 'Meta-@0@.gir'.format(mutter_api_version)
 mutter_rpc_typelib = custom_target('Meta-16.typelib',
-  output: 'Meta-16.typelib',
+  output: 'Meta-' + mutter_api_version + '.typelib',
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
-    '--shared-library', 'libmutter-rpc-16.so',
+    '--shared-library', 'libmutter-rpc-' + mutter_api_version + '.so',
     '--includedir', mutter_typelib_dir,
     mutter_meta_gir,
   ],
@@ -794,13 +856,13 @@ mutter_rpc_typelib = custom_target('Meta-16.typelib',
 
 # Stock Clutter GIR, shared-library → our stub .so (client must not dlopen
 # libmutter-clutter; libshell / init.js need the same symbols as libst).
-mutter_clutter_gir = mutter_typelib_dir / 'Clutter-16.gir'
+mutter_clutter_gir = mutter_typelib_dir / 'Clutter-@0@.gir'.format(mutter_api_version)
 clutter_rpc_typelib = custom_target('Clutter-16.typelib',
-  output: 'Clutter-16.typelib',
+  output: 'Clutter-' + mutter_api_version + '.typelib',
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
-    '--shared-library', 'libmutter-clutter-rpc-16.so',
+    '--shared-library', 'libmutter-clutter-rpc-' + mutter_api_version + '.so',
     '--includedir', mutter_typelib_dir,
     mutter_clutter_gir,
   ],
@@ -825,7 +887,7 @@ st_generated = custom_target('St_generated.vala',
     '--batch-file=' + meson.current_source_dir() / 'client/libst-rpc-16/batch.whitelist',
     '--overrides-file=@INPUT1@',
     '--override-path=' + st_override_dir,
-    'emit', 'St', '16',
+    'emit', 'St', mutter_api_version,
   ],
   input: [st_deny_file, st_overrides_file, st_batch_whitelist] + files(
     'client/libst-rpc-16/overrides/Theme.override.vala',
@@ -845,6 +907,7 @@ st_generated = custom_target('St_generated.vala',
     'client/libst-rpc-16/overrides/Entry.override.vala',
     'client/libst-rpc-16/overrides/DrawingArea.override.vala',
     'client/libst-rpc-16/overrides/Clipboard.override.vala',
+    'client/libst-rpc-16/overrides/DndStartGesture.override.vala',
   ),
   depends: [gi_stub_gen],
   build_by_default: true,
@@ -860,9 +923,9 @@ st_boxed = custom_target('St_boxed.vala',
   build_by_default: true,
 )
 
-st_rpc_gir_name = 'st-rpc-16'
+st_rpc_gir_name = 'st-rpc-' + mutter_api_version
 st_rpc_lib = shared_library(
-  'st-rpc-16',
+  'st-rpc-' + mutter_api_version,
   st_generated,
   files('client/libst-rpc-16/namespace.vala'),
   dependencies: [
@@ -873,17 +936,17 @@ st_rpc_lib = shared_library(
     dependency('gdk-pixbuf-2.0'),
     dependency('cairo'),
     dependency('graphene-gobject-1.0'),
-    dependency('mutter-cogl-16'),
-    dependency('mutter-mtk-16'),
+    dependency('mutter-cogl-' + mutter_api_version),
+    dependency('mutter-mtk-' + mutter_api_version),
   ],
   vala_args: ocrpc_vala_args + [
     '--pkg=posix',
     '--pkg=linux',
     '--pkg=gdk-pixbuf-2.0',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
+    '--pkg=mutter-cogl-' + mutter_api_version,
+    '--pkg=mutter-mtk-' + mutter_api_version,
     '--pkg=gsr-rpc-16',
-    '--pkg=mutter-clutter-rpc-16',
+    '--pkg=mutter-clutter-rpc-' + mutter_api_version,
     '--vapidir', meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '--pkg=gsr-clutter-effect-abi',
     '--vapidir', meson.current_build_dir(),
@@ -892,13 +955,13 @@ st_rpc_lib = shared_library(
   ],
   c_args: [
     '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
-    '-include', 'mutter-clutter-rpc-16.h',
+    '-include', 'mutter-clutter-rpc-' + mutter_api_version + '.h',
   ],
-  link_args: ['-L' + meson.current_build_dir(), '-lmutter-rpc-16'],
+  link_args: ['-L' + meson.current_build_dir(), '-lmutter-rpc-' + mutter_api_version],
   link_depends: [mutter_clutter_rpc_lib, mutter_rpc_lib],
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
-  vala_header: 'st-rpc-16.h',
-  vala_vapi: 'st-rpc-16.vapi',
+  vala_header: 'st-rpc-' + mutter_api_version + '.h',
+  vala_vapi: 'st-rpc-' + mutter_api_version + '.vapi',
   install: true,
   install_rpath: mutter_typelib_dir,
 )
@@ -918,8 +981,8 @@ gsr_st_boxed_lib = static_library(
     dependency('gee-0.8'),
     dependency('graphene-gobject-1.0'),
     dependency('gdk-pixbuf-2.0'),
-    dependency('mutter-mtk-16'),
-    dependency('mutter-cogl-16'),
+    dependency('mutter-mtk-' + mutter_api_version),
+    dependency('mutter-cogl-' + mutter_api_version),
     dependency('gio-2.0'),
     dependency('gobject-2.0'),
     dependency('glib-2.0'),
@@ -931,9 +994,9 @@ gsr_st_boxed_lib = static_library(
   ],
   link_with: st_rpc_lib,
   vala_args: ocrpc_vala_args + [
-    '--pkg=mutter-clutter-rpc-16',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
+    '--pkg=mutter-clutter-rpc-' + mutter_api_version,
+    '--pkg=mutter-cogl-' + mutter_api_version,
+    '--pkg=mutter-mtk-' + mutter_api_version,
     '--pkg=gobject-introspection-1.0',
     '--pkg=xfixes-4.0',
     '--pkg=gdesktopenums-3.0',
@@ -941,7 +1004,7 @@ gsr_st_boxed_lib = static_library(
     '--pkg=gee-0.8',
     '--pkg=graphene-gobject-1.0',
     '--pkg=gsr-rpc-16',
-    '--pkg=st-rpc-16',
+    '--pkg=st-rpc-' + mutter_api_version,
     '--vapidir', meson.project_build_root() / 'vapi',
     '--vapidir', meson.project_source_root() / 'vapi',
     '--vapidir', meson.current_build_dir(),
@@ -949,7 +1012,7 @@ gsr_st_boxed_lib = static_library(
   ],
   c_args: [
     '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
-    '-include', 'mutter-clutter-rpc-16.h',
+    '-include', 'mutter-clutter-rpc-' + mutter_api_version + '.h',
   ],
   vala_header: 'gsr-st-boxed.h',
   vala_vapi: 'gsr-st-boxed.vapi',
@@ -959,8 +1022,8 @@ mutter_rpc_client_dep = declare_dependency(
   link_with: [mutter_rpc_lib, st_rpc_lib],
   dependencies: [
     mutter_clutter_rpc_client_dep,
-    dependency('mutter-mtk-16'),
-    dependency('mutter-cogl-16'),
+    dependency('mutter-mtk-' + mutter_api_version),
+    dependency('mutter-cogl-' + mutter_api_version),
     dependency('atk'),
     dependency('pango'),
   ],
@@ -973,8 +1036,12 @@ mutter_rpc_client_dep = declare_dependency(
 # any install use that (installed name Shell-16.gir).
 # libsystemd has no Vala vapi — assert found, link with -lsystemd only.
 dependency('libsystemd')
+shell_api_define = []
+if mutter_api_version == '18'
+  shell_api_define = ['--define=MUTTER_18']
+endif
 shell_gi_lib = shared_library(
-  'shell-16',
+  'shell-' + mutter_api_version,
   files(
     'client/libshell-16/namespace.vala',
     'client/libshell-16/Signals.vala',
@@ -1037,8 +1104,8 @@ shell_gi_lib = shared_library(
       ],
       dependencies: [
         mutter_clutter_rpc_client_dep,
-        dependency('mutter-mtk-16'),
-        dependency('mutter-cogl-16'),
+        dependency('mutter-mtk-' + mutter_api_version),
+        dependency('mutter-cogl-' + mutter_api_version),
         dependency('atk'),
         dependency('pango'),
         dependency('gdk-pixbuf-2.0'),
@@ -1052,7 +1119,7 @@ shell_gi_lib = shared_library(
     ),
   ],
   link_args: ['-lsystemd'],
-  vala_args: ocrpc_vala_args + [
+  vala_args: ocrpc_vala_args + shell_api_define + [
     '--pkg=posix',
     '--pkg=gio-2.0',
     '--pkg=gee-0.8',
@@ -1064,12 +1131,12 @@ shell_gi_lib = shared_library(
     '--pkg=polkit-agent-1',
     '--pkg=polkit-gobject-1',
     '--pkg=gcr-4',
-    '--pkg=mutter-rpc-16',
+    '--pkg=mutter-rpc-' + mutter_api_version,
     '--pkg=gsr-rpc-16',
-    '--pkg=mutter-clutter-rpc-16',
-    '--pkg=st-rpc-16',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
+    '--pkg=mutter-clutter-rpc-' + mutter_api_version,
+    '--pkg=st-rpc-' + mutter_api_version,
+    '--pkg=mutter-cogl-' + mutter_api_version,
+    '--pkg=mutter-mtk-' + mutter_api_version,
     '--pkg=atk',
     '--pkg=pango',
     '--pkg=graphene-gobject-1.0',
@@ -1085,7 +1152,7 @@ shell_gi_lib = shared_library(
     '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '-I' + meson.current_source_dir() / 'client/libshell-16',
     '-I' + meson.current_build_dir(),
-    '-include', 'mutter-clutter-rpc-16.h',
+    '-include', 'mutter-clutter-rpc-' + mutter_api_version + '.h',
     '-include', 'NetworkManager.h',
     '-include', 'nm-secret-agent-old.h',
     '-include', 'libsecret/secret.h',
@@ -1095,9 +1162,9 @@ shell_gi_lib = shared_library(
     '-DGCR_API_SUBJECT_TO_CHANGE',
   ] + mutter_clutter_cflags,
   build_rpath: ocrpc_rpath + ':' + meson.current_build_dir(),
-  vala_header: 'shell-16.h',
-  vala_vapi: 'shell-16.vapi',
-  vala_gir: 'Shell-16.gir',
+  vala_header: 'shell-' + mutter_api_version + '.h',
+  vala_vapi: 'shell-' + mutter_api_version + '.vapi',
+  vala_gir: 'Shell-' + mutter_api_version + '.gir',
   install: true,
   install_dir: [true, false, false, false],
   install_rpath: mutter_typelib_dir,
@@ -1106,21 +1173,30 @@ shell_gi_lib = shared_library(
 # Injected GIR is what the typelib / install ship (as Shell-16.gir).
 # Vala 0.56 GirWriter: no nested GStrv, GLib.DesktopAppInfo. Per-series
 # clutch — drop or replace when this tree moves off Shell-16 / valac 0.56.
+if mutter_api_version == '18'
+  shell_app_info_gir = meson.current_source_dir() / 'client/libshell-18/app-info.gir'
+  shell_app_info_type = 'GioUnix.DesktopAppInfo'
+else
+  shell_app_info_gir = meson.current_source_dir() / 'client/libshell-16/app-info.gir'
+  shell_app_info_type = 'Gio.DesktopAppInfo'
+endif
 shell_gi_gir = custom_target(
-  'Shell-16.injected.gir',
-  output: 'Shell-16.injected.gir',
+  'Shell-' + mutter_api_version + '.injected.gir',
+  output: 'Shell-' + mutter_api_version + '.injected.gir',
   command: [
     find_program('sh'),
     meson.project_source_root() / 'scripts/gir-xslt-inject.sh',
-    meson.current_build_dir() / 'Shell-16.gir',
+    meson.current_build_dir() / 'Shell-' + mutter_api_version + '.gir',
     '@OUTPUT@',
     meson.project_source_root() / 'scripts/gir-inject.xsl',
     meson.current_source_dir() / 'client/libshell-16/search.function.gir',
-    meson.current_source_dir() / 'client/libshell-16/app-info.gir',
+    shell_app_info_gir,
     xsltproc,
+    shell_app_info_type,
   ],
   depend_files: [
-    files('client/libshell-16/search.function.gir', 'client/libshell-16/app-info.gir'),
+    files('client/libshell-16/search.function.gir'),
+    files(mutter_api_version == '18' ? 'client/libshell-18/app-info.gir' : 'client/libshell-16/app-info.gir'),
     meson.project_source_root() / 'scripts/gir-inject.xsl',
     meson.project_source_root() / 'scripts/gir-xslt-inject.sh',
   ],
@@ -1130,14 +1206,15 @@ shell_gi_gir = custom_target(
 )
 
 shell_gi_typelib = custom_target(
-  'Shell-16.typelib',
-  output: 'Shell-16.typelib',
+  'Shell-' + mutter_api_version + '.typelib',
+  output: 'Shell-' + mutter_api_version + '.typelib',
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
-    '--shared-library', 'libshell-16.so',
+    '--shared-library', 'libshell-' + mutter_api_version + '.so',
     '--includedir', mutter_typelib_dir,
     '--includedir', gnome_shell_girdir,
+    '--includedir', gnome_shell_st_girdir,
     '--includedir', meson.current_build_dir(),
     shell_gi_gir,
   ],
@@ -1155,7 +1232,7 @@ gsr_rpc_subprocess_typelib = custom_target(
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
-    '--shared-library', 'libmutter-rpc-16.so',
+    '--shared-library', 'libmutter-rpc-' + mutter_api_version + '.so',
     '@INPUT@',
   ],
   depends: [mutter_rpc_lib],
@@ -1176,17 +1253,18 @@ if not fs.exists(generate_app_list_script)
 endif
 generate_app_list = find_program(generate_app_list_script)
 subdir('client/gresource')
-st_gir = gnome_shell_girdir / 'St-16.gir'
-# Typelib is ours (→ libst-rpc-16.so). Distro St-16.gir is schema only; includedir
-# resolves GIR imports. Do not point shared-library at stock libst.
+st_gir = gnome_shell_st_gir
+# Typelib is ours (→ libst-rpc). Distro or generated St gir is schema only;
+# includedir resolves GIR imports. Do not point shared-library at stock libst.
 st_rpc_typelib = custom_target('St-16.typelib',
-  output: 'St-16.typelib',
+  output: 'St-' + mutter_api_version + '.typelib',
   command: [
     g_ir_compiler,
     '--output', '@OUTPUT@',
-    '--shared-library', 'libst-rpc-16.so',
+    '--shared-library', 'libst-rpc-' + mutter_api_version + '.so',
     '--includedir', mutter_typelib_dir,
     '--includedir', gnome_shell_girdir,
+    '--includedir', gnome_shell_st_girdir,
     st_gir,
   ],
   depends: [st_rpc_lib],
@@ -1217,8 +1295,8 @@ gnome_shell_rpc = executable('gsr-client',
     declare_dependency(
       link_with: [gsr_rpc_lib, mutter_rpc_lib, mutter_clutter_rpc_lib, shell_gi_lib],
       dependencies: [
-        dependency('mutter-mtk-16'),
-        dependency('mutter-cogl-16'),
+        dependency('mutter-mtk-' + mutter_api_version),
+        dependency('mutter-cogl-' + mutter_api_version),
         dependency('atk'),
         dependency('pango'),
       ],
@@ -1233,13 +1311,13 @@ gnome_shell_rpc = executable('gsr-client',
     '--pkg=polkit-agent-1',
     '--pkg=polkit-gobject-1',
     '--pkg=gcr-4',
-    '--pkg=mutter-rpc-16',
+    '--pkg=mutter-rpc-' + mutter_api_version,
     '--pkg=gsr-rpc-16',
-    '--pkg=mutter-clutter-rpc-16',
-    '--pkg=st-rpc-16',
-    '--pkg=shell-16',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
+    '--pkg=mutter-clutter-rpc-' + mutter_api_version,
+    '--pkg=st-rpc-' + mutter_api_version,
+    '--pkg=shell-' + mutter_api_version,
+    '--pkg=mutter-cogl-' + mutter_api_version,
+    '--pkg=mutter-mtk-' + mutter_api_version,
     '--pkg=atk',
     '--pkg=pango',
     '--vapidir', meson.current_build_dir(),
@@ -1251,14 +1329,14 @@ gnome_shell_rpc = executable('gsr-client',
     '-I' + mutter_includedir,
     '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '-I' + meson.current_build_dir(),
-    '-include', 'mutter-clutter-rpc-16.h',
+    '-include', 'mutter-clutter-rpc-' + mutter_api_version + '.h',
     # shell-16.h embeds NetworkAgent → NMSecretAgentOld.
     '-include', 'NetworkManager.h',
     '-include', 'nm-secret-agent-old.h',
     '-DPOLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE',
     '-DGCR_API_SUBJECT_TO_CHANGE',
   ] + mutter_clutter_cflags,
-  link_args: ['-L' + meson.current_build_dir(), '-lst-rpc-16'],
+  link_args: ['-L' + meson.current_build_dir(), '-lst-rpc-' + mutter_api_version],
   link_depends: [
     st_rpc_lib,
     shell_gi_typelib,
@@ -1296,8 +1374,8 @@ gsr_smoke = executable('gsr-smoke',
     declare_dependency(
       link_with: [gsr_rpc_lib, mutter_rpc_lib, mutter_clutter_rpc_lib, shell_gi_lib],
       dependencies: [
-        dependency('mutter-mtk-16'),
-        dependency('mutter-cogl-16'),
+        dependency('mutter-mtk-' + mutter_api_version),
+        dependency('mutter-cogl-' + mutter_api_version),
         dependency('atk'),
         dependency('pango'),
       ],
@@ -1312,13 +1390,13 @@ gsr_smoke = executable('gsr-smoke',
     '--pkg=polkit-agent-1',
     '--pkg=polkit-gobject-1',
     '--pkg=gcr-4',
-    '--pkg=mutter-rpc-16',
+    '--pkg=mutter-rpc-' + mutter_api_version,
     '--pkg=gsr-rpc-16',
-    '--pkg=mutter-clutter-rpc-16',
-    '--pkg=st-rpc-16',
-    '--pkg=shell-16',
-    '--pkg=mutter-cogl-16',
-    '--pkg=mutter-mtk-16',
+    '--pkg=mutter-clutter-rpc-' + mutter_api_version,
+    '--pkg=st-rpc-' + mutter_api_version,
+    '--pkg=shell-' + mutter_api_version,
+    '--pkg=mutter-cogl-' + mutter_api_version,
+    '--pkg=mutter-mtk-' + mutter_api_version,
     '--pkg=atk',
     '--pkg=pango',
     '--vapidir', meson.current_build_dir(),
@@ -1330,14 +1408,14 @@ gsr_smoke = executable('gsr-smoke',
     '-I' + mutter_includedir,
     '-I' + meson.current_source_dir() / 'client/libmutter-clutter-rpc-16',
     '-I' + meson.current_build_dir(),
-    '-include', 'mutter-clutter-rpc-16.h',
+    '-include', 'mutter-clutter-rpc-' + mutter_api_version + '.h',
     # shell-16.h embeds NetworkAgent → NMSecretAgentOld.
     '-include', 'NetworkManager.h',
     '-include', 'nm-secret-agent-old.h',
     '-DPOLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE',
     '-DGCR_API_SUBJECT_TO_CHANGE',
   ] + mutter_clutter_cflags,
-  link_args: ['-L' + meson.current_build_dir(), '-lst-rpc-16'],
+  link_args: ['-L' + meson.current_build_dir(), '-lst-rpc-' + mutter_api_version],
   link_depends: [
     st_rpc_lib,
     shell_gi_typelib,
@@ -1353,27 +1431,28 @@ gsr_smoke = executable('gsr-smoke',
 
 configure_file(
   input: 'libst-rpc-16.pc.in',
-  output: 'libst-rpc-16.pc',
+  output: 'libst-rpc-' + mutter_api_version + '.pc',
   configuration: {
     'prefix': meson.project_build_root(),
     'libdir': meson.current_build_dir(),
     'typelibdir': meson.current_build_dir(),
-    'girdir': gnome_shell_girdir,
+    'girdir': gnome_shell_st_girdir,
     'version': meson.project_version(),
+    'MUTTER_API_VERSION': mutter_api_version,
   },
 )
 
 pkg.generate(
   st_rpc_lib,
-  filebase: 'libst-rpc-16',
+  filebase: 'libst-rpc-' + mutter_api_version,
   name: 'libst-rpc',
   description: 'St-shaped RPC client (Vala stubs)',
   requires: [
     'gio-2.0',
     'gobject-2.0',
-    'mutter-cogl-16',
-    'mutter-mtk-16',
-    'libmutter-clutter-rpc-16',
+    'mutter-cogl-' + mutter_api_version,
+    'mutter-mtk-' + mutter_api_version,
+    'libmutter-clutter-rpc-' + mutter_api_version,
   ],
   variables: [
     'typelibdir=${libdir}/' + mutter_rpc_gir_name,
@@ -1381,40 +1460,48 @@ pkg.generate(
   ],
 )
 
+meta_mini_gir = configure_file(
+  input: '../tests/meta-mini/Meta-16.gir',
+  output: 'Meta-@0@.gir'.format(mutter_api_version),
+  configuration: {
+    'MUTTER_API_VERSION': mutter_api_version,
+  },
+)
 install_data(
-  files('../tests/meta-mini/Meta-16.gir'),
+  meta_mini_gir,
   install_dir: mutter_rpc_typelib_install_dir,
 )
 
 # Build-tree pc (nested / PKG_CONFIG_PATH=build/src). typelib lives next to .so here.
 configure_file(
   input: 'libmutter-rpc-16.pc.in',
-  output: 'libmutter-rpc-16.pc',
+  output: 'libmutter-rpc-' + mutter_api_version + '.pc',
   configuration: {
     'prefix': meson.project_build_root(),
     'libdir': meson.current_build_dir(),
     'typelibdir': meson.current_build_dir(),
-    'girdir': meson.current_source_dir() / '../tests/meta-mini',
+    'girdir': meson.current_build_dir(),
     'clientlibdir': gnome_shell_client_libdir,
     'mutter_includedir': mutter_includedir,
     'version': meson.project_version(),
+    'MUTTER_API_VERSION': mutter_api_version,
   },
 )
 
 # Installed pc.
 pkg.generate(
   mutter_rpc_lib,
-  filebase: 'libmutter-rpc-16',
+  filebase: 'libmutter-rpc-' + mutter_api_version,
   name: 'mutter-rpc',
-  description: 'Mutter-shaped RPC client (GJS + C Meta-16)',
+  description: 'Mutter-shaped RPC client (GJS + C Meta-' + mutter_api_version + ')',
   requires: [
     'gio-2.0',
     'gobject-2.0',
     'atk',
     'pango',
-    'mutter-cogl-16',
-    'mutter-mtk-16',
-    'libmutter-clutter-rpc-16',
+    'mutter-cogl-' + mutter_api_version,
+    'mutter-mtk-' + mutter_api_version,
+    'libmutter-clutter-rpc-' + mutter_api_version,
   ],
   variables: [
     'typelibdir=${libdir}/' + mutter_rpc_gir_name,

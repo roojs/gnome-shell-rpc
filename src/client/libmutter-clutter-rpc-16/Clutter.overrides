@@ -6,9 +6,9 @@
 Namespace emit_class_slots=1
 Namespace emit_iface_slots=1
 
-# Typelibs included when this emit writes boxed types. Name-version is
-# the typelib's own.
-Namespace boxed=Cogl-16,Graphene-1.0,Mtk-16,Meta-16
+# Typelibs included when this emit writes boxed types. Cogl/Mtk/Meta
+# follow the mutter this configure found. Graphene stays 1.0.
+Namespace boxed=Cogl-@MUTTER_API_VERSION@,Graphene-1.0,Mtk-@MUTTER_API_VERSION@,Meta-@MUTTER_API_VERSION@
 
 # Event (sole Clutter GIR union) — denied; Compact in Event.vala.
 # Frame (opaque boxed) — denied; Compact in Clutter.override.vala.

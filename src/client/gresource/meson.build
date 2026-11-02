@@ -1,9 +1,9 @@
 # Substituted misc/config.js + vendor JS gresource for thin gnome-shell-rpc.
 shell_js_conf = configuration_data()
 shell_js_conf.set('PACKAGE_NAME', 'gnome-shell')
-shell_js_conf.set('PACKAGE_VERSION', '48.0')
+shell_js_conf.set('PACKAGE_VERSION', vendor_version)
 shell_js_conf.set('GETTEXT_PACKAGE', 'gnome-shell')
-shell_js_conf.set('LIBMUTTER_API_VERSION', '16')
+shell_js_conf.set('LIBMUTTER_API_VERSION', mutter_api_version)
 shell_js_conf.set10('HAVE_NETWORKMANAGER', false)
 shell_js_conf.set10('HAVE_PORTAL_HELPER', false)
 shell_js_conf.set('UTILS_FOLDER_APPS', run_command(

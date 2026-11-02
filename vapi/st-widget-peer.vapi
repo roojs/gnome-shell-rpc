@@ -6,7 +6,7 @@ namespace St {
 		[CCode (has_construct_function = false)]
 		protected Widget ();
 
-		/* Class slot @ StWidgetClass.style_changed (st-widget-peer.h). */
+		/* Class slot: StWidgetClass.style_changed (st-widget-peer.h). */
 		public virtual void style_changed ();
 		public unowned string? get_style_class_name ();
 	}

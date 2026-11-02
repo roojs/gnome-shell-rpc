@@ -416,15 +416,15 @@ executable('clutter-interval-gvalue-gate',
     ocrpc_dep,
     dependency('gio-unix-2.0'),
     dependency('gobject-introspection-1.0'),
-    dependency('mutter-clutter-16'),
+    dependency('mutter-clutter-' + mutter_api_version),
   ],
   vala_args: ocrpc_vala_args + [
-    '--pkg=mutter-clutter-16',
+    '--pkg=mutter-clutter-' + mutter_api_version,
     '--vapidir', meson.project_build_root() / 'vapi',
   ],
   c_args: ['-rdynamic'],
   link_args: ['-rdynamic'],
-  build_rpath: ocrpc_rpath + ':/usr/lib/x86_64-linux-gnu/mutter-16',
+  build_rpath: ocrpc_rpath + ':/usr/lib/x86_64-linux-gnu/mutter-' + mutter_api_version,
   install: false,
 )
 
@@ -551,11 +551,14 @@ executable('button-release-deliver-gate',
 
 # Crash-screen Log Out text: hover does not change the cursor sprite,
 # and the click may miss. src/ stays unchanged.
-executable('logout-text-pointer-gate',
-  'logout-text-pointer-gate.c',
-  dependencies: [libmutter_dep],
-  install: false,
-)
+# Mutter 18 removed MetaDisplay.set_cursor and the MetaCursor enum.
+if mutter_api_version != '18'
+  executable('logout-text-pointer-gate',
+    'logout-text-pointer-gate.c',
+    dependencies: [libmutter_dep],
+    install: false,
+  )
+endif
 
 # StWidget is rejected by StScrollView.set_child. A StViewport subclass
 # is accepted and its allocate sees the scroll box. src/ stays unchanged.
@@ -568,6 +571,8 @@ executable('viewport-scrollable-peer-gate',
   install: false,
 )
 
+# Mutter 18 replaced ClutterClickAction with click and long-press gestures.
+if mutter_api_version != '18'
 # Stock Clutter must finish both ClickAction handlers before a frame scheduled
 # by long-press cancellation reaches before-update.
 clutter_event_frame_order_gate = executable(
@@ -599,6 +604,7 @@ test(
   suite: 'signal-reentrancy',
   timeout: 20,
 )
+endif
 
 # Unset boolean return must not stop a true-handled signal chain.
 executable('button-release-chain-gate',

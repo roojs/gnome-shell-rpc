@@ -3,7 +3,8 @@
  * leave a different function in that slot than its parent. Calling
  * that function runs style handling. Skip it and keep walking.
  */
-#include "mutter-clutter-rpc-16.h"
+/* Meson sets this to the vala_header for the mutter API in this build. */
+#include MUTTER_CLUTTER_RPC_HEADER
 
 void
 clutter_actor_rpc_construct_chain (ClutterActor *self)

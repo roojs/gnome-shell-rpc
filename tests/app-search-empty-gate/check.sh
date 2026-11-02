@@ -7,6 +7,7 @@ injected=$3
 vala_gir=$4
 js=$5
 ocrpc_libdir=${6:-}
+appinfo_type=${7:-Gio.DesktopAppInfo}
 
 if [ ! -f "$injected" ]; then
 	echo "FAIL H-appinfo-gir: injected GIR missing ($injected)" >&2
@@ -21,8 +22,8 @@ if grep -q 'GLib.DesktopAppInfo' "$injected"; then
 	echo "FAIL H-appinfo-gir: GLib.DesktopAppInfo still in $injected" >&2
 	exit 1
 fi
-if ! grep -q 'Gio.DesktopAppInfo' "$injected"; then
-	echo "FAIL H-appinfo-gir: Gio.DesktopAppInfo missing from $injected" >&2
+if ! grep -q "$appinfo_type" "$injected"; then
+	echo "FAIL H-appinfo-gir: $appinfo_type missing from $injected" >&2
 	exit 1
 fi
 if ! grep -q 'c:identifier="shell_app_system_search"' "$injected"; then
@@ -33,7 +34,8 @@ if ! grep -q 'c:type="char\*\*\*"' "$injected"; then
 	echo "FAIL H-search: nested GStrv missing from $injected" >&2
 	exit 1
 fi
-echo "H-appinfo-gir: ok Gio.DesktopAppInfo (vala_gir kept for ninja)"
+echo "H-appinfo-gir: ok $appinfo_type (vala_gir kept for ninja)"
+export GSR_APPINFO_TYPE="$appinfo_type"
 
 export GI_TYPELIB_PATH="$bindir:$mutter_tl${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
 ld="$bindir"

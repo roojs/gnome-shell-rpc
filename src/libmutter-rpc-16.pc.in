@@ -6,8 +6,8 @@ clientlibdir=@clientlibdir@
 mutter_includedir=@mutter_includedir@
 
 Name: mutter-rpc
-Description: Mutter-shaped RPC client (GJS + C Meta-16)
+Description: Mutter-shaped RPC client (GJS + C Meta-@MUTTER_API_VERSION@)
 Version: @version@
-Requires: gio-2.0, gobject-2.0, atk, pango, mutter-cogl-16, mutter-mtk-16, libmutter-clutter-rpc-16
-Libs: -L${libdir} -lmutter-rpc-16
+Requires: gio-2.0, gobject-2.0, atk, pango, mutter-cogl-@MUTTER_API_VERSION@, mutter-mtk-@MUTTER_API_VERSION@, libmutter-clutter-rpc-@MUTTER_API_VERSION@
+Libs: -L${libdir} -lmutter-rpc-@MUTTER_API_VERSION@
 Cflags: -I${mutter_includedir}

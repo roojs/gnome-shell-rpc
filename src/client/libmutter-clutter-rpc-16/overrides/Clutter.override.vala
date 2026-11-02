@@ -19,7 +19,8 @@
 		return current_event_cache;
 	}
 
-	private static Event? event_from_values(
+	/* Public so St.DndStartGesture can rebuild a packed event. */
+	public static Event? event_from_values(
 		Gee.ArrayList<GLib.Value?> fields
 	)
 	{

@@ -19,12 +19,34 @@ add_project_arguments([
 # memfd_create (Helper paint/selection) — gcc 14 errors without this.
 add_project_arguments('-D_GNU_SOURCE', language: 'c')
 
-libmutter_dep = dependency('libmutter-16', version: ['>= 48', '< 49'])
+libmutter_18_dep = dependency(
+  'libmutter-18',
+  version: ['>= 50', '< 51'],
+  required: false,
+)
+if libmutter_18_dep.found()
+  mutter_api_version = '18'
+  mutter_version_req = ['>= 50', '< 51']
+  gnome_shell_target_major = '50'
+  gnome_shell_target_ref = '50.0'
+  libmutter_dep = libmutter_18_dep
+else
+  mutter_api_version = '16'
+  mutter_version_req = ['>= 48', '< 49']
+  gnome_shell_target_major = '48'
+  gnome_shell_target_ref = '48.0'
+  libmutter_dep = dependency('libmutter-16', version: mutter_version_req)
+endif
+message('mutter API @0@ (gnome-shell @1@)'.format(
+  mutter_api_version,
+  gnome_shell_target_major,
+))
 mutter_dep = [
   libmutter_dep,
-  dependency('mutter-mtk-16', version: ['>= 48', '< 49']),
-  dependency('mutter-cogl-16', version: ['>= 48', '< 49']),
-  dependency('mutter-clutter-16', version: ['>= 48', '< 49']),  dependency('gio-2.0'),
+  dependency('mutter-mtk-' + mutter_api_version, version: mutter_version_req),
+  dependency('mutter-cogl-' + mutter_api_version, version: mutter_version_req),
+  dependency('mutter-clutter-' + mutter_api_version, version: mutter_version_req),
+  dependency('gio-2.0'),
   dependency('gobject-2.0'),
   dependency('glib-2.0'),
   dependency('atk'),

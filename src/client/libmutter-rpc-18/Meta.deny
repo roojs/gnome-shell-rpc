@@ -1,0 +1,173 @@
+# Meta generate/compile deny list (Type.method or bare name).
+# Trailing "noop": empty stub / return true / return 0.
+#
+# Every entry needs a reason and permanence:
+#   TEMPORARY — corridor/mock stand-in; undeny + wire when that work lands
+#   PERMANENT — hand override owns the body, GIR/Vala/ABI clash, or
+#               non-marshallable; not deferred RPC
+# Prefer TEMPORARY unless the symbol will not later become a generated stub.
+#
+# ************************************************************************
+# TEMPORARY — revisit / undeny when implementing (keep this block together)
+# ************************************************************************
+
+# Mutter WindowActor constructor is what *sets*; JS only *gets*
+# (get_compositor_private is wired). Revisit if a client must attach an actor.
+Window.set_compositor_private noop
+
+# Priority E (0.5.5) — temporary until wired, or omit when hand override owns.
+# Constructors with hand overrides: deny (override body). Bare temporary →
+# emit GLib.error("… temporary — implement this").
+BackgroundImageCache.purge noop
+Background.set_blend noop
+ShapedTexture.set_mask_texture noop
+MultiTexture.new temporary
+MultiTexture.new_simple temporary
+
+# Not wireable (no dbus letter / unmapped type). Generator aborts on these
+# unless they are denied. Undeny and implement; do not leave them here.
+FrameBorders.clear
+# Mutter 18 namespace functions. No Shell 50 JS caller.
+# read_bytes is an async fd read. The prefs listeners take a callback.
+read_bytes
+prefs_add_listener
+prefs_remove_listener
+# Opaque Meta.Group return. gnome-shell's C tracker calls it; JS does not.
+Window.x11_get_group
+# Callback. Callers are the X11 tray C files, not JS.
+X11Display.add_event_func
+# Plugin vfunc. gnome-shell-plugin.c owns it; JS does not.
+Plugin.keybinding_filter
+
+# ************************************************************************
+# PERMANENT — not deferred RPC work
+# ************************************************************************
+
+# --- Hand class / construct (override or dedicated Vala) ---
+
+# Client owns attach: BackgroundActor.override sets actor.content.
+# Property setters and Clutter.Content methods: BackgroundContent.override.vala.
+# They must not RPC until rpc_lid is set.
+BackgroundContent.background
+BackgroundContent.brightness
+BackgroundContent.vignette
+BackgroundContent.vignette_sharpness
+BackgroundContent.rounded_clip_radius
+BackgroundContent.set_rounded_clip_bounds
+Background.new
+Background.meta_display
+BackgroundActor.new
+BackgroundActor.meta_display
+BackgroundActor.monitor
+
+# Bodies from src/gi-stub/overrides/{Type}.override.vala (+ Helpers).
+SoundPlayer.play_from_file
+SoundPlayer.play_from_theme
+Background.set_file
+# GLib.File not on wire — URI string in BackgroundImageCache.override.vala.
+BackgroundImageCache.load
+Context.terminate_with_error
+Context.terminate
+Context.run_main_loop
+IdleMonitor.add_idle_watch
+# Same relay as add_idle_watch, plus IdleMonitorWatchFlags.
+# Body: libmutter-rpc-18/overrides/IdleMonitor.override.vala
+# and server/libmutter-18/IdleWatch.vala.
+IdleMonitor.add_idle_watch_full
+IdleMonitor.add_user_active_watch
+# KeymapDescription is a GObject proxy. Boxed ref stays on the server.
+# Bodies: KeymapDescription.override.vala and server/libmutter-18/Keymap.vala.
+Backend.get_keymap_description
+Backend.set_keymap_async
+# Gio._promisify calls this after set_keymap_async. The relay already
+# finished; the override returns the task result.
+Backend.set_keymap_finish
+KeymapDescription.new_from_rules
+KeymapDescription.direct_equal
+KeymapDescription.is_locked
+KeymapDescription.ref
+KeymapDescription.unref
+# GSourceFunc not RPC-marshallable (Laters.override.vala).
+Laters.add
+Laters.remove
+# Hand: emit Display::workareas-changed after RPC (OPC notify missed).
+# Skip RPC+emit when struts unchanged (layout.js _updateRegions loop).
+Workspace.set_builtin_struts
+Workspace.get_display
+Workspace.get_work_area_for_monitor
+# layout.js reads these every _updateRegions.
+WorkspaceManager.n_workspaces
+WorkspaceManager.get_n_workspaces
+WorkspaceManager.get_workspace_by_index
+Display.add_keybinding
+# Out-of-process shell: compositor lists windows as snapshot rows
+# (Meta-Display.list_windows / Gsr.Shared.Window), not in-process GList<Meta.Window>.
+# Vendor code still calls list_all_windows; hand override maps that to snapshots
+# (Display.override.vala). Not a nested-test hack — same model as 0.2 fake-shell.
+Display.list_all_windows
+Display.get_startup_notification
+keybindings_set_custom_handler
+# Hand: Meta.override.vala → Server-Rpc-SpawnClient. Must not call mutter meta_restart.
+restart
+is_restart
+# Hand: Window.override.vala returns the live actor lease. Same object
+# Compositor.get_window_actors already exports. Generated decode is denied
+# because this override owns the body.
+Window.get_compositor_private
+# Hand: server packs handle pairs (Compositor.vala); override hydrates live
+# actor proxies bound to their windows. Generated decode expects an
+# ArrayList retval the server never sets, so it silently yields no actors.
+Compositor.get_window_actors
+# Hand getter: stand-in stores the window; a leased actor still RPCs.
+WindowActor.meta_window
+Window.foreach_transient
+Window.foreach_ancestor
+Window.begin_grab_op
+Display.request_pad_osd
+Display.get_pad_button_label
+Display.get_pad_feature_label
+Display.is_pointer_emulating_sequence
+WindowActor.paint_to_content
+Selection.transfer_async
+Selection.transfer_finish
+SelectionSource.read_async
+SelectionSource.read_finish
+SelectionSourceMemory.new
+ShapedTexture.get_image
+WindowActor.get_image
+WaylandCompositor.get_wayland_display
+
+# C ABI / opaque settings — Backend.override get_settings.
+Backend.get_settings
+Settings.get_ui_scaling_factor
+
+# --- Compositor C bootstrap only (JS never calls; not a GJS wire gap) ---
+
+Context.configure noop
+Context.add_option_entries noop
+Context.add_option_group noop
+Context.set_plugin_gtype noop
+Plugin.manager_set_plugin_type noop
+
+# X11 GHashTable helpers for XIDs; gnome-shell JS never calls them.
+unsigned_long_equal noop
+unsigned_long_hash noop
+
+# WaylandClient.override.vala owns new_subprocess and get_subprocess.
+# Gsr-Mutter-WaylandClient builds the client on the compositor.
+WaylandClient.new_subprocess
+WaylandClient.get_subprocess
+
+# key-binding-wire.c owns these. The stub record is one byte; the fields
+# live beside it. windowManager.js calls is_builtin and is_reversed.
+KeyBinding.get_mask
+KeyBinding.get_modifiers
+KeyBinding.get_name
+KeyBinding.is_builtin
+KeyBinding.is_reversed
+
+# PERMANENT — a hand override owns this boxed type, so we do not
+# generate another one.
+Meta.KeyBinding
+# Vala binds this as a class, so the struct assignment does not compile.
+Meta.BarrierEvent

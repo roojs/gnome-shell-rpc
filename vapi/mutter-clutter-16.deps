@@ -2,5 +2,5 @@ atk
 cairo
 pango
 json-glib-1.0
-mutter-cogl-16
+mutter-cogl-@MUTTER_API_VERSION@
 graphene-gobject-1.0

@@ -7,7 +7,6 @@ gnome = import('gnome')
 fs = import('fs')
 cc = meson.get_compiler('c')
 
-mutter_api_version = '16'
 vendor_st_dir = gnome_shell_vendor_root / 'src' / 'st'
 vendor_src_dir = gnome_shell_vendor_root / 'src'
 client_libdir = meson.current_build_dir()
@@ -19,10 +18,12 @@ version_cmd = run_command(
 )
 if version_cmd.returncode() == 0
   vendor_version = version_cmd.stdout().strip()
-  if not vendor_version.startswith('48.')
+  if not vendor_version.startswith(gnome_shell_target_major + '.')
     warning(
-      'vendor gnome-shell @0@ — client libs expect 48.x (mutter API 16); pin with -Dgnome_shell_vendor_ref=48.0'.format(
+      'vendor gnome-shell @0@ — client libs expect @1@.x (mutter API @2@)'.format(
         vendor_version,
+        gnome_shell_target_major,
+        mutter_api_version,
       ),
     )
   endif
@@ -416,6 +417,7 @@ libshell_gir = gnome.generate_gir(
     '--add-include-path=' + meta_gir_dir,
     '--add-include-path=' + gvc_gir_dir,
     '--add-include-path=' + gnome_shell_girdir,
+    '--add-include-path=' + gnome_shell_st_girdir,
     '--add-include-path=' + (meson.project_build_root() / 'src'),
     '-I' + vendor_src_dir,
     '-I' + vendor_st_dir,

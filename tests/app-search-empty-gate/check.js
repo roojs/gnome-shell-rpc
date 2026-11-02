@@ -6,6 +6,7 @@
 import GObject from 'gi://GObject';
 import GIRepository from 'gi://GIRepository?version=2.0';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Shell from 'gi://Shell?version=16';
 import St from 'gi://St?version=16';
 import Clutter from 'gi://Clutter?version=16';
@@ -48,10 +49,11 @@ if (appInfo === null) {
 		fail('H-appinfo-gir', 'get_app_info missing');
 	} else {
 		const ret = ifaceName(GIRepository.callable_info_get_return_type(method));
-		if (ret !== 'Gio.DesktopAppInfo') {
+		const appInfoType = GLib.getenv('GSR_APPINFO_TYPE') || 'Gio.DesktopAppInfo';
+		if (ret !== appInfoType) {
 			fail('H-appinfo-gir', `get_app_info returns ${ret || '(none)'}`);
 		} else {
-			ok('H-appinfo-gir-typelib', 'get_app_info Gio.DesktopAppInfo');
+			ok('H-appinfo-gir-typelib', `get_app_info ${appInfoType}`);
 		}
 	}
 }

@@ -33,6 +33,10 @@ namespace Gsr.Server.Meta
 			OLLMrpc.Request.register(
 				"Gsr-Mutter-WaylandClient", new WaylandClient()
 			);
+			/* After IdleMonitor.rpc_register. Same startup, 18 only. */
+			Keymap.rpc_register();
+			IdleWatch.rpc_register();
+			Gsr.Server.St.DndStart.rpc_register();
 		}
 
 		/**
@@ -73,7 +77,7 @@ namespace Gsr.Server.Meta
 				row.launcher.set_cwd(cwd);
 			}
 			try {
-				row.peer = new global::Meta.WaylandClient.new_subprocess(
+				row.peer = new global::Meta.WaylandClient.subprocess(
 					context, row.launcher, wire
 				);
 			} catch (GLib.Error e) {

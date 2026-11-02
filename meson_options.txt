@@ -16,7 +16,7 @@ option(
   'gnome_shell_vendor_ref',
   type: 'string',
   value: '48.0',
-  description: 'Unused for normal builds (always 48.0). Optional override to another 48.x tag only',
+  description: 'Vendor gnome-shell tag. Default 48.0 selects the pin for the installed mutter (48.0 or 50.0). Any other value must be that major (48.1, 50.1).',
 )
 
 option(

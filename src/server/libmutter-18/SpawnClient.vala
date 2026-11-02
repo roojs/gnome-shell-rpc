@@ -126,7 +126,7 @@ namespace Gsr.Server.Rpc
 				launcher.setenv("WAYLAND_DISPLAY", wayland_display, true);
 			}
 			try {
-				this.smoke_client = new global::Meta.WaylandClient.new_subprocess(
+				this.smoke_client = new global::Meta.WaylandClient.subprocess(
 					this.display.get_context(), launcher, argv);
 				var proc = this.smoke_client.get_subprocess();
 				this.client_proc = proc;

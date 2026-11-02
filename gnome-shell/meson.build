@@ -1,13 +1,12 @@
 # Phase 0.7: vendored upstream gnome-shell for build/CI.
-# meson setup checks out vendor/gnome-shell if it is missing or not 48.x.
+# meson setup checks out vendor/gnome-shell if it is missing or the wrong major.
 # Stock libst / St GIR still come from the distro gnome-shell package.
 # vendor/gnome-shell/js is compiled into the client gresource. The client runs that.
 
 fs = import('fs')
 
 # --- Build-time: vendor checkout (required for JS gresource / shell-js) ---
-# Target is gnome-shell 48 only. No -Dgnome_shell_vendor_ref needed: configure
-# always pins vendor to 48.0 when missing or when the tree is another major.
+# Pin follows the mutter detected in the parent meson.build (48.0 or 50.0).
 # auto (default): use/fix vendor under vendor/gnome-shell/.
 # enabled: same + honor gnome_shell_vendor_refresh.
 # disabled: refuse.
@@ -18,19 +17,22 @@ vendor_js = vendor_root / 'js'
 vendor_gnome_shell = get_option('vendor_gnome_shell')
 gnome_shell_vendor_root = ''
 
-# Hard target while this project supports 48 only (ignore stale builddir "head").
-gnome_shell_target_ref = '48.0'
-ref_opt = get_option('gnome_shell_vendor_ref').to_lower()
-if ref_opt == '' or ref_opt == 'head' or ref_opt == 'main'
+# Pin follows the mutter detected in the parent meson.build.
+# Option default 48.0 means "use that pin", including 50.0 when mutter is 18.
+ref_opt = get_option('gnome_shell_vendor_ref')
+ref_opt_lower = ref_opt.to_lower()
+if ref_opt_lower == '' or ref_opt_lower == 'head' or ref_opt_lower == 'main' or ref_opt == '48.0'
   ref = gnome_shell_target_ref
-elif ref_opt.startswith('48.')
-  ref = get_option('gnome_shell_vendor_ref')
+elif ref_opt.startswith(gnome_shell_target_major + '.')
+  ref = ref_opt
 else
   error(
-    'gnome_shell_vendor_ref=@0@ is not a 48.x ref — this project only targets gnome-shell 48.\n'.format(
-      get_option('gnome_shell_vendor_ref'),
+    'gnome_shell_vendor_ref=@0@ is not a @1@.x ref — this configure is mutter @2@, gnome-shell @1@.\n'.format(
+      ref_opt,
+      gnome_shell_target_major,
+      mutter_api_version,
     ) +
-    '  Omit the option (defaults to 48.0) or pass e.g. -Dgnome_shell_vendor_ref=48.1',
+    '  Omit the option or pass e.g. -Dgnome_shell_vendor_ref=@0@'.format(gnome_shell_target_ref),
   )
 endif
 
@@ -60,14 +62,15 @@ endif
 
 need_clone = not fs.exists(vendor_js)
 vendor_major = vendor_version != '' ? vendor_version.split('.')[0] : ''
-need_repin = vendor_major != '' and vendor_major != '48'
+need_repin = vendor_major != '' and vendor_major != gnome_shell_target_major
 need_fetch = need_clone or refresh or need_repin or (not fs.exists(vendor_js))
 
 if need_fetch
   if need_repin
     message(
-      'gnome-shell vendor is @0@ (not 48.x) — checking out @1@'.format(
+      'gnome-shell vendor is @0@ (not @1@.x) — checking out @2@'.format(
         vendor_version,
+        gnome_shell_target_major,
         ref,
       ),
     )
@@ -125,17 +128,19 @@ endif
 
 if vendor_version == ''
   error(
-    'Could not read project version from @0@/meson.build — cannot verify target 48.'.format(
+    'Could not read project version from @0@/meson.build — cannot verify target @1@.'.format(
       vendor_root,
+      gnome_shell_target_major,
     ),
   )
 endif
 vendor_major = vendor_version.split('.')[0]
-if vendor_major != '48'
+if vendor_major != gnome_shell_target_major
   error(
-    'vendor/gnome-shell is still version @0@ after checkout of @1@ — expected 48.x.\n'.format(
+    'vendor/gnome-shell is still version @0@ after checkout of @1@ — expected @2@.x.\n'.format(
       vendor_version,
       ref,
+      gnome_shell_target_major,
     ) +
     '  Run: ./scripts/gnome-shell-fetch.sh --ref=@0@ --refresh'.format(ref),
   )
@@ -156,21 +161,44 @@ message(
 # Debian/Ubuntu: /usr/lib/gnome-shell. Fedora: /usr/lib64/gnome-shell.
 gnome_shell_pkglibdir = '/usr/lib/gnome-shell'
 foreach candidate : ['/usr/lib/gnome-shell', '/usr/lib64/gnome-shell']
-  if fs.exists(candidate / 'libst-16.so')
+  if fs.exists(candidate / 'libst-@0@.so'.format(mutter_api_version))
     gnome_shell_pkglibdir = candidate
     break
   endif
 endforeach
 gnome_shell_girdir = '/usr/share/gnome-shell'
-gnome_shell_st_lib = gnome_shell_pkglibdir / 'libst-16.so'
-gnome_shell_st_gir = gnome_shell_girdir / 'St-16.gir'
+gnome_shell_st_lib = gnome_shell_pkglibdir / 'libst-@0@.so'.format(mutter_api_version)
+gnome_shell_st_girdir = gnome_shell_girdir
+gnome_shell_st_gir = gnome_shell_girdir / 'St-@0@.gir'.format(mutter_api_version)
 
 missing_stock = []
 if not fs.exists(gnome_shell_st_lib)
   missing_stock += ['@0@ — stock libst for mutter-rpc (server)'.format(gnome_shell_st_lib)]
 endif
+# Ubuntu 26.04 ships St-18.typelib next to libst-18.so and does not install St-18.gir.
+# g-ir-generate rebuilds the schema the client typelib compiler needs.
 if not fs.exists(gnome_shell_st_gir)
-  missing_stock += ['@0@ — St API schema for libst-rpc (client stubs)'.format(gnome_shell_st_gir)]
+  st_typelib = gnome_shell_pkglibdir / 'St-@0@.typelib'.format(mutter_api_version)
+  if fs.exists(st_typelib)
+    g_ir_generate = find_program('g-ir-generate', required: true)
+    xsltproc = find_program('xsltproc', required: true)
+    gnome_shell_st_girdir = meson.current_build_dir()
+    gnome_shell_st_gir = gnome_shell_st_girdir / 'St-@0@.gir'.format(mutter_api_version)
+    run_command(
+      find_program('sh'),
+      meson.project_source_root() / 'scripts/st-gir-from-typelib.sh',
+      g_ir_generate.full_path(),
+      gnome_shell_st_gir,
+      st_typelib,
+      gnome_shell_pkglibdir + ':' + mutter_typelib_dir,
+      xsltproc.full_path(),
+      meson.project_source_root() / 'scripts/st-gir-fix.xsl',
+      check: true,
+    )
+    message('St-@0@.gir generated from @1@'.format(mutter_api_version, st_typelib))
+  else
+    missing_stock += ['@0@ — St API schema for libst-rpc (client stubs)'.format(gnome_shell_st_gir)]
+  endif
 endif
 if missing_stock.length() > 0
   error(
@@ -178,12 +206,12 @@ if missing_stock.length() > 0
     + '\n  - '.join(missing_stock)
     + '\nInstall the distro package, then re-run meson setup:\n'
     + '  sudo apt install gnome-shell\n'
-    + 'Client runtime still uses build/src St-16.typelib → libst-rpc-16.so, not distro St typelib.',
+    + 'Client runtime still uses build/src St-@0@.typelib → libst-rpc-@0@.so, not distro St typelib.'.format(mutter_api_version),
   )
 endif
 
 message('gnome-shell stock pkglibdir (server libst/Gvc): @0@'.format(gnome_shell_pkglibdir))
-message('gnome-shell stock girdir (St-16.gir schema only): @0@'.format(gnome_shell_girdir))
+message('gnome-shell stock girdir (St-@0@.gir schema only): @1@'.format(mutter_api_version, gnome_shell_st_girdir))
 
 # --- Optional disk override (gjs-embed / GNOME_SHELL_JS_DIR) ---
 # The client runs resource:///org/gnome/shell from the gresource built out of

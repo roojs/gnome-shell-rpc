@@ -35,6 +35,13 @@ Widget.paint_background
 # PERMANENT — not deferred RPC work
 # ************************************************************************
 
+# Event is the compact client class. The generator's memcpy body does
+# not compile. Getters: DndStartGesture.override.vala and
+# server/libst-16/DndStart.vala. start_drag has no Shell 50 JS caller.
+DndStartGesture.get_drag_triggering_event
+DndStartGesture.get_point_begin_event
+DndStartGesture.start_drag
+
 # PERMANENT — client stub does not implement these GIR interfaces.
 Atk.ImplementorIface
 Atk.Component

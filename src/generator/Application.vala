@@ -196,7 +196,7 @@ Examples:
 						missing_out_path = Application.opt_missing_out,
 						helper_out_path = Application.opt_helper_out,
 					};
-					gen.emit(ns, Application.opt_out);
+					gen.emit(ns, Application.opt_out, version);
 				} else {
 					HeaderConfig cfg;
 					if (Application.opt_headers_config != "") {
