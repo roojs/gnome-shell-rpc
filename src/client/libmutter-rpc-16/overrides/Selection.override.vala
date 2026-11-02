@@ -28,17 +28,7 @@
 				return true;
 			}
 			var data = new uint8[nbytes];
-			var fd = response.buffer.fd;
-			Posix.lseek(fd, 0, Posix.SEEK_SET);
-			var got = 0;
-			while (got < nbytes) {
-				var n = Posix.read(fd, (void*) &data[got], nbytes - got);
-				if (n <= 0) {
-					break;
-				}
-				got += (int) n;
-			}
-			if (got < nbytes) {
+			if (!response.buffer.read_exact(data, nbytes)) {
 				throw new GLib.IOError.FAILED(
 					"selection transfer: short read from buffer");
 			}

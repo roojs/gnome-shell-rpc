@@ -1,34 +1,22 @@
 		/**
 		 * Stock {@code meta_window_get_compositor_private}: the live
-		 * window actor. Same lease {@code Compositor.get_window_actors}
-		 * already exports. Reuse that proxy when the overview has it.
+		 * window actor. The reply object is already leased.
+		 * {@code Compositor.get_window_actors} exports the same actor.
 		 */
 		public GLib.Object? get_compositor_private()
 		{
 			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Window.get_compositor_private", this);
-			if (response.args.size < 1) {
+			if (response.retval.type() == GLib.Type.INVALID) {
 				return null;
 			}
-			var actor_lid = response.args.get(0).get_uint64();
-			if (actor_lid == 0) {
+			var actor = response.retval.get_object() as WindowActor;
+			if (actor == null) {
 				return null;
 			}
-			if (Gsr.Client.Rpc.client.proxies.has_key((int) actor_lid)) {
-				var existing = Gsr.Client.Rpc.client.proxies.get(
-					(int) actor_lid) as WindowActor;
-				if (existing != null) {
-					if (existing.bound_meta_window == null) {
-						existing.bound_meta_window = this;
-					}
-					return existing;
-				}
+			if (actor.bound_meta_window == null) {
+				actor.bound_meta_window = this;
 			}
-			var actor = new WindowActor() {
-				rpc_lid = actor_lid,
-				bound_meta_window = this,
-			};
-			Gsr.Client.Rpc.register_handle(actor);
 			return actor;
 		}
 

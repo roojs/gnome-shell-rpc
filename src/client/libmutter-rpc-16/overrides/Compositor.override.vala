@@ -1,16 +1,8 @@
 		/**
-		 * Stock {@code meta_compositor_get_window_actors} — hydrate live
-		 * actor proxies from the server's handle pairs.
-		 *
-		 * The generated stub expects a {@code Gee.ArrayList} retval, but
-		 * the server packs hand-rolled uint64 args (actor lease, window
-		 * lease per actor), so the generated decode silently yields an
-		 * empty list and stock {@code Workspace} construction bulk-adds
-		 * nothing. Each hydrated actor binds its window up front, the
-		 * same way {@code Display.list_all_windows} hydrates windows
-		 * from snapshot rows. A lease already in {@code proxies} is
-		 * returned as that object. A new {@code Window} would break
-		 * the overview's {@code ===} on {@code window-removed}.
+		 * Stock {@code meta_compositor_get_window_actors}. Each arg
+		 * pair is the actor object, then its window object. Decode
+		 * reuses a proxy already stored for that lease. An actor
+		 * with no window is left out of the list.
 		 */
 		public GLib.List<WindowActor> get_window_actors()
 		{
@@ -19,29 +11,18 @@
 			var list = new GLib.List<WindowActor>();
 			var n = response.args.size;
 			for (var i = 0; i + 1 < n; i += 2) {
-				var actor_lid = response.args.get(i).get_uint64();
-				var win_lid = response.args.get(i + 1).get_uint64();
-				if (actor_lid == 0 || win_lid == 0) {
+				var actor_val = response.args.get(i);
+				var win_val = response.args.get(i + 1);
+				if (!actor_val.type().is_a(typeof(GLib.Object))
+					|| !win_val.type().is_a(typeof(GLib.Object))) {
 					continue;
 				}
-				var win = Gsr.Client.Rpc.client.proxies.has_key((int) win_lid)
-					? Gsr.Client.Rpc.client.proxies.get((int) win_lid) as Window
-					: null;
-				if (win == null) {
-					win = new Window();
-					win.rpc_lid = win_lid;
-					Gsr.Client.Rpc.register_handle(win);
+				var actor = actor_val.get_object() as WindowActor;
+				var win = win_val.get_object() as Window;
+				if (actor == null || win == null) {
+					continue;
 				}
-				var actor = Gsr.Client.Rpc.client.proxies.has_key((int) actor_lid)
-					? Gsr.Client.Rpc.client.proxies.get((int) actor_lid) as WindowActor
-					: null;
-				if (actor == null) {
-					actor = new WindowActor() {
-						rpc_lid = actor_lid,
-						bound_meta_window = win,
-					};
-					Gsr.Client.Rpc.register_handle(actor);
-				} else if (actor.bound_meta_window == null) {
+				if (actor.bound_meta_window == null) {
 					actor.bound_meta_window = win;
 				}
 				list.append(actor);

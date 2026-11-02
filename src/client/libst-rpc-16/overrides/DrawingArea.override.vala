@@ -82,19 +82,16 @@
 				return;
 			}
 			var nbytes = stride * height;
-			var fd = Linux.memfd_create("gsr-repaint", Linux.MemfdFlags.CLOEXEC);
-			if (fd < 0) {
+			var pixels = new uint8[nbytes];
+			GLib.Memory.copy(pixels, surface.get_data(), (size_t) nbytes);
+			try {
+				var buffer = new OLLMrpc.Live.Buffer.from_bytes(pixels, "gsr-repaint");
+				Gsr.Client.Rpc.call_value(
+					"Gsr-St-DrawingArea.paint", this,
+					OLLMrpc.args("uuux", (uint) width, (uint) height,
+						(uint) stride, (int64) nbytes),
+					buffer);
+			} catch (GLib.Error e) {
 				return;
 			}
-			unowned uint8* pixels = (uint8*) surface.get_data();
-			if (Posix.write(fd, pixels, (size_t) nbytes) != nbytes) {
-				Posix.close(fd);
-				return;
-			}
-			Posix.lseek(fd, 0, Posix.SEEK_SET);
-			Gsr.Client.Rpc.call_value(
-				"Gsr-St-DrawingArea.paint", this,
-				OLLMrpc.args("uuux", (uint) width, (uint) height,
-					(uint) stride, (int64) nbytes),
-				new OLLMrpc.Live.Buffer(fd));
 		}

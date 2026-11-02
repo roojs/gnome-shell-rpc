@@ -1,8 +1,9 @@
 /**
  * Clutter Stage Helper for C ABI gaps (libshell link).
  *
- * Wire prefix ''Clutter-Stage''. Live GObject returns use uint64 lease
- * in {@link OLLMrpc.Response.args} (not retval).
+ * Wire prefix ''Clutter-Stage''. {@link get_view_at} returns the
+ * view object. {@link paint_to_buffer} puts the frame on the
+ * memfd reply buffer.
  * {@code get_view_at} is not in the mutter VAPI
  * ({@code introspectable=0}) — call stock C directly via {@code extern}.
  */
@@ -28,7 +29,8 @@ namespace Gsr.Server.Clutter
 		}
 
 		/**
-		 * ''Clutter-Stage.get_view_at'' — lease id of the view.
+		 * ''Clutter-Stage.get_view_at'' — the live stage view.
+		 * Decode constructs the proxy with its lease set.
 		 *
 		 * @param request inbound RPC; lease is the stage
 		 * @param x stage X
@@ -39,18 +41,22 @@ namespace Gsr.Server.Clutter
 			var stage = (global::Clutter.Stage) request.connection.leases.get(
 				(int) request.lease_id);
 			var view = clutter_stage_get_view_at(stage, x, y);
-			var handle = (uint64) 0;
-			if (view != null) {
-				handle = (uint64) request.connection.export(view);
+			if (view == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
 			}
+			request.connection.export(view);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("t", handle),
+				retval = OLLMrpc.val("o", view),
 			});
 		}
 
 		/**
-		 * ''Clutter-Stage.paint_to_buffer'' — pixel {@link GLib.Bytes} in args[0].
+		 * ''Clutter-Stage.paint_to_buffer'' — frame on the memfd
+		 * reply buffer.
 		 *
 		 * @param request inbound RPC; lease is the stage
 		 * @param x rect X
@@ -104,10 +110,16 @@ namespace Gsr.Server.Clutter
 					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e);
 				return;
 			}
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				args = OLLMrpc.args("ay", new GLib.Bytes(buf)),
-			});
+			try {
+				var buffer = new OLLMrpc.Live.Buffer.from_bytes(buf, "gsr-stage");
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				}, buffer);
+			} catch (GLib.Error e) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR);
+				return;
+			}
 		}
 	}
 }

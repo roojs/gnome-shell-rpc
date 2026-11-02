@@ -10,9 +10,6 @@ namespace Gsr.Server.Meta
 {
 	public class Selection : GLib.Object
 	{
-		[CCode (cname = "memfd_create", cheader_filename = "sys/mman.h")]
-		private static extern int memfd_create(string name, uint flags);
-
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
@@ -58,22 +55,19 @@ namespace Gsr.Server.Meta
 					}
 					var bytes = stream.steal_as_bytes();
 					var data = bytes.get_data();
-					var fd = memfd_create("gsr-sel", 1);
-					if (fd < 0 || Posix.write(fd, data, data.length) != data.length) {
-						if (fd >= 0) {
-							Posix.close(fd);
-						}
+					try {
+						var buffer = new OLLMrpc.Live.Buffer.from_bytes(data, "gsr-sel");
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							args = OLLMrpc.args("bx", true, (int64) data.length),
+						}, buffer);
+					} catch (GLib.Error e) {
 						request.reply(new OLLMrpc.Response() {
 							id = request.id,
 							args = OLLMrpc.args("b", false),
 						});
 						return;
 					}
-					Posix.lseek(fd, 0, Posix.SEEK_SET);
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						args = OLLMrpc.args("bx", true, (int64) data.length),
-					}, new OLLMrpc.Live.Buffer(fd));
 				});
 		}
 	}

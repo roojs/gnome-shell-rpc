@@ -9,9 +9,6 @@ namespace Gsr.Server.Meta
 {
 	public class ShapedTexture : GLib.Object
 	{
-		[CCode (cname = "memfd_create", cheader_filename = "sys/mman.h")]
-		private static extern int memfd_create(string name, uint flags);
-
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
@@ -65,21 +62,18 @@ namespace Gsr.Server.Meta
 			var pixels = new uint8[nbytes];
 			GLib.Memory.copy(pixels, img.get_data(), (size_t) nbytes);
 
-			var fd = memfd_create("gsr-shape", 1);
-			if (fd < 0 || Posix.write(fd, pixels, nbytes) != nbytes) {
-				if (fd >= 0) {
-					Posix.close(fd);
-				}
+			try {
+				var buffer = new OLLMrpc.Live.Buffer.from_bytes(pixels, "gsr-shape");
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					args = OLLMrpc.args("iii", img.get_width(), height, stride),
+				}, buffer);
+			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 				});
 				return;
 			}
-			Posix.lseek(fd, 0, Posix.SEEK_SET);
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				args = OLLMrpc.args("iii", img.get_width(), height, stride),
-			}, new OLLMrpc.Live.Buffer(fd));
 		}
 	}
 }

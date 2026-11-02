@@ -1,6 +1,3 @@
-	[CCode (cname = "memfd_create", cheader_filename = "sys/mman.h")]
-	private static extern int memfd_create(string name, uint flags);
-
 	[CCode (has_target = false)]
 	public delegate void ClipboardGetTextFunc(
 		Clipboard clipboard,
@@ -46,17 +43,14 @@
 		}
 		unowned uint8[] data = bytes.get_data();
 		var nbytes = data.length;
-		var fd = memfd_create("gsr-clip", 1);
-		if (fd < 0 || Posix.write(fd, data, nbytes) != nbytes) {
-			if (fd >= 0) {
-				Posix.close(fd);
-			}
+		try {
+			var buffer = new OLLMrpc.Live.Buffer.from_bytes(data, "gsr-clip");
+			Gsr.Client.Rpc.call_value(
+				"Gsr-St-Clipboard.set_content", this,
+				OLLMrpc.args("isx", (int) type, mimetype, (int64) nbytes),
+				buffer);
+		} catch (GLib.Error e) {
 			GLib.warning("Clipboard.set_content memfd");
 			return;
 		}
-		Posix.lseek(fd, 0, Posix.SEEK_SET);
-		Gsr.Client.Rpc.call_value(
-			"Gsr-St-Clipboard.set_content", this,
-			OLLMrpc.args("isx", (int) type, mimetype, (int64) nbytes),
-			new OLLMrpc.Live.Buffer(fd));
 	}

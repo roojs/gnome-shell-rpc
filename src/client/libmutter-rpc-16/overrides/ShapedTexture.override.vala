@@ -26,17 +26,7 @@
 			var stride = response.args.get(2).get_int();
 			var nbytes = stride * height;
 			var pixels = new uint8[nbytes];
-			var fd = response.buffer.fd;
-			Posix.lseek(fd, 0, Posix.SEEK_SET);
-			var got = 0;
-			while (got < nbytes) {
-				var n = Posix.read(fd, (void*) &pixels[got], nbytes - got);
-				if (n <= 0) {
-					break;
-				}
-				got += (int) n;
-			}
-			if (got < nbytes) {
+			if (!response.buffer.read_exact(pixels, nbytes)) {
 				return null;
 			}
 			return new Cairo.ImageSurface.for_data(

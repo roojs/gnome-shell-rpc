@@ -97,6 +97,7 @@ mutter_vala_args = [
   '--pkg=xfixes-4.0',
   '--pkg=gdesktopenums-3.0',
   '--pkg=posix',
+  '--pkg=linux',
   '--vapidir', meson.project_build_root() / 'vapi',
   '--vapidir', meson.project_source_root() / 'vapi',
 ]

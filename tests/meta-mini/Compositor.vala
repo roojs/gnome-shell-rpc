@@ -15,8 +15,14 @@ namespace Meta
 			var response = Gsr.Client.Rpc.call_value("Meta-Compositor.get_window_actors", this);
 			var list = new GLib.List<WindowActor>();
 			for (var i = 0; i < response.args.size; i++) {
-				var actor = new WindowActor();
-				actor.rpc_lid = response.args.get(i).get_uint64();
+				var val = response.args.get(i);
+				if (!val.type().is_a(typeof(GLib.Object))) {
+					continue;
+				}
+				var actor = val.get_object() as WindowActor;
+				if (actor == null) {
+					continue;
+				}
 				list.append(actor);
 			}
 			return list;

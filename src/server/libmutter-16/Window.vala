@@ -23,8 +23,9 @@ namespace Gsr.Server.Meta
 		}
 
 		/**
-		 * ''Gsr-Mutter-Window.get_compositor_private'' — lease of the
-		 * live {@link global::Meta.WindowActor}. Same object
+		 * ''Gsr-Mutter-Window.get_compositor_private'' — the live
+		 * {@link global::Meta.WindowActor}. Decode constructs the
+		 * proxy with its lease set. Same object
 		 * {@link Gsr.Server.Meta.Compositor.get_window_actors} exports.
 		 */
 		public void get_compositor_private(OLLMrpc.Request request)
@@ -33,13 +34,16 @@ namespace Gsr.Server.Meta
 				(int) request.lease_id);
 			var priv = window.get_compositor_private()
 				as global::Meta.WindowActor;
-			uint64 lid = 0;
-			if (priv != null) {
-				lid = request.connection.export(priv);
+			if (priv == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
 			}
+			request.connection.export(priv);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				args = OLLMrpc.args("t", lid),
+				retval = OLLMrpc.val("o", priv),
 			});
 		}
 

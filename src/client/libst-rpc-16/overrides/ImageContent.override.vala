@@ -1,6 +1,3 @@
-		[CCode (cname = "memfd_create", cheader_filename = "sys/mman.h")]
-		private static extern int memfd_create(string name, uint flags);
-
 		/**
 		 * Stock {@code st_image_content_set_bytes}. Screenshot notifications
 		 * pass a {@link GLib.Bytes}. The pixels take the same memfd path as
@@ -44,19 +41,12 @@
 			uint row_stride
 		) throws GLib.Error {
 			var nbytes = data.length;
-			var fd = memfd_create("gsr-img", 1);
-			if (fd < 0 || Posix.write(fd, data, nbytes) != nbytes) {
-				if (fd >= 0) {
-					Posix.close(fd);
-				}
-				throw new GLib.IOError.FAILED("ImageContent.set_data memfd");
-			}
-			Posix.lseek(fd, 0, Posix.SEEK_SET);
+			var buffer = new OLLMrpc.Live.Buffer.from_bytes(data, "gsr-img");
 			var response = Gsr.Client.Rpc.call_value(
 				"Gsr-St-ImageContent.set_data", this,
 				OLLMrpc.args("uuuux", (uint) pixel_format, width, height,
 					row_stride, (int64) nbytes),
-				new OLLMrpc.Live.Buffer(fd));
+				buffer);
 			return response.retval.get_boolean();
 		}
 

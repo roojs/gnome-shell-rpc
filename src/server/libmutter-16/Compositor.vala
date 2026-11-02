@@ -33,15 +33,10 @@ namespace Gsr.Server.Meta
 		}
 
 		/**
-		 * ''Meta-Compositor.get_window_actors'' — handle pairs per actor.
-		 *
-		 * List packing stays hand-rolled (uint64 args): each actor is
-		 * followed by its window's lease, so a future client override
-		 * can bind the hydrated actor proxy without a second round
-		 * trip (mirrors ''Meta-Display.list_windows'' snapshot
-		 * hydration). A zero window handle means the actor has no
-		 * window. The current generated client ignores the extra
-		 * args; retval stays unset until the override lands.
+		 * ''Meta-Compositor.get_window_actors'' — actor, then its
+		 * window, as live objects. Decode constructs each proxy
+		 * with its lease set. A null window is an empty object
+		 * slot. The client override binds that window on the actor.
 		 *
 		 * @param request inbound RPC
 		 */
@@ -52,17 +47,16 @@ namespace Gsr.Server.Meta
 			};
 			var count = 0;
 			foreach (unowned global::Meta.WindowActor actor in this.meta_compositor.get_window_actors()) {
-				var handle = GLib.Value(typeof(uint64));
-				handle.set_uint64(request.connection.export(actor));
-				response.args.add(handle);
+				request.connection.export(actor);
+				response.args.add(OLLMrpc.val("o", actor));
 				var win = actor.get_meta_window();
-				uint64 win_lid = 0;
-				if (win != null) {
-					win_lid = request.connection.export(win);
+				if (win == null) {
+					response.args.add(OLLMrpc.val("o", null));
 				}
-				var win_handle = GLib.Value(typeof(uint64));
-				win_handle.set_uint64(win_lid);
-				response.args.add(win_handle);
+				if (win != null) {
+					request.connection.export(win);
+					response.args.add(OLLMrpc.val("o", win));
+				}
 				count++;
 			}
 			GLib.debug("window actors=%d", count);

@@ -84,16 +84,7 @@ namespace Gsr.Server.St
 			var backend = global::Clutter.get_default_backend();
 			var cogl = backend.get_cogl_context();
 			var buf = new uint8[nbytes];
-			Posix.lseek(got, 0, Posix.SEEK_SET);
-			var nread = 0;
-			while (nread < nbytes) {
-				var n = Posix.read(got, (void*) &buf[nread], (size_t) (nbytes - nread));
-				if (n <= 0) {
-					break;
-				}
-				nread += (int) n;
-			}
-			if (nread != nbytes) {
+			if (!request.buffer.read_exact(buf, (int) nbytes)) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR);
 				return;

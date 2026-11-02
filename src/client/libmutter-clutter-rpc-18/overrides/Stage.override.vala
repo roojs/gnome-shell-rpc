@@ -1,0 +1,83 @@
+	/**
+	 * Event is Compact — not on the wire. Stock looks up key-focus for
+	 * key/IM events, otherwise the actor under the event coords
+	 * ({@link get_actor_at_pos} REACTIVE) at call time.
+	 */
+	[CCode (cname = "clutter_stage_get_event_actor")]
+	public Actor? get_event_actor(Event event)
+	{
+		var type = event.type();
+		if (type == EventType.key_press
+				|| type == EventType.key_release
+				|| type == EventType.im_commit
+				|| type == EventType.im_delete
+				|| type == EventType.im_preedit) {
+			return this.key_focus;
+		}
+		float x = 0.0f, y = 0.0f;
+		event.get_coords(out x, out y);
+		return this.get_actor_at_pos(PickMode.reactive, x, y);
+	}
+
+	/**
+	 * Not in the typelib. The reply object is already leased.
+	 */
+	[CCode (cname = "clutter_stage_get_view_at")]
+	public StageView? get_view_at(float x, float y)
+	{
+		try {
+			var response = Gsr.Client.Rpc.call_value("Clutter-Stage.get_view_at",
+				this, OLLMrpc.args("ff", x, y));
+			if (response.retval.type() == GLib.Type.INVALID) {
+				return null;
+			}
+			return response.retval.get_object() as StageView;
+		} catch (GLib.Error e) {
+			GLib.warning("get_view_at: %s", e.message);
+			return null;
+		}
+	}
+
+	/**
+	 * Caller buffer has no length, so the generator skips it. Pixels
+	 * come back on the memfd reply buffer. A null color state goes
+	 * out as a zero lease.
+	 *
+	 * @param rect stage rectangle
+	 * @param scale capture scale
+	 * @param data caller pixel buffer
+	 * @param stride row stride
+	 * @param format pixel format
+	 * @param color_state color state, or null
+	 * @param paint_flags paint flags
+	 * @return whether the buffer was painted
+	 */
+	[CCode (cname = "clutter_stage_paint_to_buffer")]
+	public bool paint_to_buffer(
+		Mtk.Rectangle rect,
+		float scale,
+		[CCode (array_length = false)] uint8[] data,
+		int stride,
+		Cogl.PixelFormat format,
+		ColorState? color_state,
+		PaintFlag paint_flags
+	) throws GLib.Error {
+		var image_height = (int) Math.ceilf(rect.height * scale);
+		if (image_height < 1) {
+			image_height = 1;
+		}
+		var n_bytes = stride * image_height;
+		var response = Gsr.Client.Rpc.call_value(
+			"Clutter-Stage.paint_to_buffer", this,
+			OLLMrpc.args("iiiifiiouu",
+				rect.x, rect.y, rect.width, rect.height, scale,
+				n_bytes, stride, (uint) format, color_state,
+				(uint) paint_flags));
+		if (response.buffer == null || response.buffer.fd < 0) {
+			throw new GLib.IOError.FAILED("paint_to_buffer: empty reply");
+		}
+		if (!response.buffer.read_exact(data, n_bytes)) {
+			throw new GLib.IOError.FAILED("paint_to_buffer: short read");
+		}
+		return true;
+	}
