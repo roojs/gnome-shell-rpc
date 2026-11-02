@@ -1,0 +1,280 @@
+/**
+ * Display RPC handler for mutter 18.
+ *
+ * Same wire as the libmutter-16 file. The window snapshot uses
+ * {@link global::Meta.Window.is_maximized}, which is true when the
+ * window is maximized in both directions. Mutter 16 still has
+ * {@code get_maximized}. The 16 build does not compile this file.
+ * The 18 startup calls {@link rpc_register}.
+ */
+namespace Gsr.Server.Meta
+{
+	/**
+	 * Display RPC handler — queries and window mutations backed by
+	 * {@link global::Meta.Display}.
+	 *
+	 * Wire prefix {@code Meta-Display}. {@link OLLMrpc.Request.register_live}
+	 * keeps this singleton as {@code this}; {@code lease_id} is not the
+	 * handler. Live GObject getters ({@code get_compositor}, …) fall through
+	 * to typelib {@link OLLMrpc.Gi} on the leased {@link global::Meta.Display}.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * Gsr.Server.Meta.Display.rpc_register();
+	 * OLLMrpc.Request.register_live("Meta-Display",
+	 *     new Gsr.Server.Meta.Display(meta_display));
+	 * }}}
+	 */
+	public class Display : GLib.Object, OLLMrpc.Bin.Serializable
+	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.register("Display", typeof(Display));
+			OLLMrpc.Request.add_class(
+				"Meta-Display", typeof(Display),
+				"list_windows", "",
+				"get_window", "i",
+				"get_focused_window", "",
+				"get_startup_notification", "",
+				"minimize_window", "i",
+				"unminimize_window", "i",
+				"activate_window", "i",
+				"close_window", "i",
+				null
+			);
+		}
+
+		public global::Meta.Display meta_display { get; construct; }
+
+		public int focused_window_id { get; set; default = 0; }
+		public int workspace_count { get; set; default = 0; }
+
+		public Display(global::Meta.Display meta_display)
+		{
+			GLib.Object(meta_display: meta_display);
+		}
+
+		public override void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			if (prop.name == "meta-display") {
+				return;
+			}
+			bin_default_write_prop(ctx, prop);
+		}
+
+		public override void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			if (prop.name == "meta-display") {
+				return;
+			}
+			bin_default_read_prop(ctx, prop, type_byte);
+		}
+
+		/**
+		 * ''Meta-Display.list_windows'' — snapshot every known window.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void list_windows(OLLMrpc.Request request)
+		{
+			var list = new Gee.ArrayList<GLib.Object>();
+			foreach (unowned global::Meta.Window win in this.meta_display.list_all_windows()) {
+				if (win == null) {
+					continue;
+				}
+				var handle = (int) request.connection.export(win);
+				list.add(this.snapshot_window(win, handle));
+			}
+			/* An empty list must stay an unset retval. val("o", empty)
+			 * builds GLib.Value(INVALID), and g_value_init(0) aborts. */
+			if (list.size == 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", list),
+			});
+		}
+
+		/**
+		 * ''Meta-Display.get_window'' — snapshot one leased window.
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void get_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", this.snapshot_window(meta, object_id)),
+			});
+		}
+
+		/**
+		 * ''Meta-Display.get_focused_window'' — snapshot of focus, or empty.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void get_focused_window(OLLMrpc.Request request)
+		{
+			var focus = this.meta_display.get_focus_window();
+			if (focus == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+				});
+				return;
+			}
+			var handle = (int) request.connection.export(focus);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", this.snapshot_window(focus, handle)),
+			});
+		}
+
+		/**
+		 * ''Meta-Display.get_startup_notification'' — live object in retval.
+		 *
+		 * Typelib marks the stock method non-introspectable, so Gi cannot
+		 * dispatch it; hand handler exports and returns the real object.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void get_startup_notification(OLLMrpc.Request request)
+		{
+			var sn = this.meta_display.get_startup_notification();
+			request.connection.export(sn);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", sn),
+			});
+		}
+
+		/**
+		 * ''Meta-Display.minimize_window''
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void minimize_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			meta.minimize();
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Meta-Display.unminimize_window''
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void unminimize_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			meta.unminimize();
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Meta-Display.activate_window''
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void activate_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			meta.activate(this.meta_display.get_current_time());
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Meta-Display.close_window''
+		 *
+		 * @param request inbound RPC
+		 * @param object_id window lease id
+		 */
+		public void close_window(OLLMrpc.Request request, int object_id)
+		{
+			var meta = this.window_from_id(request, object_id);
+			if (meta == null) {
+				return;
+			}
+			meta.delete(this.meta_display.get_current_time());
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/** Fill one list row with what the remote shell reads when it loops windows. */
+		private Gsr.Shared.Window snapshot_window(global::Meta.Window meta, int handle)
+		{
+			var frame = meta.get_frame_rect();
+			var wm = meta.get_wm_class();
+			return new Gsr.Shared.Window() {
+				id = handle,
+				title = meta.get_title(),
+				wm_class = wm != null ? wm : "",
+				window_type = (int) meta.get_window_type(),
+				minimized = meta.minimized,
+				maximized = meta.is_maximized(),
+				frame_rect = new Shared.Rectangle() {
+					x = frame.x,
+					y = frame.y,
+					width = frame.width,
+					height = frame.height,
+				},
+			};
+		}
+
+		/**
+		 * Lease id → mutter window, or reply INVALID_PARAMS.
+		 *
+		 * @return window, or {@code null} when this method already replied
+		 */
+		private global::Meta.Window? window_from_id(OLLMrpc.Request request, int object_id)
+		{
+			if (request.connection.leases.has_key(object_id)) {
+				return (global::Meta.Window) request.connection.leases.get(object_id);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				error = new OLLMrpc.Error(
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+					"window handle not found"
+				),
+			});
+			return null;
+		}
+	}
+}
