@@ -71,7 +71,6 @@ compositor_sources = files(
   'server/libst-16/SquareBinActor.vala',
   'server/libst-16/FocusManager.vala',
   'server/libst-16/Clipboard.vala',
-  'server/libshell-16/namespace.vala',
   'server/libshell-16/GLSLEffect.vala',
   'server/libshell-16/BlurEffect.vala',
   'server/libshell-16/InvertLightnessEffect.vala',
@@ -92,9 +91,12 @@ if mutter_api_version == '18'
     'server/libmutter-clutter-18/PanGesture.vala',
     'server/libmutter-clutter-18/LongPressGesture.vala',
     'server/libmutter-clutter-18/Backend.vala',
+    'server/libshell-18/namespace.vala',
+    'server/libshell-18/EdgeDragGesture.vala',
   )
 else
   compositor_sources += files(
+    'server/libshell-16/namespace.vala',
     'server/rpc/SpawnClient.vala',
     'server/libmutter-16/Display.vala',
     'server/libmutter-16/Window.vala',
@@ -487,6 +489,8 @@ if mutter_api_version == '18'
   clutter_override_files += files(
     'client/libmutter-clutter-rpc-18/overrides/Stage.override.vala',
     'client/libmutter-clutter-rpc-18/overrides/Backend.override.vala',
+    'client/libmutter-clutter-rpc-18/overrides/ClickGesture.override.vala',
+    'client/libmutter-clutter-rpc-18/overrides/PanGesture.override.vala',
   )
   clutter_deny_file = files('client/libmutter-clutter-rpc-18/Clutter.deny')
   clutter_override_dir = meson.current_source_dir() / 'client/libmutter-clutter-rpc-18/overrides' + ':' + clutter_override_dir
@@ -1099,7 +1103,9 @@ shell_gi_lib = shared_library(
     'client/libshell-16/Global.vala',
     'client/libshell-16/TimeChangeSource.vala',
     'client/libshell-16/CameraMonitor.vala',
-  ),
+  ) + (mutter_api_version == '18'
+    ? files('client/libshell-18/EdgeDragGesture.vala')
+    : []),
   dependencies: [
     mutter_vapi_dep,
     ocrpc_dep,
