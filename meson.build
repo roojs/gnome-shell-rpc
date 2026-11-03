@@ -182,6 +182,7 @@ if get_option('gi_rpc_mock')
     dependencies: [ocrpc_dep, girepository_dep],
     vala_args: ocrpc_vala_args + [
       girepository_pkg,
+      '--vapidir', meson.project_source_root() / 'vapi',
     ] + girepository_define,
     build_rpath: ocrpc_rpath,
     export_dynamic: true,
