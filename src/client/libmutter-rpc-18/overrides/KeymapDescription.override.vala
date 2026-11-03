@@ -1,3 +1,9 @@
+		/*
+		 * Keep these C symbols identical to the stock Meta-18 GIR. GJS resolves
+		 * that GIR's symbols at runtime; Vala's default gsr_meta_* names are
+		 * private implementation names and leave the GJS FFI invoker unbound.
+		 * The Gsr-Mutter-Keymap.* strings below are our separate RPC wire API.
+		 */
 		/**
 		 * Stock {@code meta_keymap_description_new_from_rules}.
 		 * {@code display_names} and {@code short_names} are the
@@ -10,7 +16,7 @@
 		 * @param display_names one display name per layout
 		 * @param short_names one short name per layout
 		 */
-		[CCode (cname = "gsr_meta_keymap_description_new_from_rules")]
+		[CCode (cname = "meta_keymap_description_new_from_rules")]
 		public KeymapDescription.new_from_rules(
 			string model,
 			string layout,
@@ -36,7 +42,7 @@
 		 *
 		 * @return whether the compositor locked this description
 		 */
-		[CCode (cname = "gsr_meta_keymap_description_is_locked")]
+		[CCode (cname = "meta_keymap_description_is_locked")]
 		public bool is_locked()
 		{
 			var response = Gsr.Client.Rpc.call_value(
@@ -50,7 +56,7 @@
 		 * @param other description to compare
 		 * @return whether the compositor treats them as the same rules
 		 */
-		[CCode (cname = "gsr_meta_keymap_description_direct_equal")]
+		[CCode (cname = "meta_keymap_description_direct_equal")]
 		public bool direct_equal(KeymapDescription other)
 		{
 			var response = Gsr.Client.Rpc.call_value(

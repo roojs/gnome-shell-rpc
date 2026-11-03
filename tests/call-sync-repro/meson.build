@@ -1061,6 +1061,83 @@ if girepository_2.found()
   test('gi-repository-method-gate', gi_repository_method_gate, timeout: 8)
 endif
 
+# GJS 1.88 keeps invoking when a typelib constructor's C symbol is absent,
+# leaving GIFunctionInvoker.cif.nargs at zero. The six arguments then hit
+# Function::invoke's ffi_arg_pos == ffi_argc assertion.
+meta_keymap_invoker_fixture = shared_library(
+  'meta-keymap-invoker-gate-1.0',
+  'meta-keymap-invoker-gate.vala',
+  dependencies: [dependency('gobject-2.0')],
+  vala_gir: 'MetaKeymapInvokerGate-1.0.gir',
+  install: false,
+)
+
+meta_keymap_invoker_fixed_typelib = custom_target(
+  'MetaKeymapInvokerGate-1.0.typelib',
+  output: 'MetaKeymapInvokerGate-1.0.typelib',
+  command: [
+    find_program('g-ir-compiler'),
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libmeta-keymap-invoker-gate-1.0.so',
+    meson.current_build_dir() / 'MetaKeymapInvokerGate-1.0.gir',
+  ],
+  depends: meta_keymap_invoker_fixture,
+  build_by_default: true,
+)
+
+meta_keymap_invoker_broken_gir = custom_target(
+  'MetaKeymapInvokerBroken-1.0.gir',
+  output: 'MetaKeymapInvokerBroken-1.0.gir',
+  command: [
+    find_program('xsltproc'),
+    '--nonet', '--novalid',
+    '--output', '@OUTPUT@',
+    files('meta-keymap-invoker-broken.xsl'),
+    meson.current_build_dir() / 'MetaKeymapInvokerGate-1.0.gir',
+  ],
+  depends: meta_keymap_invoker_fixture,
+  build_by_default: true,
+)
+
+meta_keymap_invoker_broken_typelib = custom_target(
+  'MetaKeymapInvokerBroken-1.0.typelib',
+  output: 'MetaKeymapInvokerBroken-1.0.typelib',
+  command: [
+    find_program('g-ir-compiler'),
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libmeta-keymap-invoker-gate-1.0.so',
+    '@INPUT@',
+  ],
+  input: meta_keymap_invoker_broken_gir,
+  depends: meta_keymap_invoker_fixture,
+  build_by_default: true,
+)
+
+test(
+  'meta-keymap-invoker-current',
+  find_program('gjs'),
+  args: [files('meta-keymap-invoker-gate.js'), 'broken'],
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [meta_keymap_invoker_fixture, meta_keymap_invoker_broken_typelib],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'meta-keymap-invoker-fix',
+  find_program('gjs'),
+  args: [files('meta-keymap-invoker-gate.js'), 'fixed'],
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [meta_keymap_invoker_fixture, meta_keymap_invoker_fixed_typelib],
+  timeout: 5,
+)
+
 test(
   'later-callback-reenter',
   find_program('gjs'),
