@@ -1041,13 +1041,15 @@ executable('gi-repository-gate-fail',
   dependencies: [dependency('gobject-introspection-1.0'), dependency('gjs-1.0')],
   install: false,
 )
-gi_repository_gate_fix = executable('gi-repository-gate-fix',
-  'gi-repository-gate.c',
-  c_args: ['-DGATE_GI2'],
-  dependencies: [dependency('girepository-2.0'), dependency('gjs-1.0')],
-  install: false,
-)
-test('gi-repository-gate-fix', gi_repository_gate_fix, timeout: 8)
+if girepository_2.found()
+  gi_repository_gate_fix = executable('gi-repository-gate-fix',
+    'gi-repository-gate.c',
+    c_args: ['-DGATE_GI2'],
+    dependencies: [girepository_2, dependency('gjs-1.0')],
+    install: false,
+  )
+  test('gi-repository-gate-fix', gi_repository_gate_fix, timeout: 8)
+endif
 
 # Gi.repository() opens the process repository on first use.
 # register() goes through it. This must pass against the 2.0 libocrpc.
@@ -1135,6 +1137,52 @@ test(
     'LD_LIBRARY_PATH=' + meson.current_build_dir(),
   ],
   depends: [meta_keymap_invoker_fixture, meta_keymap_invoker_fixed_typelib],
+  timeout: 5,
+)
+
+edge_drag_progress_fixture = shared_library(
+  'edge-drag-progress-gate-1.0',
+  'edge-drag-progress-gate.vala',
+  dependencies: [dependency('gobject-2.0')],
+  vala_gir: 'EdgeDragProgressGate-1.0.gir',
+  install: false,
+)
+
+edge_drag_progress_typelib = custom_target(
+  'EdgeDragProgressGate-1.0.typelib',
+  output: 'EdgeDragProgressGate-1.0.typelib',
+  command: [
+    find_program('g-ir-compiler'),
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libedge-drag-progress-gate-1.0.so',
+    meson.current_build_dir() / 'EdgeDragProgressGate-1.0.gir',
+  ],
+  depends: edge_drag_progress_fixture,
+  build_by_default: true,
+)
+
+test(
+  'edge-drag-progress-current',
+  find_program('gjs'),
+  args: [files('edge-drag-progress-gate.js'), 'current'],
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [edge_drag_progress_fixture, edge_drag_progress_typelib],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'edge-drag-progress-fix',
+  find_program('gjs'),
+  args: [files('edge-drag-progress-gate.js'), 'fixed'],
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [edge_drag_progress_fixture, edge_drag_progress_typelib],
   timeout: 5,
 )
 

@@ -15,6 +15,13 @@ namespace Shell
 		private bool priv_enabled = true;
 		private St.Side priv_side;
 
+		/**
+		 * Stock {@code ShellEdgeDragGesture::progress}.
+		 *
+		 * @param progress_px movement in pixels along the selected edge
+		 */
+		public signal void progress(float progress_px);
+
 		public string name {
 			get {
 				return this.priv_name;

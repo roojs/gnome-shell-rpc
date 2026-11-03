@@ -9,6 +9,12 @@ namespace Gsr.Server.Shell
 {
 	private class EdgeDrag : global::Clutter.Gesture
 	{
+		/**
+		 * Stock {@code ShellEdgeDragGesture::progress}.
+		 *
+		 * @param progress_px movement in pixels along the selected edge
+		 */
+		public signal void progress(float progress_px);
 	}
 
 	public class EdgeDragGesture : GLib.Object
