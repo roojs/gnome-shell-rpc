@@ -1049,6 +1049,18 @@ gi_repository_gate_fix = executable('gi-repository-gate-fix',
 )
 test('gi-repository-gate-fix', gi_repository_gate_fix, timeout: 8)
 
+# Gi.repository() opens the process repository on first use.
+# register() goes through it. This must pass against the 2.0 libocrpc.
+if girepository_2.found()
+  gi_repository_method_gate = executable('gi-repository-method-gate',
+    'gi-class-init-gate.c',
+    dependencies: [ocrpc_dep, girepository_2],
+    build_rpath: ocrpc_rpath,
+    install: false,
+  )
+  test('gi-repository-method-gate', gi_repository_method_gate, timeout: 8)
+endif
+
 test(
   'later-callback-reenter',
   find_program('gjs'),

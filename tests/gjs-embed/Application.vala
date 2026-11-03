@@ -79,7 +79,11 @@ namespace Gsr.GjsEmbed
 				"GI_RPC_SMOKE_TYPELIB_DIR"
 			);
 			if (typelib_dir != null && typelib_dir.length > 0) {
+#if GIREPOSITORY_2
+				GI.Repository.dup_default().prepend_search_path(typelib_dir);
+#else
 				GI.Repository.prepend_search_path(typelib_dir);
+#endif
 				GLib.debug("typelib prepend %s", typelib_dir);
 			}
 

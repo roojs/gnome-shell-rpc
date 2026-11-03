@@ -109,19 +109,32 @@ if rpc_gdb_spawn
   compositor_sources += files('server/GdbSpawnWrap.vala')
 endif
 
+# 2.0 when that pc exists (Ubuntu 26.04 / GJS 1.88). 1.0 otherwise.
+# gi-stub-gen stays on 1.0: the 2.0 vapi has no BaseInfo.get_type().
+girepository_2 = dependency('girepository-2.0', required: false)
+if girepository_2.found()
+  girepository_dep = girepository_2
+  girepository_pkg = '--pkg=girepository-2.0'
+  girepository_define = ['--define=GIREPOSITORY_2']
+else
+  girepository_dep = dependency('gobject-introspection-1.0')
+  girepository_pkg = '--pkg=gobject-introspection-1.0'
+  girepository_define = []
+endif
+
 mutter_vala_args = [
   '--pkg=libmutter-' + mutter_api_version,
   '--pkg=mutter-clutter-' + mutter_api_version,
   '--pkg=mutter-cogl-' + mutter_api_version,
   '--pkg=mutter-mtk-' + mutter_api_version,
-  '--pkg=gobject-introspection-1.0',
+  girepository_pkg,
   '--pkg=xfixes-4.0',
   '--pkg=gdesktopenums-3.0',
   '--pkg=posix',
   '--pkg=linux',
   '--vapidir', meson.project_build_root() / 'vapi',
   '--vapidir', meson.project_source_root() / 'vapi',
-]
+] + girepository_define
 
 # ../tests/meta-mini/*.vala uses Clutter / Mtk / Graphene types in a few hand stubs.
 meta_mini_deps = [
@@ -171,7 +184,6 @@ if ocrpc_rpath != ''
 endif
 
 gjs_dep = dependency('gjs-1.0')
-girepository_dep = dependency('gobject-introspection-1.0')
 
 gjs_shell_deps = [
   gjs_dep,
@@ -182,11 +194,11 @@ gjs_shell_deps = [
 
 gjs_shell_vala_args = [
   '--pkg=gjs-1.0',
-  '--pkg=gobject-introspection-1.0',
+  girepository_pkg,
   '--pkg=gee-0.8',
   '--pkg=gio-2.0',
   '--vapidir', meson.project_source_root() / 'vapi',
-]
+] + girepository_define
 
 gjs_embed_config = configure_file(
   input: 'client/Config.vala.in',
@@ -229,7 +241,7 @@ gi_stub_gen = executable('gi-stub-gen',
     'generator/Application.vala',
   ),
   dependencies: [
-    girepository_dep,
+    dependency('gobject-introspection-1.0'),
     dependency('gee-0.8'),
     dependency('gio-2.0'),
   ],
@@ -1000,7 +1012,7 @@ gsr_st_boxed_lib = static_library(
     '--pkg=mutter-clutter-rpc-' + mutter_api_version,
     '--pkg=mutter-cogl-' + mutter_api_version,
     '--pkg=mutter-mtk-' + mutter_api_version,
-    '--pkg=gobject-introspection-1.0',
+    girepository_pkg,
     '--pkg=xfixes-4.0',
     '--pkg=gdesktopenums-3.0',
     '--pkg=posix',
@@ -1569,7 +1581,7 @@ mutter_rpc = executable('gsr-server',
     mutter_vapi_dep,
     mutter_dep,
     ocrpc_dep,
-    dependency('gobject-introspection-1.0'),
+    girepository_dep,
     dependency('gee-0.8'),
     dependency('cairo'),
     dependency('graphene-gobject-1.0'),

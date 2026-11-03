@@ -108,15 +108,26 @@ namespace Gsr.GiRpcMock
 
 		private void prepend_typelib_paths()
 		{
+#if GIREPOSITORY_2
+			var repo = GI.Repository.dup_default();
+#endif
 			if (Gsr.Server.MUTTER_TYPELIB_DIR.length > 0) {
+#if GIREPOSITORY_2
+				repo.prepend_search_path(Gsr.Server.MUTTER_TYPELIB_DIR);
+#else
 				GI.Repository.prepend_search_path(
 					Gsr.Server.MUTTER_TYPELIB_DIR
 				);
+#endif
 			}
 			if (Gsr.Server.GNOME_SHELL_PKGLIBDIR.length > 0) {
+#if GIREPOSITORY_2
+				repo.prepend_search_path(Gsr.Server.GNOME_SHELL_PKGLIBDIR);
+#else
 				GI.Repository.prepend_search_path(
 					Gsr.Server.GNOME_SHELL_PKGLIBDIR
 				);
+#endif
 			}
 		}
 	}

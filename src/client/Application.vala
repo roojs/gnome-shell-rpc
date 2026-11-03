@@ -84,20 +84,37 @@ namespace Gsr.Client
 			if (gvc != null) {
 				gvc.make_resident();
 			}
+#if GIREPOSITORY_2
+			var repo = GI.Repository.dup_default();
+			repo.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
+			repo.prepend_search_path(MUTTER_TYPELIB_DIR);
+			repo.prepend_search_path(TYPELIB_INSTALL_DIR);
+#else
 			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 			GI.Repository.prepend_search_path(TYPELIB_INSTALL_DIR);
+#endif
 			var typelib_dir = GLib.Environment.get_variable("GSR_TYPELIB_DIR") ?? "";
 			if (typelib_dir.length > 0) {
+#if GIREPOSITORY_2
+				repo.prepend_search_path(typelib_dir);
+#else
 				GI.Repository.prepend_search_path(typelib_dir);
+#endif
 			}
 			/*
 			 * Meta.RpcSubprocess peer (DING stdout / wait). Stock Meta GIR
 			 * still returns Gio.Subprocess; GJS finds our methods by GType.
 			 */
+#if GIREPOSITORY_2
+			repo.require("Gsr", "1.0", 0);
+			repo.require("Clutter", MUTTER_API_VERSION, 0);
+			repo.require("Shell", MUTTER_API_VERSION, 0);
+#else
 			GI.Repository.get_default().require("Gsr", "1.0", 0);
 			GI.Repository.get_default().require("Clutter", MUTTER_API_VERSION, 0);
 			GI.Repository.get_default().require("Shell", MUTTER_API_VERSION, 0);
+#endif
 
 			Gsr.Client.Rpc.register();
 			global::Shell.Global.bind_display(global::Meta.get_display());

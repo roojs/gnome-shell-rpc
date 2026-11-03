@@ -179,10 +179,10 @@ if get_option('gi_rpc_mock')
       'tests/gi-rpc-mock/HelperMock.vala',
       'tests/gi-rpc-mock/Application.vala',
     ),
-    dependencies: [ocrpc_dep, dependency('gobject-introspection-1.0')],
+    dependencies: [ocrpc_dep, girepository_dep],
     vala_args: ocrpc_vala_args + [
-      '--pkg=gobject-introspection-1.0',
-    ],
+      girepository_pkg,
+    ] + girepository_define,
     build_rpath: ocrpc_rpath,
     export_dynamic: true,
     install: false,

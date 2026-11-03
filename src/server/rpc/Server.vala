@@ -35,8 +35,14 @@ namespace Gsr.Server.Rpc
 			Bootstrap.rpc_register();
 			SpawnClient.rpc_register();
 
+#if GIREPOSITORY_2
+			var repo = GI.Repository.dup_default();
+			repo.prepend_search_path(MUTTER_TYPELIB_DIR);
+			repo.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
+#else
 			GI.Repository.prepend_search_path(MUTTER_TYPELIB_DIR);
 			GI.Repository.prepend_search_path(GNOME_SHELL_PKGLIBDIR);
+#endif
 			OLLMrpc.Gi.register("Meta", MUTTER_API_VERSION);
 			OLLMrpc.Gi.register("Clutter", MUTTER_API_VERSION);
 			OLLMrpc.Gi.register("St", MUTTER_API_VERSION);
