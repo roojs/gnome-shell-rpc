@@ -21,7 +21,7 @@ namespace Gsr.Server.Clutter
 
 		public static void rpc_register()
 		{
-			/* GestureAction is mutter 16 only. The shared namespace
+			/* GestureAction is mutter 16 only. The 16 namespace
 			 * calls this after Clutter.rpc_register. */
 			var events = OLLMrpc.Request.handlers.get("Gsr-Clutter") as Clutter;
 			if (events != null) {

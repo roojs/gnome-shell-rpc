@@ -19,7 +19,6 @@ namespace Gsr.Server.Clutter
 		Actor.rpc_register();
 		LayoutManager.rpc_register();
 		ClutterPaintContext.rpc_register();
-		/* 16 ClutterStage registers GestureAction. Mutter 18 has no such type. */
 		ClutterStage.rpc_register();
 		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
 		OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());

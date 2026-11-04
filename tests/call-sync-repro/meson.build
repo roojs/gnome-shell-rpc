@@ -1241,6 +1241,25 @@ test(
   timeout: 5,
 )
 
+# Shell 50 dnd.js constructs St.DndStartGesture with construct
+# properties. The generated stub has no lease, so the setters throw
+# "no rpc_lid on StDndStartGesture". API 16 has no such type.
+if mutter_api_version == '18'
+  test(
+    'st-dnd-start-gesture-lease',
+    find_program('gjs'),
+    args: [files('st-dnd-start-gesture-lease-gate.js'), mutter_api_version],
+    env: [
+      'GI_TYPELIB_PATH=' + clutter_margin_build_src + ':' + mutter_typelib_dir,
+      'LD_LIBRARY_PATH=' + clutter_margin_build_src + ':' + ocrpc_libdir,
+      'LD_PRELOAD=' + clutter_margin_shell_lib,
+    ],
+    depends: [clutter_rpc_typelib, mutter_clutter_rpc_lib, shell_gi_lib],
+    should_fail: true,
+    timeout: 5,
+  )
+endif
+
 edge_drag_progress_fixture = shared_library(
   'edge-drag-progress-gate-1.0',
   'edge-drag-progress-gate.vala',

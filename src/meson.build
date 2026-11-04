@@ -38,7 +38,6 @@ compositor_sources = files(
   'server/libmutter-16/BarrierEventOverride.vala',
   'server/libmutter-16/KeyBindingOverride.vala',
   'server/libmutter-16/AppLaunch.vala',
-  'server/libmutter-clutter-18/namespace.vala',
   'server/libmutter-clutter-18/ClutterActor.vala',
   'server/libmutter-clutter-18/Clutter.vala',
   'server/libmutter-clutter-18/ClutterThreads.vala',
@@ -85,6 +84,7 @@ if mutter_api_version == '18'
     'server/libmutter-18/Keymap.vala',
     'server/libst-16/DndStart.vala',
     'server/libmutter-18/IdleWatch.vala',
+    'server/libmutter-clutter-18/namespace.vala',
     'server/libmutter-clutter-18/ClutterStage.vala',
     'server/libmutter-clutter-18/ClickGesture.vala',
     'server/libmutter-clutter-18/PressGesture.vala',
@@ -101,6 +101,7 @@ else
     'server/libmutter-16/Display.vala',
     'server/libmutter-16/Window.vala',
     'server/libmutter-16/WaylandClient.vala',
+    'server/libmutter-clutter-16/namespace.vala',
     'server/libmutter-clutter-16/ClutterStage.vala',
     'server/libmutter-clutter-16/ClutterGestureAction.vala',
   )

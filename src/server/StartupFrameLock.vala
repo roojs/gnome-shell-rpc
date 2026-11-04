@@ -55,7 +55,7 @@ namespace Gsr.Server
 			this.splash.add_constraint(new global::Clutter.BindConstraint(
 				this.stage, global::Clutter.BindCoordinate.SIZE, 0));
 			var label = new global::Clutter.Text() {
-				text = "Starting GNOME Shell",
+				text = "Starting GNOME Shell RPC",
 				font_name = "Sans Bold 17",
 				color = global::Cogl.Color.from_4f(1.0f, 1.0f, 1.0f, 1.0f),
 				selectable = false,
