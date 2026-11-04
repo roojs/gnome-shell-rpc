@@ -1140,6 +1140,89 @@ test(
   timeout: 5,
 )
 
+# The overview's may-recognize handler calls Gesture.get_point_event.
+# A typelib method without its C symbol leaves GJS's invoker at zero
+# arguments; invoking the instance plus point index aborts as (2 == 0).
+clutter_gesture_invoker_fixture = shared_library(
+  'clutter-gesture-invoker-gate-1.0',
+  'clutter-gesture-invoker-gate.vala',
+  dependencies: [dependency('gobject-2.0')],
+  vala_gir: 'ClutterGestureInvokerGate-1.0.gir',
+  install: false,
+)
+
+clutter_gesture_invoker_fixed_typelib = custom_target(
+  'ClutterGestureInvokerGate-1.0.typelib',
+  output: 'ClutterGestureInvokerGate-1.0.typelib',
+  command: [
+    find_program('g-ir-compiler'),
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libclutter-gesture-invoker-gate-1.0.so',
+    meson.current_build_dir() / 'ClutterGestureInvokerGate-1.0.gir',
+  ],
+  depends: clutter_gesture_invoker_fixture,
+  build_by_default: true,
+)
+
+clutter_gesture_invoker_broken_gir = custom_target(
+  'ClutterGestureInvokerBroken-1.0.gir',
+  output: 'ClutterGestureInvokerBroken-1.0.gir',
+  command: [
+    find_program('xsltproc'),
+    '--nonet', '--novalid',
+    '--output', '@OUTPUT@',
+    files('clutter-gesture-invoker-broken.xsl'),
+    meson.current_build_dir() / 'ClutterGestureInvokerGate-1.0.gir',
+  ],
+  depends: clutter_gesture_invoker_fixture,
+  build_by_default: true,
+)
+
+clutter_gesture_invoker_broken_typelib = custom_target(
+  'ClutterGestureInvokerBroken-1.0.typelib',
+  output: 'ClutterGestureInvokerBroken-1.0.typelib',
+  command: [
+    find_program('g-ir-compiler'),
+    '--output', '@OUTPUT@',
+    '--shared-library', 'libclutter-gesture-invoker-gate-1.0.so',
+    '@INPUT@',
+  ],
+  input: clutter_gesture_invoker_broken_gir,
+  depends: clutter_gesture_invoker_fixture,
+  build_by_default: true,
+)
+
+test(
+  'clutter-gesture-invoker-current',
+  find_program('gjs'),
+  args: [files('clutter-gesture-invoker-gate.js'), 'broken'],
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [
+    clutter_gesture_invoker_fixture,
+    clutter_gesture_invoker_broken_typelib,
+  ],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'clutter-gesture-invoker-fix',
+  find_program('gjs'),
+  args: [files('clutter-gesture-invoker-gate.js'), 'fixed'],
+  env: [
+    'GI_TYPELIB_PATH=' + meson.current_build_dir(),
+    'LD_LIBRARY_PATH=' + meson.current_build_dir(),
+  ],
+  depends: [
+    clutter_gesture_invoker_fixture,
+    clutter_gesture_invoker_fixed_typelib,
+  ],
+  timeout: 5,
+)
+
 edge_drag_progress_fixture = shared_library(
   'edge-drag-progress-gate-1.0',
   'edge-drag-progress-gate.vala',

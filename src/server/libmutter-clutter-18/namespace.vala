@@ -12,7 +12,8 @@ namespace Gsr.Server.Clutter
 		Text.rpc_register();
 		ShaderEffect.rpc_register();
 		ClutterThreads.rpc_register();
-		Clutter.rpc_register();
+		var clutter = Clutter.rpc_register();
+		PressGesture.rpc_register(clutter);
 		Interval.rpc_register();
 		Constraint.rpc_register();
 		Actor.rpc_register();

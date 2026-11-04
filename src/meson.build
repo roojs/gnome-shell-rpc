@@ -489,6 +489,7 @@ if mutter_api_version == '18'
   clutter_override_files += files(
     'client/libmutter-clutter-rpc-18/overrides/Stage.override.vala',
     'client/libmutter-clutter-rpc-18/overrides/Backend.override.vala',
+    'client/libmutter-clutter-rpc-18/overrides/Gesture.override.vala',
     'client/libmutter-clutter-rpc-18/overrides/ClickGesture.override.vala',
     'client/libmutter-clutter-rpc-18/overrides/PanGesture.override.vala',
   )

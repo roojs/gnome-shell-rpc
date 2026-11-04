@@ -1,6 +1,6 @@
 # Mutter 18 deploy testing — shell does not stay up
 
-**Status:** 2026-11-03 23:05. Fixed and proven on the local Ubuntu 26.04 guest `alan@192.168.122.115`. The clean, uninstrumented Shell-50.1 session stayed up for the full 40-second prove, reached RPC 14222, and was stopped only by the scripted timeout. No new `gsr-client` core was created.
+**Status:** Closed 2026-11-03 23:17. Fixed and proven on the local Ubuntu 26.04 guest `alan@192.168.122.115`. The clean, uninstrumented Shell-50.1 session stayed up for the full 40-second prove, reached RPC 14222, and was stopped only by the scripted timeout. No new `gsr-client` core was created. The subsequent full guest build passes.
 
 The guest's subsequent full build also passes. `gi-rpc-mock` initially failed because its API-2 GIRepository package had no matching Vala API search directory; adding the project `vapi/` directory to that target's `vala_args` fixes the targeted build and the full 474-step build.
 
@@ -64,7 +64,7 @@ VT 5 was that login on this boot. Read `loginctl` before assuming the number.
 
 Weston (`./scripts/weston-gsr-prove.sh`) is the nested prove on a machine that already has an X display and is the build under test. It is not a substitute for this guest, and this host's Weston only runs the mutter 16 build.
 
-## Current failure
+## Historical failure
 
 `alan@192.168.122.52`, tty6, 2026-11-03 16:18. Same command as 11:57, binaries `build/src/gsr-server` and `build/src/gsr-client`, `GSR_TYPELIB_DIR=build/src`.
 

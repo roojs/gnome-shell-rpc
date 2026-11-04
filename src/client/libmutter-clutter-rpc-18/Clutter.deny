@@ -32,7 +32,6 @@ BindingPool.get_for_class
 BindingPool.install_action
 BindingPool.override_action
 EOTF.get_default_luminance
-Gesture.get_point_event
 InputFocus.filter_event
 InputFocus.process_event
 Interval.compute
@@ -71,6 +70,9 @@ value_take_paint_node
 # ************************************************************************
 
 # --- Hand override owns GIR prop/method (generator must not emit) ---
+
+# Gesture.override packs the compositor's compact Event return.
+Gesture.get_point_event
 
 # Actor.override owns the read-only allocation property. relay_allocation
 # exports clutter_actor_set_allocation, the GIR method's C symbol.
