@@ -1223,6 +1223,24 @@ test(
   timeout: 5,
 )
 
+# Clutter's typelib publishes clutter_margin_copy, while Vala's generated
+# struct helper is privately named clutter_margin_dup. The public stock
+# symbol must exist when GJS copies an app-grid Margin boxed property.
+clutter_margin_build_src = meson.project_build_root() / 'src'
+clutter_margin_shell_lib = clutter_margin_build_src / ('libshell-' + mutter_api_version + '.so')
+test(
+  'clutter-margin-copy',
+  find_program('gjs'),
+  args: [files('clutter-margin-copy-gate.js'), mutter_api_version],
+  env: [
+    'GI_TYPELIB_PATH=' + clutter_margin_build_src + ':' + mutter_typelib_dir,
+    'LD_LIBRARY_PATH=' + clutter_margin_build_src + ':' + ocrpc_libdir,
+    'LD_PRELOAD=' + clutter_margin_shell_lib,
+  ],
+  depends: [clutter_rpc_typelib, mutter_clutter_rpc_lib, shell_gi_lib],
+  timeout: 5,
+)
+
 edge_drag_progress_fixture = shared_library(
   'edge-drag-progress-gate-1.0',
   'edge-drag-progress-gate.vala',

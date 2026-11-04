@@ -5,6 +5,22 @@
 	}
 
 	/**
+	 * Stock {@code clutter_margin_copy}. Vala emits a private
+	 * {@code clutter_margin_dup} helper for the struct, but the typelib and
+	 * GJS resolve the public stock symbol.
+	 */
+	[CCode (cname = "clutter_margin_copy")]
+	public static Margin* margin_copy(Margin* margin)
+	{
+		if (margin == null) {
+			return null;
+		}
+		var copy = (Margin*) GLib.malloc0(sizeof(Margin));
+		*copy = *margin;
+		return copy;
+	}
+
+	/**
 	 * Stock {@code clutter_get_current_event} — compositor packs type / coords /
 	 * button / state into Compact {@link Event} (transfer none via cache).
 	 */
