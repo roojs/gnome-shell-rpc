@@ -195,6 +195,8 @@ namespace Gsr.Server.Clutter
 					case "scroll-event":
 					case "touch-event":
 					case "long-press":
+					case "recognize":
+					case "may-recognize":
 						subscription.blocking = true;
 						break;
 

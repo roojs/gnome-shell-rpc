@@ -29,6 +29,8 @@ RPC Clutter-Gesture.can_not_cancel: no rpc_lid on StDndStartGesture
 
 This host is mutter 16 / Shell 48. Its `dnd.js` still uses `button-press-event`. Weston here is not this failure.
 
+A mapped window on the regular desktop is a different path: mutter move grab or a content / clipboard drag, not `St.DndStartGesture`. That report is [`2026-11-04-desktop-window-drag-between-workspaces.md`](2026-11-04-desktop-window-drag-between-workspaces.md).
+
 ## Reproduction
 
 Installed session on `alan@192.168.122.115`. Open the overview with a window present. The criticals are at preview construction, before the hand drag.
@@ -43,3 +45,4 @@ meson test -C build st-dnd-start-gesture-lease --print-errorlogs
 - 2026-11-04 10:09. User reported that dragging a window between workspaces in the overview is not working. Opened this report before investigation.
 - 2026-11-04 10:10. Read the guest client log for the installed session (client pid 14554). The Applications crash is closed; the next failure is these `StDndStartGesture` `no rpc_lid` criticals while each preview calls `makeDraggable`.
 - 2026-11-04 10:17. Guest GJS `new St.DndStartGesture({ manual_mode: false, timeout_threshold: 0 })` against the installed RPC St-18 typelib prints the same two criticals. GJS does not turn them into an exception; the object is left with no lease. `st-dnd-start-gesture-lease-gate.js` is that construct.
+- 2026-11-04 14:35. User also could not drag a mapped window between workspaces on the normal desktop, and asked whether the clipboard took the gesture. That is not this `St.DndStartGesture` construct. Opened [`2026-11-04-desktop-window-drag-between-workspaces.md`](2026-11-04-desktop-window-drag-between-workspaces.md). Guest SSH from here was `No route to host`.

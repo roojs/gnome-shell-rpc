@@ -92,6 +92,40 @@ test(
   timeout: 5,
 )
 
+# Shell 50 panel recognize / search may-recognize call get_point_event.
+# Those signals are not in the add_signals blocking switch.
+gesture_recognize_point_gate = executable('gesture-recognize-point-gate',
+  [
+    'gesture-recognize-point-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+test(
+  'gesture-recognize-point-current',
+  gesture_recognize_point_gate,
+  args: ['current'],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'gesture-recognize-point-fixed',
+  gesture_recognize_point_gate,
+  args: ['fixed'],
+  timeout: 5,
+)
+
 # Response then Invoke in one client read — bin buffer vs IOChannel IN.
 buffer_invoke_gate = executable('buffer-invoke-gate',
   [
@@ -1255,6 +1289,16 @@ if mutter_api_version == '18'
       'LD_PRELOAD=' + clutter_margin_shell_lib,
     ],
     depends: [clutter_rpc_typelib, mutter_clutter_rpc_lib, shell_gi_lib],
+    should_fail: true,
+    timeout: 5,
+  )
+  test(
+    'click-gesture-point-event',
+    find_program('gjs'),
+    args: [files('click-gesture-point-event-gate.js'), mutter_api_version],
+    env: [
+      'GI_TYPELIB_PATH=' + mutter_typelib_dir,
+    ],
     should_fail: true,
     timeout: 5,
   )
