@@ -42,6 +42,12 @@ DndStartGesture.get_drag_triggering_event
 DndStartGesture.get_point_begin_event
 DndStartGesture.start_drag
 
+# No GIR constructor. g_object_new applies these before construct, and
+# the generated setters RPC with rpc_lid 0. The override stashes them
+# and Gsr-St-DndStartGesture.create sets them on the stock gesture.
+DndStartGesture.manual_mode
+DndStartGesture.timeout_threshold
+
 # PERMANENT — client stub does not implement these GIR interfaces.
 Atk.ImplementorIface
 Atk.Component

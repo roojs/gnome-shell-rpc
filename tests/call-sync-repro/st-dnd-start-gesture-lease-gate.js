@@ -1,11 +1,15 @@
 imports.gi.versions.St = ARGV[0];
 const {GLib, St} = imports.gi;
 
-let saw = false;
-GLib.log_set_handler(null, GLib.LogLevelFlags.LEVEL_CRITICAL, (domain, flags, message) => {
-	if (message.indexOf('no rpc_lid on StDndStartGesture') !== -1)
-		saw = true;
-});
+let why = '';
+GLib.log_set_handler(null,
+	GLib.LogLevelFlags.LEVEL_CRITICAL | GLib.LogLevelFlags.LEVEL_WARNING,
+	(domain, flags, message) => {
+		if (message.indexOf('no rpc_lid on StDndStartGesture') !== -1)
+			why = 'no rpc_lid';
+		if (message.indexOf('Gsr-St-DndStartGesture.create') !== -1)
+			why = 'create failed';
+	});
 
 const gesture = new St.DndStartGesture({
 	manual_mode: false,
@@ -13,8 +17,8 @@ const gesture = new St.DndStartGesture({
 });
 void gesture;
 
-if (saw) {
-	print('st-dnd-start-gesture-lease: miss no rpc_lid');
-	throw new Error('miss no rpc_lid');
+if (why !== '') {
+	print('st-dnd-start-gesture-lease: miss ' + why);
+	throw new Error('miss ' + why);
 }
 print('st-dnd-start-gesture-lease: ok');

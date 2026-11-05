@@ -20,15 +20,45 @@ namespace Gsr.Server.St
 		private static extern unowned global::Clutter.Event?
 			st_dnd_start_gesture_get_point_begin_event(GLib.Object gesture);
 
+		[CCode (cname = "st_dnd_start_gesture_get_type")]
+		private static extern GLib.Type st_dnd_start_gesture_get_type();
+
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
 				"Gsr-St-DndStartGesture", typeof(DndStart),
+				"create", "bu",
 				"get_drag_triggering_event", "",
 				"get_point_begin_event", "",
 				null
 			);
 			OLLMrpc.Request.register_live("Gsr-St-DndStartGesture", new DndStart());
+		}
+
+		/**
+		 * ''Gsr-St-DndStartGesture.create'' — lease of a new stock
+		 * {@code St.DndStartGesture}. Shell 50 has no GIR constructor, so
+		 * {@code g_object_new} is the mint. The two properties are the
+		 * ones {@code dnd.js} passes to {@code new}.
+		 *
+		 * @param request inbound RPC; no lease yet
+		 * @param manual_mode stock {@code manual-mode}
+		 * @param timeout_threshold stock {@code timeout-threshold}, milliseconds
+		 */
+		public void create(
+			OLLMrpc.Request request,
+			bool manual_mode,
+			uint timeout_threshold
+		) {
+			var created = GLib.Object.new(
+				st_dnd_start_gesture_get_type(),
+				"manual-mode", manual_mode,
+				"timeout-threshold", timeout_threshold);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				args = OLLMrpc.args("t",
+					(uint64) request.connection.export(created)),
+			});
 		}
 
 		/**

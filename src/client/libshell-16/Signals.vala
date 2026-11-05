@@ -247,11 +247,39 @@ namespace Shell
 					}
 					if (notif.reply_id == 0) {
 						Signals.emit(target, notif.method, notif.args);
-					} else {
+						return;
+					}
+					var returned = new Gee.ArrayList<GLib.Value?>();
+					Signals.emit(target, notif.method, notif.args, returned);
+					if (returned.size < 1) {
+						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("tb", (uint64) notif.reply_id, false));
+						return;
+					}
+					if (returned.get(0).holds(GLib.Type.BOOLEAN)) {
 						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
 							OLLMrpc.args("tb", (uint64) notif.reply_id,
-								Signals.emit(target, notif.method, notif.args)));
+								returned.get(0).get_boolean()));
+						return;
 					}
+					if (returned.get(0).holds(GLib.Type.UINT)) {
+						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("tu", (uint64) notif.reply_id,
+								returned.get(0).get_uint()));
+						return;
+					}
+					if (returned.get(0).holds(GLib.Type.OBJECT)) {
+						var face = returned.get(0).get_object() as OLLMrpc.Live.Interface;
+						var handle_id = (uint64) 0;
+						if (face != null) {
+							handle_id = face.rpc_lid;
+						}
+						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("tt", (uint64) notif.reply_id, handle_id));
+						return;
+					}
+					Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+						OLLMrpc.args("tb", (uint64) notif.reply_id, false));
 				});
 			}
 			var hid = 0;
@@ -361,7 +389,8 @@ namespace Shell
 		private static bool emit(
 			GLib.Object obj,
 			string signal_name,
-			Gee.ArrayList<GLib.Value?> args
+			Gee.ArrayList<GLib.Value?> args,
+			Gee.ArrayList<GLib.Value?>? returns = null
 		) {
 			Signals.emit_depth++;
 			uint signal_id = 0;
@@ -396,7 +425,8 @@ namespace Shell
 				vals[i + 1].set_boxed(new Clutter.Frame());
 			}
 			var ret = GLib.Value(GLib.Type.BOOLEAN);
-			if (query.return_type == GLib.Type.BOOLEAN) {
+			if (query.return_type != GLib.Type.NONE && query.return_type != GLib.Type.INVALID) {
+				ret = GLib.Value(query.return_type);
 				Signals.emitv(vals, signal_id, detail, &ret);
 			} else {
 				Signals.emitv(vals, signal_id, detail, null);
@@ -456,6 +486,9 @@ namespace Shell
 				closure.sink();
 			}
 			OLLMrpc.Bin.TypeOverride.release_params(query.param_types);
+			if (returns != null && query.return_type != GLib.Type.NONE && query.return_type != GLib.Type.INVALID) {
+				returns.add(ret);
+			}
 			var result = query.return_type == GLib.Type.BOOLEAN && ret.get_boolean();
 			Signals.emit_depth--;
 			Signals.drain_notifs();

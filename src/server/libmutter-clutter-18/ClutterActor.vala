@@ -168,6 +168,10 @@ namespace Gsr.Server.Clutter
 		 * replies once after the list. An empty name or a missing
 		 * lease is ''-32602'' and no success reply. A name in the
 		 * switch sets {@link OLLMrpc.Live.Subscription.blocking}.
+		 * {@code reset-keymap-description} and
+		 * {@code reset-keymap-layout-index} are connected here: their
+		 * returns are a description and a group index, and the stock
+		 * subscription only copies a boolean.
 		 *
 		 * @param request inbound RPC
 		 * @param names signal or ''notify::'' property
@@ -175,6 +179,64 @@ namespace Gsr.Server.Clutter
 		public void add_signals(OLLMrpc.Request request, string[] names)
 		{
 			for (var i = 0; i < names.length; i++) {
+				switch (names[i]) {
+					case "reset-keymap-description":
+					case "reset-keymap-layout-index":
+						var backend = request.connection.leases.get((int) request.lease_id) as global::Meta.Backend;
+						if (backend == null) {
+							request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+							return;
+						}
+						if (backend.get_data<string>("gsr-keymap-resets") == null) {
+							backend.set_data<string>("gsr-keymap-resets", "1");
+							var connection = request.connection;
+							var lease_id = (int) request.lease_id;
+							var ask = (string signal_name) => {
+								var notif = new OLLMrpc.Notification() {
+									method = signal_name,
+									id = lease_id,
+									args = new Gee.ArrayList<GLib.Value?>()
+								};
+								var waiter = new OLLMrpc.Live.Hook() {
+									connection = connection
+								};
+								waiter.id = connection.next_handle;
+								connection.next_handle++;
+								connection.callbacks.set(waiter.id, waiter);
+								waiter.reply_id = connection.next_handle;
+								notif.reply_id = waiter.reply_id;
+								connection.next_handle++;
+								connection.write(notif);
+								while (!waiter.replied && connection.running) {
+									connection.emit_wait_poll();
+								}
+								connection.callbacks.unset(waiter.id);
+								return waiter.reply_args;
+							};
+							backend.reset_keymap_description.connect(() => {
+								var reply = ask("reset-keymap-description");
+								if (reply.size < 1 || !reply.get(0).holds(GLib.Type.UINT64)) {
+									return null;
+								}
+								var row = connection.leases.get((int) reply.get(0).get_uint64()) as Gsr.Server.Meta.Keymap;
+								if (row == null || row.desc == null) {
+									return null;
+								}
+								return row.desc.ref();
+							});
+							backend.reset_keymap_layout_index.connect(() => {
+								var reply = ask("reset-keymap-layout-index");
+								if (reply.size < 1 || !reply.get(0).holds(GLib.Type.UINT)) {
+									return (uint) 0;
+								}
+								return reply.get(0).get_uint();
+							});
+						}
+						continue;
+
+					default:
+						break;
+				}
 				var subscription = new OLLMrpc.Live.Subscription() {
 					connection = request.connection,
 					method = names[i],
@@ -197,6 +259,8 @@ namespace Gsr.Server.Clutter
 					case "long-press":
 					case "recognize":
 					case "may-recognize":
+					case "keymap-changed":
+					case "keymap-layout-group-changed":
 						subscription.blocking = true;
 						break;
 
