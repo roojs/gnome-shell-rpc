@@ -1,6 +1,6 @@
 # Mutter 18 deploy testing — shell does not stay up
 
-**Status:** Closed 2026-11-03 23:17. Fixed and proven on the local Ubuntu 26.04 guest `alan@192.168.122.115`. The clean, uninstrumented Shell-50.1 session stayed up for the full 40-second prove, reached RPC 14222, and was stopped only by the scripted timeout. No new `gsr-client` core was created. The subsequent full guest build passes.
+**Status:** ✔️ archived 2026-11-05. Closed 2026-11-03 23:17. Fixed and proven on the local Ubuntu 26.04 guest `alan@192.168.122.115`. The clean, uninstrumented Shell-50.1 session stayed up for the full 40-second prove, reached RPC 14222, and was stopped only by the scripted timeout. No new `gsr-client` core was created. The subsequent full guest build passes.
 
 The guest's subsequent full build also passes. `gi-rpc-mock` initially failed because its API-2 GIRepository package had no matching Vala API search directory; adding the project `vapi/` directory to that target's `vala_args` fixes the targeted build and the full 474-step build.
 
@@ -10,7 +10,7 @@ Shell 50.1 also connects `ShellEdgeDragGesture::progress`, a real stock `void(fl
 
 The GJS 1.88.0 `std::length_error` cores were secondary teardown diagnostics after startup rejection: `gjs_dumpstack_string()` underflows `out.size() - 2` when no contexts remain. They do not occur in the clean landing prove. The prove uses `GSR_TYPELIB_DIR=build/src`; tty2 and the tty3 getty units are restored afterward.
 
-This is the handoff for the Ubuntu 26.04 / Mutter 18 / Shell 50 deploy. Phase 1 of [`docs/plans/0.9-multi-shell-series.md`](../plans/0.9-multi-shell-series.md). The GitHub 26.04 package job has not been started. `debian/control` and the RPM spec still depend on mutter 16 / gnome-shell 48.
+This is the handoff for the Ubuntu 26.04 / Mutter 18 / Shell 50 deploy. Phase 1 of [`docs/plans/0.9-multi-shell-series.md`](../../plans/0.9-multi-shell-series.md). The GitHub 26.04 package job has not been started. `debian/control` and the RPM spec still depend on mutter 16 / gnome-shell 48.
 
 ## Guest
 

@@ -1338,14 +1338,14 @@ test(
 # struct helper is privately named clutter_margin_dup. The public stock
 # symbol must exist when GJS copies an app-grid Margin boxed property.
 clutter_margin_build_src = meson.project_build_root() / 'src'
-clutter_margin_shell_lib = clutter_margin_build_src / ('libshell-' + mutter_api_version + '.so')
+clutter_margin_shell_lib = shell_build_dir / ('libshell-' + mutter_api_version + '.so')
 test(
   'clutter-margin-copy',
   find_program('gjs'),
   args: [files('clutter-margin-copy-gate.js'), mutter_api_version],
   env: [
     'GI_TYPELIB_PATH=' + clutter_margin_build_src + ':' + mutter_typelib_dir,
-    'LD_LIBRARY_PATH=' + clutter_margin_build_src + ':' + ocrpc_libdir,
+    'LD_LIBRARY_PATH=' + client_lib_rpath + ':' + ocrpc_libdir,
     'LD_PRELOAD=' + clutter_margin_shell_lib,
   ],
   depends: [clutter_rpc_typelib, mutter_clutter_rpc_lib, shell_gi_lib],
@@ -1359,11 +1359,14 @@ st_fade_margins_abi_gate = executable(
   'st-scroll-view-fade-margins-abi-gate',
   'st-scroll-view-fade-margins-abi-gate.c',
   c_args: [
-    '-I' + (meson.project_build_root() / 'src'),
+    '-I' + gsr_rpc_build_dir,
+    '-I' + clutter_rpc_build_dir,
+    '-I' + st_rpc_build_dir,
     '-include', 'mutter-clutter-rpc-' + mutter_api_version + '.h',
     '-include', 'st-rpc-' + mutter_api_version + '.h',
     '-Werror=incompatible-pointer-types',
   ],
+  link_with: [mutter_clutter_rpc_lib, st_rpc_lib],
   include_directories: include_directories(
     '../../src/client/libst-rpc-16',
     '../../src/client/libmutter-clutter-rpc-16',

@@ -1,6 +1,6 @@
 # Debug logging is enabled in every installed session
 
-**Status:** Landed. The binaries already default `--debug` off and expose an explicit `--debug` flag. The installed systemd unit and legacy application descriptor used to defeat that default by always starting `gsr-server --debug`; the server then starts `gsr-client --debug`. The normal GDM entry is quiet, GDM also registers `GNOME Shell RPC (Debug)`, and the quiet logger returns before timestamp formatting. The new session files are in the Meson install, the RPM `%files` list, and the Debian and RPM package-content checks.
+**Status:** ✔️ archived 2026-11-05. User asked to archive it. Landed. The binaries already default `--debug` off and expose an explicit `--debug` flag. The installed systemd unit and legacy application descriptor used to defeat that default by always starting `gsr-server --debug`; the server then starts `gsr-client --debug`. The normal GDM entry is quiet, GDM also registers `GNOME Shell RPC (Debug)`, and the quiet logger returns before timestamp formatting. The new session files are in the Meson install, the RPM `%files` list, and the Debian and RPM package-content checks.
 
 ## Current behaviour
 
@@ -372,3 +372,4 @@ install_data(
 - 2026-11-05. Read both process option parsers, the shared log handler, both client spawn implementations, the installed systemd unit, and the nested scripts. Confirmed the binaries already default debug off; the installed unit is the default-on source. Confirmed server debug is deliberately inherited by the child and the crash screen already has a client-only `force_debug` path. No product code changed.
 - 2026-11-05. User requested a distinct debug choice at GDM login. Extended the proposal with parallel GDM, gnome-session, application-component, and systemd registrations so the normal entry is quiet and `GNOME Shell RPC (Debug)` explicitly starts both processes with debug enabled.
 - 2026-11-05. Landed the session files, the quiet `ExecStart`/`Exec`, the early return in `debug_log()`, and the Meson install. The same paths are listed in `packaging/rpm/gnome-shell-rpc.spec` and in the Debian and RPM package-content checks. Debian has no separate file list; `debian/rules` installs the Meson destroot.
+- 2026-11-05. User asked to archive. Confirmed the quiet `ExecStart`/`Exec`, the `debug_log()` early return, the debug session files, the Meson install, and the RPM `%files` list are in the tree. Moved to `docs/bugs/done/`.

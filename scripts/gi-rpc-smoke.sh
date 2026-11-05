@@ -6,6 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD="${GI_RPC_SMOKE_BUILD:-$ROOT/build}"
 BINDIR="$BUILD/src"
+MOCK="$BUILD/tests/gi-rpc-mock/gi-rpc-mock"
 OCRPC_LIBDIR="${GI_RPC_SMOKE_OCRPC_LIBDIR:-$HOME/gitlive/OLLMchat/build/libocrpc}"
 GNOME_SHELL_PKGLIBDIR="${GNOME_SHELL_PKGLIBDIR:-/usr/lib/gnome-shell}"
 MUTTER_TL="$(pkg-config --variable=typelibdir libmutter-18 2>/dev/null || pkg-config --variable=typelibdir libmutter-16 2>/dev/null || true)"
@@ -68,7 +69,7 @@ client_env() {
 
 require_bins() {
 	local miss=0
-	for bin in "$BINDIR/gi-rpc-mock" "$BINDIR/gsr-client" "$BINDIR/gsr-smoke"; do
+	for bin in "$MOCK" "$BINDIR/gsr-client" "$BINDIR/gsr-smoke"; do
 		if [[ ! -x "$bin" ]]; then
 			echo "$(basename "$0"): missing $bin (meson build?)" >&2
 			miss=1
@@ -84,7 +85,7 @@ require_bins() {
 cmd_server() {
 	require_bins
 	server_env
-	exec "$BINDIR/gi-rpc-mock" --debug "$@"
+	exec "$MOCK" --debug "$@"
 }
 
 # Empty = gnome-shell-rpc default (resource:///org/gnome/shell/ui/init.js).
@@ -125,7 +126,7 @@ cmd_run() {
 	fi
 	rm -f "$SOCKET"
 	server_env
-	"$BINDIR/gi-rpc-mock" --debug &
+	"$MOCK" --debug &
 	GI_RPC_SMOKE_SRV_PID=$!
 	trap kill_mock_server EXIT
 	local i

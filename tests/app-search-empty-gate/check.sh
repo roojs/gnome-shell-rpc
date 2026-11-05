@@ -42,5 +42,9 @@ ld="$bindir"
 if [ -n "$ocrpc_libdir" ]; then
 	ld="$bindir:$ocrpc_libdir"
 fi
+libdirs=${8:-}
+if [ -n "$libdirs" ]; then
+	ld="$ld:$libdirs"
+fi
 export LD_LIBRARY_PATH="$ld${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 exec gjs -m "$js"

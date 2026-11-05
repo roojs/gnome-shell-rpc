@@ -9,6 +9,7 @@ test(
     mutter_typelib_dir,
     files('check.js'),
     ocrpc_for_test,
+    client_lib_rpath,
   ],
   depends: [clutter_rpc_typelib, st_rpc_typelib],
 )

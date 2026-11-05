@@ -100,7 +100,7 @@ Main artifacts under `build/src/`:
 | --- | --- |
 | `gsr-server` | Compositor binary (mutter plugin) |
 | `gsr-client` | Shell client (GJS + gresource compiled from `vendor/gnome-shell/js`) |
-| `build/gjs-embed` | **Temporary** test GJS host (manual smokes only) |
+| `build/tests/gjs-embed/gjs-embed` | **Temporary** test GJS host (manual smokes only) |
 | `libmutter-rpc-16.so` | Client Meta stubs (RPC to plugin) |
 | `Meta-16.typelib` | GI typelib → `libmutter-rpc-16.so` |
 | `libst-rpc-16.so` | Client St stubs (RPC to server libst) |
@@ -191,7 +191,7 @@ export LD_LIBRARY_PATH=$PWD/build/src${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 Or with the temporary test host:
 
 ```bash
-./build/gjs-embed --debug tests/gjs-embed/mutter-rpc-load.js
+./build/tests/gjs-embed/gjs-embed --debug tests/gjs-embed/mutter-rpc-load.js
 ```
 
 `mutter-rpc-load.js` checks that `Meta` resolves to `libmutter-rpc-16.so`, not distro `libmutter-16`.
