@@ -28,8 +28,7 @@ namespace Gsr.Server.Meta
 			if (uri == "") {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error((int) OLLMrpc.RpcErrorCode.INVALID_PARAMS, 
-						"play_from_file requires a file uri"),
+					error = new OLLMrpc.Error.INVALID_PARAMS("play_from_file requires a file uri"),
 				});
 				return;
 			}

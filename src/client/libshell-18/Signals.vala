@@ -1,0 +1,489 @@
+/**
+ * gnome-shell-rpc named-signal subscribe and client re-emit (not stock Shell).
+ *
+ * {@code connect} does not {@code g_signal_connect}. Local handlers are
+ * attached by the GJS wrap ({@code orig.connect}) or by Vala stubs. This
+ * class records the name, tells the server
+ * {@code Gsr-Clutter-Actor.add_signals}, and re-emits on Notification.
+ *
+ * Two different ints:
+ *
+ * - GJS handler id — what {@code orig.connect} returned, what
+ *   {@code obj.disconnect(id)} takes. Parameter {@code gjs_handler_id}.
+ * - Our handler id — minted by {@link next_handler_id} because this class
+ *   never registered a GLib signal, so it has no native id of its own.
+ *
+ * GJS wrap: {@code connect(obj, name, gjs_handler_id)} then
+ * {@code disconnect_id(obj, gjs_handler_id)}. Vala stubs still call
+ * {@link Gsr.Client.Rpc.ensure_signal_subscribe}
+ * (C trampoline — mutter-rpc / st-rpc cannot link shell-gi).
+ */
+namespace Shell
+{
+	public class Signals : GLib.Object
+	{
+		/**
+		 * Per lease: signal name → our handler id ({@link next_handler_id}).
+		 *
+		 * First connect of a name sends ''Gsr-Clutter-Actor.add_signals''.
+		 * Notifications re-emit when {@code has_key(notif.method)}.
+		 * Created on the first {@link connect}.
+		 FIXME = SIGNALS SHOULD BE ID BASED ON THE WIRE - NOT STRINGS (AFTER REGISTRAITON)
+		 */
+		private static Gee.HashMap<int, Gee.HashMap<string, int>>? subs;
+
+		/**
+		 * Our handler id → how many local {@code .connect()}s share that name.
+		 *
+		 * Last drop (count 0) sends ''RPC-Live-Subscribe.unsubscribe''.
+		 * Created on the first {@link connect}, with {@link subs}.
+		 */
+		private static Gee.HashMap<int, int>? refs;
+
+		/**
+		 * True after the notification handler is connected.
+		 *
+		 * The first {@link connect} that reaches the wire sets this.
+		 * Later connects leave it set.
+		 */
+		private static bool notification_hooked = false;
+
+		/**
+		 * How many {@link emit} calls are still running.
+		 *
+		 * A one-way notification that arrives while this is
+		 * above zero waits in {@link held_notifs}.
+		 */
+		private static int emit_depth = 0;
+
+		/**
+		 * One-way notifications that arrived during {@link emit}.
+		 *
+		 * Created with the other tables on the first {@link connect}.
+		 * Delivered when the outermost {@link emit} returns. A
+		 * notification the server is waiting for is not queued.
+		 */
+		private static Gee.ArrayList<OLLMrpc.Notification>? held_notifs;
+
+		/**
+		 * Signal names an actor has collected and not sent yet.
+		 *
+		 * Empty on a later {@link connect}. That connect clears the
+		 * list. Every connect sends that array as
+		 * ''Gsr-Clutter-Actor.add_signals''. One name is still an array.
+		 */
+		[CCode (cname = "shell_signals_pending_signals")]
+		public static string[] pending_signals = {};
+
+		/**
+		 * Allocated length of {@link pending_signals}.
+		 *
+		 * The clutter stub writes this when it replaces the array.
+		 */
+		[CCode (cname = "_shell_signals_pending_signals_size_")]
+		public static int pending_signals_size;
+
+		/**
+		 * GJS id map. Per lease: GJS handler id → our handler id.
+		 *
+		 * {@code obj.disconnect(id)} only has the GJS id. Int-to-int so that
+		 * path never looks up by name.
+		 */
+		private static Gee.HashMap<int, Gee.HashMap<int, int>>? gjs_ids = null;
+
+		/**
+		 * Next of our handler ids, for a new named subscribe.
+		 *
+		 * GJS keeps its own id from {@code orig.connect} for
+		 * {@code obj.disconnect}; Vala stubs pass {@code gjs_handler_id} 0.
+		 * We mint ours so {@link refs} can key off an int (the name table is
+		 * the FIXME). 0 is reserved: no lease.
+		 */
+		private static int next_handler_id = 1;
+
+		[CCode (cname = "g_signal_emitv", cheader_filename = "glib-object.h")]
+		private static extern void emitv(
+			[CCode (array_length = false)] GLib.Value[] instance_and_params,
+			uint signal_id,
+			GLib.Quark detail,
+			void* return_value);
+
+		[CCode (cname = "g_signal_type_cclosure_new", cheader_filename = "glib-object.h")]
+		private static extern unowned GLib.Closure type_cclosure(GLib.Type itype, uint struct_offset);
+
+		/**
+		 * Not in the Vala GObject vapi. {@link GLib.Closure.set_marshal}
+		 * takes a {@link GLib.ClosureMarshal}.
+		 */
+		[CCode (cname = "g_cclosure_marshal_generic", cheader_filename = "glib-object.h")]
+		private static extern void marshal_generic(
+			GLib.Closure closure,
+			out GLib.Value return_value,
+			[CCode (array_length_cname = "n_param_values", array_length_pos = 2.5, array_length_type = "guint")] GLib.Value[] param_values,
+			void* invocation_hint,
+			void* marshal_data);
+
+		/**
+		 * {@code RPC-Live-Subscribe} is the leased C object, not the GJS
+		 * subclass. {@code registerClass} signals ({@code activate} on a
+		 * BoxLayout item, {@code menu-set}, …) stay local — connecting them
+		 * on the peer is {@code signal is invalid}, hid 0, then teardown
+		 * {@code g_signal_handler_disconnect} asserts.
+		 */
+		private static bool exists_on_peer(GLib.Object obj, string signal_name)
+		{
+			var t = obj.get_type();
+			while (t != GLib.Type.INVALID) {
+				unowned string n = t.name();
+				if (n.has_prefix("Gjs_")) {
+					t = t.parent();
+					continue;
+				}
+				uint signal_id = 0;
+				GLib.Quark detail = 0;
+				return GLib.Signal.parse_name(signal_name, t, out signal_id, out detail, false) && signal_id != 0;
+			}
+			return false;
+		}
+
+		/**
+		 * Subscribe ''signal_name'' on the peer, or every name in
+		 * {@link pending_signals} when that list is not empty.
+		 *
+		 * The list is cleared first. The requested name is sent
+		 * with that list when the list does not already contain
+		 * it. A name already in {@link subs} only bumps {@link refs}.
+		 *
+		 * @param obj leased stub
+		 * @param signal_name signal or ''notify::'' property
+		 * @param gjs_handler_id GJS handler id, or 0 from Vala
+		 * @return our handler id, or 0 when the peer has no lease
+		 */
+		/**
+		 * Create the static tables once.
+		 *
+		 * Called from {@link connect} before those tables are
+		 * used. Later calls return.
+		 */
+		private static void init()
+		{
+			if (Signals.subs != null) {
+				return;
+			}
+			Signals.subs = new Gee.HashMap<int, Gee.HashMap<string, int>>();
+			Signals.refs = new Gee.HashMap<int, int>();
+			Signals.gjs_ids = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+			Signals.held_notifs = new Gee.ArrayList<OLLMrpc.Notification>();
+		}
+
+		[CCode (cname = "shell_signals_connect")]
+		public static int connect(GLib.Object obj, string signal_name, int gjs_handler_id = 0)
+		{
+			// HACK - if this increases we need to look for alterntives
+			if (signal_name == "init-xserver") {
+				return 0;
+			}
+			Gsr.Client.Rpc.register();
+			var handle = obj as OLLMrpc.Live.Interface;
+			if (handle == null || handle.rpc_lid == 0) {
+				return 0;
+			}
+			if (!Signals.exists_on_peer(obj, signal_name)) {
+				return 0;
+			}
+			var lid = (int) handle.rpc_lid;
+			Signals.init();
+			if (Signals.subs.has_key(lid) && Signals.subs.get(lid).has_key(signal_name)) {
+				var hid = Signals.subs.get(lid).get(signal_name);
+				Signals.refs.set(hid, Signals.refs.get(hid) + 1);
+				if (gjs_handler_id != 0) {
+					if (!Signals.gjs_ids.has_key(lid)) {
+						Signals.gjs_ids.set(lid, new Gee.HashMap<int, int>());
+					}
+					Signals.gjs_ids.get(lid).set(gjs_handler_id, hid);
+				}
+				return hid;
+			}
+			string[] signal_names = { signal_name };
+			if (Signals.pending_signals.length > 0) {
+				var queued = Signals.pending_signals;
+				Signals.pending_signals = {};
+				var listed = false;
+				foreach (var queued_name in queued) {
+					if (queued_name == signal_name) {
+						listed = true;
+						break;
+					}
+				}
+				signal_names = new string[queued.length + 1];
+				signal_names[0] = signal_name;
+				for (var i = 0; i < queued.length; i++) {
+					signal_names[i + 1] = queued[i];
+				}
+				if (listed) {
+					signal_names = queued;
+				}
+			}
+			Gsr.Client.Rpc.client.proxies.set(lid, obj);
+			Gsr.Client.Rpc.call_value("Gsr-Clutter-Actor.add_signals", obj, OLLMrpc.args("S", signal_names));
+			if (!Signals.notification_hooked) {
+				Signals.notification_hooked = true;
+				Gsr.Client.Rpc.client.notification.connect((notif) => {
+					if (!Signals.subs.has_key(notif.id) || !Signals.subs.get(notif.id).has_key(notif.method)) {
+						return;
+					}
+					if (!Gsr.Client.Rpc.client.proxies.has_key(notif.id)) {
+						return;
+					}
+					var target = Gsr.Client.Rpc.client.proxies.get(notif.id);
+					if (notif.reply_id == 0 && Signals.emit_depth > 0) {
+						Signals.held_notifs.add(notif);
+						return;
+					}
+					if (notif.reply_id == 0) {
+						Signals.emit(target, notif.method, notif.args);
+						return;
+					}
+					var returned = new Gee.ArrayList<GLib.Value?>();
+					Signals.emit(target, notif.method, notif.args, returned);
+					if (returned.size < 1) {
+						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("tb", (uint64) notif.reply_id, false));
+						return;
+					}
+					if (returned.get(0).holds(GLib.Type.BOOLEAN)) {
+						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("tb", (uint64) notif.reply_id, returned.get(0).get_boolean()));
+						return;
+					}
+					if (returned.get(0).holds(GLib.Type.UINT)) {
+						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("tu", (uint64) notif.reply_id, returned.get(0).get_uint()));
+						return;
+					}
+					if (returned.get(0).holds(GLib.Type.OBJECT) && returned.get(0).get_object() is Meta.KeymapDescription) {
+						var description = (Meta.KeymapDescription) returned.get(0).get_object();
+						Gsr.Client.Rpc.call_value("Gsr-Mutter-Keymap.reply_description", null,
+							OLLMrpc.args("tt", (uint64) notif.reply_id, description.rpc_lid));
+						return;
+					}
+					if (returned.get(0).holds(GLib.Type.OBJECT)) {
+						var face = returned.get(0).get_object() as OLLMrpc.Live.Interface;
+						var handle_id = (uint64) 0;
+						if (face != null) {
+							handle_id = face.rpc_lid;
+						}
+						Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+							OLLMrpc.args("tt", (uint64) notif.reply_id, handle_id));
+						return;
+					}
+					Gsr.Client.Rpc.call_value("RPC-Live-Callback.reply", null,
+						OLLMrpc.args("tb", (uint64) notif.reply_id, false));
+				});
+			}
+			var hid = 0;
+			foreach (var name in signal_names) {
+				if (!Signals.subs.has_key(lid)) {
+					Signals.subs.set(lid, new Gee.HashMap<string, int>());
+				}
+				hid = Signals.next_handler_id++;
+				Signals.subs.get(lid).set(name, hid);
+				Signals.refs.set(hid, 1);
+				if (gjs_handler_id == 0 || name != signal_name) {
+					continue;
+				}
+				if (!Signals.gjs_ids.has_key(lid)) {
+					Signals.gjs_ids.set(lid, new Gee.HashMap<int, int>());
+				}
+				Signals.gjs_ids.get(lid).set(gjs_handler_id, hid);
+			}
+			return hid;
+		}
+
+		[CCode (cname = "shell_signals_disconnect")]
+		public static void disconnect(GLib.Object obj, string signal_name)
+		{
+			var handle = obj as OLLMrpc.Live.Interface;
+			if (handle == null || handle.rpc_lid == 0 || Signals.subs == null) {
+				return;
+			}
+			var lid = (int) handle.rpc_lid;
+			if (!Signals.subs.has_key(lid)	|| !Signals.subs.get(lid).has_key(signal_name)) {
+				return;
+			}
+			var hid = Signals.subs.get(lid).get(signal_name);
+			var n = Signals.refs.get(hid) - 1;
+			if (n > 0) {
+				Signals.refs.set(hid, n);
+				return;
+			}
+			Gsr.Client.Rpc.call_value("RPC-Live-Subscribe.unsubscribe", obj,
+				OLLMrpc.args("s", signal_name));
+			Signals.refs.unset(hid);
+			Signals.subs.get(lid).unset(signal_name);
+		}
+
+		[CCode (cname = "shell_signals_disconnect_id")]
+		public static void disconnect_id(GLib.Object obj, int gjs_handler_id)
+		{
+			var handle = obj as OLLMrpc.Live.Interface;
+			if (handle == null || handle.rpc_lid == 0 || Signals.gjs_ids == null) {
+				return;
+			}
+			var lid = (int) handle.rpc_lid;
+			if (!Signals.gjs_ids.has_key(lid) || !Signals.gjs_ids.get(lid).has_key(gjs_handler_id)) {
+				return;
+			}
+			var hid = Signals.gjs_ids.get(lid).get(gjs_handler_id);
+			Signals.gjs_ids.get(lid).unset(gjs_handler_id);
+			var n = Signals.refs.get(hid) - 1;
+			if (n > 0) {
+				Signals.refs.set(hid, n);
+				return;
+			}
+			var table = Signals.subs.get(lid);
+			var signal_name = "";
+			foreach (var name in table.keys) {
+				if (table.get(name) == hid) {
+					signal_name = name;
+					break;
+				}
+			}
+			Gsr.Client.Rpc.call_value("RPC-Live-Subscribe.unsubscribe", obj,
+				OLLMrpc.args("s", signal_name));
+			Signals.refs.unset(hid);
+			table.unset(signal_name);
+		}
+
+		/**
+		 * Deliver one-way notifications queued during {@link emit}.
+		 *
+		 * Runs only when no {@link emit} is still open. Each
+		 * delivery may queue more, and those are delivered
+		 * before this returns.
+		 */
+		private static void drain_notifs()
+		{
+			if (Signals.emit_depth != 0 || Signals.held_notifs == null) {
+				return;
+			}
+			while (Signals.held_notifs.size > 0) {
+				var held = Signals.held_notifs.get(0);
+				Signals.held_notifs.remove_at(0);
+				if (Signals.subs == null || !Signals.subs.has_key(held.id) || !Signals.subs.get(held.id).has_key(held.method)) {
+					continue;
+				}
+				if (!Gsr.Client.Rpc.client.proxies.has_key(held.id)) {
+					continue;
+				}
+				Signals.emit(Gsr.Client.Rpc.client.proxies.get(held.id), held.method, held.args);
+			}
+		}
+
+		private static bool emit(
+			GLib.Object obj,
+			string signal_name,
+			Gee.ArrayList<GLib.Value?> args,
+			Gee.ArrayList<GLib.Value?>? returns = null
+		) {
+			Signals.emit_depth++;
+			uint signal_id = 0;
+			GLib.Quark detail = 0;
+			if (!GLib.Signal.parse_name(signal_name, obj.get_type(), out signal_id, out detail, false) || signal_id == 0) {
+				Signals.emit_depth--;
+				Signals.drain_notifs();
+				return false;
+			}
+			GLib.SignalQuery query;
+			GLib.Signal.query(signal_id, out query);
+			var n = 1 + (int) query.n_params;
+			var vals = new GLib.Value[n];
+			vals[0] = GLib.Value(obj.get_type());
+			vals[0].set_object(obj);
+			for (var i = 0; i < (int) query.n_params; i++) {
+				vals[i + 1] = GLib.Value(query.param_types[i]);
+			}
+			var fields = args;
+			if (fields == null) {
+				fields = new Gee.ArrayList<GLib.Value?>();
+			}
+			OLLMrpc.Bin.TypeOverride.fill_params(query.param_types, fields, vals);
+			for (var i = 0; i < (int) query.n_params; i++) {
+				if (query.param_types[i] != typeof(Clutter.Frame)) {
+					continue;
+				}
+				if (vals[i + 1].get_boxed() != null) {
+					continue;
+				}
+				vals[i + 1].set_boxed(new Clutter.Frame());
+			}
+			var ret = GLib.Value(GLib.Type.BOOLEAN);
+			if (query.return_type != GLib.Type.NONE && query.return_type != GLib.Type.INVALID) {
+				ret = GLib.Value(query.return_type);
+				Signals.emitv(vals, signal_id, detail, &ret);
+			} else {
+				Signals.emitv(vals, signal_id, detail, null);
+			}
+			/*
+			 * Never skip a signal by name here. g_signal_new was
+			 * passed 0, so emitv does not call the class method.
+			 * type_cclosure reads the function at this offset, then
+			 * calls closure.marshal. That field is unset, so the
+			 * call jumps to address 0 whenever the class function
+			 * is non-null. A null class function returns inside the
+			 * meta marshaller and looks fine, which is why gating
+			 * on a name hid this.
+			 */
+			var vfunc_name = signal_name.replace("-", "_");
+			var leaf = obj.get_type();
+			var scan = leaf.parent();
+			var offset = -1;
+			while (scan != GLib.Type.INVALID && offset < 0) {
+				if (OLLMrpc.Bin.gtype_to_alias == null || !OLLMrpc.Bin.gtype_to_alias.has_key(scan)) {
+					scan = scan.parent();
+					continue;
+				}
+				var alias = OLLMrpc.Bin.gtype_to_alias.get(scan);
+				var dot = alias.index_of("-");
+				if (dot < 0) {
+					scan = scan.parent();
+					continue;
+				}
+				var ns = alias.substring(0, dot);
+				var class_name = alias.substring(dot + 1);
+				foreach (var name in OLLMrpc.Gi.vfunc_names(ns, class_name)) {
+					if (name != vfunc_name) {
+						continue;
+					}
+					if (OLLMrpc.Gi.vfunc_slot(leaf, ns, class_name, name) == OLLMrpc.Gi.vfunc_slot(scan, ns, class_name, name)) {
+						continue;
+					}
+				
+					offset = OLLMrpc.Gi.vfunc_offset(ns, class_name, name);
+					break;
+				}
+				scan = scan.parent();
+			}
+			if (offset >= 0) {
+				/*
+				 * type_cclosure is floating, one ref. sink() unrefs
+				 * that and frees it. invoke() then g_closure_ref's
+				 * a dead closure (ref_count > 0). Invoke first.
+				 */
+				unowned GLib.Closure closure = Signals.type_cclosure(leaf, (uint) offset);
+				closure.set_marshal((GLib.ClosureMarshal) Signals.marshal_generic);
+				GLib.Value none = {};
+				closure.invoke(ref none, vals);
+				closure.sink();
+			}
+			OLLMrpc.Bin.TypeOverride.release_params(query.param_types);
+			if (returns != null && query.return_type != GLib.Type.NONE && query.return_type != GLib.Type.INVALID) {
+				returns.add(ret);
+			}
+			var result = query.return_type == GLib.Type.BOOLEAN && ret.get_boolean();
+			Signals.emit_depth--;
+			Signals.drain_notifs();
+			return result;
+		}
+	}
+}

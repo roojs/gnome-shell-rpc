@@ -73,10 +73,7 @@ namespace Gsr.Server.Clutter
 			if (!request.connection.callbacks.has_key((int) callback_id)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"unknown callback id"
-					),
+					error = new OLLMrpc.Error.INVALID_PARAMS("unknown callback id"),
 				});
 				return;
 			}
@@ -134,10 +131,7 @@ namespace Gsr.Server.Clutter
 			if (!request.connection.callbacks.has_key((int) callback_id)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"unknown callback id"
-					),
+					error = new OLLMrpc.Error.INVALID_PARAMS("unknown callback id"),
 				});
 				return;
 			}
@@ -145,10 +139,7 @@ namespace Gsr.Server.Clutter
 			if (!request.connection.leases.has_key(id)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"unknown constraint lease"
-					),
+					error = new OLLMrpc.Error.INVALID_PARAMS("unknown constraint lease"),
 				});
 				return;
 			}
@@ -156,10 +147,7 @@ namespace Gsr.Server.Clutter
 			if (base_constraint == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-						"lease is not Helper.Constraint"
-					),
+					error = new OLLMrpc.Error.INVALID_PARAMS("lease is not Helper.Constraint"),
 				});
 				return;
 			}

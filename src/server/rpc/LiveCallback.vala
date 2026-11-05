@@ -66,6 +66,35 @@ namespace Gsr.Server
 		}
 
 		/**
+		 * Complete the Hook or Subscription waiting on one reply id.
+		 *
+		 * Hook emits use {@link OLLMrpc.Live.Hook.complete}; named-signal
+		 * subscriptions keep the older row-wide reply fields.
+		 */
+		public static bool complete(
+			OLLMrpc.Transport.Connection connection,
+			int correlation,
+			Gee.ArrayList<GLib.Value?> values
+		) {
+			foreach (var id in connection.callbacks.keys) {
+				var row = connection.callbacks.get(id);
+				if (row.complete(correlation, values)) {
+					return true;
+				}
+				if (row.reply_id != correlation) {
+					continue;
+				}
+				row.reply_args.clear();
+				foreach (var arg in values) {
+					row.reply_args.add(arg);
+				}
+				row.replied = true;
+				return true;
+			}
+			return false;
+		}
+
+		/**
 		 * Complete one Hook wait. Success: args after {@code reply_id} →
 		 * {@code reply_args}. Error: one INT ({@link OLLMrpc.RpcErrorCode})
 		 * → Hook gets {@link OLLMrpc.Error}, client {@link reply_error}.
@@ -96,26 +125,7 @@ namespace Gsr.Server
 				}
 			}
 
-			/* Route by waiting reply_id — nested emits share a row
-			 * (OLLMrpc.Live.Hook.complete). */
-			foreach (var id in request.connection.callbacks.keys) {
-				var row = request.connection.callbacks.get(id);
-				if (row.complete(correlation, values)) {
-					if (error_code != 0) {
-						request.connection.reply_error(request, error_code);
-						return;
-					}
-					request.reply(new OLLMrpc.Response());
-					return;
-				}
-				if (row.reply_id != correlation) {
-					continue;
-				}
-				row.reply_args.clear();
-				foreach (var arg in values) {
-					row.reply_args.add(arg);
-				}
-				row.replied = true;
+			if (LiveCallback.complete(request.connection, correlation, values)) {
 				if (error_code != 0) {
 					request.connection.reply_error(request, error_code);
 					return;

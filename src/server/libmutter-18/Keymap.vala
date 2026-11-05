@@ -26,6 +26,7 @@ namespace Gsr.Server.Meta
 				"new_from_rules", "ssssasas",
 				"is_locked", "",
 				"direct_equal", "t",
+				"reply_description", "tt",
 				null
 			);
 			OLLMrpc.Request.add_class(
@@ -112,6 +113,40 @@ namespace Gsr.Server.Meta
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("b", row.desc.direct_equal(other.desc)),
+			});
+		}
+
+		/**
+		 * ''Gsr-Mutter-Keymap.reply_description'' — resolve the client proxy
+		 * lease back to the boxed value expected by
+		 * {@code MetaBackend::reset-keymap-description}.
+		 *
+		 * @param reply_id blocking subscription correlation id
+		 * @param desc_lid lease of the returned description
+		 */
+		public void reply_description(
+			OLLMrpc.Request request,
+			uint64 reply_id,
+			uint64 desc_lid
+		) {
+			var row = request.connection.leases.get((int) desc_lid) as Keymap;
+			if (row == null || row.desc == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var boxed = GLib.Value(typeof(global::Meta.KeymapDescription));
+			boxed.set_boxed(row.desc);
+			var values = new Gee.ArrayList<GLib.Value?>();
+			values.add(boxed);
+			if (!Gsr.Server.LiveCallback.complete(
+					request.connection, (int) reply_id, values)) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
 			});
 		}
 

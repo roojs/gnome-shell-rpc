@@ -929,6 +929,7 @@ st_generated = custom_target('St_generated.vala',
     'client/libst-rpc-16/overrides/DrawingArea.override.vala',
     'client/libst-rpc-16/overrides/Clipboard.override.vala',
     'client/libst-rpc-16/overrides/DndStartGesture.override.vala',
+    'client/libst-rpc-16/overrides/ScrollViewFade.override.vala',
   ),
   depends: [gi_stub_gen],
   build_by_default: true,
@@ -1065,7 +1066,6 @@ shell_gi_lib = shared_library(
   'shell-' + mutter_api_version,
   files(
     'client/libshell-16/namespace.vala',
-    'client/libshell-16/Signals.vala',
     'client/libshell-16/ClutterEventOverride.vala',
     'client/libshell-16/InputDeviceOverride.vala',
     'client/libshell-16/PickContextOverride.vala',
@@ -1106,8 +1106,11 @@ shell_gi_lib = shared_library(
     'client/libshell-16/TimeChangeSource.vala',
     'client/libshell-16/CameraMonitor.vala',
   ) + (mutter_api_version == '18'
-    ? files('client/libshell-18/EdgeDragGesture.vala')
-    : []),
+    ? files(
+        'client/libshell-18/EdgeDragGesture.vala',
+        'client/libshell-18/Signals.vala',
+      )
+    : files('client/libshell-16/Signals.vala')),
   dependencies: [
     mutter_vapi_dep,
     ocrpc_dep,

@@ -92,6 +92,83 @@ test(
   timeout: 5,
 )
 
+# A blocking non-Boolean GObject signal must copy the typed callback reply
+# into the GClosure return value. This guards the generic libocrpc marshaller.
+subscription_uint_return_gate = executable('subscription-uint-return-gate',
+  [
+    'subscription-uint-return-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+test(
+  'subscription-uint-return',
+  subscription_uint_return_gate,
+  timeout: 5,
+)
+
+# Stock libocrpc Callback.reply must complete the legacy waiter created by a
+# blocking Subscription, without a consumer replacement callback service.
+subscription_stock_callback_reply_gate = executable(
+  'subscription-stock-callback-reply-gate',
+  [
+    'subscription-stock-callback-reply-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+test(
+  'subscription-stock-callback-reply',
+  subscription_stock_callback_reply_gate,
+  timeout: 5,
+)
+
+# A client proxy is a GObject lease, while the signal return is boxed. Resolve
+# the lease on the server and complete the blocking subscription with a typed
+# boxed GValue before libocrpc copies it into the signal return.
+subscription_boxed_lease_return_gate = executable(
+  'subscription-boxed-lease-return-gate',
+  [
+    'subscription-boxed-lease-return-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+test(
+  'subscription-boxed-lease-return',
+  subscription_boxed_lease_return_gate,
+  timeout: 5,
+)
+
 # Shell 50 panel recognize / search may-recognize call get_point_event.
 # Those signals are not in the add_signals blocking switch.
 gesture_recognize_point_gate = executable('gesture-recognize-point-gate',
@@ -1272,6 +1349,36 @@ test(
     'LD_PRELOAD=' + clutter_margin_shell_lib,
   ],
   depends: [clutter_rpc_typelib, mutter_clutter_rpc_lib, shell_gi_lib],
+  timeout: 5,
+)
+
+# Stock St returns a borrowed ClutterMargin pointer. A Vala struct property
+# instead emits void (self, out result), which crashes GJS when exported under
+# the stock symbol name.
+st_fade_margins_abi_gate = executable(
+  'st-scroll-view-fade-margins-abi-gate',
+  'st-scroll-view-fade-margins-abi-gate.c',
+  c_args: [
+    '-I' + (meson.project_build_root() / 'src'),
+    '-include', 'mutter-clutter-rpc-' + mutter_api_version + '.h',
+    '-include', 'st-rpc-' + mutter_api_version + '.h',
+    '-Werror=incompatible-pointer-types',
+  ],
+  include_directories: include_directories(
+    '../../src/client/libst-rpc-16',
+    '../../src/client/libmutter-clutter-rpc-16',
+  ),
+  dependencies: [ocrpc_dep] + mutter_dep + [
+    dependency('gio-2.0'),
+    dependency('cairo'),
+    dependency('gdk-pixbuf-2.0'),
+    dependency('mutter-cogl-' + mutter_api_version),
+  ],
+  install: false,
+)
+test(
+  'st-scroll-view-fade-margins-abi',
+  st_fade_margins_abi_gate,
   timeout: 5,
 )
 

@@ -150,6 +150,21 @@ Two pieces are in `src/meson.build` and do not belong to a client library:
 - Lines 1570–1615 install `data/gsr-session`, the wayland session, the gnome-session file, the desktop file, the systemd user units, and the apport ignore file. A `data/meson.build` entered with `subdir('data')` from the root file installs the same files. `configure_file` for the apport snippet would write `build/data/gnome-shell-rpc` and install from there. Nothing looks that file up in `build/src`.
 - `gtk4_dep` (line 1525) exists so the root file can link `fake-shell`. It can be declared beside `fake-shell`.
 
+## The Shell source split is not the intended version split
+
+The current Shell target has another build-system problem that this work must fix rather than preserve.
+
+`shell_api_define` is not dead. For API 18, `src/meson.build` adds `--define=MUTTER_18` to the Shell target's `vala_args`. `client/libshell-16/Screenshot.vala` consumes it to select between the API 16 and API 18 `paint_to_buffer` signatures.
+
+The target also spells out almost the entire API 16 directory inline and then adds a small API-dependent tail:
+
+- API 16 adds `libshell-16/Signals.vala`.
+- API 18 still compiles the listed `libshell-16` sources, then adds `libshell-18/EdgeDragGesture.vala` and `libshell-18/Signals.vala`.
+
+That is not the intended use of the per-version directories. They exist to keep version differences in selected source files, not in Vala preprocessor branches, and the large inline API 16 list is not the intended source-selection boundary.
+
+The proposed `src/meson/shell/meson.build` extraction must therefore define the Shell source sets according to the version-directory design. It must not copy the current monolithic list plus `shell_api_define` unchanged into a smaller file. In particular, remove the `MUTTER_18` compile define by moving the `Screenshot` signature difference into version-selected source, and make the version ownership of the complete Shell source set explicit in that fragment. Legacy API 16 implementations may remain whole in `libshell-16`; API 18 replacements belong in `libshell-18`.
+
 ## Recommendation
 
 Option B. It is the cut that shortens `src/meson.build` down to an ordered contents list and the targets whose paths the session already hardcodes. Option A is the fallback if a review wants zero build-tree movement, with the open admission that the long `library()` bodies stay put. Option C moves `GSR_TYPELIB_DIR`. Option D scatters the same targets into source directories that do not match the link graph.

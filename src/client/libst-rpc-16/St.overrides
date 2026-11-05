@@ -26,7 +26,3 @@ Widget.get_focus_chain list_elem=Widget
 # from call_poll() and crashes. Remove these when RPC notifications are
 # dispatched outside the active GJS→RPC frame.
 Widget.set_style local_emit_after=emit_style_changed_after_rpc
-
-# Client-local — St.ScrollViewFade is a shell-side effect (no mutter
-# St-ScrollViewFade helper). GJS reads vfade.fade_margins.top.
-ScrollViewFade.fade_margins local=1

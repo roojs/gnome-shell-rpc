@@ -48,6 +48,11 @@ DndStartGesture.start_drag
 DndStartGesture.manual_mode
 DndStartGesture.timeout_threshold
 
+# Stock getter returns a borrowed ClutterMargin*. The hand override keeps the
+# client-local value while preserving that ABI; a Vala struct auto-property
+# would export void (self, out result) under the same symbol.
+ScrollViewFade.fade_margins
+
 # PERMANENT — client stub does not implement these GIR interfaces.
 Atk.ImplementorIface
 Atk.Component

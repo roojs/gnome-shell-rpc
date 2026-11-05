@@ -269,10 +269,7 @@ namespace Gsr.Server.Meta
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				error = new OLLMrpc.Error(
-					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-					"window handle not found"
-				),
+				error = new OLLMrpc.Error.INVALID_PARAMS("window handle not found"),
 			});
 			return null;
 		}

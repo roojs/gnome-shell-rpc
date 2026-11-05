@@ -200,6 +200,8 @@ namespace Gsr.Server.Clutter
 					case "may-recognize":
 					case "keymap-changed":
 					case "keymap-layout-group-changed":
+					case "reset-keymap-description":
+					case "reset-keymap-layout-index":
 						subscription.blocking = true;
 						break;
 

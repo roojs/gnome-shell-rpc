@@ -453,6 +453,40 @@ Consumer investigation:
 Library-owned report:
 [`2026-10-15-FIXED-blocking-void-signal-does-not-wait.md`](../../../OLLMchat/docs/bugs/done/2026-10-15-FIXED-blocking-void-signal-does-not-wait.md).
 
+## subscription-uint-return-gate
+
+A real libocrpc blocking subscription to `signal uint ask()`. The client
+replies with uint `7`; the server-side signal emission must return `7`.
+
+```bash
+meson compile -C build tests/call-sync-repro/subscription-uint-return-gate
+timeout 5 ./build/tests/call-sync-repro/subscription-uint-return-gate
+```
+
+| Run | Result |
+| --- | --- |
+| 2026-11-05 | **FAIL** — `Subscription.emit` calls `set_boolean()` on the uint `GValue`; GLib rejects it and the emitter receives `0` |
+| 2026-11-05 | **PASS** — integrated libocrpc copies the typed reply; emitter receives `7` |
+
+OPC report:
+[`2026-11-05-FIXED-libocrpc-non-boolean-signal-returns.md`](../../../OLLMchat/docs/bugs/done/2026-11-05-FIXED-libocrpc-non-boolean-signal-returns.md).
+
+## subscription-boxed-lease-return-gate
+
+The client handler returns a GObject proxy lease while the server signal
+expects a boxed value. The consumer resolves the lease to its server-owned
+box, completes the blocking subscription with a typed `GValue`, and the
+emitter receives that box.
+
+```bash
+meson compile -C build subscription-boxed-lease-return-gate
+timeout 5 ./build/tests/call-sync-repro/subscription-boxed-lease-return-gate
+```
+
+| Run | Result |
+| --- | --- |
+| 2026-11-05 | **PASS** — `GLib.VariantType("s")` lease restored as the boxed signal return |
+
 ## request-buffer-gate
 
 Shape: `live_handles` client `call_poll` to `Gate.eat_fd`. Server must see
