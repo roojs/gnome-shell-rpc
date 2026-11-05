@@ -70,8 +70,7 @@ private class Gate : GLib.Object
 		boxed.set_boxed(row.boxed);
 		var values = new Gee.ArrayList<GLib.Value?>();
 		values.add(boxed);
-		if (Gsr.Server.LiveCallback.complete(
-				request.connection, (int) reply_id, values)) {
+		if (request.connection.complete_callback((int) reply_id, values)) {
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

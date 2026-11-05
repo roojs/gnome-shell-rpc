@@ -139,8 +139,7 @@ namespace Gsr.Server.Meta
 			boxed.set_boxed(row.desc);
 			var values = new Gee.ArrayList<GLib.Value?>();
 			values.add(boxed);
-			if (!Gsr.Server.LiveCallback.complete(
-					request.connection, (int) reply_id, values)) {
+			if (!request.connection.complete_callback((int) reply_id, values)) {
 				request.connection.reply_error(request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
 				return;
