@@ -17,13 +17,7 @@ namespace Gsr.Server.Meta
 {
 	public class Keymap : GLib.Object
 	{
-		/**
-		 * Stock description this lease holds.
-		 *
-		 * {@code reset-keymap-description} reads it so mutter receives
-		 * the boxed value the shell returned.
-		 */
-		public global::Meta.KeymapDescription? desc;
+		private global::Meta.KeymapDescription? desc;
 
 		public static void rpc_register()
 		{
