@@ -76,6 +76,7 @@ export QA_RPATHS=$(( 0x0001 ))
 %{_bindir}/gsr-client
 %{_bindir}/gsr-server
 %{_bindir}/gsr-session
+%{_bindir}/gsr-debug-session
 %{_libdir}/libgsr-rpc-16.so
 %{_libdir}/libmutter-clutter-rpc-16.so
 %{_libdir}/libmutter-rpc-16.so
@@ -87,8 +88,14 @@ export QA_RPATHS=$(( 0x0001 ))
 %{_libdir}/pkgconfig/libst-rpc-16.pc
 %{_includedir}/mutter-clutter-rpc-16/
 %{_datadir}/wayland-sessions/gsr.desktop
+%{_datadir}/wayland-sessions/gsr-debug.desktop
 %{_datadir}/gnome-session/sessions/gsr.session
+%{_datadir}/gnome-session/sessions/gsr-debug.session
 %{_datadir}/applications/org.gnome.ShellRpc.desktop
+%{_datadir}/applications/org.gnome.ShellRpcDebug.desktop
 %{_userunitdir}/org.gnome.ShellRpc.target
 %{_userunitdir}/org.gnome.ShellRpc@.service
+%{_userunitdir}/org.gnome.ShellRpcDebug.target
+%{_userunitdir}/org.gnome.ShellRpcDebug.service
 %{_userunitdir}/gnome-session@gsr.target.d/
+%{_userunitdir}/gnome-session@gsr-debug.target.d/

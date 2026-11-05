@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=GNOME Shell RPC (Debug)
+Comment=GNOME Shell RPC with debug logging
+Exec=gsr-debug-session
+TryExec=gsr-server
+Type=Application
+DesktopNames=GNOME
+X-GDM-SessionRegisters=true

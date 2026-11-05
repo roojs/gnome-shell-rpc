@@ -4,7 +4,7 @@ Name=GNOME Shell RPC
 # --wayland is Mutter's flag, passed through to Meta.Context. Not a
 # gsr-server option. It selects the Wayland compositor. Nested tests
 # add --nested.
-Exec=gsr-server --debug --wayland
+Exec=gsr-server --wayland
 OnlyShowIn=GNOME;
 NoDisplay=true
 X-GNOME-Autostart-Phase=DisplayServer

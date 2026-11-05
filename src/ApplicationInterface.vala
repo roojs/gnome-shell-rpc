@@ -120,12 +120,14 @@ namespace Gsr
 				return;
 			}
 
-			// Generate timestamp for logging
-			var timestamp = (new GLib.DateTime.now_local()).format("%H:%M:%S.%f");
+			var is_critical = (level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0;
+			if (!debug_on && !is_critical) {
+				return;
+			}
 
-			// Only output if debug is enabled, or if it's a critical warning
-			bool should_output = debug_on
-				|| (level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0;
+			// Generate timestamp only for messages that will be logged.
+			var timestamp = (new GLib.DateTime.now_local()).format("%H:%M:%S.%f");
+			bool should_output = debug_on || is_critical;
 
 			if (should_output) {
 				// Write to stderr for immediate console output.
@@ -142,8 +144,7 @@ namespace Gsr
 			}
 
 			// Handle critical errors if debug_critical is enabled
-			if ((level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0
-				&& debug_critical_enabled) {
+			if (is_critical && debug_critical_enabled) {
 				GLib.error(
 					"Critical warning: [" + (in_domain ?? "") + "] " + message
 				);

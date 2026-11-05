@@ -1,0 +1,10 @@
+#!/bin/sh
+# --wayland below is Mutter's flag, not a gsr-server option. Nested
+# tests add --nested.
+if [ -n "$GDMSESSION" ]; then
+	exec gnome-session --session=gsr-debug
+fi
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+	exec dbus-run-session -- gsr-server --debug --wayland
+fi
+exec gsr-server --debug --wayland

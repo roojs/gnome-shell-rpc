@@ -1618,19 +1618,23 @@ mutter_rpc = executable('gsr-server',
 session_data = meson.project_source_root() / 'data'
 install_data(
   session_data / 'gsr-session',
+  session_data / 'gsr-debug-session',
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x',
 )
 install_data(
   session_data / 'wayland-sessions' / 'gsr.desktop',
+  session_data / 'wayland-sessions' / 'gsr-debug.desktop',
   install_dir: get_option('datadir') / 'wayland-sessions',
 )
 install_data(
   session_data / 'gnome-session' / 'sessions' / 'gsr.session',
+  session_data / 'gnome-session' / 'sessions' / 'gsr-debug.session',
   install_dir: get_option('datadir') / 'gnome-session' / 'sessions',
 )
 install_data(
   session_data / 'applications' / 'org.gnome.ShellRpc.desktop',
+  session_data / 'applications' / 'org.gnome.ShellRpcDebug.desktop',
   install_dir: get_option('datadir') / 'applications',
 )
 systemd = dependency('systemd', required: false)
@@ -1642,11 +1646,17 @@ endif
 install_data(
   session_data / 'systemd' / 'org.gnome.ShellRpc.target',
   session_data / 'systemd' / 'org.gnome.ShellRpc@.service',
+  session_data / 'systemd' / 'org.gnome.ShellRpcDebug.target',
+  session_data / 'systemd' / 'org.gnome.ShellRpcDebug.service',
   install_dir: systemduserunitdir,
 )
 install_data(
   session_data / 'systemd' / 'gnome-session@gsr.target.d' / 'gsr.session.conf',
   install_dir: systemduserunitdir / 'gnome-session@gsr.target.d',
+)
+install_data(
+  session_data / 'systemd' / 'gnome-session@gsr-debug.target.d' / 'gsr.session.conf',
+  install_dir: systemduserunitdir / 'gnome-session@gsr-debug.target.d',
 )
 apport_report_ignore = configure_file(
   input: session_data / 'apport' / 'report-ignore.in',

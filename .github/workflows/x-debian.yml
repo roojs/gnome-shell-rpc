@@ -80,8 +80,15 @@ jobs:
             ./usr/bin/gsr-server \
             ./usr/bin/gsr-client \
             ./usr/bin/gsr-session \
+            ./usr/bin/gsr-debug-session \
             ./usr/share/wayland-sessions/gsr.desktop \
-            ./usr/lib/systemd/user/org.gnome.ShellRpc@.service; do
+            ./usr/share/wayland-sessions/gsr-debug.desktop \
+            ./usr/share/gnome-session/sessions/gsr-debug.session \
+            ./usr/share/applications/org.gnome.ShellRpcDebug.desktop \
+            ./usr/lib/systemd/user/org.gnome.ShellRpc@.service \
+            ./usr/lib/systemd/user/org.gnome.ShellRpcDebug.service \
+            ./usr/lib/systemd/user/org.gnome.ShellRpcDebug.target \
+            ./usr/lib/systemd/user/gnome-session@gsr-debug.target.d/gsr.session.conf; do
             grep -q " ${want}\$" ../contents.txt || { echo "missing ${want}" >&2; exit 1; }
           done
           if grep -qE ' \./usr/bin/gnome-shell$| \./usr/lib/[^ ]*girepository-1\.0/Meta-16\.typelib$' ../contents.txt; then
