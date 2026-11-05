@@ -118,8 +118,11 @@ namespace Gsr.Client
 
 			Gsr.Client.Rpc.register();
 			global::Shell.Global.bind_display(global::Meta.get_display());
-			/* Always off for now (temporary); later only with --disable-extensions. */
-			Application.apply_extension_policy();
+			/* User extensions follow dconf unless this is a debug start
+			 * or the crash screen passed --disable-extensions. */
+			if (Application.opt_debug || Application.opt_disable_extensions) {
+				Application.apply_extension_policy();
+			}
 		}
 
 		/**
@@ -181,10 +184,12 @@ namespace Gsr.Client
 		private static extern GLib.SettingsBackend memory_settings_backend_new();
 
 		/**
-		 * Nest bisect: same stock key ExtensionManager reads
-		 * ({@code org.gnome.shell disable-user-extensions}), on a memory
-		 * backend so live-session dconf is not written. Stock has no
-		 * {@code --disable-extensions} CLI.
+		 * Force user extensions off for {@code --debug} or
+		 * {@code --disable-extensions}. Same stock key ExtensionManager
+		 * reads ({@code org.gnome.shell disable-user-extensions}), on a
+		 * memory backend so live-session dconf is not written. Stock has
+		 * no {@code --disable-extensions} CLI. A quiet start leaves the
+		 * key on the user’s dconf backend.
 		 */
 		private static void apply_extension_policy()
 		{
