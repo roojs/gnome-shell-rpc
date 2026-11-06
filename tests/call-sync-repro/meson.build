@@ -169,6 +169,26 @@ test(
   timeout: 5,
 )
 
+# DING wait_async is call_poll. A process that stays up blocks the
+# default main context until the call timeout. yield uses Client.call.
+wayland_wait_blocks_gate = executable(
+  'wayland-wait-blocks-gate',
+  [
+    'wayland-wait-blocks-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'LiveCallback.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
 # Shell 50 panel recognize / search may-recognize call get_point_event.
 # Those signals are not in the add_signals blocking switch.
 gesture_recognize_point_gate = executable('gesture-recognize-point-gate',

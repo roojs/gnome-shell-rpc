@@ -13,6 +13,8 @@ namespace Meta
 		[CCode (gir = false)]
 		public uint64 rpc_lid { get; set construct; default = 0; }
 		private GLib.InputStream? stdout_pipe = null;
+		private bool saw_exit = false;
+		public signal void exited();
 
 		public RpcSubprocess(uint64 lid, int stdout_fd = -1)
 		{
@@ -30,10 +32,26 @@ namespace Meta
 		public async bool wait_async(
 			GLib.Cancellable? cancellable = null
 		) throws GLib.Error {
-			var response = Gsr.Client.Rpc.call_value(
-				"Gsr-Mutter-WaylandClient.wait", this
-			);
-			return response.retval.get_boolean();
+			ulong watch = Gsr.Client.Rpc.client.notification.connect((notif) => {
+				if (notif.method != "WaylandClient.exited") {
+					return;
+				}
+				if ((uint64) notif.id != this.rpc_lid) {
+					return;
+				}
+				this.saw_exit = true;
+				this.exited();
+			});
+			Gsr.Client.Rpc.call_value("Gsr-Mutter-WaylandClient.wait", this);
+			if (!this.saw_exit) {
+				ulong resume = this.exited.connect(() => {
+					wait_async.callback();
+				});
+				yield;
+				this.disconnect(resume);
+			}
+			GLib.SignalHandler.disconnect(Gsr.Client.Rpc.client, watch);
+			return true;
 		}
 
 		public bool get_if_exited()

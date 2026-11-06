@@ -125,19 +125,30 @@ namespace Gsr.Server.Meta
 				);
 				return;
 			}
-			proc.wait_async.begin(null, (obj, res) => {
-				try {
-					proc.wait_async.end(res);
-				} catch (GLib.Error e) {
-					request.connection.reply_error(
-						request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e
-					);
-					return;
-				}
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					retval = OLLMrpc.val("b", true),
+			var connection = request.connection;
+			int lease_id = (int) request.lease_id;
+			if (!proc.get_if_exited()) {
+				proc.wait_async.begin(null, (obj, res) => {
+					try {
+						proc.wait_async.end(res);
+					} catch (GLib.Error e) {
+						GLib.warning("WaylandClient.wait: %s", e.message);
+					}
+					connection.write(new OLLMrpc.Notification() {
+						method = "WaylandClient.exited",
+						id = lease_id,
+					});
 				});
+			}
+			if (proc.get_if_exited()) {
+				connection.write(new OLLMrpc.Notification() {
+					method = "WaylandClient.exited",
+					id = lease_id,
+				});
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("b", true),
 			});
 		}
 
