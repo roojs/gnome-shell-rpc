@@ -1,5 +1,7 @@
 # Guide to writing plans
 
+Do not put line breaks in markdown files to wrap long lines. A paragraph is one line. Break only for a new paragraph, a heading, a list item, or a real line inside a code fence.
+
 Written for **AI agents** — **mandatory** when an agent drafts, reviews, or implements from **`docs/plans/*`**. Human contributors may treat this as a helpful guide.
 
 Plan files in this repo are `docs/plans/N.N-slug.md`. Completed work is `docs/plans/done/`.

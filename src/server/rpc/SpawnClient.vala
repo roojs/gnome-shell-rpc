@@ -96,8 +96,10 @@ namespace Gsr.Server.Rpc
 				if (!smoke_name.has_suffix(".js")) {
 					smoke_name += ".js";
 				}
+				/* /proc/self/exe is build/src/server/gsr-server, not the
+				 * build/src link. Three parents reach the source tests. */
 				var script = GLib.Path.build_filename(
-					bindir, "..", "..", "tests", "gjs-embed", smoke_name);
+					bindir, "..", "..", "..", "tests", "gjs-embed", smoke_name);
 				if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
 					GLib.warning("%s missing at %s — skip client spawn", smoke_name, script);
 					return;

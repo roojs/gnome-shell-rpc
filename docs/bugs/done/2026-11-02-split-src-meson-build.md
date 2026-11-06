@@ -1,6 +1,6 @@
 # Split `src/meson.build`
 
-**Status:** investigation. 2026-11-02. No build change.
+**Status:** ✅ closed 2026-11-06. User: this is done. Each directory that builds a program or a library has its own `meson.build`. Nested prove reached the overview (`prove ec=0`). `alan@192.168.122.115` (`ubuntu2604`, mutter 50.1) compiled `libshell-18/Screenshot.vala` and the build finished.
 
 A directory that builds a program or a library gets its own `meson.build`. The parent file only calls `subdir()`, in the order one library needs the previous one. No extra `src/meson/` folders.
 
@@ -72,8 +72,6 @@ Leave the nest's programs until last. The early phases do not change `build/src/
 6. ✔️ `gsr-client` and `gsr-smoke` are built by `src/client/meson.build`, after `subdir('gresource')`. The programs are `build/src/client/gsr-client` and `build/src/client/gsr-smoke`. `build/src/gsr-client` and `build/src/gsr-smoke` are links, so `scripts/gi-rpc-smoke.sh` keeps its path. Typelibs stay in `build/src`. `gsr-server` is still the real file at `build/src/gsr-server`.
 7. ✔️ `src/server/meson.build` builds `gsr-server` and the `gsr-server-rpc` static library. The program is `build/src/server/gsr-server`. `build/src/gsr-server` is a link to `server/gsr-server`. Typelibs stay real files in `build/src`, so the prove script's typelib directory is still that folder. `Gsr.Shared` is the `gsr-shared` static library: compiling `shared/namespace.vala` in the server target would overwrite `server/namespace.vala`. `gi-rpc-mock` and `gi-rpc-echo` add `-I` of the server build dir for `gsr-server-rpc.h`. SpawnClient reads `/proc/self/exe`, which is the real binary, so `build/src/server/gsr-client` and `build/src/server/gsr-smoke` are links to `../client/`. Nested prove reached the overview (`prove ec=0`).
 
-The Shell version-directory fix is a source change, not a move. Do it on its own once `libshell-16/meson.build` exists and compiles. Do not fold it into the move.
-
 ## Shell versions
 
-`src/client/libshell-16/meson.build` chooses the Shell sources. API 18 sources come from `libshell-18/`. Do not keep `--define=MUTTER_18` and do not keep compiling the API 16 `Screenshot.vala` for both versions. The version directories exist so the differing file is chosen by directory.
+✔️ `src/client/libshell-16/meson.build` chooses the Shell sources. API 18 compiles `libshell-18/Screenshot.vala`, `Signals.vala`, and `EdgeDragGesture.vala`. API 16 compiles `libshell-16/Screenshot.vala` and `Signals.vala`. `--define=MUTTER_18` is gone. The 18 `paint_to_buffer` call passes a null `Clutter.ColorState`. This machine has mutter 48.1, so the local compile is the API 16 file. `alan@192.168.122.115` (`ubuntu2604`, mutter 50.1) compiled `libshell-18/Screenshot.vala` and the build finished.

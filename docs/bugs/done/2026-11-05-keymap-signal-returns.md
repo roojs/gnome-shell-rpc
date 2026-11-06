@@ -1,6 +1,6 @@
 # Keymap reset returns never reach mutter
 
-**Status:** Fixed in this tree; API 18 build and installed-session test remain. The `guint` failure is fixed in libocrpc and the real consumer gate returns `7`; see [`2026-11-05-FIXED-libocrpc-non-boolean-signal-returns.md`](../../../OLLMchat/docs/bugs/done/2026-11-05-FIXED-libocrpc-non-boolean-signal-returns.md). The boxed lease-to-value codec and all focused callback regressions pass.
+**Status:** ✅ closed 2026-11-06. User: this is done. The two reset subscriptions are blocking. `reset-keymap-layout-index` uses the typed `guint` reply. `reset-keymap-description` resolves the client `Meta.KeymapDescription` lease to the server boxed value and copies it into mutter’s signal return. The `guint` failure is fixed in libocrpc and the real consumer gate returns `7`; see [`2026-11-05-FIXED-libocrpc-non-boolean-signal-returns.md`](../../../../OLLMchat/docs/bugs/done/2026-11-05-FIXED-libocrpc-non-boolean-signal-returns.md). The boxed lease-to-value codec and all focused callback regressions pass. User has not seen this fail in use.
 
 ## What mutter reads
 
@@ -53,7 +53,7 @@ meson test -C build \
   --print-errorlogs
 ```
 
-All six pass. This host is API 16, so the conditional `Meta.KeymapDescription` code still needs the API 18 guest build.
+All six pass on this API 16 host. The `Meta.KeymapDescription` reply lives in the API 18 shell library.
 
 ## LLM efforts
 
@@ -71,3 +71,4 @@ All six pass. This host is API 16, so the conditional `Meta.KeymapDescription` c
 - 2026-11-05 17:42 HKT. Re-read the mandatory line-breaking standard after the user caught the missed gate. Removed the gratuitous condition split; the branch now matches the surrounding file's compact conditions and grouped call arguments.
 - 2026-11-05 17:47 HKT. Applied the call-wrapping gate to the whole new API 18 file. Collapsed the short `parse_name` and queued `Signals.emit` calls, grouped wrapped call arguments, kept wrapped method-definition parameters one per line, and left only nested RPC calls whose complete expressions exceed the surrounding line length.
 - 2026-11-05 17:48 HKT. Collapsed every split boolean and comparison expression in the API 18 copy after the user identified two remaining violations. No continuation line now begins with `||`, `&&`, `==`, or `!=`.
+- 2026-11-06. User: the reset returns are fixed and have not caused issues. Closed this bug. Marked both signals done in [`0.9.1-examine-26.04-requirements.md`](../../plans/0.9.1-examine-26.04-requirements.md) and [`0.9-multi-shell-series.md`](../../plans/0.9-multi-shell-series.md).

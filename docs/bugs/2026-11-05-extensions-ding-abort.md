@@ -1,12 +1,36 @@
 # Enabling extensions aborts the client while launching DING
 
-**Status:** Seen on the Ubuntu 26.04 emulator `alan@192.168.122.115`
-(`ubuntu2604`, GNOME Shell 50.1). Quiet Wayland session, not the debug
-session. `gsr-server` pid 53226 started 20:02:48 HKT as
-`/usr/bin/gsr-server --wayland`. Binaries are stamped 20:02:23. The user
-turned user extensions on from Extension Manager. Both clients aborted.
-No `gsr-client` is left; the server is still up. `src/` has not been
-changed for this. No gate yet.
+**Status:** `Meta.WaylandClient.new_subprocess` aborts `gsr-client` in
+GJS `Function::invoke` (`function.cpp:1006`, `GError** argument number
+mismatch`). The Meta-18 typelib asks for
+`meta_wayland_client_new_subprocess`. Vala compiled the constructor as
+`meta_wayland_client_new_new_subprocess`, so the stock symbol was
+missing and the invoker never got a 4-argument cif (3 args plus
+`GError**`). `cif.nargs` is 4 once that symbol exists, and the same
+call returns a catchable `GLib.Error` instead of aborting.
+
+Landed: `[CCode (cname = "meta_wayland_client_new_subprocess")]` on
+`WaylandClient.new_subprocess` in
+`src/client/libmutter-rpc-18/overrides/WaylandClient.override.vala`.
+
+Reproduction, on `alan@192.168.122.115`, no compositor:
+
+```bash
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libshell-18.so \
+GI_TYPELIB_PATH=/usr/lib/x86_64-linux-gnu/mutter-rpc-18:/usr/lib/x86_64-linux-gnu/mutter-18 \
+gjs /tmp/ding-new-subprocess.js
+```
+
+`/tmp/ding-new-subprocess.js` calls `Meta.create_context` then
+`Meta.WaylandClient.new_subprocess`. Before the cname, that aborts with
+the journal line. After, it must not. This host is mutter 16, so Weston
+here never calls `new_subprocess`.
+
+Seen originally on the Ubuntu 26.04 emulator (`ubuntu2604`, GNOME Shell
+50.1, gjs 1.88.0). Quiet Wayland session. `gsr-server` pid 53226
+started 20:02:48 HKT as `/usr/bin/gsr-server --wayland`. Binaries
+stamped 20:02:23. User extensions on from Extension Manager. Both
+clients aborted. Server stayed up.
 
 Journal is `journalctl -b` for the two client pids. Cores:
 
@@ -89,3 +113,20 @@ the coredumpctl frames.
   via `UserExtensionsEnabled`, and kept running until the DING line.
   Confirmed the log string and `new_subprocess` call in the guest's
   `ding@rastersoft.com/extension.js`. Did not edit `src/`.
+- 2026-11-06. Guest still has both cores and the journal lines.
+  gjs 1.88.0, mutter 50.1. Local Weston logs are mutter 16 (`spawnv
+  returned null`); they do not contain `function.cpp:1006`. Stock and
+  rpc Meta-18 GIR for `new_subprocess` match: constructor, throws,
+  zero-terminated `argv`. `gjs` with `LD_PRELOAD=libshell-18.so` and
+  `Meta.create_context("ding-repro")` then `new_subprocess` aborts on
+  the same assertion (`/tmp/ding-new-subprocess.js`). `cif` prep fails
+  with `undefined symbol: meta_wayland_client_new_subprocess`. The
+  library exports `meta_wayland_client_new_new_subprocess` (4 args,
+  including `GError**`). A wrapper that exports the stock name and
+  calls the Vala symbol makes `gi_function_info_prep_invoker` report
+  `cif.nargs 4`, and the gjs script catches
+  `Client: disconnected` instead of aborting. Vala check: a constructor
+  named `new_subprocess` emits `*_new_new_subprocess` unless
+  `[CCode (cname = "...")]` is set; `KeymapDescription.new_from_rules`
+  already uses that and its symbol matches the GIR. Copied that cname
+  onto `WaylandClient.new_subprocess`.

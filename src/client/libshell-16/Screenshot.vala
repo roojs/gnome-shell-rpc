@@ -28,13 +28,8 @@ namespace Shell
 			stride = width * 4;
 			pixels = new uint8[stride * height];
 			Mtk.Rectangle rect = { 0, 0, width, height };
-#if MUTTER_18
-			stage.paint_to_buffer(rect, 1f, pixels, stride,
-				Cogl.PixelFormat.RGBA_8888, null, Clutter.PaintFlag.none);
-#else
 			stage.paint_to_buffer(rect, 1f, pixels, stride,
 				Cogl.PixelFormat.RGBA_8888, Clutter.PaintFlag.none);
-#endif
 		}
 
 		static Gdk.Pixbuf pixbuf_from_rgba(

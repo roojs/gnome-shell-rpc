@@ -1,8 +1,12 @@
 		/**
-		 * Stock {@code meta_wayland_client_new_subprocess}. Launcher
-		 * stays local. Flags, cwd, and argv cross the wire. The
-		 * compositor builds the real launcher and launches.
+		 * Stock {@code meta_wayland_client_new_subprocess}. The cname
+		 * is that GIR symbol. Without it Vala emits
+		 * {@code meta_wayland_client_new_new_subprocess}, GJS does not
+		 * bind the invoker, and {@code Function::invoke} aborts.
+		 * Launcher stays local. Flags, cwd, and argv cross the wire.
+		 * The compositor builds the real launcher and launches.
 		 */
+		[CCode (cname = "meta_wayland_client_new_subprocess")]
 		public WaylandClient.new_subprocess(
 			Context context,
 			GLib.SubprocessLauncher launcher,

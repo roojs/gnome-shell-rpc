@@ -6,10 +6,6 @@ shell_build_dir = meson.current_build_dir()
 # any install use that (installed name Shell-16.gir).
 # libsystemd has no Vala vapi — assert found, link with -lsystemd only.
 dependency('libsystemd')
-shell_api_define = []
-if mutter_api_version == '18'
-  shell_api_define = ['--define=MUTTER_18']
-endif
 shell_gi_lib = shared_library(
   'shell-' + mutter_api_version,
   files(
@@ -46,7 +42,6 @@ shell_gi_lib = shared_library(
     'WindowPreview.vala',
     'WindowPreviewLayout.vala',
     'WorkspaceBackground.vala',
-    'Screenshot.vala',
     'WindowTracker.vala',
     'AppUsage.vala',
     'WM.vala',
@@ -57,8 +52,9 @@ shell_gi_lib = shared_library(
     ? files(
         meson.project_source_root() / 'src' / 'client' / 'libshell-18' / 'EdgeDragGesture.vala',
         meson.project_source_root() / 'src' / 'client' / 'libshell-18' / 'Signals.vala',
+        meson.project_source_root() / 'src' / 'client' / 'libshell-18' / 'Screenshot.vala',
       )
-    : files('Signals.vala')),
+    : files('Signals.vala', 'Screenshot.vala')),
   dependencies: [
     mutter_vapi_dep,
     ocrpc_dep,
@@ -93,7 +89,7 @@ shell_gi_lib = shared_library(
     ),
   ],
   link_args: ['-lsystemd'],
-  vala_args: ocrpc_vala_args + shell_api_define + [
+  vala_args: ocrpc_vala_args + [
     '--pkg=posix',
     '--pkg=gio-2.0',
     '--pkg=gee-0.8',
