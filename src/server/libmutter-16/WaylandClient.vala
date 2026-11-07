@@ -28,6 +28,7 @@ namespace Gsr.Server.Meta
 				"get_exit_status", "",
 				"send_signal", "i",
 				"force_exit", "",
+				"owns_window", "o",
 				null
 			);
 			/* Not register_live — Ffi must bind lease_id → this row as self. */
@@ -254,6 +255,38 @@ namespace Gsr.Server.Meta
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Gsr-Mutter-WaylandClient.owns_window'' — stock
+		 * {@code meta_wayland_client_owns_window}. Desktop Icons
+		 * uses this from {@code Shell.WM::map} before it lowers
+		 * the desktop window.
+		 */
+		public void owns_window(
+			OLLMrpc.Request request,
+			global::Meta.Window window
+		) {
+			if (this.peer == null || window == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("b", false),
+				});
+				return;
+			}
+			bool owns = false;
+			try {
+				owns = this.peer.owns_window(window);
+			} catch (GLib.Error e) {
+				request.connection.reply_error(
+					request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e
+				);
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("b", owns),
 			});
 		}
 	}

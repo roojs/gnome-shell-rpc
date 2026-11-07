@@ -105,6 +105,20 @@ namespace Gsr.Server
 		public override void map(global::Meta.WindowActor actor)
 		{
 			actor.show();
+			var window = actor.get_meta_window();
+			if (window != null && this.rpc_server != null
+					&& this.rpc_server.listen != null) {
+				foreach (var connection in this.rpc_server.listen.connections) {
+					var handle = (int) connection.export(window);
+					connection.write(new OLLMrpc.Notification() {
+						method = "Shell-WM.map",
+						object_type = "Window",
+						id = handle,
+					});
+				}
+			}
+			GLib.debug("plugin map title=%s",
+				window != null ? (window.get_title() ?? "") : "");
 			this.map_completed(actor);
 		}
 

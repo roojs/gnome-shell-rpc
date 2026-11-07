@@ -16,6 +16,36 @@ namespace Shell
 			Object(plugin: plugin);
 		}
 
+		construct {
+			/* Server Plugin.map shows the actor itself. This signal is
+			 * what Desktop Icons uses to lower that window. */
+			Gsr.Client.Rpc.client.notification.connect((notif) => {
+				if (notif.method != "Shell-WM.map") {
+					return;
+				}
+				var lid = (uint64) notif.id;
+				if (lid == 0 || Gsr.Client.Rpc.client == null) {
+					return;
+				}
+				var key = (int) lid;
+				if (!Gsr.Client.Rpc.client.proxies.has_key(key)) {
+					var created = new Meta.Window();
+					created.rpc_lid = lid;
+					Gsr.Client.Rpc.register_handle(created);
+				}
+				var win = Gsr.Client.Rpc.client.proxies.get(key) as Meta.Window;
+				if (win == null) {
+					return;
+				}
+				var actor = win.get_compositor_private() as Meta.WindowActor;
+				if (actor == null) {
+					return;
+				}
+				this.map(actor);
+				GLib.debug("Shell.WM map lid=%s", lid.to_string());
+			});
+		}
+
 		public void complete_display_change(bool ok)
 		{
 			this.plugin.complete_display_change(ok);

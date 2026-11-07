@@ -157,6 +157,7 @@ unsigned_long_hash noop
 # Gsr-Mutter-WaylandClient builds the client on the compositor.
 WaylandClient.new_subprocess
 WaylandClient.get_subprocess
+WaylandClient.owns_window
 
 # key-binding-wire.c owns these. The stub record is one byte; the fields
 # live beside it. windowManager.js calls is_builtin and is_reversed.

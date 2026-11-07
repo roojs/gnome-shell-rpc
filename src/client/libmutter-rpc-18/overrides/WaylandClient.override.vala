@@ -69,3 +69,18 @@
 			this.stdout_fd = -1;
 			return this.subprocess;
 		}
+
+		/**
+		 * Stock {@code meta_wayland_client_owns_window}.
+		 */
+		public bool owns_window(Window window) throws GLib.Error
+		{
+			var response = Gsr.Client.Rpc.call_value(
+				"Gsr-Mutter-WaylandClient.owns_window", this,
+				OLLMrpc.args("o", window)
+			);
+			if (response.retval.type() == GLib.Type.INVALID) {
+				return false;
+			}
+			return response.retval.get_boolean();
+		}
