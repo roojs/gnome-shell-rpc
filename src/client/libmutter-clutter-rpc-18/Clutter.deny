@@ -222,6 +222,10 @@ Stage.get_event_actor
 # Caller buffer has no length. Body is Stage.override paint_to_buffer.
 Stage.paint_to_buffer
 
+# Stage.override — gprop get_property writes a raw ClutterPerspective
+# and the connection drops. The getter calls get_perspective.
+Stage.perspective
+
 # Actor.override owns accessible. Stand-in Atk.GObjectAccessible until a
 # server Atk peer exists. GenericAccessible has no rpc_lid.
 Actor.accessible

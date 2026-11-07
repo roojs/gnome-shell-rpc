@@ -1,6 +1,9 @@
 # Enabling extensions aborts the client while launching DING
 
-**Status:** `Meta.WaylandClient.new_subprocess` aborts `gsr-client` in
+**Status:** ✅ closed 2026-11-07. User: this is not an active bug. The
+`new_subprocess` abort looks fixed.
+
+`Meta.WaylandClient.new_subprocess` aborts `gsr-client` in
 GJS `Function::invoke` (`function.cpp:1006`, `GError** argument number
 mismatch`). The Meta-18 typelib asks for
 `meta_wayland_client_new_subprocess`. Vala compiled the constructor as

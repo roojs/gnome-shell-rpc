@@ -1,6 +1,9 @@
 # Enabling extensions stops halfway and every window disappears
 
-**Status:** Applied. `Gsr-Mutter-WaylandClient.wait` replies as soon as `GLib.Subprocess.wait_async` is armed. The process exit is `WaylandClient.exited`. `Meta.RpcSubprocess.wait_async` returns from that notification. `GLib.SignalHandler.disconnect` drops the client watch because `OLLMrpc.Client.disconnect()` takes no handler id. Local `libmutter-rpc-16.so` linked and `libmutter-16/WaylandClient.c` compiled. This host is mutter 16, so `gsr-server` for Shell 50.1 is not built here. The guest session is still the 13:22 binaries.
+**Status:** ✅ closed 2026-11-07. User: this is not an active bug. The
+wait lockup looks fixed.
+
+`Gsr-Mutter-WaylandClient.wait` replies as soon as `GLib.Subprocess.wait_async` is armed. The process exit is `WaylandClient.exited`. `Meta.RpcSubprocess.wait_async` returns from that notification. `GLib.SignalHandler.disconnect` drops the client watch because `OLLMrpc.Client.disconnect()` takes no handler id. Local `libmutter-rpc-16.so` linked and `libmutter-16/WaylandClient.c` compiled. This host is mutter 16, so `gsr-server` for Shell 50.1 is not built here. The guest session is still the 13:22 binaries.
 
 Seen on `alan@192.168.122.52` (`alan-VirtualBox`, GNOME Shell 50.1, mutter 18). Session started 13:23:33 HKT. `gsr-server` pid 45767, `gsr-client` pid 46065, binaries stamped 13:22. No new core. `gsettings get org.gnome.shell enabled-extensions` is `['ding@rastersoft.com']`. `ding.js` pid 47893 was still running. Extension Manager was not. `yelp` pid 48166 was.
 

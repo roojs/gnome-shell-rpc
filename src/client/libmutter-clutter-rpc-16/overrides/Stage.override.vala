@@ -1,4 +1,28 @@
 	/**
+	 * Stock property read is {@code Clutter-Stage.get_property}. That
+	 * reply is a raw {@code ClutterPerspective} value, and the bin
+	 * writer closes the connection. {@code get_perspective} already
+	 * returns the record as bytes.
+	 */
+	[CCode (cname = "clutter_stage_get_perspective")]
+	public void get_perspective(out Perspective perspective)
+	{
+		var response = Gsr.Client.Rpc.call_value(
+			"Clutter-Stage.get_perspective", this);
+		var blob = (GLib.Bytes) response.args.get(0).get_boxed();
+		perspective = *((Perspective*) blob.get_data());
+	}
+
+	public Perspective perspective {
+		[CCode (cname = "stage_get_perspective_gprop")]
+		get {
+			Perspective perspective;
+			this.get_perspective(out perspective);
+			return perspective;
+		}
+	}
+
+	/**
 	 * Event is Compact — not on the wire. Stock looks up key-focus for
 	 * key/IM events, otherwise the actor under the event coords
 	 * ({@link get_actor_at_pos} REACTIVE) at call time.
