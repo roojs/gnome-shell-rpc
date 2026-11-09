@@ -56,9 +56,16 @@ namespace Shell
 			this.plugin.destroy_completed(actor);
 		}
 
+		/**
+		 * Stock JS calls this when a map effect finishes.
+		 *
+		 * The server plugin already called {@code map_completed} before
+		 * emitting {@code Shell-WM.map}. This {@code plugin} is the
+		 * stand-in from {@link Global}, and forwarding the call logs
+		 * {@code no rpc_lid on MetaPlugin}.
+		 */
 		public void completed_map(Meta.WindowActor actor)
 		{
-			this.plugin.map_completed(actor);
 		}
 
 		public void completed_minimize(Meta.WindowActor actor)

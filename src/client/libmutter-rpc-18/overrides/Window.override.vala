@@ -73,3 +73,52 @@
 					has_pos, pos_x, pos_y));
 			return response.retval.get_boolean();
 		}
+
+		int cached_window_type = -1;
+
+		/**
+		 * Stock property is get-only. A {@code notify::window-type}
+		 * is applied with {@code set_property}, which a getter-only
+		 * property rejects, so the shell never hears that the window
+		 * became a desktop window.
+		 */
+		public WindowType window_type {
+			[CCode (cname = "meta_window_get_window_type")]
+			get {
+				if (this.cached_window_type >= 0) {
+					return (WindowType) this.cached_window_type;
+				}
+				var response = Gsr.Client.Rpc.call_value(
+					"Meta-Window.get_window_type", this);
+				return (WindowType) response.retval.get_int();
+			}
+			set {
+				this.cached_window_type = (int) value;
+			}
+		}
+
+		int cached_skip_taskbar = -1;
+
+		/**
+		 * Stock property is get-only. {@code notify::skip-taskbar}
+		 * is applied with {@code set_property}, which a getter-only
+		 * property rejects, so a workspace keeps a window Desktop
+		 * Icons has hidden from the window list.
+		 */
+		public bool skip_taskbar {
+			get {
+				if (this.cached_skip_taskbar >= 0) {
+					return this.cached_skip_taskbar != 0;
+				}
+				var response = Gsr.Client.Rpc.call_value(
+					"Meta-Window.is_skip_taskbar", this);
+				return response.retval.get_boolean();
+			}
+			set {
+				if (value) {
+					this.cached_skip_taskbar = 1;
+				} else {
+					this.cached_skip_taskbar = 0;
+				}
+			}
+		}
