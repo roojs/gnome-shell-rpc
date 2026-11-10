@@ -93,6 +93,9 @@ Window.window_type
 # Hand: notify::skip-taskbar is applied with set_property. The gir
 # property is get-only, so that write is rejected.
 Window.skip_taskbar
+# Hand: notify::title is applied with set_property. The gir
+# property is get-only, so that write is rejected.
+Window.title
 # Hand: server packs handle pairs (Compositor.vala); override hydrates live
 # actor proxies bound to their windows. Generated decode expects an
 # ArrayList retval the server never sets, so it silently yields no actors.

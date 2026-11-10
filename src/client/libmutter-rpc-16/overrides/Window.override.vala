@@ -125,3 +125,31 @@
 				}
 			}
 		}
+
+		bool cached_title_valid = false;
+		string cached_title = "";
+
+		/**
+		 * Stock property is get-only. {@code notify::title} is applied
+		 * with {@code set_property}, which a getter-only property
+		 * rejects, so Desktop Icons never reads the title and the
+		 * window stays in the list as the gjs process.
+		 */
+		public string title {
+			[CCode (cname = "meta_window_get_title")]
+			owned get {
+				if (this.cached_title_valid) {
+					return this.cached_title;
+				}
+				var response = Gsr.Client.Rpc.call_value(
+					"Meta-Window.get_title", this);
+				if (response.retval.type() != typeof(string)) {
+					return "";
+				}
+				return response.retval.get_string();
+			}
+			set {
+				this.cached_title = value;
+				this.cached_title_valid = true;
+			}
+		}
