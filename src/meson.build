@@ -1,6 +1,8 @@
-# 2.0 when that pc exists (Ubuntu 26.04 / GJS 1.88). 1.0 otherwise.
-# gi-stub-gen stays on 1.0: the 2.0 vapi has no BaseInfo.get_type().
-girepository_2 = dependency('girepository-2.0', required: false)
+# 2.0 when gi_repository_dup_default exists (glib >= 2.86, Ubuntu 26.04 /
+# GJS 1.88). 2.80–2.84 ship girepository-2.0.pc without that symbol, and
+# GJS on those hosts still links libgirepository-1.0. Same cutoff as
+# libocrpc. gi-stub-gen stays on 1.0: the 2.0 vapi has no BaseInfo.get_type().
+girepository_2 = dependency('girepository-2.0', version: '>=2.86', required: false)
 if girepository_2.found()
   girepository_dep = girepository_2
   girepository_pkg = '--pkg=girepository-2.0'

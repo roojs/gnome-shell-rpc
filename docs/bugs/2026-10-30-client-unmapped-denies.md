@@ -103,7 +103,7 @@ The shell does not call these.
 | `Clipboard.get_content` | `st_clipboard_get_content` | content callback |
 | `IconColors.equal` | `st_icon_colors_equal` | `IconColors` |
 | `IconInfo.load_icon_async` | `st_icon_info_load_icon_async` | `Gio.AsyncReadyCallback` |
-| `IconInfo.load_symbolic_async` | `st_icon_info_load_symbolic_async` | `IconColors` and an async callback |
+| `IconInfo.load_symbolic_async` | `st_icon_info_load_symbolic_async` | Written 2026-11-10 in `IconInfo.override.vala`. App indicators call it. |
 | `Shadow.equal` | `st_shadow_equal` | `Shadow` |
 | `Shadow.get_box` | `st_shadow_get_box` | `ActorBox` out |
 | `ShadowHelper.paint` | `st_shadow_helper_paint` | `PaintNode` |

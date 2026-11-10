@@ -15,7 +15,6 @@
 Clipboard.get_content
 IconColors.equal
 IconInfo.load_icon_async
-IconInfo.load_symbolic_async
 Shadow.equal
 Shadow.get_box
 ShadowHelper.paint
@@ -148,6 +147,11 @@ SpinnerContent.new
 # Clipboard.override — text callback and GLib.Bytes are not wire types.
 Clipboard.get_text
 Clipboard.set_content
+
+# IconInfo.override — stock typelib still names the async symbol.
+# Sync load is the RPC. The task carries that pixbuf to finish.
+IconInfo.load_symbolic_async
+IconInfo.load_symbolic_finish
 
 # ImageContent.override — unwrap GLib.Bytes onto set_data's memfd path.
 ImageContent.set_bytes

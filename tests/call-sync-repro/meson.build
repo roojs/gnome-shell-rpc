@@ -4,6 +4,14 @@ executable('call-sync-repro',
   install: false,
 )
 
+# St.IconInfo.load_symbolic_async completes a task finish can read.
+executable('symbolic-icon-async-gate',
+  'symbolic-icon-async-gate.vala',
+  dependencies: [dependency('gio-2.0'), dependency('gdk-pixbuf-2.0')],
+  vala_args: ['--pkg=gdk-pixbuf-2.0'],
+  install: false,
+)
+
 # Two pipes model clicked -> sync request -> blocking callback +
 # before-update -> response. Modes exercise the signal-ordering options.
 signal_reentrancy_gate = executable('signal-reentrancy-gate',
