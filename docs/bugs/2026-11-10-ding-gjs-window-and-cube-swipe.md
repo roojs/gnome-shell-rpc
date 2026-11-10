@@ -1,6 +1,28 @@
 # Desktop Icons shows as gjs, and the cube swipe does not rotate
 
-**Status:** Open. This host ran the installed session twice today. Neither `gsr-client` nor `gsr-server` dumped a core. The icon failure those sessions logged is `st_icon_info_load_symbolic_async` missing from `libst-rpc-16.so`. Desktop Icons launched once per session and the window was claimed. The doubled launch and the footer `gjs` name are still the open Desktop Icons diagnosis. The cube `parent is null` throw was not in these logs.
+**Status:** Open on the installed guest. On this mutter 16 client both remaining throws now pass.
+
+The footer `gjs` name: `Shell.App` counts windows that are not `skip-taskbar`. Weston today:
+
+```text
+gjs-app-skip: name=GTK Demo before=2 after=0 listed=false skip=true
+gjs-app-skip: ok
+nested-weston-prove: stop (smoke-ok) after 1s
+```
+
+`before=2` is `AppState.RUNNING`. After `skip_taskbar = true` the app is `STOPPED` and `get_running()` drops it. That is `src/client/libshell-16/App.vala`. The 09:53 run was `after=2 listed=true` and this count was not installed on the guest.
+
+The cube: `actors[0].get_parent()` is null when `Stage.perspective` is read as a raw `ClutterPerspective` and the bin writer closes the connection. The getter in `Stage.override.vala` reads `Clutter-Stage.get_perspective` instead. Weston today:
+
+```text
+desktop-cube-lockup/ui/init: workspaces=6 parent=[… GsrServerClutterActor.workspaces-view …]
+desktop-cube-lockup/ui/init: ok
+nested-weston-prove: stop (smoke-ok) after 16s
+```
+
+The guest log at 08:51:25 still has `parent is null` on a client that already exported `stage_get_perspective_gprop`. This client's smoke does not reproduce that null parent.
+
+Desktop Icons still launched twice on the guest at 09:37 (09:37:24 and 09:37:27). That second launch is not these two smokes.
 
 Logs: `/var/log/syslog`. `~/.cache/gnome-shell-rpc/` was last written 2026-11-05. The installed session does not pass `--debug`, so it does not truncate those files. No `gsr-client` or `gsr-server` core under `/var/lib/systemd/coredump/`.
 
@@ -74,3 +96,5 @@ _updateWorkspaceMode@resource:///org/gnome/shell/ui/workspacesView.js:327:14
 - 2026-11-10 10:11. User stopped. Both remaining issues are open: doubled desktop icons, and one `gjs` still registered in the footer. The `Shell.App` skip-taskbar count in `src/client/libshell-16/App.vala` was not proven after the 09:53 miss and was not installed on the guest.
 - 2026-11-10 14:00. This host, `/var/log/syslog`. Two GSR sessions, 12:31:14 (`gsr-client` 25571) and 12:33:08 (`gsr-client` 35452). Debug cache untouched since 2026-11-05. No gsr core. Session 1 ended on `Stopping gdm.service` at 12:32:46, peak 8.3G. Session 2 ended at 12:33:38 when the session target stopped, peak 460.6M. Stock `gnome-shell` pid 9739 dumped core at 12:31:01 (`status=6/ABRT`) before the first GSR login. Each GSR session logged one `Launching DING process` and one `Received notification`. Both logged `undefined symbol: st_icon_info_load_symbolic_async` from the two appindicator extensions. `nm -D` on the installed `libst-rpc-16.so` has `st_icon_info_load_symbolic` and `st_icon_info_load_symbolic_finish` and not `st_icon_info_load_symbolic_async`. Stock `libst-16.so` has all three.
 - 2026-11-10 14:55. `timeout 5 ./build/tests/call-sync-repro/symbolic-icon-async-gate` printed `symbolic-icon-async: ok`. Copied that task pair into `src/client/libst-rpc-16/overrides/IconInfo.override.vala`. Denied `IconInfo.load_symbolic_finish` so the generated RPC finish is not linked. `ninja -C build src/client/libst-rpc-16/libst-rpc-16.so`. `nm -D` shows `T st_icon_info_load_symbolic_async`. Header is `StIconInfo*`, `StIconColors*`, `GCancellable*`, `GAsyncReadyCallback`, `gpointer`.
+- 2026-11-10 14:59. `GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=30 GI_META_SMOKE=gjs-app-skip ./scripts/agent-nested-smoke-prove.sh`. `gjs-app-skip: name=GTK Demo before=2 after=0 listed=false skip=true`, `gjs-app-skip: ok`, `stop (smoke-ok) after 1s`.
+- 2026-11-10 15:00. `GSR_NESTED_TIMEOUT=70 GI_META_SMOKE=desktop-cube-lockup/ui/init ./scripts/agent-nested-smoke-prove.sh`. `workspaces=6 parent=[… GsrServerClutterActor.workspaces-view …]`, `desktop-cube-lockup/ui/init: ok`, `stop (smoke-ok) after 16s`.
