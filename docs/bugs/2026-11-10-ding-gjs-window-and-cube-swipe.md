@@ -1,6 +1,17 @@
 # Desktop Icons shows as gjs, and the cube swipe does not rotate
 
-**Status:** `Meta.Window.title` now accepts the notify write on the mutter 16 client. Weston:
+**Status:** The title notify write is in. The guest session at 09:37 no longer logs `property 'title' … is not writable`. One `ding.js` was claimed (`Received notification for window. 0 notifications remaining.` at 09:37:28) and the footer still shows one `gjs` app. `Shell.App.state` is `RUNNING` whenever the app has any window. Stock `shell_app_add_window` counts only windows that are not `skip-taskbar`, and `notify::skip-taskbar` moves that count so the app becomes `STOPPED` and leaves `AppSystem.get_running()`. The dash draws `get_running()`. DING's claimed window calls `hide_from_window_list` from `_parseTitle` once the title is `Desktop Icons `, which sets `skip-taskbar` on mutter 18. This client never drops the app.
+
+Desktop icons are still doubled. DING launched at 09:37:24 and again at 09:37:27. That gap is the extension's 3000 ms timer: `spawnv` calls `force_exit` when `query_window_belongs_to` has not succeeded. Only the second launch logged `Received notification`. One `ding.js` remained (pid 11013). The cube `parent is null` throw is unchanged.
+
+Weston command for the footer name:
+
+```bash
+GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=30 GI_META_SMOKE=gjs-app-skip \
+  ./scripts/agent-nested-smoke-prove.sh
+```
+
+`Meta.Window.title` now accepts the notify write on the mutter 16 client. Weston:
 
 ```bash
 GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=30 GI_META_SMOKE=window-title-set \
@@ -40,3 +51,5 @@ _updateWorkspaceMode@resource:///org/gnome/shell/ui/workspacesView.js:327:14
 - 2026-11-10 09:00. Setter on `Window.title` in both overrides, denied in both `Meta.deny` files. `ninja -C build src/gsr-smoke`. Same smoke, `GSR_NESTED_STAYUP` still 1 from the shell: `window-title-set: ok`, then `stop (timeout) after 30s` because `window-title-set: ok` was not in the prove pattern.
 - 2026-11-10 09:02. Added `window-title-set: ok` to the prove pattern. `GSR_NESTED_STAYUP=0` same smoke: `window-title-set: title=Desktop Icons 1 notified=true`, `window-title-set: ok`, `stop (smoke-ok) after 1s`.
 - 2026-11-10 09:07. Copied the 18 override and `Meta.deny` to the guest checkout and built `libmutter-rpc-18.so` and `Meta-18.typelib` there. Installed both and restarted `org.gnome.ShellRpc@wayland.service`. Pids 5210 / 5232. `GNOME Shell started` at 09:08:04. No DING line and no `title` reject by 09:08:46. `column_spacing` / `layout_manager is null` still logs four times.
+- 2026-11-10 09:37. User session after the title install. `gsr-server` 10236, `gsr-client` 10477. `Launching DING process` at 09:37:24 and 09:37:27. `g_subprocess_get_if_exited: assertion 'pid == 0' failed` four times at each of those stamps. `Received notification for window. 0 notifications remaining.` at 09:37:28 only. No `property 'title' … is not writable`. One `ding.js` pid 11013, started 09:37:27. `too much recursion` at 09:37:56 from `emulateX11WindowType.js:412` `_refreshWindows` → `Main.activateWindow`.
+- 2026-11-10 09:53. `GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=30 GI_META_SMOKE=gjs-app-skip ./scripts/agent-nested-smoke-prove.sh`. Client log `gjs-app-skip: name=GTK Demo before=2 after=2 listed=true skip=true` then `gjs-app-skip: miss name=GTK Demo after=2 listed=true`. `AppState.RUNNING` is 2. `skip_taskbar` is true and `get_running()` still contains the app.

@@ -12,6 +12,18 @@ namespace Shell
 		}
 		private bool window_sort_stale = true;
 		private GLib.Icon? fallback_icon;
+		/* Stock shell_app running_state->interesting_windows. */
+		private int interesting_windows = 0;
+		private Gee.HashMap<Meta.Window, ulong> skip_notify_ids {
+			get; set;
+			default = new Gee.HashMap<Meta.Window, ulong>(
+				(window) => {
+					return GLib.direct_hash((void*) window);
+				},
+				(a, b) => {
+					return a == b;
+				});
+		}
 
 		/* Vala 0.56 --gir writes GLib.DesktopAppInfo; gir-inject.xsl rewrites it. */
 		public GLib.DesktopAppInfo? app_info { get; construct; default = null; }
@@ -30,7 +42,7 @@ namespace Shell
 
 		public AppState state {
 			get {
-				if (this.wins.size > 0) {
+				if (this.interesting_windows > 0) {
 					return AppState.RUNNING;
 				}
 				return AppState.STOPPED;
@@ -148,16 +160,55 @@ namespace Shell
 			}
 			this.wins.insert(0, window);
 			this.window_sort_stale = true;
+			ulong id = window.notify["skip-taskbar"].connect(() => {
+				this.on_skip_taskbar_changed(window);
+			});
+			this.skip_notify_ids.set(window, id);
+			Gsr.Client.Rpc.ensure_signal_subscribe(window, "notify::skip-taskbar");
+			if (!window.skip_taskbar) {
+				this.interesting_windows++;
+			}
 			this.notify_property("state");
 		}
 
 		internal void remove_window(Meta.Window window)
 		{
-			if (!this.wins.remove(window)) {
+			if (!this.wins.contains(window)) {
 				return;
 			}
+			if (this.skip_notify_ids.has_key(window)) {
+				window.disconnect(this.skip_notify_ids.get(window));
+				this.skip_notify_ids.unset(window);
+			}
+			if (!window.skip_taskbar && this.interesting_windows > 0) {
+				this.interesting_windows--;
+			}
+			this.wins.remove(window);
 			this.window_sort_stale = true;
 			this.notify_property("state");
+		}
+
+		/**
+		 * Stock {@code shell_app_on_skip_taskbar_changed}. A desktop
+		 * window that becomes skip-taskbar is no longer a running app,
+		 * so the dash drops the gjs name.
+		 */
+		private void on_skip_taskbar_changed(Meta.Window window)
+		{
+			if (!this.wins.contains(window)) {
+				return;
+			}
+			if (!window.skip_taskbar) {
+				this.interesting_windows++;
+				this.notify_property("state");
+				AppSystem.get_default().notify_app_state(this);
+				return;
+			}
+			if (this.interesting_windows > 0) {
+				this.interesting_windows--;
+			}
+			this.notify_property("state");
+			AppSystem.get_default().notify_app_state(this);
 		}
 
 		public async void activate_action(
