@@ -1,87 +1,12 @@
 # Desktop Icons shows as gjs, and the cube swipe does not rotate
 
-**Status:** Open on the installed guest. On this mutter 16 client both remaining throws now pass.
+**Status:** Open. The 09:05 guest login still had both icon failures on the 09:04 install. A new `gsr-server` and `libmutter-rpc-18.so` were installed at 10:24 after that session was stopped. Not logged in yet.
 
-The footer `gjs` name: `Shell.App` counts windows that are not `skip-taskbar`. Weston today:
+Guest install 09:04:55 (`gsr-server`, `gsr-client`, `libmutter-rpc-18.so`, `libshell-18.so`, `Meta-18.typelib`). `gsr-server` exports `gsr_server_meta_window_hide_from_window_list`. Session 09:05:05, `gsr-server` 33826, `gsr-client` 34071. `Launching DING process` at 09:05:09 and 09:05:12. `Received notification for window. 0 notifications remaining.` at 09:05:13. `ding.js` pid 34599 started 09:05:12. `g_subprocess_get_if_exited: assertion 'pid == 0' failed` four times at each launch. `parent is null` at 09:05:17.
 
-```text
-gjs-app-skip: name=GTK Demo before=2 after=0 listed=false skip=true
-gjs-app-skip: ok
-nested-weston-prove: stop (smoke-ok) after 1s
-```
+The user still sees doubled desktop icons and a `gjs` footer entry on that login.
 
-`before=2` is `AppState.RUNNING`. After `skip_taskbar = true` the app is `STOPPED` and `get_running()` drops it. That is `src/client/libshell-16/App.vala`. The 09:53 run was `after=2 listed=true` and this count was not installed on the guest.
-
-The cube: `actors[0].get_parent()` is null when `Stage.perspective` is read as a raw `ClutterPerspective` and the bin writer closes the connection. The getter in `Stage.override.vala` reads `Clutter-Stage.get_perspective` instead. Weston today:
-
-```text
-desktop-cube-lockup/ui/init: workspaces=6 parent=[… GsrServerClutterActor.workspaces-view …]
-desktop-cube-lockup/ui/init: ok
-nested-weston-prove: stop (smoke-ok) after 16s
-```
-
-The guest log at 08:51:25 still has `parent is null` on a client that already exported `stage_get_perspective_gprop`. This client's smoke does not reproduce that null parent.
-
-Desktop Icons still launched twice on the guest at 09:37 (09:37:24 and 09:37:27). That second launch is not these two smokes.
-
-Logs: `/var/log/syslog`. `~/.cache/gnome-shell-rpc/` was last written 2026-11-05. The installed session does not pass `--debug`, so it does not truncate those files. No `gsr-client` or `gsr-server` core under `/var/lib/systemd/coredump/`.
-
-Session 1, 12:31:14–12:32:46. `gsr-server` 25000, `gsr-client` 25571. `GNOME Shell started` at 12:31:16. `Launching DING process` at 12:31:31. `Received notification for window. 0 notifications remaining.` at 12:31:34. Ended because `gdm.service` was stopped. Peak 8.3G, 4min 23s CPU.
-
-Session 2, 12:33:08–12:33:38. `gsr-server` 34906, `gsr-client` 35452. Shell started at 12:33:11. DING at 12:33:20, claimed at 12:33:21. `gnome-session-wayland@gsr.target` stopped and the login returned to the greeter. Peak 460.6M.
-
-The core at 12:31:01 is stock `/usr/bin/gnome-shell` pid 9739, signal 6. `org.gnome.Shell@x11.service` exited `code=dumped, status=6/ABRT`. Apport file `/var/crash/_usr_bin_gnome-shell.1001.crash`. Core `core.gnome-shell.1001.d0f04ebc44e34f4aac2829de063949b8.9739.*`. Stack top is `g_assertion_message_expr` in `libglib-2.0.so.0`, then `libmutter-16.so.0`, then `g_object_run_dispose`. That X11 session died immediately before the first GSR login.
-
-`st_icon_info_load_symbolic_async` is in the build of `libst-rpc-16.so` (`nm -D` shows `T`). `IconInfo.override.vala` runs `load_symbolic` and completes a `GLib.Task`. `load_symbolic_finish` reads that task. The installed `/lib/x86_64-linux-gnu/libst-rpc-16.so` is still the 12:30 library, which does not export the symbol. The gate `tests/call-sync-repro/symbolic-icon-async-gate` printed `symbolic-icon-async: ok`.
-
-Both GSR sessions, from `appindicatorsupport@rgcjonas.gmail.com` and `ubuntu-appindicators@ubuntu.com`:
-
-```text
-Could not locate st_icon_info_load_symbolic_async: 'st_icon_info_load_symbolic_async': /lib/x86_64-linux-gnu/libst-rpc-16.so: undefined symbol: st_icon_info_load_symbolic_async
-```
-
-Stock `/usr/lib/gnome-shell/libst-16.so` exports `st_icon_info_load_symbolic_async`. The installed `/lib/x86_64-linux-gnu/libst-rpc-16.so` (12:30) exports `st_icon_info_load_symbolic` and `st_icon_info_load_symbolic_finish` and not the async symbol. The name is still in the temporary block of `src/client/libst-rpc-16/St.deny`. `st_icon_info_load_symbolic_finish` calls `gsr_client_rpc_call_value`.
-
-`Shell.App.state` follows `interesting_windows`. The 09:53 Weston miss is still the one on record (`gjs-app-skip: miss name=GTK Demo after=2 listed=true`). Not re-run after these sessions. The guest 09:37 account is unchanged: title notify is in, one `ding.js` was claimed, the footer still showed one `gjs` app, and DING launched twice there (09:37:24 and 09:37:27).
-
-Weston command for the footer name:
-
-```bash
-GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=30 GI_META_SMOKE=gjs-app-skip \
-  ./scripts/agent-nested-smoke-prove.sh
-```
-
-`Meta.Window.title` now accepts the notify write on the mutter 16 client. Weston:
-
-```bash
-GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=30 GI_META_SMOKE=window-title-set \
-  ./scripts/agent-nested-smoke-prove.sh
-```
-
-`nested-weston-prove: stop (smoke-ok) after 1s`. Client log `window-title-set: title=Desktop Icons 1 notified=true` then `window-title-set: ok`. Before the setter the same command was `stop (smoke-fail)` with `window-title-set: miss Property MetaWindow.title is not writable`.
-
-The guest `libmutter-rpc-18.so` and `mutter-rpc-18/Meta-18.typelib` were installed from the guest build at 09:07 and `org.gnome.ShellRpc@wayland.service` was restarted. New session 09:08:02, `gsr-server` 5210, `gsr-client` 5232. Shell started. By 09:08:46 there was no `Launching DING process` and no `title` reject. The second DING launch and the cube `parent is null` throw are not fixed.
-
-DING launched at 08:50:58 and again at 08:51:01. One process remains:
-
-```text
-gjs /usr/share/gnome-shell/extensions/ding@rastersoft.com/app/ding.js -E -P /usr/share/gnome-shell/extensions/ding@rastersoft.com/app
-```
-
-Each launch logs `property 'title' of object class 'MetaWindow' is not writable`. The server, at the same two moments, logs `g_subprocess_get_if_exited: assertion 'pid == 0' failed` four times. The second launch then logs `Received notification for window. 0 notifications remaining.`
-
-`Meta.Window.title` in Meta-18.gir is get-only (`getter="get_title"`, no setter). The server sends `notify::title` and the client applies it with `set_property`. That write is rejected, so `notify::title` does not run. DING's `EmulateX11WindowType` connects `notify::title` and calls `_parseTitle()`, which is what calls `hide_from_window_list` when the title starts with `Desktop Icons `. The window stays a normal window and the shell lists it as the `gjs` process.
-
-The cube, at 08:51:25, from the panel overview toggle:
-
-```text
-JS ERROR: TypeError: can't access property "set_child_at_index", parent is null
-_depthSortCubeFaces@file:///home/alan/.local/share/gnome-shell/extensions/desktop-cube@schneegans.github.com/extension.js:876:7
-enable/WorkspacesView.prototype._updateWorkspacesState@.../extension.js:255:21
-_updateWorkspaceMode@resource:///org/gnome/shell/ui/workspacesView.js:327:14
-```
-
-`actors[0].get_parent()` is null, so the cube update throws and the faces are not rotated. The installed clutter client already has `stage_get_perspective_gprop`. This throw is not the earlier `ClutterPerspective` disconnect.
+The local smoke at 08:44 was `ding-icons/ui/init: desktops=1`, `skip=true`, `state=0`, `listed=false`, `ding-icons/ui/init: ok`, `stop (smoke-ok) after 13s`. One window on mutter 16. It is not the guest session.
 
 ## LLM efforts
 
@@ -98,3 +23,6 @@ _updateWorkspaceMode@resource:///org/gnome/shell/ui/workspacesView.js:327:14
 - 2026-11-10 14:55. `timeout 5 ./build/tests/call-sync-repro/symbolic-icon-async-gate` printed `symbolic-icon-async: ok`. Copied that task pair into `src/client/libst-rpc-16/overrides/IconInfo.override.vala`. Denied `IconInfo.load_symbolic_finish` so the generated RPC finish is not linked. `ninja -C build src/client/libst-rpc-16/libst-rpc-16.so`. `nm -D` shows `T st_icon_info_load_symbolic_async`. Header is `StIconInfo*`, `StIconColors*`, `GCancellable*`, `GAsyncReadyCallback`, `gpointer`.
 - 2026-11-10 14:59. `GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=30 GI_META_SMOKE=gjs-app-skip ./scripts/agent-nested-smoke-prove.sh`. `gjs-app-skip: name=GTK Demo before=2 after=0 listed=false skip=true`, `gjs-app-skip: ok`, `stop (smoke-ok) after 1s`.
 - 2026-11-10 15:00. `GSR_NESTED_TIMEOUT=70 GI_META_SMOKE=desktop-cube-lockup/ui/init ./scripts/agent-nested-smoke-prove.sh`. `workspaces=6 parent=[… GsrServerClutterActor.workspaces-view …]`, `desktop-cube-lockup/ui/init: ok`, `stop (smoke-ok) after 16s`.
+- 2026-11-11 08:44. `GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=ding-icons/ui/init ./scripts/agent-nested-smoke-prove.sh`. Tee log: `desktops=1`, `title=Desktop Icons 1 type=0 skip=true app=gjs state=0 listed=false`, `ding-icons/ui/init: ok`. `stop (smoke-ok) after 13s`. RPC was `Gsr-Mutter-WaylandClient.hide_from_window_list`.
+- 2026-11-11 09:05. Guest login after the 09:04:55 install. `Launching DING process` at 09:05:09 and 09:05:12. Claim at 09:05:13. `ding.js` 34599. User reports both the doubled icons and the `gjs` footer are still there.
+- 2026-11-11 10:24. `owns_window` on the 18 server also matches the subprocess pid. `Window.hide_from_window_list` sets `skip_taskbar` on the client after the RPC. Built on the guest. Stopped `org.gnome.ShellRpc@wayland.service` and installed `gsr-server` and `libmutter-rpc-18.so`. No login on this build yet.

@@ -155,10 +155,12 @@
 		{
 			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Window.hide_from_window_list", this);
+			this.skip_taskbar = true;
 		}
 
 		public void show_in_window_list() throws GLib.Error
 		{
 			Gsr.Client.Rpc.call_value(
 				"Gsr-Mutter-Window.show_in_window_list", this);
+			this.skip_taskbar = false;
 		}

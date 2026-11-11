@@ -225,10 +225,17 @@ namespace Gsr.Server.Meta
 			try {
 				owns = this.peer.owns_window(window);
 			} catch (GLib.Error e) {
-				request.connection.reply_error(
-					request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e
-				);
-				return;
+				owns = false;
+			}
+			/* Stock pointer check misses a window this process opened
+			 * on the session socket. Desktop Icons then kills the
+			 * process and launches a second one.
+			 */
+			if (!owns) {
+				var pid = this.peer.get_pid();
+				if (pid != 0 && window.get_pid() == pid) {
+					owns = true;
+				}
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
