@@ -140,6 +140,8 @@ unsigned_long_hash noop
 WaylandClient.new
 WaylandClient.spawnv
 WaylandClient.owns_window
+WaylandClient.hide_from_window_list
+WaylandClient.show_in_window_list
 
 # key-binding-wire.c owns these. The stub record is one byte; the fields
 # live beside it. windowManager.js calls is_builtin and is_reversed.

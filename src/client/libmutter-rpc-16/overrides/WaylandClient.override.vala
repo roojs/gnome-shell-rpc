@@ -90,3 +90,19 @@
 			}
 			return response.retval.get_boolean();
 		}
+
+		public void hide_from_window_list(Window window) throws GLib.Error
+		{
+			Gsr.Client.Rpc.call_value(
+				"Gsr-Mutter-WaylandClient.hide_from_window_list", this,
+				OLLMrpc.args("o", window)
+			);
+		}
+
+		public void show_in_window_list(Window window) throws GLib.Error
+		{
+			Gsr.Client.Rpc.call_value(
+				"Gsr-Mutter-WaylandClient.show_in_window_list", this,
+				OLLMrpc.args("o", window)
+			);
+		}

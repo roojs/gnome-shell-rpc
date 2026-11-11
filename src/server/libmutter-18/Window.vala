@@ -9,6 +9,14 @@
  */
 namespace Gsr.Server.Meta
 {
+	[CCode (cname = "meta_window_hide_from_window_list",
+		cheader_filename = "meta/window.h")]
+	extern void meta_window_hide_from_window_list(global::Meta.Window window);
+
+	[CCode (cname = "meta_window_show_in_window_list",
+		cheader_filename = "meta/window.h")]
+	extern void meta_window_show_in_window_list(global::Meta.Window window);
+
 	public class Window : GLib.Object
 	{
 		public static void rpc_register()
@@ -19,6 +27,8 @@ namespace Gsr.Server.Meta
 				"foreach_ancestor", "t",
 				"begin_grab_op", "oubff",
 				"get_compositor_private", "",
+				"hide_from_window_list", "",
+				"show_in_window_list", "",
 				null
 			);
 			OLLMrpc.Request.register_live("Gsr-Mutter-Window", new Window());
@@ -136,6 +146,39 @@ namespace Gsr.Server.Meta
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("b", ok),
+			});
+		}
+
+		/**
+		 * ''Gsr-Mutter-Window.hide_from_window_list'' — stock
+		 * {@code meta_window_hide_from_window_list}. Shell 50 Desktop
+		 * Icons calls this on the window.
+		 */
+		public void hide_from_window_list(OLLMrpc.Request request)
+		{
+			var window = (global::Meta.Window) request.connection.leases.get(
+				(int) request.lease_id);
+			if (window != null) {
+				meta_window_hide_from_window_list(window);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Gsr-Mutter-Window.show_in_window_list'' — stock
+		 * {@code meta_window_show_in_window_list}.
+		 */
+		public void show_in_window_list(OLLMrpc.Request request)
+		{
+			var window = (global::Meta.Window) request.connection.leases.get(
+				(int) request.lease_id);
+			if (window != null) {
+				meta_window_show_in_window_list(window);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
 			});
 		}
 	}

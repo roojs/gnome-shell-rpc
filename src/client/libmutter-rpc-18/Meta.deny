@@ -123,6 +123,10 @@ Window.skip_taskbar
 # Hand: notify::title is applied with set_property. The gir
 # property is get-only, so that write is rejected.
 Window.title
+# Hand: generated hide leaves the window in the dash. The override
+# calls Gsr-Mutter-Window.hide_from_window_list on the leased window.
+Window.hide_from_window_list
+Window.show_in_window_list
 # Hand: server packs handle pairs (Compositor.vala); override hydrates live
 # actor proxies bound to their windows. Generated decode expects an
 # ArrayList retval the server never sets, so it silently yields no actors.

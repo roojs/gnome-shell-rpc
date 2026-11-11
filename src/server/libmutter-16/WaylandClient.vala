@@ -9,6 +9,20 @@
  */
 namespace Gsr.Server.Meta
 {
+	[CCode (cname = "meta_wayland_client_hide_from_window_list",
+		cheader_filename = "meta/meta-wayland-client.h")]
+	extern void meta_wayland_client_hide_from_window_list(
+		global::Meta.WaylandClient client,
+		global::Meta.Window window
+	);
+
+	[CCode (cname = "meta_wayland_client_show_in_window_list",
+		cheader_filename = "meta/meta-wayland-client.h")]
+	extern void meta_wayland_client_show_in_window_list(
+		global::Meta.WaylandClient client,
+		global::Meta.Window window
+	);
+
 	public class WaylandClient : GLib.Object
 	{
 		private global::Meta.WaylandClient? peer = null;
@@ -29,6 +43,8 @@ namespace Gsr.Server.Meta
 				"send_signal", "i",
 				"force_exit", "",
 				"owns_window", "o",
+				"hide_from_window_list", "o",
+				"show_in_window_list", "o",
 				null
 			);
 			/* Not register_live — Ffi must bind lease_id → this row as self. */
@@ -287,6 +303,40 @@ namespace Gsr.Server.Meta
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("b", owns),
+			});
+		}
+
+		/**
+		 * ''Gsr-Mutter-WaylandClient.hide_from_window_list'' — stock
+		 * {@code meta_wayland_client_hide_from_window_list}. The
+		 * generated call leaves skip-taskbar false, so the desktop
+		 * window stays in the dash as gjs.
+		 */
+		public void hide_from_window_list(
+			OLLMrpc.Request request,
+			global::Meta.Window window
+		) {
+			if (this.peer != null && window != null) {
+				meta_wayland_client_hide_from_window_list(this.peer, window);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
+		/**
+		 * ''Gsr-Mutter-WaylandClient.show_in_window_list'' — stock
+		 * {@code meta_wayland_client_show_in_window_list}.
+		 */
+		public void show_in_window_list(
+			OLLMrpc.Request request,
+			global::Meta.Window window
+		) {
+			if (this.peer != null && window != null) {
+				meta_wayland_client_show_in_window_list(this.peer, window);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
 			});
 		}
 	}
