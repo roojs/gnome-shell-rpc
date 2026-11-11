@@ -1,6 +1,8 @@
 # Desktop Icons shows as gjs, and the cube swipe does not rotate
 
-**Status:** Open. The 09:05 guest login still had both icon failures on the 09:04 install. A new `gsr-server` and `libmutter-rpc-18.so` were installed at 10:24 after that session was stopped. Not logged in yet.
+**Status:** Open. The later edits were guesses. They skipped the debugging order, and that is why this took so long without a fix.
+
+`docs/debugging.md` says: prove the failure on Weston, change the reproduction until that same failure passes, and only then copy a trivial change into `src/`. The Weston smoke `ding-icons/ui/init` logged one window and `listed=false`. The emulator still launches Desktop Icons twice and still shows `gjs` in the dock. That smoke does not reproduce the emulator. The hide-from-window-list hand path, the pid match in `owns_window`, and the local `skip_taskbar` set were written into `src/` and installed with no failing test that then passed. The 10:29 login still launched at 10:29:40 and 10:29:43. Stop. No more product edits until a reproduction fails the way the emulator fails and then passes.
 
 Guest install 09:04:55 (`gsr-server`, `gsr-client`, `libmutter-rpc-18.so`, `libshell-18.so`, `Meta-18.typelib`). `gsr-server` exports `gsr_server_meta_window_hide_from_window_list`. Session 09:05:05, `gsr-server` 33826, `gsr-client` 34071. `Launching DING process` at 09:05:09 and 09:05:12. `Received notification for window. 0 notifications remaining.` at 09:05:13. `ding.js` pid 34599 started 09:05:12. `g_subprocess_get_if_exited: assertion 'pid == 0' failed` four times at each launch. `parent is null` at 09:05:17.
 
@@ -26,3 +28,4 @@ The local smoke at 08:44 was `ding-icons/ui/init: desktops=1`, `skip=true`, `sta
 - 2026-11-11 08:44. `GSR_NESTED_STAYUP=0 GSR_NESTED_TIMEOUT=50 GI_META_SMOKE=ding-icons/ui/init ./scripts/agent-nested-smoke-prove.sh`. Tee log: `desktops=1`, `title=Desktop Icons 1 type=0 skip=true app=gjs state=0 listed=false`, `ding-icons/ui/init: ok`. `stop (smoke-ok) after 13s`. RPC was `Gsr-Mutter-WaylandClient.hide_from_window_list`.
 - 2026-11-11 09:05. Guest login after the 09:04:55 install. `Launching DING process` at 09:05:09 and 09:05:12. Claim at 09:05:13. `ding.js` 34599. User reports both the doubled icons and the `gjs` footer are still there.
 - 2026-11-11 10:24. `owns_window` on the 18 server also matches the subprocess pid. `Window.hide_from_window_list` sets `skip_taskbar` on the client after the RPC. Built on the guest. Stopped `org.gnome.ShellRpc@wayland.service` and installed `gsr-server` and `libmutter-rpc-18.so`. No login on this build yet.
+- 2026-11-11 10:29. Login `gsr-server` 48927, `gsr-client` 49171. Binaries on disk are 10:29:11. `Launching DING process` at 10:29:40 and 10:29:43. Claim at 10:29:44. `ding.js` 49694 started 10:29:43. User: not fixed. The Weston `ding-icons` smoke had one launch and `listed=false`. It does not reproduce this login.
