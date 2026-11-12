@@ -86,8 +86,7 @@ function main() {
 	});
 
 	const launcher = new Gio.SubprocessLauncher({
-		flags: Gio.SubprocessFlags.STDOUT_PIPE
-			| Gio.SubprocessFlags.STDERR_MERGE,
+		flags: Gio.SubprocessFlags.NONE,
 	});
 	launcher.set_cwd(GLib.get_home_dir());
 	let proc = null;
