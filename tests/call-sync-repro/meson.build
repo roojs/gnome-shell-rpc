@@ -1499,3 +1499,87 @@ test(
   depends: [later_callback_hold_fixture, later_callback_hold_typelib],
 )
 
+# WindowActorWayland enters window_group::child-added before display::window-created.
+window_actor_child_added_alias_gate = executable(
+  'window-actor-child-added-alias-gate',
+  [
+    'window-actor-child-added-alias-gate.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'namespace.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Daemon.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Listen.vala',
+    meson.project_source_root() / 'src' / 'server' / 'rpc' / 'Connection.vala',
+  ],
+  dependencies: [ocrpc_dep, dependency('gio-unix-2.0')],
+  vala_args: ocrpc_vala_args,
+  c_args: ['-rdynamic'],
+  link_args: ['-rdynamic'],
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+test(
+  'window-actor-child-added-alias-current',
+  window_actor_child_added_alias_gate,
+  args: ['current'],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'window-actor-child-added-alias-fixed',
+  window_actor_child_added_alias_gate,
+  args: ['fixed'],
+  timeout: 5,
+)
+
+# SubprocessLauncher.take_fd holds the Wayland socketpair open until closed.
+wayland_client_launcher_fd_gate = executable(
+  'wayland-client-launcher-fd-gate',
+  'wayland-client-launcher-fd-gate.vala',
+  dependencies: [dependency('gio-unix-2.0')],
+  vala_args: ['--pkg=posix'],
+  install: false,
+)
+
+test(
+  'wayland-client-launcher-fd-current',
+  wayland_client_launcher_fd_gate,
+  args: ['current'],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'wayland-client-launcher-fd-fixed',
+  wayland_client_launcher_fd_gate,
+  args: ['fixed'],
+  timeout: 5,
+)
+
+# DragGesture checks BUTTON1_MASK on captured-event MOTION.
+captured_event_motion_state_gate = executable(
+  'captured-event-motion-state-gate',
+  'captured-event-motion-state-gate.vala',
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+test(
+  'captured-event-motion-state-current',
+  captured_event_motion_state_gate,
+  args: ['current'],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'captured-event-motion-state-fixed',
+  captured_event_motion_state_gate,
+  args: ['fixed'],
+  timeout: 5,
+)
+
+
+

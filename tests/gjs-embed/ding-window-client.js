@@ -18,8 +18,10 @@ function note(message) {
 note('start');
 Gtk.init(null);
 note('init');
-const window = new Gtk.Window({ title: 'Desktop Icons 1' });
-window.set_default_size(320, 200);
+const window = new Gtk.Window({ title: 'Probe Window' });
+window.set_default_size(1280, 800);
+window.set_size_request(1280, 800);
+window.maximize();
 window.show_all();
 note('shown');
 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 8000, () => {

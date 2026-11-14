@@ -54,6 +54,8 @@ function main() {
 	if (wm == null)
 		throw new Error('window_manager is null');
 
+	globalObj.window_group.connect('child-added', () => {});
+
 	let spawnReturned = false;
 	let waylandClient = null;
 	let mapsBefore = 0;
