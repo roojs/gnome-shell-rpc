@@ -1,7 +1,6 @@
 # Enabling extensions stops halfway and every window disappears
 
-**Status:** ✅ closed 2026-11-07. User: this is not an active bug. The
-wait lockup looks fixed.
+**Status:** ✔️ archived 2026-11-14. Closed 2026-11-07 — `WaylandClient.wait` / `WaylandClient.exited` wait lockup fixed.
 
 `Gsr-Mutter-WaylandClient.wait` replies as soon as `GLib.Subprocess.wait_async` is armed. The process exit is `WaylandClient.exited`. `Meta.RpcSubprocess.wait_async` returns from that notification. `GLib.SignalHandler.disconnect` drops the client watch because `OLLMrpc.Client.disconnect()` takes no handler id. Local `libmutter-rpc-16.so` linked and `libmutter-16/WaylandClient.c` compiled. This host is mutter 16, so `gsr-server` for Shell 50.1 is not built here. The guest session is still the 13:22 binaries.
 
@@ -284,3 +283,4 @@ timeout 5 ./build/tests/call-sync-repro/wayland-wait-blocks-gate yield
 - 2026-11-06 14:00 HKT. User: waiting on that socket for the life of the process is the wrong fix. `Client.call` still leaves `Gsr-Mutter-WaylandClient.wait` outstanding until exit, and `wait_response` still applies `call_timeout_seconds` (120). DING would still see a timeout and relaunch. The yield edit stays in the tree and is not that fix.
 - 2026-11-06 14:02 HKT. User: the bug file needs the proposal as hunks. Wrote ## Proposal with ### 1–4 Remove / Replace with / Add for both server `wait` methods, the client exit signal, and `wait_async`.
 - 2026-11-06 14:51 HKT. User approved the proposal. Applied ### 1–4. `OLLMrpc.Client.disconnect()` takes no handler id, so the client watch uses `GLib.SignalHandler.disconnect`, and that line in ### 4 was updated to match. `libmutter-rpc-16.so` linked. `libmutter-16/WaylandClient.c` compiled. `gsr-server` did not link: `rpc/Server.vala` calls `GI.Repository.dup_default` and this host's `girepository` header has no declaration. Guest not rebuilt.
+- 2026-11-14. User: archive old desktop cube / icons / DING bugs. Moved to `docs/bugs/done/`.

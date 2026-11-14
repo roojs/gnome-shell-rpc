@@ -1,7 +1,6 @@
 # Desktop icons steals the pointer when extensions start
 
-**Status:** Fixed on the local mutter 16 nest. The Ubuntu emulator
-is still the 12:07 binaries, so that session is unchanged.
+**Status:** ✔️ archived 2026-11-14. Fixed on the local mutter 16 nest (`desktop-icons-select: ok`). Later DING double-launch work is [`2026-11-10-ding-gjs-window-and-cube-swipe.md`](2026-11-10-ding-gjs-window-and-cube-swipe.md).
 
 Desktop Icons only lowers its Gtk window from `Shell.WM::map`.
 The server plugin showed the actor and called `map_completed`
@@ -75,3 +74,4 @@ edit, the same command was `stop (smoke-fail)` with
 - 2026-11-07. `Shell.WM` map handler no longer uses a ternary or a
   separate method. `proxies.get` runs only after `has_key`. Rebuilt
   `gsr-smoke`. Same prove: `map maps=1`, `lower ok`, `ok`.
+- 2026-11-14. User: archive old desktop cube / icons / DING bugs. Moved to `docs/bugs/done/`.

@@ -1,7 +1,6 @@
 # Enabling extensions aborts the client while launching DING
 
-**Status:** ✅ closed 2026-11-07. User: this is not an active bug. The
-`new_subprocess` abort looks fixed.
+**Status:** ✔️ archived 2026-11-14. Closed 2026-11-07 — `new_subprocess` abort fixed (`[CCode (cname = "meta_wayland_client_new_subprocess")]`).
 
 `Meta.WaylandClient.new_subprocess` aborts `gsr-client` in
 GJS `Function::invoke` (`function.cpp:1006`, `GError** argument number
@@ -133,3 +132,4 @@ the coredumpctl frames.
   `[CCode (cname = "...")]` is set; `KeymapDescription.new_from_rules`
   already uses that and its symbol matches the GIR. Copied that cname
   onto `WaylandClient.new_subprocess`.
+- 2026-11-14. User: archive old desktop cube / icons / DING bugs. Moved to `docs/bugs/done/`.

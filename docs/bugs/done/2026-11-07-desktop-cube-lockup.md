@@ -1,9 +1,6 @@
 # Enabling desktop-cube locks the session
 
-**Status:** Fixed on the local mutter 16 client. The guest session
-on `alan@192.168.122.115` (`ubuntu2604`, GNOME Shell 50.1 / mutter 18)
-is still the locked one from 09:53:58 HKT (`gsr-server` 127300,
-`gsr-client` 127542). That client was not rebuilt.
+**Status:** ✔️ archived 2026-11-14. Fixed on the local mutter 16 client (`desktop-cube-lockup/ui/init: ok`). Later cube swipe work is [`../2026-11-14-desktop-cube-swipe-drag.md`](../2026-11-14-desktop-cube-swipe-drag.md).
 
 Desktop Cube's patched `WorkspacesView._updateWorkspacesState` reads
 `global.stage.perspective` while the overview is constructed. The
@@ -125,3 +122,4 @@ DING printed `Launching DING process` about every 3 seconds. At
   `clutter_stage_get_perspective` and a `perspective` property
   whose getter is `get_perspective`. The 18 stub has the same
   edit and was not installed on `ubuntu2604`.
+- 2026-11-14. User: archive old desktop cube / icons / DING bugs. Moved to `docs/bugs/done/`.

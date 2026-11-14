@@ -1,13 +1,6 @@
 # Shell startup hangs, then icons stack
 
-Do not stop and report back until this is actually fixed.
-
-**Status:** Fixed on the guest session that started 10:00
-on 9 Nov. Desktop Icons claimed its window once and did not
-relaunch. That boot has no `window-type` reject, no
-`skip-taskbar` reject, no `map_completed` line, and no
-`nan`. Mutter 16 still has no `set_type`, so Weston
-`icon-overlay` still logs `type=0`.
+**Status:** ✔️ archived 2026-11-14. Fixed on the guest session that started 10:00 on 9 Nov (single DING claim; no window-type / skip-taskbar / map_completed / nan rejects). Later DING double-launch work is [`2026-11-10-ding-gjs-window-and-cube-swipe.md`](2026-11-10-ding-gjs-window-and-cube-swipe.md).
 
 Weston `map-completed-lid: ok`, no `Meta-Plugin.map_completed`
 line. Weston `icon-overlay/ui/init` with the shell left up:
@@ -172,3 +165,4 @@ window mapped logged `translation-z` `-nan` during teardown only.
   `skip-taskbar` reject, no `map_completed` line, no `nan`.
   `column_spacing` / `layout_manager is null` still logs
   four times.
+- 2026-11-14. User: archive old desktop cube / icons / DING bugs. Moved to `docs/bugs/done/`.
