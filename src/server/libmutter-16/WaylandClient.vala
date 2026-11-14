@@ -28,6 +28,7 @@ namespace Gsr.Server.Meta
 		private global::Meta.WaylandClient? peer = null;
 		private GLib.SubprocessLauncher? launcher = null;
 		private GLib.Subprocess? subprocess = null;
+		private bool exited = false;
 
 		public static void rpc_register()
 		{
@@ -155,6 +156,17 @@ namespace Gsr.Server.Meta
 				return;
 			}
 			this.subprocess = proc;
+			if (this.launcher != null) {
+				this.launcher.close();
+				this.launcher = null;
+			}
+			proc.wait_async.begin(null, (obj, res) => {
+				try {
+					proc.wait_async.end(res);
+				} catch (GLib.Error e) {
+				}
+				this.exited = true;
+			});
 			var stdout = proc.get_stdout_pipe();
 			int fd = -1;
 			if (stdout != null) {
@@ -189,34 +201,37 @@ namespace Gsr.Server.Meta
 
 		public void wait(OLLMrpc.Request request)
 		{
-			var proc = this.subprocess;
-			if (proc == null) {
+			if (this.subprocess == null) {
 				request.connection.reply_error(request, (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
 					new GLib.IOError.FAILED("WaylandClient.wait: no subprocess")
 				);
 				return;
 			}
 			var connection = request.connection;
-			int lease_id = (int) request.lease_id;
-			if (!proc.get_if_exited()) {
-				proc.wait_async.begin(null, (obj, res) => {
-					try {
-						proc.wait_async.end(res);
-					} catch (GLib.Error e) {
-						GLib.warning("WaylandClient.wait: %s", e.message);
-					}
-					connection.write(new OLLMrpc.Notification() {
-						method = "WaylandClient.exited",
-						id = lease_id,
-					});
-				});
-			}
-			if (proc.get_if_exited()) {
+			var lease_id = (int) request.lease_id;
+			if (this.exited) {
 				connection.write(new OLLMrpc.Notification() {
 					method = "WaylandClient.exited",
 					id = lease_id,
 				});
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("b", true),
+				});
+				return;
 			}
+			this.subprocess.wait_async.begin(null, (obj, res) => {
+				try {
+					this.subprocess.wait_async.end(res);
+				} catch (GLib.Error e) {
+					GLib.warning("wait failed: %s", e.message);
+				}
+				this.exited = true;
+				connection.write(new OLLMrpc.Notification() {
+					method = "WaylandClient.exited",
+					id = lease_id,
+				});
+			});
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("b", true),
@@ -225,26 +240,20 @@ namespace Gsr.Server.Meta
 
 		public void get_if_exited(OLLMrpc.Request request)
 		{
-			var proc = this.subprocess;
-			if (proc == null) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					retval = OLLMrpc.val("b", false),
-				});
-				return;
-			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = OLLMrpc.val("b", proc.get_if_exited()),
+				retval = OLLMrpc.val("b",
+					this.subprocess != null
+					&& this.exited
+					&& this.subprocess.get_if_exited()),
 			});
 		}
 
 		public void get_exit_status(OLLMrpc.Request request)
 		{
-			var proc = this.subprocess;
-			int status = 0;
-			if (proc != null && proc.get_if_exited()) {
-				status = proc.get_exit_status();
+			var status = 0;
+			if (this.subprocess != null && this.exited && this.subprocess.get_if_exited()) {
+				status = this.subprocess.get_exit_status();
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

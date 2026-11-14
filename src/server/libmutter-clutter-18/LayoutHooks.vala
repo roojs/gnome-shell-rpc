@@ -140,6 +140,9 @@ namespace Gsr.Server.Clutter
 			}
 			fields.add(OLLMrpc.val("i", device_type));
 			fields.add(OLLMrpc.val("u", event.get_time()));
+			if (et != global::Clutter.EventType.SCROLL) {
+				fields.add(OLLMrpc.val("u", (uint) event.get_state()));
+			}
 			hook.emit(fields);
 			if (hook.reply_args.size < 1) {
 				return false;

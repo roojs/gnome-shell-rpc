@@ -12,8 +12,8 @@ namespace Gsr.Server.Meta
 	public class WaylandClient : GLib.Object
 	{
 		private global::Meta.WaylandClient? peer = null;
-		private GLib.SubprocessLauncher? launcher = null;
 		private GLib.Subprocess? subprocess = null;
+		private bool exited = false;
 
 		public static void rpc_register()
 		{
@@ -71,23 +71,32 @@ namespace Gsr.Server.Meta
 				}
 			}
 			var row = new WaylandClient();
-			row.launcher = new GLib.SubprocessLauncher(
+			var launcher = new GLib.SubprocessLauncher(
 				(GLib.SubprocessFlags) flags
 			);
 			if (cwd != null && cwd.length > 0) {
-				row.launcher.set_cwd(cwd);
+				launcher.set_cwd(cwd);
 			}
 			try {
 				row.peer = new global::Meta.WaylandClient.subprocess(
-					context, row.launcher, wire
+					context, launcher, wire
 				);
 			} catch (GLib.Error e) {
+				launcher.close();
 				request.connection.reply_error(
 					request, (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e
 				);
 				return;
 			}
+			launcher.close();
 			row.subprocess = row.peer.get_subprocess();
+			row.subprocess.wait_async.begin(null, (obj, res) => {
+				try {
+					row.subprocess.wait_async.end(res);
+				} catch (GLib.Error e) {
+				}
+				row.exited = true;
+			});
 			var handle = (uint64) request.connection.export(row);
 			var response = new OLLMrpc.Response() {
 				id = request.id,
@@ -117,8 +126,7 @@ namespace Gsr.Server.Meta
 
 		public void wait(OLLMrpc.Request request)
 		{
-			var proc = this.subprocess;
-			if (proc == null) {
+			if (this.subprocess == null) {
 				request.connection.reply_error(
 					request,
 					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
@@ -127,26 +135,30 @@ namespace Gsr.Server.Meta
 				return;
 			}
 			var connection = request.connection;
-			int lease_id = (int) request.lease_id;
-			if (!proc.get_if_exited()) {
-				proc.wait_async.begin(null, (obj, res) => {
-					try {
-						proc.wait_async.end(res);
-					} catch (GLib.Error e) {
-						GLib.warning("WaylandClient.wait: %s", e.message);
-					}
-					connection.write(new OLLMrpc.Notification() {
-						method = "WaylandClient.exited",
-						id = lease_id,
-					});
-				});
-			}
-			if (proc.get_if_exited()) {
+			var lease_id = (int) request.lease_id;
+			if (this.exited) {
 				connection.write(new OLLMrpc.Notification() {
 					method = "WaylandClient.exited",
 					id = lease_id,
 				});
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("b", true),
+				});
+				return;
 			}
+			this.subprocess.wait_async.begin(null, (obj, res) => {
+				try {
+					this.subprocess.wait_async.end(res);
+				} catch (GLib.Error e) {
+					GLib.warning("wait failed: %s", e.message);
+				}
+				this.exited = true;
+				connection.write(new OLLMrpc.Notification() {
+					method = "WaylandClient.exited",
+					id = lease_id,
+				});
+			});
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("b", true),
@@ -155,26 +167,20 @@ namespace Gsr.Server.Meta
 
 		public void get_if_exited(OLLMrpc.Request request)
 		{
-			var proc = this.subprocess;
-			if (proc == null) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					retval = OLLMrpc.val("b", false),
-				});
-				return;
-			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = OLLMrpc.val("b", proc.get_if_exited()),
+				retval = OLLMrpc.val("b",
+					this.subprocess != null
+					&& this.exited
+					&& this.subprocess.get_if_exited()),
 			});
 		}
 
 		public void get_exit_status(OLLMrpc.Request request)
 		{
-			var proc = this.subprocess;
-			int status = 0;
-			if (proc != null && proc.get_if_exited()) {
-				status = proc.get_exit_status();
+			var status = 0;
+			if (this.subprocess != null && this.exited && this.subprocess.get_if_exited()) {
+				status = this.subprocess.get_exit_status();
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,

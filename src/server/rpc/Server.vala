@@ -19,7 +19,6 @@ namespace Gsr.Server.Rpc
 
 		private Gee.HashMap<global::Meta.Window, ulong> title_watch_ids =
 			new Gee.HashMap<global::Meta.Window, ulong>();
-		private bool window_actor_aliased = false;
 
 		public void start(global::Meta.Display display)
 		{
@@ -72,6 +71,23 @@ namespace Gsr.Server.Rpc
 			}
 			var stage = display.get_context().get_backend().get_stage();
 			Gsr.Server.Clutter.register_alias(stage);
+			global::Clutter.Actor[] window_groups = {
+				display.get_compositor().get_window_group(),
+				display.get_compositor().get_top_window_group(),
+			};
+			foreach (var group in window_groups) {
+				group.child_added.connect((actor) => {
+					if (!(actor is global::Meta.WindowActor)
+							|| OLLMrpc.Bin.gtype_to_alias.has_key(actor.get_type())) {
+						return;
+					}
+					try {
+						OLLMrpc.Bin.register_alias("Meta-WindowActor", actor.get_type());
+					} catch (GLib.Error e) {
+						GLib.error("%s", e.message);
+					}
+				});
+			}
 
 			var bootstrap = Bootstrap.bind(this.display, frame_lock);
 			OLLMrpc.Request.register("Server-Bootstrap", bootstrap);
@@ -161,16 +177,12 @@ namespace Gsr.Server.Rpc
 						connection.export(meta_window);
 					}
 				}
-				if (!this.window_actor_aliased) {
-					var priv = meta_window.get_compositor_private();
-					if (priv != null) {
-						try {
-							OLLMrpc.Bin.register_alias("Meta-WindowActor",
-								priv.get_type());
-							this.window_actor_aliased = true;
-						} catch (GLib.Error e) {
-							GLib.error("%s", e.message);
-						}
+				var priv = meta_window.get_compositor_private();
+				if (priv != null && !OLLMrpc.Bin.gtype_to_alias.has_key(priv.get_type())) {
+					try {
+						OLLMrpc.Bin.register_alias("Meta-WindowActor", priv.get_type());
+					} catch (GLib.Error e) {
+						GLib.error("%s", e.message);
 					}
 				}
 				var frame = meta_window.get_frame_rect();

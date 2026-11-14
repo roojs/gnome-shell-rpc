@@ -1,9 +1,13 @@
 namespace Gsr.Server.Meta
 {
-	/* G_DEFINE_TYPE registers this class on the first get_type call.
-	 * Gi.register maps MetaWindow only. Nested clients are MetaWindowWayland. */
+	/* G_DEFINE_TYPE registers these classes on the first get_type
+	 * call. Gi.register maps MetaWindow only. Wayland sessions host
+	 * X11 apps via Xwayland, whose windows are MetaWindowX11. */
 	[CCode (cname = "meta_window_wayland_get_type")]
 	extern GLib.Type meta_window_wayland_get_type();
+
+	[CCode (cname = "meta_window_x11_get_type")]
+	extern GLib.Type meta_window_x11_get_type();
 
 	public void rpc_register(StartupFrameLock gate)
 	{
@@ -47,5 +51,6 @@ namespace Gsr.Server.Meta
 		OLLMrpc.Bin.register_alias("Meta-Backend",
 			display.get_context().get_backend().get_type());
 		OLLMrpc.Bin.register_alias("Meta-Window", meta_window_wayland_get_type());
+		OLLMrpc.Bin.register_alias("Meta-Window", meta_window_x11_get_type());
 	}
 }

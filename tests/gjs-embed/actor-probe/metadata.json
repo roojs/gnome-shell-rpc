@@ -1,0 +1,7 @@
+{
+  "uuid": "actor-probe@gsr",
+  "name": "Actor probe",
+  "description": "Launch one Gtk window and record whether it has a compositor actor.",
+  "shell-version": ["50"],
+  "version": 1
+}

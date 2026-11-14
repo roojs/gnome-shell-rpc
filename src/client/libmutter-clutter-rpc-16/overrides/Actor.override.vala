@@ -493,7 +493,11 @@
 			if (call.args.size > 5) {
 				keyval = call.args.get(5).get_uint();
 			}
-			var ev = Event.from_local(type, x, y, button, 0, keyval);
+			var state = 0u;
+			if (type != EventType.scroll && call.args.size > 9) {
+				state = call.args.get(9).get_uint();
+			}
+			var ev = Event.from_local(type, x, y, button, state, keyval);
 			ev.read_scroll_tail(call.args, 6);
 			Gsr.Client.Rpc.VfuncRelay.begin(this);
 			var baseline = GLib.Type.from_name("StWidget");
@@ -545,7 +549,11 @@
 			if (call.args.size > 5) {
 				keyval = call.args.get(5).get_uint();
 			}
-			var ev = Event.from_local(type, x, y, button, 0, keyval);
+			var state = 0u;
+			if (type != EventType.scroll && call.args.size > 9) {
+				state = call.args.get(9).get_uint();
+			}
+			var ev = Event.from_local(type, x, y, button, state, keyval);
 			ev.read_scroll_tail(call.args, 6);
 			bool stop = this.signal_captured_event(ev);
 			var baseline = GLib.Type.from_name("StWidget");
