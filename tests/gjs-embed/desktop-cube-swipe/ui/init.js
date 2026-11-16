@@ -139,10 +139,20 @@ async function run(main) {
 	deskTracker.disconnect(pbId);
 	deskTracker.disconnect(puId);
 	deskTracker.disconnect(peId);
+	const activities = main.panel.statusArea?.activities;
 	smokeLog('panel began=' + panelBegan + ' updated=' + panelUpdated
 		+ ' ended=' + panelEnded + ' ws=' + wm.get_active_workspace_index()
 		+ ' cgEnabled=' + main.panel._clickGesture?.enabled
-		+ ' cgGetEnabled=' + main.panel._clickGesture?.get_enabled());
+		+ ' cgGetEnabled=' + main.panel._clickGesture?.get_enabled()
+		+ ' activitiesGetEnabled=' + activities?._clickGesture?.get_enabled());
+	const now = () => GLib.get_monotonic_time();
+	virt.notify_absolute_motion(now(), 40, 10);
+	await delay(50);
+	virt.notify_button(now(), 1, Clutter.ButtonState.PRESSED);
+	await delay(50);
+	virt.notify_button(now(), 1, Clutter.ButtonState.RELEASED);
+	await delay(400);
+	smokeLog('activities-click vis=' + main.overview.visible);
 
 	// 2. Overview drag.
 	const ovDisplay = main.overview._overview._controls._workspacesDisplay;
