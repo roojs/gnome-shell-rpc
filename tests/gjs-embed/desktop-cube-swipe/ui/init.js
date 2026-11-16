@@ -128,13 +128,6 @@ async function run(main) {
 		};
 	}
 
-	// Panel ClickGesture stays enabled on the compositor: the extension
-	// writes the local .enabled property, and get_enabled() stays true.
-	// set_enabled() is the RPC. Do that here so the press is not stolen
-	// by panel.js _onWindowDragGestureRecognize → get_sprite.
-	if (main.panel._clickGesture)
-		main.panel._clickGesture.set_enabled(false);
-
 	const deskTracker = main.wm._workspaceAnimation._swipeTracker;
 	let panelBegan = 0;
 	let panelUpdated = 0;
@@ -162,10 +155,6 @@ async function run(main) {
 		+ ' ctrl=' + main.overview._overview.controls._stateAdjustment.value
 		+ ' leaving=' + ovDisplay._leavingOverview
 		+ ' trackerEnabled=' + ovTracker.enabled);
-	ovDisplay._leavingOverview = false;
-	ovDisplay._updateSwipeTracker();
-	smokeLog('ov-after-clear leaving=' + ovDisplay._leavingOverview
-		+ ' trackerEnabled=' + ovTracker.enabled);
 	let ovBegan = 0;
 	let ovUpdated = 0;
 	let ovEnded = 0;
@@ -179,9 +168,8 @@ async function run(main) {
 	main.overview.hide();
 	await delay(800);
 
-	// 3. Desktop background drag with DING disabled so _backgroundGroup is reachable.
-	await manager._callExtensionDisable('ding@rastersoft.com');
-	await delay(300);
+	// 3. Desktop background. DING's maximized window usually covers
+	// _backgroundGroup; this drag records whatever is actually picked.
 	let deskBegan = 0;
 	let deskUpdated = 0;
 	let deskEnded = 0;

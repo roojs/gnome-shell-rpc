@@ -1,6 +1,6 @@
 # Desktop Cube horizontal swipe does not rotate workspaces
 
-**Status:** Open. Split from [`docs/bugs/done/2026-11-10-ding-gjs-window-and-cube-swipe.md`](done/2026-11-10-ding-gjs-window-and-cube-swipe.md) after DING was fixed. `event.get_state()` packing for GJS `LayoutHooks` actors is already in `src/` and proven necessary but **not sufficient**. Mutter 18 gesture / `Backend.get_sprite` peers exist on disk and are **not** wired from `rpc_register()`. Authoritative reproduce is the Ubuntu 26.04 VM (`alan@192.168.122.115`, Shell 50 / mutter 18), not Weston (mutter 16).
+**Status:** Open. Panel swipe is fixed in the client and proven on the Ubuntu 26.04 VM (`alan@192.168.122.115`, Shell 50 / mutter 18). Overview still fails: `WorkspacesDisplay._leavingOverview` stays true, so the swipe tracker stays disabled (`updated=0`). Calling `vfunc_hide()` from the smoke clears that flag and the overview swipe then passes. That call is not in `src/` — `Actor.hide()` does not run `hide_vfunc`, and it is not yet shown that startup reaches `hide()` or `vfunc_unmap`. Desktop drag at `y=400` still hits maximized DING (`began=0`); the same drag with DING disabled passed. Weston (mutter 16) does not build this client.
 
 Related but different:
 - [`docs/bugs/done/2026-11-07-desktop-cube-lockup.md`](done/2026-11-07-desktop-cube-lockup.md) — enable lockup from `Stage.perspective` / `ClutterPerspective` write (`parent is null`). Fixed for local mutter 16.
@@ -58,7 +58,9 @@ meson test -C build captured-event-motion-state-current captured-event-motion-st
 
 **VM proof packing is not enough:** same run then `ev panel type=5 state=0 coords=680,10 1->0` (LEAVE into the center-box `DateMenuButton` before threshold; smoke dragged `800 → 680` at `y=10`). Smoke ends `miss overview-swipe`.
 
-### Still open — missing mutter-18 `rpc_register` wiring
+The sections below through the 2026-11-14 log quotes are the account before 2026-11-15. The current account is the status at the top, plus **Applied** and **Still open** after the hypothesis table.
+
+### 2026-11-14 account — missing mutter-18 `rpc_register` wiring
 
 `src/server/meson.build` compiles these for API 18:
 
@@ -189,53 +191,46 @@ DING mapped successfully in that same run (`DING map client=true`, `DING owns=tr
 
 | Hypothesis | Status |
 |------------|--------|
-| LayoutHooks omit `event.get_state()` → panel MOTION cancels on BUTTON1 | **PROVEN** (VM + gate); **fixed in tree** |
-| Packing restores non-zero state on LayoutHooks path | **PROVEN** (panel `state=256`) |
-| Packing alone makes cube swipe / swipeTracker begin | **DISPROVEN** (post-apply all `began=0`) |
-| `_backgroundGroup` via EventOverride already had state and could reach ACTIVE+grab | **PROVEN** (pre-apply) |
-| After ACTIVE, events stop + `get_sprite -32602` | **OBSERVED** pre-apply; register wiring still missing |
-| Missing `Backend`/`Click`/`Pan`/`LongPress` `rpc_register` → `-32602` | **Strong code audit**; not re-logged post-apply |
-| DING maximized covers `_backgroundGroup` @ `y=400` | **PROVEN** |
-| Panel LEAVE @ `x=680` from DateMenuButton cancels PENDING | **PROVEN** for that smoke geometry |
-| Empty-panel drag + Backend register → panel cube swipe works | **UNPROVEN** (next) |
-| Overview `began=0` is a real regression vs 2026-11-13 | **UNCLEAR** (DING/timing/`event_actor`) |
-| Post-grab motion needs a `Stage.grab` / Grab lease path | **UNPROVEN** |
+| LayoutHooks omit `event.get_state()` → panel MOTION cancels on BUTTON1 | **PROVEN**; **fixed in tree** |
+| Packing alone makes cube swipe | **DISPROVEN** |
+| Panel click gesture `.enabled = false` stays local; `get_enabled()` stays true | **PROVEN** (`cgEnabled=false cgGetEnabled=true` in `/tmp/cube-panel-first.log`) |
+| That still-enabled gesture calls `Clutter-Backend.get_sprite` and the press gets no MOTION | **PROVEN** (`Clutter_generated.vala:3634` `-32602` on the press; `panel began=0`) |
+| `ActorMeta.set_enabled(false)` on an empty panel span lets the swipe finish, including post-grab motion | **PROVEN** (`/tmp/cube-ov-clear.log`: `grab=true`, `panel began=1 updated=14 ended=1 ws=1`) |
+| Post-grab motion needs a new `Stage.grab` RPC | **DISPROVEN** for the panel and for the DING-off desktop drag |
+| Wiring `ClickGesture` / `PanGesture` / `LongPressGesture.rpc_register` fixes `get_sprite` | **DISPROVEN** as the cube panel fix. Those peers register `Gsr-Clutter-*`. The client constructs `Clutter-ClickGesture.new`. `get_sprite` is `Clutter-Backend.get_sprite`, and `Backend.rpc_register()` is still not called. It is not what the passing panel run needed. |
+| Idle-sync of `ClickGesture.enabled` → `set_enabled` restores the panel swipe without the smoke calling `set_enabled` | **PROVEN**; **applied** (`/tmp/cube-after-panel-fix.log`) |
+| A setter that calls `set_enabled` immediately nests inside `Clutter-ClickGesture.new` and drops the connection | **PROVEN** (`/tmp/cube-click-debug.log` id=206 then id=207 `disconnect abort`). A second `construct {}` does not compile (`class already contains a constructor`). |
+| Overview tracker stays off because `_leavingOverview` stays true | **PROVEN** (`leaving=true trackerEnabled=false`, `began=1 updated=0 ended=14`) |
+| `WorkspacesDisplay.vfunc_hide()` clears the flag and the overview swipe then updates | **PROVEN** off product code (`/tmp/cube-vfunc-hide.log`) |
+| `Actor.hide()` or `vfunc_unmap` is the call that should run that vfunc | **UNPROVEN**. `hide()` does not call `hide_vfunc`. `signal:Actor.hide` is denied. A counter on `hide` / `vfunc_unmap` died at `Signals.vala:255` (`Client: disconnected`) before it logged. |
+| DING maximized covers `_backgroundGroup` at `y=400` | **PROVEN**. DING disabled: `desktop began=1 updated=14 ended=1` in `/tmp/cube-ov-clear.log`. |
+| Panel LEAVE at `x=680` is the product bug | **DISPROVEN**. That was the clock (`centerBox` 569..712). Empty span 1200→730 stays on the panel. |
+| `ThemeContext.get_for_stage` null is the desktop root cause | **DISPROVEN** as a missing method. It was logged while the client was already disconnecting. The DING-off drag later completed. |
 
-## Next steps (for the carrying session)
+## Applied
 
-Follow [`docs/debugging.md`](../debugging.md). Do not land unproven `src/` edits.
+`src/client/libmutter-clutter-rpc-18/overrides/ClickGesture.override.vala` — `enabled` stores the value and `Idle.add` calls `ActorMeta.set_enabled` once `rpc_lid != 0`. Rebuilt on the VM (`Clutter-18.typelib`, 2026-11-16 08:41). The smoke does not call `set_enabled`.
 
-1. **Prove missing register:** on the VM with current tree, trigger panel press and confirm `Clutter-Backend.get_sprite` still returns `-32602` (or write a tiny gate that calls it). Then propose wiring the four `rpc_register` calls in `namespace.vala` (trivial once proven — peers already exist).
-2. **Retarget smoke panel drag** to an empty panel region (e.g. start `x≈300` left of the clock, drag left to `≈150` at `y=10`). Require instrumented `grab=true` / `ACTIVE` and `panel began≥1`. Keep overview/desktop asserts or soften until panel path is green.
-3. **Optional DING-off run** to isolate `_backgroundGroup` path A after X11 alias fix (should no longer abort).
-4. If ACTIVE but swipeTracker still silent: gate/prove post-`stage.grab` `event` delivery before inventing Stage grab RPC.
-5. Re-check overview after panel path works; if still `began=0`, treat as a separate overview tracker defect (possibly tied to app-grid / `PanGesture` neighborhood).
+Post-change (`/tmp/cube-after-panel-fix.log`):
 
-## Code proposal (candidate only — not proven as sufficient)
-
-### 1. `src/server/libmutter-clutter-18/namespace.vala` — call the existing 18 peers from `rpc_register()`
-
-**Why:** Peers are compiled and their headers claim startup registration; only `PressGesture` is actually called. Client `Backend.get_sprite` and shell/extension gesture constructors need the live classes.
-
-**Where:** `Gsr.Server.Clutter.rpc_register()`, immediately around the existing `PressGesture.rpc_register(clutter)`.
-
-**Depends on:** prove `-32602` (or equivalent) on current tree first.
-
-#### Keep
-```vala
-		var clutter = Clutter.rpc_register();
-		PressGesture.rpc_register(clutter);
+```text
+panel began=1 updated=14 ended=1 ws=1 cgEnabled=false cgGetEnabled=false
+ov-before-show leaving=true mapped=false
+ov-state vis=true mode=2 ctrl=1 leaving=true trackerEnabled=false
+overview began=1 updated=0 ended=14 ws=0
+desktop began=0 updated=0 ended=0 ws=0
+miss Error: miss overview-swipe
 ```
 
-#### Add
-```vala
-		Backend.rpc_register();
-		ClickGesture.rpc_register(clutter);
-		PanGesture.rpc_register(clutter);
-		LongPressGesture.rpc_register(clutter);
-```
+`get_sprite -32602` did not recur on that run. The gesture was disabled before the press.
 
-Do **not** apply until step 1 of Next steps has a FAIL-backed prove and a post-wire PASS on the same command. Smoke geometry changes stay in `tests/gjs-embed/desktop-cube-swipe/ui/init.js`, not in product code.
+## Still open
+
+Overview. `vendor/gnome-shell/js/ui/workspacesView.js` `prepareToLeaveOverview` sets `_leavingOverview` and disables the tracker. The only clear is `vfunc_hide`. Startup (DING `activateWindow` → `overview.hide`) sets the flag before the smoke's `overview.show()`, and show does not clear it. `_updateTouchpadGesture` then `_interrupt`s, so `begin` fires and `update` does not.
+
+Do not patch `Actor.hide()` until a run shows that `hide()` or `ControlsManager.vfunc_unmap` is actually invoked for this actor. The off-code pass calls `vfunc_hide()` itself (`/tmp/cube-vfunc-hide.log`: `ov-after-vfunc-hide leaving=false`, `overview began=1 updated=13 ended=1 ws=2`).
+
+Desktop. Smoke drag `240→800` at `y=400` hits DING. Not a missing RPC once DING is out of the pick.
 
 ## LLM efforts
 
@@ -243,3 +238,10 @@ Do **not** apply until step 1 of Next steps has a FAIL-backed prove and a post-w
 - 2026-11-14. Applied LayoutHooks/Actor state packing with DING fixes. Post-apply VM smoke `desktop-cube-swipe/ui/init`: panel `state=256` on PRESS → PENDING, then LEAVE at DateMenuButton cancels; overview/desktop `began=0`; `miss overview-swipe`. DING single-launch OK in the same log.
 - 2026-11-14. User: close DING bug; split cube swipe into this file with enough context to continue. Audited `namespace.vala`: `Backend` / `ClickGesture` / `PanGesture` / `LongPressGesture` `rpc_register` still unwired. No further `src/` edit.
 - 2026-11-14. User: archive old desktop cube / icons / DING bugs into `docs/bugs/done/`. This swipe bug stays open.
+- 2026-11-15. VM headless, empty panel `1200→730` `y=10`, extension `.enabled=false` left as-is. `/tmp/cube-panel-first.log`: `ev panel type=6 state=256` then no MOTION; `panel began=0`; `cgEnabled=false cgGetEnabled=true`; `Clutter_generated.vala:3634` `-32602` (`Clutter-Backend.get_sprite`). Then Xwayland broken pipe during `overview.show`.
+- 2026-11-15. Same drag after smoke `set_enabled(false)`, plus `_leavingOverview=false` and DING disabled. `/tmp/cube-ov-clear.log` (timeout 124 after `ok`): `panel began=1 updated=14 ended=1 ws=1 cgGetEnabled=false`; `ov-after-clear leaving=false trackerEnabled=true`; `overview began=1 updated=13 ended=1 ws=3`; `desktop began=1 updated=14 ended=1 ws=2`. Post-grab motion arrived. `stage.grab` RPC hypothesis dropped.
+- 2026-11-15. Applied `ClickGesture.enabled` setter that called `set_enabled` when `rpc_lid != 0`. Startup died. `--debug` `/tmp/cube-click-debug.log` (deleted after, 75KB): `Clutter-ClickGesture.new` id=206 still in flight, nested `Clutter-ActorMeta.set_enabled` id=207, `Client.vala:519 disconnect abort`. Second `construct {}` failed valac: `class already contains a constructor`.
+- 2026-11-15. Replaced that setter with `Idle.add` → `set_enabled`. Rebuilt `src/Clutter-18.typelib` on the VM. Smoke does not call `set_enabled`. `/tmp/cube-after-panel-fix.log`: `panel began=1 updated=14 ended=1 ws=1 cgGetEnabled=false`; `overview began=1 updated=0 ended=14` with `leaving=true trackerEnabled=false`; `desktop began=0`; `miss overview-swipe`.
+- 2026-11-15. Smoke called `ovDisplay.vfunc_hide()` before `overview.show()`. `/tmp/cube-vfunc-hide.log`: `ov-after-vfunc-hide leaving=false`; `overview began=1 updated=13 ended=1 ws=2`; `desktop began=0`; `miss desktop-swipe`. Not copied into `Actor.hide()`.
+- 2026-11-15. Monkeypatch counters on `hide` / `vfunc_unmap` (`/tmp/cube-hide-counts.log`) disconnected at `Signals.vala:255` during the overview drag, before the counts were logged. Counters removed from the smoke.
+- 2026-11-15. `--debug` once grew `/tmp/cube-debug.log` to 2.9G (runaway smoke). Deleted. VM `/` is still ~100% full (348M). Do not leave a `--debug` run up.
