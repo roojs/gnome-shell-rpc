@@ -106,6 +106,17 @@ async function run(main) {
 	while (wm.n_workspaces < 4)
 		wm.append_new_workspace(false, global.get_current_time());
 
+	const St = imports.gi.St;
+	const probeParent = new St.Widget({name: 'probe-parent'});
+	const probeChild = new St.Widget({name: 'probe-child'});
+	main.layoutManager.uiGroup.add_child(probeParent);
+	probeParent.add_child(probeChild);
+	const probeGot = probeChild.get_parent();
+	smokeLog('probe parentNull=' + (probeGot == null)
+		+ ' same=' + (probeGot === probeParent)
+		+ ' name=' + (probeGot?.name ?? 'none'));
+	probeParent.destroy();
+
 	const seat = Clutter.get_default_backend().get_default_seat();
 	const virt = seat.create_virtual_device(
 		Clutter.InputDeviceType.POINTER_DEVICE);
@@ -159,6 +170,11 @@ async function run(main) {
 	smokeLog('ov-before-show leaving=' + ovDisplay._leavingOverview + ' mapped=' + ovDisplay.mapped);
 	main.overview.show();
 	await delay(1000);
+	const ws0 = ovDisplay._workspacesViews?.[0]?._workspaces?.[0];
+	const wsParent = ws0?.get_parent() ?? null;
+	smokeLog('ws parentNull=' + (wsParent == null)
+		+ ' name=' + (wsParent?.name ?? 'none')
+		+ ' n=' + (ovDisplay._workspacesViews?.[0]?._workspaces?.length ?? 0));
 	const ovTracker = ovDisplay._swipeTracker;
 	smokeLog('ov-state vis=' + main.overview.visible
 		+ ' mode=' + main.actionMode
