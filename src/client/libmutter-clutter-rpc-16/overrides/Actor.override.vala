@@ -848,6 +848,31 @@
 	}
 
 	/**
+	 * GJS {@code connect('destroy')} on a {@code registerClass} actor
+	 * (WorkspacesView) does not run before the server actor is gone.
+	 * The peer notification is held across the overview ease, so the
+	 * old view stays in {@code notify::value} and
+	 * {@code get_parent()} is null. Emit here, before the RPC, for
+	 * those types only. A GI actor (Meta.BackgroundActor) already
+	 * gets one synchronous re-emit from the peer; a second emit
+	 * runs its destroy handlers again.
+	 */
+	private bool priv_destroying = false;
+
+	public void destroy()
+	{
+		if (this.priv_destroying) {
+			return;
+		}
+		this.priv_destroying = true;
+		unowned string type_name = this.get_type().name();
+		if (type_name.has_prefix("Gjs_")) {
+			GLib.Signal.emit_by_name(this, "destroy");
+		}
+		Gsr.Client.Rpc.call_value("Clutter-Actor.destroy", this);
+	}
+
+	/**
 	 * GIR pivot-point getter uses float OUTs — generator skips the property
 	 * and we deny get/set_pivot_point (Vala would emit duplicate C symbols for
 	 * the property accessors). Inline RPC for GJS construct literals.

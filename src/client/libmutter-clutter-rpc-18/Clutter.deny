@@ -180,6 +180,7 @@ Actor.translation_z
 Actor.visible
 Actor.show
 Actor.hide
+Actor.destroy
 signal:Actor.show
 signal:Actor.hide
 Actor.name

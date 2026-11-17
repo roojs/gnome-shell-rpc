@@ -102,46 +102,6 @@ async function run(main) {
 	if (extension == null || extension.stateObj == null)
 		throw new Error('miss enable-state=' + state + ' errs=' + errs);
 
-	const cube = extension.stateObj;
-	const origDepth = cube._depthSortCubeFaces.bind(cube);
-	cube._depthSortCubeFaces = function(actors) {
-		const parent = actors?.[0]?.get_parent() ?? null;
-		if (parent == null)
-			return;
-		return origDepth(actors);
-	};
-
-	const ViewProto = imports.ui.workspacesView.WorkspacesView.prototype;
-	const origState = ViewProto._updateWorkspacesState;
-	let stateLogs = 0;
-	ViewProto._updateWorkspacesState = function() {
-		const ws = this._workspaces?.[0];
-		const parent = ws?.get_parent() ?? null;
-		if (ws != null && parent == null && stateLogs < 4) {
-			stateLogs++;
-			let nChildren = -1;
-			let inKids = false;
-			let viewParent = false;
-			let err = '';
-			try {
-				nChildren = this.get_n_children();
-				viewParent = this.get_parent() != null;
-				inKids = this.get_children().indexOf(ws) >= 0;
-			} catch (e) {
-				err = '' + e;
-			}
-			smokeLog('state NULL n=' + this._workspaces.length
-				+ ' kids=' + nChildren
-				+ ' inKids=' + inKids
-				+ ' viewParent=' + viewParent
-				+ ' viewStage=' + (this.get_stage() != null)
-				+ ' err=' + err);
-		}
-		if (parent == null && this._workspaces?.length)
-			return;
-		return origState.apply(this, arguments);
-	};
-
 	const wm = global.workspace_manager;
 	while (wm.n_workspaces < 4)
 		wm.append_new_workspace(false, global.get_current_time());
