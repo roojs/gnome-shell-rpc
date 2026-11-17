@@ -1,6 +1,14 @@
 # Desktop Cube horizontal swipe does not rotate workspaces
 
-**Status:** Open. The 09:06 install of the panel-swipe change disabled every `ClickGesture`: `enabled` was a construct property, and a construct bool defaults to false, so GObject wrote false into Activities, panel menus, and every other click gesture. Desktop icons still respond because they are not click gestures. That property is no longer construct. Headless prove after the rebuild (`/tmp/cube-activities.log`): `activitiesGetEnabled=true` and a click at `(40,10)` sets `overview.visible=true`. The installed `/usr/bin/gsr-client` (mtime 09:06) is still the broken build. The login at 09:07 used it. Overview swipe is a separate open failure: `_leavingOverview` stays true.
+**Status:** Open. The 09:56 reinstall still does not spin the cube. Login `gsr-client` 271923 throws while the overview animation runs:
+
+```text
+TypeError: can't access property "set_child_at_index", parent is null
+_depthSortCubeFaces extension.js:876
+_updateWorkspacesState extension.js:255
+```
+
+Journal times 09:57:07 and 09:57:38. The throw aborts the cube's workspace update, so the faces never reorder. Same stack in headless `/tmp/cube-parent.log` during `overview.show()`. After that show finishes, `get_parent()` on the first workspace is not null. A plain `St.Widget` child also round-trips (`probe same=true`). The actor whose parent is null on the throwing call is not identified yet. The same login also throws `this.layout_manager is null` from `iconGrid.js:1262` while building the app grid.
 
 Related but different:
 - [`docs/bugs/done/2026-11-07-desktop-cube-lockup.md`](done/2026-11-07-desktop-cube-lockup.md) — enable lockup from `Stage.perspective` / `ClutterPerspective` write (`parent is null`). Fixed for local mutter 16.
@@ -246,3 +254,4 @@ Desktop. Smoke drag `240→800` at `y=400` hits DING. Not a missing RPC once DIN
 - 2026-11-15. Monkeypatch counters on `hide` / `vfunc_unmap` (`/tmp/cube-hide-counts.log`) disconnected at `Signals.vala:255` during the overview drag, before the counts were logged. Counters removed from the smoke.
 - 2026-11-15. `--debug` once grew `/tmp/cube-debug.log` to 2.9G (runaway smoke). Deleted. VM `/` is still ~100% full (348M). Do not leave a `--debug` run up.
 - 2026-11-16. User: session boots, desktop-icon double-click works, overview and panel menus do not. Installed client is `/usr/bin/gsr-client` mtime 09:06; login 09:07 ran that binary (`journalctl` `gsr-client[236884]`). Generated C had `g_param_spec_boolean("enabled", ..., FALSE, G_PARAM_CONSTRUCT)`. Removed `construct` from the property. Rebuild param spec is `G_PARAM_READABLE | G_PARAM_WRITABLE` only. `/tmp/cube-activities.log`: `activitiesGetEnabled=true`, `activities-click vis=true`. Panel window-drag is still `cgEnabled=false cgGetEnabled=true` (`panel began=0`); the extension write is not reaching `set_enabled` once the property is not construct. `/usr` was not reinstalled.
+- 2026-11-16 09:57. User reinstalled (`/usr/bin/gsr-client` mtime 09:56:49) and logged in (`gsr-client` 271923). Session still does not spin the cube. Journal: `_depthSortCubeFaces` `parent is null` at 09:57:07 and 09:57:38, from `WorkspacesView._updateWorkspacesState` during `animateToOverview`. Also `iconGrid.js` `layout_manager is null`. Headless `/tmp/cube-parent.log` repeats the parent-null stack on `overview.show()`. `/tmp/cube-depth.log`: the first four sorts have `parent=WorkspacesView` (`n=3` then `n=4`); `get_parent()` after show is non-null. The throwing call is a later one.
