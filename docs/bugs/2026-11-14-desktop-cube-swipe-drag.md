@@ -1,14 +1,10 @@
 # Desktop Cube horizontal swipe does not rotate workspaces
 
-**Status:** Open. The 09:56 reinstall still does not spin the cube. Login `gsr-client` 271923 throws while the overview animation runs:
+**Status:** Open. Overview swipe rotates workspaces on the headless prove. `/tmp/cube-hide-mapped.log` (2026-11-18 08:41, build client): `startup leaving=false`, `ov-state leaving=false trackerEnabled=true`, `overview began=1 updated=13 ended=1 ws=3`. No `_entry is undefined`. `parent is null` did not recur.
 
-```text
-TypeError: can't access property "set_child_at_index", parent is null
-_depthSortCubeFaces extension.js:876
-_updateWorkspacesState extension.js:255
-```
+`Actor.hide()` was only the server RPC. Hiding `overviewGroup` never ran `ControlsManager.vfunc_unmap`, so `WorkspacesDisplay.vfunc_hide` never cleared `_leavingOverview`. `hide()` now, when the actor is mapped, unmaps the client tree (GJS `unmap` vfuncs run) and runs `hide_vfunc`, then the RPC. An unmapped `hide()` does not unmap, so `SearchController` construction does not enter `vfunc_unmap` before `_entry` exists.
 
-Journal times 09:57:07 and 09:57:38. The throw aborts the cube's workspace update, so the faces never reorder. Same stack in headless `/tmp/cube-parent.log` during `overview.show()`. After that show finishes, `get_parent()` on the first workspace is not null. A plain `St.Widget` child also round-trips (`probe same=true`). The actor whose parent is null on the throwing call is not identified yet. The same login also throws `this.layout_manager is null` from `iconGrid.js:1262` while building the app grid.
+Same run, still failing: panel `began=0` with `cgGetEnabled=true`; desktop `began=0` (DING covers the background). `/usr` was not updated. The logged-in session is still the 09:56 library.
 
 Related but different:
 - [`docs/bugs/done/2026-11-07-desktop-cube-lockup.md`](done/2026-11-07-desktop-cube-lockup.md) — enable lockup from `Stage.perspective` / `ClutterPerspective` write (`parent is null`). Fixed for local mutter 16.
@@ -214,6 +210,12 @@ DING mapped successfully in that same run (`DING map client=true`, `DING owns=tr
 | DING maximized covers `_backgroundGroup` at `y=400` | **PROVEN**. DING disabled: `desktop began=1 updated=14 ended=1` in `/tmp/cube-ov-clear.log`. |
 | Panel LEAVE at `x=680` is the product bug | **DISPROVEN**. That was the clock (`centerBox` 569..712). Empty span 1200→730 stays on the panel. |
 | `ThemeContext.get_for_stage` null is the desktop root cause | **DISPROVEN** as a missing method. It was logged while the client was already disconnecting. The DING-off drag later completed. |
+| The `parent is null` throw is a `WorkspacesView` already destroyed on the server, still receiving `overviewAdjustment` `notify::value` | **PROVEN** (`/tmp/cube-null3.log`: `kids=0 inKids=false viewParent=false viewStage=false`, stack is the ease) |
+| Emitting `destroy` for every actor before the RPC | **DISPROVEN** as a complete fix. Cube throw gone, then `actor._backgroundMenu is null` (`/tmp/cube-destroy-before.log`). Without a local emit the menu handler runs once and the cube throw is back (`/tmp/cube-no-emit.log`) |
+| Emitting `destroy` only when the type name starts with `Gjs_` | **PROVEN** off code (`/tmp/cube-gjs-emit.log`) and in `Actor.destroy()` (`/tmp/cube-product-destroy.log`) |
+| `hideOverview` runs `Controls.vfunc_unmap` or `Display.vfunc_hide` | **DISPROVEN** before the hide change (`/tmp/cube-hide-hit4.log`: `Layout.hideOverview` then no vfunc; `ov-before-show leaving=true`) |
+| Calling those two vfuncs makes the overview swipe update | **PROVEN** off code (`/tmp/cube-unmap-chain.log`: `leaving=false trackerEnabled=true`, `overview began=1 updated=13 ended=1 ws=3`) |
+| `Actor.hide()` on a mapped actor unmapping the client tree and running `hide_vfunc` | **PROVEN** (`/tmp/cube-hide-vfunc.log` and `/tmp/cube-hide-mapped.log`). Ungated unmap during `SearchController` init threw `_entry is undefined` (`/tmp/cube-hide-vfunc.log`). Gated on `mapped`, that throw is gone (`/tmp/cube-hide-mapped.log`) |
 
 ## Applied
 
@@ -232,11 +234,13 @@ miss Error: miss overview-swipe
 
 `get_sprite -32602` did not recur on that run. The gesture was disabled before the press.
 
+`Actor.destroy()` in `src/client/libmutter-clutter-rpc-16/overrides/Actor.override.vala` (both `Clutter.deny` files list `Actor.destroy`). For a `Gjs_` instance it emits `destroy`, then RPCs `Clutter-Actor.destroy`. Headless prove above. Not installed to `/usr`.
+
+`Actor.hide()` in the same file. A mapped actor unmaps the client tree, runs `hide_vfunc`, then RPCs `Clutter-Actor.hide`. `/tmp/cube-hide-mapped.log`: overview swipe `began=1 updated=13 ended=1 ws=3`.
+
 ## Still open
 
-Overview. `vendor/gnome-shell/js/ui/workspacesView.js` `prepareToLeaveOverview` sets `_leavingOverview` and disables the tracker. The only clear is `vfunc_hide`. Startup (DING `activateWindow` → `overview.hide`) sets the flag before the smoke's `overview.show()`, and show does not clear it. `_updateTouchpadGesture` then `_interrupt`s, so `begin` fires and `update` does not.
-
-Do not patch `Actor.hide()` until a run shows that `hide()` or `ControlsManager.vfunc_unmap` is actually invoked for this actor. The off-code pass calls `vfunc_hide()` itself (`/tmp/cube-vfunc-hide.log`: `ov-after-vfunc-hide leaving=false`, `overview began=1 updated=13 ended=1 ws=2`).
+Overview tracker. Fixed in `Actor.hide()` as above. The old note stands as the reason that patch was not "make `hide()` call `hide_vfunc`" until a run showed the call: `/tmp/cube-hide-hit4.log` shows `Layout.hideOverview` and no `vfunc_unmap` / `vfunc_hide`. The missing calls are the client unmap of mapped children and `hide_vfunc` on `hide()`.
 
 Desktop. Smoke drag `240→800` at `y=400` hits DING. Not a missing RPC once DING is out of the pick.
 
@@ -255,3 +259,11 @@ Desktop. Smoke drag `240→800` at `y=400` hits DING. Not a missing RPC once DIN
 - 2026-11-15. `--debug` once grew `/tmp/cube-debug.log` to 2.9G (runaway smoke). Deleted. VM `/` is still ~100% full (348M). Do not leave a `--debug` run up.
 - 2026-11-16. User: session boots, desktop-icon double-click works, overview and panel menus do not. Installed client is `/usr/bin/gsr-client` mtime 09:06; login 09:07 ran that binary (`journalctl` `gsr-client[236884]`). Generated C had `g_param_spec_boolean("enabled", ..., FALSE, G_PARAM_CONSTRUCT)`. Removed `construct` from the property. Rebuild param spec is `G_PARAM_READABLE | G_PARAM_WRITABLE` only. `/tmp/cube-activities.log`: `activitiesGetEnabled=true`, `activities-click vis=true`. Panel window-drag is still `cgEnabled=false cgGetEnabled=true` (`panel began=0`); the extension write is not reaching `set_enabled` once the property is not construct. `/usr` was not reinstalled.
 - 2026-11-16 09:57. User reinstalled (`/usr/bin/gsr-client` mtime 09:56:49) and logged in (`gsr-client` 271923). Session still does not spin the cube. Journal: `_depthSortCubeFaces` `parent is null` at 09:57:07 and 09:57:38, from `WorkspacesView._updateWorkspacesState` during `animateToOverview`. Also `iconGrid.js` `layout_manager is null`. Headless `/tmp/cube-parent.log` repeats the parent-null stack on `overview.show()`. `/tmp/cube-depth.log`: the first four sorts have `parent=WorkspacesView` (`n=3` then `n=4`); `get_parent()` after show is non-null. The throwing call is a later one.
+- 2026-11-17. `/tmp/cube-null.log`: during the activities-click ease, `depth NULL n=4 actor=Workspace stage=false mapped=false`, stack `_updateWorkspacesState` ← `_updateWorkspaceMode` ← `notify::value` ← `ease`. `/tmp/cube-null3.log`: that view has `kids=0 inKids=false viewParent=false viewStage=false` while `_workspaces.length` is 4.
+- 2026-11-17. Smoke emitted `destroy` before the RPC for every actor (`/tmp/cube-destroy-before.log`): `parent is null` count 0, then `actor._backgroundMenu is null` from `backgroundMenu.js:63`. Emit after the RPC did the same (`/tmp/cube-destroy-emit.log`). Handler order in `/tmp/cube-destroy-order.log`: `bg-handler menuNull=false`, `menu-handler menuNull=false`, then both again with `menuNull=true`, then the throw. `/tmp/cube-no-emit.log`: menu handlers run once (`menuNull=false`) and `parent is null` is back at 10:19:01 and 10:19:02.
+- 2026-11-17. Smoke emitted only when `constructor.$gtype.name` starts with `Gjs_` (`/tmp/cube-gjs-emit.log`): `parent is null` 0, `_backgroundMenu` 0, `menu-handler menuNull=false` once, `activities-click vis=true`.
+- 2026-11-17 21:57. That emit moved into `Actor.destroy()`. VM `ninja` rebuilt `Clutter-18.typelib` and `libmutter-clutter-rpc-18.so`. `gsr-server` binary was not relinked (mtime 2026-11-16 09:56). `/tmp/cube-product-destroy.log` with `LD_LIBRARY_PATH` on the build client: `parent is null` 0, `_backgroundMenu` 0, `activities-click vis=true`, `ws parentNull=false`. Same run: `panel began=0 cgGetEnabled=true`; `overview began=1 updated=0 ended=14 leaving=true trackerEnabled=false`; `layout_manager is null` still logged. `gsignal.c:2723 no handler with id` criticals during overview show. `/usr` not updated.
+- 2026-11-17 23:47. `/tmp/cube-hide-hit4.log`: startup `leaving=false` and the group is unmapped. Later `Overview.hide` → `_animateNotVisible` → `prepareToLeaveOverview` → `_hideDone` → `Layout.hideOverview`. No `Controls.vfunc_unmap`, no `Display.hide`, no `Display.vfunc_hide`. `ov-before-show leaving=true mapped=true`.
+- 2026-11-17 23:52. Smoke called `controls.vfunc_unmap()` after `hideOverview`, and `Display.hide` called `vfunc_hide`. `/tmp/cube-unmap-chain.log`: `after Display.hide leaving=false`, `trackerEnabled=true`, `overview began=1 updated=13 ended=1 ws=3`.
+- 2026-11-18 08:23. That chain moved into `Actor.hide()` with no `mapped` check. `/tmp/cube-hide-vfunc.log`: `overview began=1 updated=13 ended=1 ws=3`. Also `searchController.js:187` `this._entry is undefined` from `vfunc_unmap` during `SearchController._init`.
+- 2026-11-18 08:41. Unmap walk only when `mapped`. `/tmp/cube-hide-mapped.log`: no `_entry is undefined`, `leaving=false trackerEnabled=true`, `overview began=1 updated=13 ended=1 ws=3`. `panel began=0 cgGetEnabled=true`. `desktop began=0`. `/usr` not updated.

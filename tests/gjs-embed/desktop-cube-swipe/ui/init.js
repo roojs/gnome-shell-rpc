@@ -70,6 +70,12 @@ async function dragRange(virt, startX, endX, y, steps = 14) {
 }
 
 async function run(main) {
+	const startupDisplay = main.overview._overview._controls._workspacesDisplay;
+	smokeLog('startup leaving=' + startupDisplay._leavingOverview
+		+ ' displayMapped=' + startupDisplay.mapped
+		+ ' controlsMapped=' + main.overview._overview._controls.mapped
+		+ ' groupMapped=' + main.layoutManager.overviewGroup.mapped
+		+ ' overviewVisible=' + main.overview.visible);
 	const manager = main.extensionManager;
 	if (manager._initializationPromise)
 		await manager._initializationPromise;

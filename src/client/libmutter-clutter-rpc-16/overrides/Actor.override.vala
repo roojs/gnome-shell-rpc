@@ -837,14 +837,44 @@
 		Gsr.Client.Rpc.call_value("Clutter-Actor.show", this);
 	}
 
+	private bool priv_hiding = false;
+
+	/**
+	 * Stock {@code clutter_actor_hide} unmaps the actor and its
+	 * children, which runs their {@code unmap} vfuncs, then runs
+	 * {@code hide}. The server hide does that on the server actors.
+	 * GJS vfuncs live on the client, and nothing was calling them, so
+	 * {@code ControlsManager.vfunc_unmap} never reached
+	 * {@code WorkspacesDisplay.vfunc_hide} and {@code _leavingOverview}
+	 * stayed true.
+	 */
+	private void unmap_client_tree()
+	{
+		var children = this.get_children();
+		foreach (unowned Actor child in children) {
+			child.unmap_client_tree();
+		}
+		this.unmap();
+	}
+
 	public void hide()
 	{
+		if (this.priv_hiding) {
+			return;
+		}
+		this.priv_hiding = true;
+		bool was_mapped = this.mapped;
 		this.actor_visible = false;
 		if (this.prop_batch_open) {
 			Gsr.Client.Clutter.Batch.call_value("Clutter-Actor.hide", this, "visible",
 				OLLMrpc.args("b", false));
 		}
+		if (was_mapped) {
+			this.unmap_client_tree();
+		}
+		this.hide_vfunc();
 		Gsr.Client.Rpc.call_value("Clutter-Actor.hide", this);
+		this.priv_hiding = false;
 	}
 
 	/**
