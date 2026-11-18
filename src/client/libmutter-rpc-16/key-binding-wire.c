@@ -5,6 +5,19 @@
  */
 
 #include <glib.h>
+#include <stdio.h>
+
+static void
+probe (const char *what, gpointer box, const char *name)
+{
+	FILE *out = fopen ("/tmp/kb-probe.txt", "a");
+	if (out == NULL) {
+		return;
+	}
+	fprintf (out, "%s box=%p name=%s\n", what, box,
+		name != NULL ? name : "(null)");
+	fclose (out);
+}
 
 typedef struct _MetaKeyBinding MetaKeyBinding;
 
@@ -69,10 +82,35 @@ gsr_key_binding_release (gpointer box)
 	g_hash_table_remove (fields_by_box, box);
 }
 
+/**
+ * A handler callback has the registered name, not a mutter box.
+ * {@code meta_key_binding_get_name} on a bare {@code KeyBinding()} is "".
+ */
+gpointer
+gsr_key_binding_new (const char *name,
+                     guint modifiers,
+                     guint mask,
+                     gboolean builtin,
+                     gboolean reversed)
+{
+	gpointer box = g_malloc0 (1);
+	gsr_key_binding_hold (box, name, modifiers, mask, builtin, reversed);
+	probe ("new", box, name);
+	return box;
+}
+
+void
+gsr_key_binding_free (gpointer box)
+{
+	gsr_key_binding_release (box);
+	g_free (box);
+}
+
 const char *
 meta_key_binding_get_name (MetaKeyBinding *binding)
 {
 	GsrKeyBindingFields *fields = lookup (binding);
+	probe ("get_name", binding, fields != NULL ? fields->name : "");
 	return fields != NULL ? fields->name : "";
 }
 

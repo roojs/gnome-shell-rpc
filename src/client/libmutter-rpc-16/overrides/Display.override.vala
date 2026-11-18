@@ -1,8 +1,31 @@
+		[CCode (cname = "gsr_key_binding_new")]
+		private static extern KeyBinding key_binding_new(string name,
+			uint modifiers, uint mask, bool builtin, bool reversed);
+
+		[CCode (cname = "gsr_key_binding_free")]
+		private static extern void key_binding_free(KeyBinding binding);
+
+		/**
+		 * Stock {@code Meta.Display.add_keybinding}.
+		 *
+		 * Spliced into generated {@code Meta.Display}.
+		 * {@code flags} is mutter's bitfield
+		 * {@link Meta.KeyBindingFlags} ({@code Meta-18.gir}).
+		 * {@code handler} is mutter's callback
+		 * {@link Meta.KeyHandlerFunc}: display, window, event,
+		 * binding.
+		 *
+		 * @param name id, such as switch-to-workspace-left
+		 * @param settings schema that stores the key combo
+		 * @param flags {@link Meta.KeyBindingFlags}
+		 * @param handler {@link Meta.KeyHandlerFunc}
+		 * @return mutter action id, or 0
+		 */
 		public uint add_keybinding(
 			string name,
 			GLib.Settings settings,
-			KeyBindingFlags flags,
-			KeyHandlerFunc handler
+			Meta.KeyBindingFlags flags,
+			Meta.KeyHandlerFunc handler
 		) {
 			var callback_id = Gsr.Client.Rpc.callback_bind((call) => {
 				var display = (Display) Gsr.Client.Rpc.client.proxies.get(
@@ -12,7 +35,9 @@
 				if (win_h != 0) {
 					window = (Window) Gsr.Client.Rpc.client.proxies.get(win_h);
 				}
-				handler(display, window, null, KeyBinding());
+				var binding = key_binding_new(name, 0, 0, false, false);
+				handler(display, window, null, binding);
+				key_binding_free(binding);
 				return null;
 			});
 			var response = Gsr.Client.Rpc.call_value(
