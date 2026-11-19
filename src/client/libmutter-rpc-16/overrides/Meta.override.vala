@@ -1,9 +1,9 @@
-	[CCode (cname = "gsr_key_binding_new")]
-	private static extern KeyBinding key_binding_new(string name,
+	[CCode (cname = "gsr_key_binding_enter")]
+	private static extern void gsr_key_binding_enter(string name,
 		uint modifiers, uint mask, bool builtin, bool reversed);
 
-	[CCode (cname = "gsr_key_binding_free")]
-	private static extern void key_binding_free(KeyBinding binding);
+	[CCode (cname = "gsr_key_binding_leave")]
+	private static extern void gsr_key_binding_leave();
 
 	public bool keybindings_set_custom_handler(string name, Meta.KeyHandlerFunc handler)
 	{
@@ -15,9 +15,9 @@
 			if (win_h != 0) {
 				window = (Window) Gsr.Client.Rpc.client.proxies.get(win_h);
 			}
-			var binding = key_binding_new(name, 0, 0, true, false);
-			handler(display, window, null, binding);
-			key_binding_free(binding);
+			gsr_key_binding_enter(name, 0, 0, true, false);
+			handler(display, window, null, KeyBinding());
+			gsr_key_binding_leave();
 			return null;
 		});
 		var response = Gsr.Client.Rpc.call_value(

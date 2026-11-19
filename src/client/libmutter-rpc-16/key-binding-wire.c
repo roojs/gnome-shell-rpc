@@ -5,19 +5,13 @@
  */
 
 #include <glib.h>
-#include <stdio.h>
 
-static void
-probe (const char *what, gpointer box, const char *name)
-{
-	FILE *out = fopen ("/tmp/kb-probe.txt", "a");
-	if (out == NULL) {
-		return;
-	}
-	fprintf (out, "%s box=%p name=%s\n", what, box,
-		name != NULL ? name : "(null)");
-	fclose (out);
-}
+static __thread char *entered_name;
+static __thread guint entered_modifiers;
+static __thread guint entered_mask;
+static __thread gboolean entered_builtin;
+static __thread gboolean entered_reversed;
+static __thread gboolean entered;
 
 typedef struct _MetaKeyBinding MetaKeyBinding;
 
@@ -83,61 +77,82 @@ gsr_key_binding_release (gpointer box)
 }
 
 /**
- * A handler callback has the registered name, not a mutter box.
- * {@code meta_key_binding_get_name} on a bare {@code KeyBinding()} is "".
+ * Vala copies the one-byte box onto the stack before the JS handler
+ * runs, so {@code meta_key_binding_get_name} sees a different pointer
+ * from {@code gsr_key_binding_hold}. The handler is synchronous: the
+ * registered name is current until {@code gsr_key_binding_leave}.
  */
-gpointer
-gsr_key_binding_new (const char *name,
-                     guint modifiers,
-                     guint mask,
-                     gboolean builtin,
-                     gboolean reversed)
+void
+gsr_key_binding_enter (const char *name,
+                       guint modifiers,
+                       guint mask,
+                       gboolean builtin,
+                       gboolean reversed)
 {
-	gpointer box = g_malloc0 (1);
-	gsr_key_binding_hold (box, name, modifiers, mask, builtin, reversed);
-	probe ("new", box, name);
-	return box;
+	g_free (entered_name);
+	entered_name = g_strdup (name != NULL ? name : "");
+	entered_modifiers = modifiers;
+	entered_mask = mask;
+	entered_builtin = builtin;
+	entered_reversed = reversed;
+	entered = TRUE;
 }
 
 void
-gsr_key_binding_free (gpointer box)
+gsr_key_binding_leave (void)
 {
-	gsr_key_binding_release (box);
-	g_free (box);
+	entered = FALSE;
 }
 
 const char *
 meta_key_binding_get_name (MetaKeyBinding *binding)
 {
 	GsrKeyBindingFields *fields = lookup (binding);
-	probe ("get_name", binding, fields != NULL ? fields->name : "");
-	return fields != NULL ? fields->name : "";
+	if (fields != NULL) {
+		return fields->name;
+	}
+	if (entered && entered_name != NULL) {
+		return entered_name;
+	}
+	return "";
 }
 
 guint
 meta_key_binding_get_modifiers (MetaKeyBinding *binding)
 {
 	GsrKeyBindingFields *fields = lookup (binding);
-	return fields != NULL ? fields->modifiers : 0;
+	if (fields != NULL) {
+		return fields->modifiers;
+	}
+	return entered ? entered_modifiers : 0;
 }
 
 guint
 meta_key_binding_get_mask (MetaKeyBinding *binding)
 {
 	GsrKeyBindingFields *fields = lookup (binding);
-	return fields != NULL ? fields->mask : 0;
+	if (fields != NULL) {
+		return fields->mask;
+	}
+	return entered ? entered_mask : 0;
 }
 
 gboolean
 meta_key_binding_is_builtin (MetaKeyBinding *binding)
 {
 	GsrKeyBindingFields *fields = lookup (binding);
-	return fields != NULL ? fields->builtin : FALSE;
+	if (fields != NULL) {
+		return fields->builtin;
+	}
+	return entered ? entered_builtin : FALSE;
 }
 
 gboolean
 meta_key_binding_is_reversed (MetaKeyBinding *binding)
 {
 	GsrKeyBindingFields *fields = lookup (binding);
-	return fields != NULL ? fields->reversed : FALSE;
+	if (fields != NULL) {
+		return fields->reversed;
+	}
+	return entered ? entered_reversed : FALSE;
 }

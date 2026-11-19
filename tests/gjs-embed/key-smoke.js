@@ -90,13 +90,6 @@ function smokeLog(message) {
 
 function main() {
 	smokeLog('begin');
-	const maps = imports.byteArray.toString(
-		GLib.file_get_contents('/proc/self/maps')[1]);
-	for (const line of maps.split('\n')) {
-		if (line.includes('libmutter-rpc')) {
-			smokeLog('map ' + line.trim());
-		}
-	}
 	const globalObj = Shell.Global.get();
 	const display = globalObj.display;
 	const settings = new Gio.Settings({ schema_id: SCHEMA });

@@ -1,7 +1,9 @@
 /*
- * Walk parent classes for rpc_construct. A JavaScript class can
- * leave a different function in that slot than its parent. Calling
- * that function runs style handling. Skip it and keep walking.
+ * Walk parent classes for rpc_construct. A JavaScript class never
+ * implements rpc_construct; its slot can hold an inherited or
+ * overridden GIR vfunc (such as StWidget.vfunc_style_changed) at the
+ * same class-struct offset. Skip every Gjs_ class and call the first
+ * C/Vala ancestor's rpc_construct.
  */
 /* Meson sets this to the vala_header for the mutter API in this build. */
 #include MUTTER_CLUTTER_RPC_HEADER
@@ -15,21 +17,15 @@ clutter_actor_rpc_construct_chain (ClutterActor *self)
 	type = G_TYPE_FROM_INSTANCE (self);
 	while (g_type_is_a (type, CLUTTER_TYPE_ACTOR)) {
 		ClutterActorClass *klass;
-		ClutterActorClass *parent_klass;
 		GType parent;
 
-		klass = g_type_class_peek (type);
 		parent = g_type_parent (type);
-		parent_klass = NULL;
-		if (g_type_is_a (parent, CLUTTER_TYPE_ACTOR))
-			parent_klass = g_type_class_peek (parent);
+		if (g_str_has_prefix (g_type_name (type), "Gjs_")) {
+			type = parent;
+			continue;
+		}
+		klass = g_type_class_peek (type);
 		if (klass != NULL && klass->rpc_construct != NULL) {
-			if (parent_klass != NULL
-					&& klass->rpc_construct != parent_klass->rpc_construct
-					&& g_str_has_prefix (g_type_name (type), "Gjs_")) {
-				type = parent;
-				continue;
-			}
 			klass->rpc_construct (self);
 			return;
 		}

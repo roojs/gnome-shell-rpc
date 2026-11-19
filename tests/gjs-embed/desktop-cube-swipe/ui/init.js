@@ -145,12 +145,36 @@ async function run(main) {
 		};
 	}
 
+	const persp = global.stage.perspective;
+	smokeLog('stage perspective fovy=' + persp.fovy
+		+ ' aspect=' + persp.aspect
+		+ ' near=' + persp.z_near
+		+ ' far=' + persp.z_far);
+
+	// Ensure we are on desktop (NORMAL), not startup overview.
+	if (main.overview.visible) {
+		main.overview.hide();
+		await delay(800);
+	}
+	smokeLog('pre-panel vis=' + main.overview.visible + ' mode=' + main.actionMode);
+
 	const deskTracker = main.wm._workspaceAnimation._swipeTracker;
 	let panelBegan = 0;
 	let panelUpdated = 0;
 	let panelEnded = 0;
+	let panelSampled = '';
 	const pbId = deskTracker.connect('begin', () => { panelBegan++; });
-	const puId = deskTracker.connect('update', () => { panelUpdated++; });
+	const puId = deskTracker.connect('update', () => {
+		panelUpdated++;
+		if (panelUpdated === 5) {
+			const mon = main.wm._workspaceAnimation._switchData?.monitors?.[0];
+			const groups = mon?._workspaceGroups ?? [];
+			panelSampled = 'n=' + groups.length + ' ' + groups.map((g, i) =>
+				i + ':ry=' + g.rotation_angle_y.toFixed(1)
+				+ ',pz=' + g.pivot_point_z.toFixed(1)
+				+ ',tz=' + g.translation_z.toFixed(1)).join(' ');
+		}
+	});
 	const peId = deskTracker.connect('end', () => { panelEnded++; });
 	await dragRange(virt, 1200, 730, 10);
 	deskTracker.disconnect(pbId);
@@ -161,7 +185,28 @@ async function run(main) {
 		+ ' ended=' + panelEnded + ' ws=' + wm.get_active_workspace_index()
 		+ ' cgEnabled=' + main.panel._clickGesture?.enabled
 		+ ' cgGetEnabled=' + main.panel._clickGesture?.get_enabled()
-		+ ' activitiesGetEnabled=' + activities?._clickGesture?.get_enabled());
+		+ ' activitiesGetEnabled=' + activities?._clickGesture?.get_enabled()
+		+ ' cube=[' + panelSampled + ']');
+
+	// 1b. Keyboard workspace switch (Ctrl+Alt+Right) in NORMAL mode.
+	const wsBeforeKey = wm.get_active_workspace_index();
+	let keySampled = '';
+	global.fire_key(Clutter.KEY_Right,
+		Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.MOD1_MASK);
+	await delay(120);
+	const keyMon = main.wm._workspaceAnimation._switchData?.monitors?.[0];
+	if (keyMon) {
+		const groups = keyMon._workspaceGroups ?? [];
+		keySampled = 'n=' + groups.length + ' ' + groups.map((g, i) =>
+			i + ':ry=' + g.rotation_angle_y.toFixed(1)
+			+ ',pz=' + g.pivot_point_z.toFixed(1)
+			+ ',tz=' + g.translation_z.toFixed(1)).join(' ');
+	}
+	await delay(700);
+	const wsAfterKey = wm.get_active_workspace_index();
+	smokeLog('key-switch before=' + wsBeforeKey + ' after=' + wsAfterKey
+		+ ' cube=[' + keySampled + ']');
+
 	const now = () => GLib.get_monotonic_time();
 	virt.notify_absolute_motion(now(), 40, 10);
 	await delay(50);
@@ -178,9 +223,14 @@ async function run(main) {
 	await delay(1000);
 	const ws0 = ovDisplay._workspacesViews?.[0]?._workspaces?.[0];
 	const wsParent = ws0?.get_parent() ?? null;
+	const ovFaces = (ovDisplay._workspacesViews?.[0]?._workspaces ?? []).map((w, i) =>
+		i + ':ry=' + w.rotation_angle_y.toFixed(1)
+		+ ',pz=' + w.pivot_point_z.toFixed(1)
+		+ ',tz=' + w.translation_z.toFixed(1)).join(' ');
 	smokeLog('ws parentNull=' + (wsParent == null)
 		+ ' name=' + (wsParent?.name ?? 'none')
-		+ ' n=' + (ovDisplay._workspacesViews?.[0]?._workspaces?.length ?? 0));
+		+ ' n=' + (ovDisplay._workspacesViews?.[0]?._workspaces?.length ?? 0)
+		+ ' faces=[' + ovFaces + ']');
 	const ovTracker = ovDisplay._swipeTracker;
 	smokeLog('ov-state vis=' + main.overview.visible
 		+ ' mode=' + main.actionMode
@@ -200,8 +250,22 @@ async function run(main) {
 	main.overview.hide();
 	await delay(800);
 
-	// 3. Desktop background. DING's maximized window usually covers
-	// _backgroundGroup; this drag records whatever is actually picked.
+	// 3a. Desktop with DING enabled: record what actor is picked at (240, 400).
+	const pickedWithDing = global.stage.get_actor_at_pos(
+		Clutter.PickMode.REACTIVE, 240, 400);
+	const wgKids = global.window_group.get_children().map(c =>
+		c.constructor.name + (c.meta_window ? '(' + c.meta_window.title + ')' : '')
+		+ '[' + Math.round(c.width) + 'x' + Math.round(c.height)
+		+ (c.visible ? 'V' : '') + (c.reactive ? 'R' : '') + ']');
+	smokeLog('desktop-ding-pick chain=' + actorChain(pickedWithDing));
+	smokeLog('desktop-ding-wg kids=' + wgKids.join(' | '));
+
+	// 3b. Desktop background with DING disabled.
+	await manager._callExtensionDisable('ding@rastersoft.com');
+	await delay(600);
+	const pickedNoDing = global.stage.get_actor_at_pos(
+		Clutter.PickMode.REACTIVE, 240, 400);
+	smokeLog('desktop-noding-pick chain=' + actorChain(pickedNoDing));
 	let deskBegan = 0;
 	let deskUpdated = 0;
 	let deskEnded = 0;
@@ -221,6 +285,8 @@ async function run(main) {
 		throw new Error('miss desktop-swipe');
 	if (panelBegan < 1 || panelUpdated < 1)
 		throw new Error('miss panel-swipe');
+	if (wsAfterKey === wsBeforeKey)
+		throw new Error('miss key-switch');
 	smokeLog('ok');
 }
 

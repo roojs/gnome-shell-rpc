@@ -1,10 +1,10 @@
 # Desktop Cube horizontal swipe does not rotate workspaces
 
-**Status:** Open. Overview swipe rotates workspaces on the headless prove. `/tmp/cube-hide-mapped.log` (2026-11-18 08:41, build client): `startup leaving=false`, `ov-state leaving=false trackerEnabled=true`, `overview began=1 updated=13 ended=1 ws=3`. No `_entry is undefined`. `parent is null` did not recur.
+**Status:** Open. Headless `/tmp/cube-click.log` (2026-11-19 08:28, build client, not `/usr`): panel `began=1 updated=14 ended=1 ws=1` with `cgEnabled=false cgGetEnabled=false` and `activitiesGetEnabled=true`. Overview `leaving=false trackerEnabled=true`, `began=1 updated=13 ended=1 ws=3`. Desktop `began=0`, `miss desktop-swipe`. DING still covers `_backgroundGroup` at `y=400`.
 
-`Actor.hide()` was only the server RPC. Hiding `overviewGroup` never ran `ControlsManager.vfunc_unmap`, so `WorkspacesDisplay.vfunc_hide` never cleared `_leavingOverview`. `hide()` now, when the actor is mapped, unmaps the client tree (GJS `unmap` vfuncs run) and runs `hide_vfunc`, then the RPC. An unmapped `hide()` does not unmap, so `SearchController` construction does not enter `vfunc_unmap` before `_entry` exists.
+The logged-in session is still the 08:53 `/usr` install (`gsr-client` 300188). That journal threw `target is undefined` in `_showWorkspaceSwitcher` (`windowManager.js:1770`) because `binding.get_name()` was `""`. Build `key-smoke` now prints `custom name=switch-to-workspace-left dir=LEFT` (`/tmp/key-smoke-result.txt`, 2026-11-18 10:20). Not installed.
 
-Same run, still failing: panel `began=0` with `cgGetEnabled=true`; desktop `began=0` (DING covers the background). `/usr` was not updated. The logged-in session is still the 09:56 library.
+Next is the desktop drag with DING covering the background. Do not add a `ClickGesture.enabled` Vala property (the typelib is the stock Clutter gir; the property hides `ActorMeta.enabled` and GJS never calls it). Do not rename `gsr_key_binding_enter` / `gsr_key_binding_leave`. Do not `pkill -f gsr-server` while a user session is up.
 
 Related but different:
 - [`docs/bugs/done/2026-11-07-desktop-cube-lockup.md`](done/2026-11-07-desktop-cube-lockup.md) — enable lockup from `Stage.perspective` / `ClutterPerspective` write (`parent is null`). Fixed for local mutter 16.
@@ -240,9 +240,11 @@ miss Error: miss overview-swipe
 
 ## Still open
 
-Overview tracker. Fixed in `Actor.hide()` as above. The old note stands as the reason that patch was not "make `hide()` call `hide_vfunc`" until a run showed the call: `/tmp/cube-hide-hit4.log` shows `Layout.hideOverview` and no `vfunc_unmap` / `vfunc_hide`. The missing calls are the client unmap of mapped children and `hide_vfunc` on `hide()`.
+Desktop. `/tmp/cube-click.log` drag `240→800` at `y=400` is `began=0`. DING's maximized window covers `_backgroundGroup`. An earlier run with DING disabled reached `desktop began=1`. Not a missing RPC once DING is out of the pick.
 
-Desktop. Smoke drag `240→800` at `y=400` hits DING. Not a missing RPC once DING is out of the pick.
+`/usr` does not have the keybinding name or the `signals.js` ClickGesture wrap. The 08:53 login is the one the user still has.
+
+`iconGrid.js` `layout_manager is null` was in the 08:54 journal. Not rechecked on `/tmp/cube-click.log`.
 
 ## LLM efforts
 
@@ -267,3 +269,11 @@ Desktop. Smoke drag `240→800` at `y=400` hits DING. Not a missing RPC once DIN
 - 2026-11-17 23:52. Smoke called `controls.vfunc_unmap()` after `hideOverview`, and `Display.hide` called `vfunc_hide`. `/tmp/cube-unmap-chain.log`: `after Display.hide leaving=false`, `trackerEnabled=true`, `overview began=1 updated=13 ended=1 ws=3`.
 - 2026-11-18 08:23. That chain moved into `Actor.hide()` with no `mapped` check. `/tmp/cube-hide-vfunc.log`: `overview began=1 updated=13 ended=1 ws=3`. Also `searchController.js:187` `this._entry is undefined` from `vfunc_unmap` during `SearchController._init`.
 - 2026-11-18 08:41. Unmap walk only when `mapped`. `/tmp/cube-hide-mapped.log`: no `_entry is undefined`, `leaving=false trackerEnabled=true`, `overview began=1 updated=13 ended=1 ws=3`. `panel began=0 cgGetEnabled=true`. `desktop began=0`. `/usr` not updated.
+- 2026-11-18 08:54. User installed 08:53 and logged in (`gsr-client` 300188). No `parent is null`. At 08:54:31 `_showWorkspaceSwitcher` throws `target is undefined` (`windowManager.js:1770`). `binding.get_name().split('-')` on `""` leaves `target` undefined.
+- 2026-11-18 10:13. `key-smoke` on the build `libmutter-rpc-18.so` (maps path is the build tree). `add_keybinding` fired and `get_name()` was `""`. Probe `/tmp/kb-probe.txt`: `new box=0x5bd2754cc970 name=focus-active-notification`, `get_name box=0x7ffe3a02fb2e name=`. The handler reads a stack copy, not the heap box.
+- 2026-11-18 10:20. `gsr_key_binding_enter` / `leave` around the handler. Same smoke, `/tmp/key-smoke-result.txt`: `name=focus-active-notification`, `custom name=switch-to-workspace-left dir=LEFT`, `key-smoke: ok`. `/usr` not updated.
+- 2026-11-18 20:20. User: the Vala names `key_binding_enter` / `key_binding_leave` rename the C symbols. Call sites now use `gsr_key_binding_enter` / `gsr_key_binding_leave` (`Meta.override.vala`, `Display.override.vala`). Rebuild of `libmutter-rpc-18.so` succeeded.
+- 2026-11-18 20:40. `click-enabled-smoke`: `cg.enabled = false` left `get_enabled()` true (`local=undefined` then `own=true`). `recognize_on_press` reads back. `ActorMeta.enabled` is in the typelib; `ClickGesture` does not redeclare it. GJS does not inherit it, so the assignment is a JS field. Direct `set_enabled(false)` makes `get_enabled()` false. A Vala `enabled` property on `ClickGesture` is in the `.so` and not in `Clutter-18.typelib` (that typelib is `g-ir-compiler` of the stock gir).
+- 2026-11-18 20:51. Prototype `enabled` getter/setter in the smoke: `property local=false server=false`, `click-enabled: ok`. Same hook only on the prototype, then full shell: `/tmp/cube-click.log` first lines, `No property enabled on ClutterClickGesture` at `popupMenu.js:106` (`new Clutter.ClickGesture({ enabled: this._activatable })`).
+- 2026-11-19 08:26. `signals.js` wraps `Clutter.ClickGesture`: strip `enabled` from the construct hash, `set_enabled` after `new`, and a prototype getter/setter. `gsr-smoke` rebuilt. `/tmp/click-enabled-result.txt`: `ctor server=false recognize=true`, `property local=false server=false`, `ok`.
+- 2026-11-19 08:28. `GI_META_SMOKE=desktop-cube-swipe/ui/init`, `/tmp/cube-click.log`: `panel began=1 updated=14 ended=1 ws=1 cgEnabled=false cgGetEnabled=false activitiesGetEnabled=true`; `activities-click vis=true`; `leaving=false trackerEnabled=true`; `overview began=1 updated=13 ended=1 ws=3`; `desktop began=0`; `miss desktop-swipe`. Headless pids for that socket were killed after the log lines. `/usr` not updated.

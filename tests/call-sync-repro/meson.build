@@ -1581,5 +1581,29 @@ test(
   timeout: 5,
 )
 
+# FolderGrid -> AppGrid -> IconGrid -> StViewport: inherited GJS style_changed
+# collides with ClutterActorClass.rpc_construct.
+rpc_construct_chain_gate = executable(
+  'rpc-construct-chain-gate',
+  'rpc-construct-chain-gate.c',
+  dependencies: [dependency('gobject-2.0')],
+  install: false,
+)
+
+test(
+  'rpc-construct-chain-current',
+  rpc_construct_chain_gate,
+  args: ['current'],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'rpc-construct-chain-fixed',
+  rpc_construct_chain_gate,
+  args: ['fixed'],
+  timeout: 5,
+)
+
 
 
