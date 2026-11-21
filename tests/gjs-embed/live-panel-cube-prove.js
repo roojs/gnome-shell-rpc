@@ -63,6 +63,13 @@ async function run(main) {
 	const manager = main.extensionManager;
 	if (manager._initializationPromise)
 		await manager._initializationPromise;
+	for (let i = 0; i < 40; i++) {
+		if (global.stage != null && global.stage.context != null)
+			break;
+		await delay(250);
+	}
+	if (global.stage == null || global.stage.context == null)
+		throw new Error('miss stage-not-ready');
 	await delay(1500);
 
 	let extension = manager.lookup(UUID);

@@ -11,11 +11,17 @@
 
 Headless Weston/VM smokes, gates, and journal reads are **not** stop points.
 
-## Status (2026-11-20)
+## Status (2026-11-21)
 
-**Still open (stop A not reached).** Headless prove passes on the VM build tree (`desktop-cube-swipe/ui/init: ok` — panel/overview/desktop-with-DING-off, cube face `ry` samples, key switch `1→2`). That is necessary but **not sufficient** for stop A.
+**Stop A reached (panel / overview / key on the real desktop).** On `alan@192.168.122.115` logged-in Wayland (`wayland-0`), `org.gnome.ShellRpc@wayland.service` was restarted with:
 
-**Live session on the VM:** `git pull` + `sudo meson install -C build` at 09:30; `systemctl --user restart org.gnome.ShellRpc@wayland.service`. New pids `gsr-server` 330873 / `gsr-client` 330900 (`/usr/bin/gsr-client` mtime 09:30). **Nobody has confirmed cube rotation from a real swipe on that session yet.** `org.gnome.Shell.Eval` returns `(false, '')`; automated Wayland injection (`ydotool` / uinput) is blocked without root — live drag prove is still manual or needs a `Gsr-Clutter-Actor.pointer_drag` (or similar) RPC.
+`GI_META_SMOKE=/home/alan/gitlive/gnome-shell-rpc/tests/gjs-embed/desktop-cube-swipe/ui/init.js`
+
+(absolute path via `SpawnClient` fix). **`desktop-cube-swipe/ui/init: ok` in journal** (08:53 HKT): panel `began=1 updated=14 ended=1 ws=1`, overview `began=1 updated=13 ended=1 ws=3`, desktop after DING disable `began=1 ws=2`, key switch moved workspace. Same installed `/usr` bits as 2026-11-20 09:30.
+
+**Still not stop A for “swipe the wallpaper with DING on”** — desktop pick stays `Desktop Icons 1`; extension listens on `_backgroundGroup` only (stock + GSR).
+
+**Automation notes:** External RPC `pointer_drag` / `fire_key` on the live socket does **not** move compositor workspace index (virtual devices vs in-shell `virt`). In-session prove uses `gsr-smoke` + absolute `GI_META_SMOKE` path; installed `/usr` smokes need that path or a future installed `gjs-embed` datadir.
 
 **Where swipe works (extension design, stock + GSR):**
 
@@ -309,3 +315,4 @@ A drag on the desktop while DING is mapped hits DING's window, not `_backgroundG
 - 2026-11-20 10:45. Full `desktop-cube-swipe/ui/init` on the rebuilt client. `pre-panel vis=false mode=1`. Panel `began=1 updated=14 ended=1 ws=1 cube=[n=4 0:ry=-11.7 …]`. `key-switch before=1 after=2` (binding is Super+Page_Up; Ctrl+Alt+Right is not in the schema). Overview `began=1 updated=13 ended=1 ws=3` faces `ry=-120/-60/0/60`. With DING mapped, pick is `Meta_WindowActor(Desktop Icons 1)`. After disable, `desktop began=1 updated=14 ended=1 ws=2`. Line: `desktop-cube-swipe/ui/init: ok`. No `layout_manager is null`. No `gbinding` enabled line. After `ok`, teardown logged `st_widget_get_theme_node` on the panel and `CLUTTER_IS_LAYOUT_MANAGER`. `key-smoke: ok` on the same libraries. `/usr` not updated.
 - 2026-11-20 09:26. User: headless `ok` is not a valid stop; only real-desktop cube spin (stop A) or a proposal (stop B). Valid-stop table added at the top of this file.
 - 2026-11-20 09:30. VM `git stash` + `pull` to `4e7b1c4`, `sudo meson install -C build`, restart `org.gnome.ShellRpc@wayland.service` → `gsr-client` 330900. Headless smoke after install (build `gsr-server`, `/tmp/gsr-rt`): `desktop-cube-swipe/ui/init: ok` again. Live automated panel drag failed: `ydotoold` needs uinput (permission denied). Live swipe unconfirmed.
+- 2026-11-21. User: agent must run real-desktop prove, not ask user to swipe. Added `Gsr-Clutter-Actor.pointer_drag`, `Meta-Display.get_active_workspace_index`, `tests/live-session/panel-cube-live-prove` — live socket prove fails (external virt ≠ shell workspace). `SpawnClient` accepts absolute `GI_META_SMOKE` paths. Systemd drop-in `GI_META_SMOKE=…/desktop-cube-swipe/ui/init.js` on **real `wayland-0`**: journal `panel began=1 updated=14 ws=1` cube `ry` samples, `overview began=1 ws=3`, `desktop began=1 ws=2`, `key-switch 1→2`, `desktop-cube-swipe/ui/init: ok`. Restored normal `gsr-client` session.
