@@ -1,10 +1,31 @@
 # Desktop Cube horizontal swipe does not rotate workspaces
 
-**Status:** Open. Headless `/tmp/cube-click.log` (2026-11-19 08:28, build client, not `/usr`): panel `began=1 updated=14 ended=1 ws=1` with `cgEnabled=false cgGetEnabled=false` and `activitiesGetEnabled=true`. Overview `leaving=false trackerEnabled=true`, `began=1 updated=13 ended=1 ws=3`. Desktop `began=0`, `miss desktop-swipe`. DING still covers `_backgroundGroup` at `y=400`.
+## Valid stop points (Golden Rule)
 
-The logged-in session is still the 08:53 `/usr` install (`gsr-client` 300188). That journal threw `target is undefined` in `_showWorkspaceSwitcher` (`windowManager.js:1770`) because `binding.get_name()` was `""`. Build `key-smoke` now prints `custom name=switch-to-workspace-left dir=LEFT` (`/tmp/key-smoke-result.txt`, 2026-11-18 10:20). Not installed.
+**Open until one of these is true.**
 
-Next is the desktop drag with DING covering the background. Do not add a `ClickGesture.enabled` Vala property (the typelib is the stock Clutter gir; the property hides `ActorMeta.enabled` and GJS never calls it). Do not rename `gsr_key_binding_enter` / `gsr_key_binding_leave`. Do not `pkill -f gsr-server` while a user session is up.
+| Stop | Meaning |
+|------|---------|
+| **A — fixed** | On the **real** logged-in desktop (`alan@192.168.122.115`), horizontal drag on a surface that desktop-cube actually listens to (top **panel** or **overview**) rotates workspaces / spins the cube. Trivial fixes are installed and that behaviour is verified — not merely a headless `desktop-cube-swipe/ui/init: ok`. |
+| **B — proposal** | The remaining gap needs a large change (e.g. desktop drag while DING covers the wallpaper, or a live-session prove harness). The bug file holds the proposal; work pauses for review. |
+
+Headless Weston/VM smokes, gates, and journal reads are **not** stop points.
+
+## Status (2026-11-20)
+
+**Still open (stop A not reached).** Headless prove passes on the VM build tree (`desktop-cube-swipe/ui/init: ok` — panel/overview/desktop-with-DING-off, cube face `ry` samples, key switch `1→2`). That is necessary but **not sufficient** for stop A.
+
+**Live session on the VM:** `git pull` + `sudo meson install -C build` at 09:30; `systemctl --user restart org.gnome.ShellRpc@wayland.service`. New pids `gsr-server` 330873 / `gsr-client` 330900 (`/usr/bin/gsr-client` mtime 09:30). **Nobody has confirmed cube rotation from a real swipe on that session yet.** `org.gnome.Shell.Eval` returns `(false, '')`; automated Wayland injection (`ydotool` / uinput) is blocked without root — live drag prove is still manual or needs a `Gsr-Clutter-Actor.pointer_drag` (or similar) RPC.
+
+**Where swipe works (extension design, stock + GSR):**
+
+| Surface | With DING on |
+|---------|----------------|
+| Top panel (empty strip, avoid the clock) | Should work after install |
+| Overview workspace strip | Should work after install |
+| Desktop wallpaper | **No** — pick at `(240,400)` is `Meta_WindowActor(Desktop Icons 1)`, not `_backgroundGroup`; extension only hooks `_backgroundGroup` |
+
+Do not add a `ClickGesture.enabled` Vala property. Do not rename `gsr_key_binding_enter` / `gsr_key_binding_leave`. Do not `pkill -f gsr-server` while a user session is up.
 
 Related but different:
 - [`docs/bugs/done/2026-11-07-desktop-cube-lockup.md`](done/2026-11-07-desktop-cube-lockup.md) — enable lockup from `Stage.perspective` / `ClutterPerspective` write (`parent is null`). Fixed for local mutter 16.
@@ -216,6 +237,8 @@ DING mapped successfully in that same run (`DING map client=true`, `DING owns=tr
 | `hideOverview` runs `Controls.vfunc_unmap` or `Display.vfunc_hide` | **DISPROVEN** before the hide change (`/tmp/cube-hide-hit4.log`: `Layout.hideOverview` then no vfunc; `ov-before-show leaving=true`) |
 | Calling those two vfuncs makes the overview swipe update | **PROVEN** off code (`/tmp/cube-unmap-chain.log`: `leaving=false trackerEnabled=true`, `overview began=1 updated=13 ended=1 ws=3`) |
 | `Actor.hide()` on a mapped actor unmapping the client tree and running `hide_vfunc` | **PROVEN** (`/tmp/cube-hide-vfunc.log` and `/tmp/cube-hide-mapped.log`). Ungated unmap during `SearchController` init threw `_entry is undefined` (`/tmp/cube-hide-vfunc.log`). Gated on `mapped`, that throw is gone (`/tmp/cube-hide-mapped.log`) |
+| `clutter_actor_rpc_construct_chain` calls a GJS `style_changed` that shares the `rpc_construct` slot | **PROVEN**. `FolderGrid` inherits `AppGrid.vfunc_style_changed`. The old walk treated that inherited pointer as `rpc_construct` and ran it before `St.Viewport.rpc_construct`, so `layout_manager` was still null. Gate `rpc-construct-chain-current` EXPECTEDFAIL (`viewport=0 style_changed=1`); `rpc-construct-chain-fixed` PASS. `icon-grid-style: ok` after the skip-all-`Gjs_` walk (`nullLm=0`). |
+| `workspace.js` `bind_property('mapped', clickGesture, 'enabled')` fails because `ClickGesture` has no `enabled` property | **PROVEN** (`gbinding.c:1301` in `/tmp/cube-click.log` and `click-enabled: miss` with `hasBinding=false`). **Fixed** by the `signals.js` `bind_property` wrap. `click-enabled: ok`: `afterInit=false afterMap=true afterHide=false`. The cube run after that rebuild has no `gbinding` line. |
 
 ## Applied
 
@@ -238,13 +261,15 @@ miss Error: miss overview-swipe
 
 `Actor.hide()` in the same file. A mapped actor unmaps the client tree, runs `hide_vfunc`, then RPCs `Clutter-Actor.hide`. `/tmp/cube-hide-mapped.log`: overview swipe `began=1 updated=13 ended=1 ws=3`.
 
+`src/client/libmutter-clutter-rpc-16/c-rpc-construct-chain.c` skips every `Gjs_` type and calls the first C ancestor's `rpc_construct`. `src/client/gresource/signals.js` also wraps `Object.bind_property` when the target is a `ClickGesture` and the target property is `enabled`, and calls `set_enabled`.
+
 ## Still open
 
-Desktop. `/tmp/cube-click.log` drag `240→800` at `y=400` is `began=0`. DING's maximized window covers `_backgroundGroup`. An earlier run with DING disabled reached `desktop began=1`. Not a missing RPC once DING is out of the pick.
+Nothing in the swipe path on the build client. The 10:45 run printed `ok`.
 
-`/usr` does not have the keybinding name or the `signals.js` ClickGesture wrap. The 08:53 login is the one the user still has.
+Installed `/usr` build 2026-11-20 09:30 includes construct-chain skip, `signals.js` `bind_property` wrap, and keybinding name TLS. Confirm stop A on the live panel/overview drag.
 
-`iconGrid.js` `layout_manager is null` was in the 08:54 journal. Not rechecked on `/tmp/cube-click.log`.
+A drag on the desktop while DING is mapped hits DING's window, not `_backgroundGroup`. Stop B if the user must swipe the wallpaper with DING on.
 
 ## LLM efforts
 
@@ -277,3 +302,10 @@ Desktop. `/tmp/cube-click.log` drag `240→800` at `y=400` is `began=0`. DING's 
 - 2026-11-18 20:51. Prototype `enabled` getter/setter in the smoke: `property local=false server=false`, `click-enabled: ok`. Same hook only on the prototype, then full shell: `/tmp/cube-click.log` first lines, `No property enabled on ClutterClickGesture` at `popupMenu.js:106` (`new Clutter.ClickGesture({ enabled: this._activatable })`).
 - 2026-11-19 08:26. `signals.js` wraps `Clutter.ClickGesture`: strip `enabled` from the construct hash, `set_enabled` after `new`, and a prototype getter/setter. `gsr-smoke` rebuilt. `/tmp/click-enabled-result.txt`: `ctor server=false recognize=true`, `property local=false server=false`, `ok`.
 - 2026-11-19 08:28. `GI_META_SMOKE=desktop-cube-swipe/ui/init`, `/tmp/cube-click.log`: `panel began=1 updated=14 ended=1 ws=1 cgEnabled=false cgGetEnabled=false activitiesGetEnabled=true`; `activities-click vis=true`; `leaving=false trackerEnabled=true`; `overview began=1 updated=13 ended=1 ws=3`; `desktop began=0`; `miss desktop-swipe`. Headless pids for that socket were killed after the log lines. `/usr` not updated.
+- 2026-11-20. Same smoke, instrumented. First run died in `inotify` (`Unable to find default local file monitor type`) because `/tmp/gsr-rt` was reused and leftover `xdg-desktop-portal` / `gvfsd` from earlier headless runs held the 128-instance cap. Panel press stayed `0->0` (`began=0`). Stock `gnome-shell --headless` with `GNOME_SHELL_JS` did not load the smoke (`ui/init.js` is `imports._promiseNative`).
+- 2026-11-20. Fresh-enough run, DING never mapped (`DING t2 actors= all=`). Pick at `240,400` was `Meta_BackgroundActor` both before and after `_callExtensionDisable`. `desktop began=1 updated=14 ended=1 ws=1`. Overview faces `ry=-60/0/60/120`, `pivot_point_z=-874.7`. Panel drag was `began=0` because `overview.visible` was still true (`mode` not yet logged) — startup overview, not a gesture failure. `key-switch before=0 after=1` on Ctrl+Alt+Right, then `G_IS_SETTINGS` criticals from the cube's own settings object. `iconGrid.js:1262 layout_manager is null` fired four times on `GsrServerStViewportActor` during `FolderGrid` construct, after `AppGrid.vfunc_style_changed`.
+- 2026-11-20. `icon-grid-style-smoke` (no shell UI): every `new TestFolderGrid()` logged `vfunc_style_changed hasLm=false` and `Clutter-Actor.is_mapped: no rpc_lid on Gjs_TestFolderGrid`. `click-enabled-smoke` added `bind_property('mapped', gesture, 'enabled')`: `gbinding.c:1301`, `hasBinding=false`, `miss`.
+- 2026-11-20. Gate `tests/call-sync-repro/rpc-construct-chain-gate.c`. `current` EXPECTEDFAIL `viewport=0 style_changed=1`. `fixed` PASS `viewport=1 style_changed=0`. Same numbers on the VM mutter-18 build. The walk in `c-rpc-construct-chain.c` now skips every `Gjs_` type. After rebuild, `icon-grid-style: ok` (`calls=3 nullLm=0`). The `bind_property` wrap lived in the smoke first (`click-enabled: ok`, `afterInit=false afterMap=true afterHide=false`), then moved into `signals.js`. Rebuilt `gsr-smoke`. `click-enabled: ok` with no wrap left in the smoke. `property 'mapped' of ClutterActor is not writable` remains; `hide()` still notifies.
+- 2026-11-20 10:45. Full `desktop-cube-swipe/ui/init` on the rebuilt client. `pre-panel vis=false mode=1`. Panel `began=1 updated=14 ended=1 ws=1 cube=[n=4 0:ry=-11.7 …]`. `key-switch before=1 after=2` (binding is Super+Page_Up; Ctrl+Alt+Right is not in the schema). Overview `began=1 updated=13 ended=1 ws=3` faces `ry=-120/-60/0/60`. With DING mapped, pick is `Meta_WindowActor(Desktop Icons 1)`. After disable, `desktop began=1 updated=14 ended=1 ws=2`. Line: `desktop-cube-swipe/ui/init: ok`. No `layout_manager is null`. No `gbinding` enabled line. After `ok`, teardown logged `st_widget_get_theme_node` on the panel and `CLUTTER_IS_LAYOUT_MANAGER`. `key-smoke: ok` on the same libraries. `/usr` not updated.
+- 2026-11-20 09:26. User: headless `ok` is not a valid stop; only real-desktop cube spin (stop A) or a proposal (stop B). Valid-stop table added at the top of this file.
+- 2026-11-20 09:30. VM `git stash` + `pull` to `4e7b1c4`, `sudo meson install -C build`, restart `org.gnome.ShellRpc@wayland.service` → `gsr-client` 330900. Headless smoke after install (build `gsr-server`, `/tmp/gsr-rt`): `desktop-cube-swipe/ui/init: ok` again. Live automated panel drag failed: `ydotoold` needs uinput (permission denied). Live swipe unconfirmed.
