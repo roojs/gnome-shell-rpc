@@ -41,7 +41,6 @@ namespace Gsr.Server.Meta
 				"unminimize_window", "i",
 				"activate_window", "i",
 				"close_window", "i",
-				"get_active_workspace_index", "",
 				null
 			);
 		}
@@ -234,20 +233,6 @@ namespace Gsr.Server.Meta
 			meta.delete(this.meta_display.get_current_time());
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-			});
-		}
-
-		/**
-		 * ''Meta-Display.get_active_workspace_index'' — compositor index
-		 * (live-session cube prove).
-		 */
-		public void get_active_workspace_index(OLLMrpc.Request request)
-		{
-			var idx = this.meta_display.get_workspace_manager()
-				.get_active_workspace_index();
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				retval = OLLMrpc.val("i", idx),
 			});
 		}
 

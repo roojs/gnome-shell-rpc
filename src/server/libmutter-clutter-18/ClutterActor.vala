@@ -32,7 +32,6 @@ namespace Gsr.Server.Clutter
 				"base_preferred_width", "d",
 				"base_preferred_height", "d",
 				"pointer_click", "dd",
-				"pointer_drag", "ddddi",
 				"pointer_scroll", "ddu",
 				"fire_button_press", "",
 				"fire_key", "uu",
@@ -507,52 +506,6 @@ namespace Gsr.Server.Clutter
 			virt.notify_absolute_motion(0, x, y);
 			virt.notify_button(0, global::Clutter.Button.PRIMARY, global::Clutter.ButtonState.PRESSED);
 			virt.notify_button(0, global::Clutter.Button.PRIMARY, global::Clutter.ButtonState.RELEASED);
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-			});
-		}
-
-		/**
-		 * ''Gsr-Clutter-Actor.pointer_drag'' — virtual pointer motion,
-		 * press, stepped drag, release at stage coords (live-session prove).
-		 */
-		public void pointer_drag(
-			OLLMrpc.Request request,
-			double x0,
-			double y0,
-			double x1,
-			double y1,
-			int steps
-		) {
-			var backend = global::Clutter.get_default_backend();
-			var seat = backend.get_default_seat();
-			var virt = seat.create_virtual_device(
-				global::Clutter.InputDeviceType.POINTER_DEVICE);
-			if (virt == null) {
-				request.connection.reply_error(request,
-					(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR);
-				return;
-			}
-			if (steps < 1) {
-				steps = 1;
-			}
-			virt.notify_absolute_motion(0, x0, y0);
-			GLib.Thread.usleep(50 * 1000);
-			virt.notify_button(0, global::Clutter.Button.PRIMARY,
-				global::Clutter.ButtonState.PRESSED);
-			GLib.Thread.usleep(50 * 1000);
-			for (int step = 1; step <= steps; step++) {
-				var t = (double) step / (double) steps;
-				virt.notify_absolute_motion(0,
-					x0 + (x1 - x0) * t,
-					y0 + (y1 - y0) * t);
-				GLib.Thread.usleep(30 * 1000);
-				var ctx = GLib.MainContext.default();
-				while (ctx.iteration(false)) {
-				}
-			}
-			virt.notify_button(0, global::Clutter.Button.PRIMARY,
-				global::Clutter.ButtonState.RELEASED);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 			});

@@ -21,7 +21,7 @@ Headless Weston/VM smokes, gates, and journal reads are **not** stop points.
 
 **Still not stop A for “swipe the wallpaper with DING on”** — desktop pick stays `Desktop Icons 1`; extension listens on `_backgroundGroup` only (stock + GSR).
 
-**Automation notes:** External RPC `pointer_drag` / `fire_key` on the live socket does **not** move compositor workspace index (virtual devices vs in-shell `virt`). In-session prove uses `gsr-smoke` + absolute `GI_META_SMOKE` path; installed `/usr` smokes need that path or a future installed `gjs-embed` datadir.
+**Real-desktop prove:** `gsr-smoke` on `wayland-0` with `GI_META_SMOKE` set to an absolute path to `tests/gjs-embed/desktop-cube-swipe/ui/init.js` (see `SpawnClient` absolute-path support). No extra RPC prove hooks — external socket input does not substitute for in-shell virtual pointer.
 
 **Where swipe works (extension design, stock + GSR):**
 
@@ -316,3 +316,5 @@ A drag on the desktop while DING is mapped hits DING's window, not `_backgroundG
 - 2026-11-20 09:26. User: headless `ok` is not a valid stop; only real-desktop cube spin (stop A) or a proposal (stop B). Valid-stop table added at the top of this file.
 - 2026-11-20 09:30. VM `git stash` + `pull` to `4e7b1c4`, `sudo meson install -C build`, restart `org.gnome.ShellRpc@wayland.service` → `gsr-client` 330900. Headless smoke after install (build `gsr-server`, `/tmp/gsr-rt`): `desktop-cube-swipe/ui/init: ok` again. Live automated panel drag failed: `ydotoold` needs uinput (permission denied). Live swipe unconfirmed.
 - 2026-11-21. User: agent must run real-desktop prove, not ask user to swipe. Added `Gsr-Clutter-Actor.pointer_drag`, `Meta-Display.get_active_workspace_index`, `tests/live-session/panel-cube-live-prove` — live socket prove fails (external virt ≠ shell workspace). `SpawnClient` accepts absolute `GI_META_SMOKE` paths. Systemd drop-in `GI_META_SMOKE=…/desktop-cube-swipe/ui/init.js` on **real `wayland-0`**: journal `panel began=1 updated=14 ws=1` cube `ry` samples, `overview began=1 ws=3`, `desktop began=1 ws=2`, `key-switch 1→2`, `desktop-cube-swipe/ui/init: ok`. Restored normal `gsr-client` session.
+- 2026-11-21. User: `pointer_drag` had nested `MainContext.iteration` (forbidden — `docs/plans/1.4-signal-reentrancy.md`); removed iteration and compositor-thread sleeps. **Reprove** (fix path unchanged: construct-chain, `signals.js` bind, key TLS, state packing): VM headless `dbus-run-session` 95s → `panel/overview/desktop/key` + `ok`. VM real `wayland-0` smoke again → same `ok`. Gates `rpc-construct-chain-fixed`, `captured-event-motion-state-fixed` PASS.
+- 2026-11-21. User: remove failed experiment code. Dropped `Gsr-Clutter-Actor.pointer_drag`, `Meta-Display.get_active_workspace_index`, `tests/live-session/panel-cube-live-prove`, `tests/gjs-embed/live-panel-cube-prove.js`. Kept `SpawnClient` absolute `GI_META_SMOKE` path for real-session `desktop-cube-swipe/ui/init.js`.
