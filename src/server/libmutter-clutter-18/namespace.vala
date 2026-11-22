@@ -20,6 +20,7 @@ namespace Gsr.Server.Clutter
 		LayoutManager.rpc_register();
 		ClutterPaintContext.rpc_register();
 		ClutterStage.rpc_register();
+		Backend.rpc_register();
 		OLLMrpc.Bin.TypeOverride.register(new ClutterEventOverride());
 		OLLMrpc.Bin.TypeOverride.register(new InputDeviceOverride());
 		OLLMrpc.Bin.TypeOverride.register(new PickContextOverride());

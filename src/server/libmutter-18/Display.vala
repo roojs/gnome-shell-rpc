@@ -41,6 +41,8 @@ namespace Gsr.Server.Meta
 				"unminimize_window", "i",
 				"activate_window", "i",
 				"close_window", "i",
+				"get_active_workspace_index", "",
+				"get_n_workspaces", "",
 				null
 			);
 		}
@@ -143,6 +145,37 @@ namespace Gsr.Server.Meta
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("o", this.snapshot_window(focus, handle)),
+			});
+		}
+
+		/**
+		 * ''Meta-Display.get_active_workspace_index'' — stock compositor
+		 * workspace index for live-session prove harnesses (ydotool drags).
+		 *
+		 * @param request inbound RPC
+		 */
+		public void get_active_workspace_index(OLLMrpc.Request request)
+		{
+			var idx = this.meta_display.get_workspace_manager()
+				.get_active_workspace_index();
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("i", idx),
+			});
+		}
+
+		/**
+		 * ''Meta-Display.get_n_workspaces'' — live workspace count.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void get_n_workspaces(OLLMrpc.Request request)
+		{
+			var n = this.meta_display.get_workspace_manager()
+				.get_n_workspaces();
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("i", n),
 			});
 		}
 

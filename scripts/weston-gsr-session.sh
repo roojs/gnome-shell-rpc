@@ -14,6 +14,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Smokes: GI_META_SMOKE is a name under tests/gjs-embed (see SpawnClient + SmokeApplication).
+if [[ -n "${GI_META_SMOKE:-}" && "${GI_META_SMOKE}" != init && "${GI_META_SMOKE}" != init.js ]]; then
+	if [[ -z "${GI_RPC_GJS_EMBED_DIR:-}" ]]; then
+		export GI_RPC_GJS_EMBED_DIR="$ROOT/tests/gjs-embed"
+	fi
+fi
 SOCK="${GSR_WESTON_SOCKET:-wayland-gsr}"
 RT="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 WIDTH="${GSR_WESTON_WIDTH:-1280}"

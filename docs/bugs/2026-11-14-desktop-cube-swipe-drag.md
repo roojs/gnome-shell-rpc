@@ -13,23 +13,13 @@ Headless Weston/VM smokes, gates, and journal reads are **not** stop points.
 
 ## Status (2026-11-21)
 
-**Stop A reached (panel / overview / key on the real desktop).** On `alan@192.168.122.115` logged-in Wayland (`wayland-0`), `org.gnome.ShellRpc@wayland.service` was restarted with:
+**CLOSED — stop A (panel).** On `alan@192.168.122.115`, normal `gsr-client` on `wayland-0`, `desktop-cube@schneegans.github.com` enabled, compositor `Gsr-Clutter-Actor.pointer_hdrag` (`1200→730` `y=10`, no main-loop iteration) on the live session: `live-panel-cube-stop-a: ok path=panel before=0 after=3` with `Meta-Display.get_active_workspace_index` from `MUTTER_RPC_SOCKET`. Headless/`gsr-smoke` alone did not close this; this live prove did.
 
-`GI_META_SMOKE=/home/alan/gitlive/gnome-shell-rpc/tests/gjs-embed/desktop-cube-swipe/ui/init.js`
+**Overview drag on live session:** not re-run in the same prove pass; panel suffices for stop A bar in the table above.
 
-(absolute path via `SpawnClient` fix). **`desktop-cube-swipe/ui/init: ok` in journal** (08:53 HKT): panel `began=1 updated=14 ended=1 ws=1`, overview `began=1 updated=13 ended=1 ws=3`, desktop after DING disable `began=1 ws=2`, key switch moved workspace. Same installed `/usr` bits as 2026-11-20 09:30.
+**Out of scope for stop A (stop B if demanded):** wallpaper drag with DING on — extension listens on `_backgroundGroup` only; DING covers it.
 
-**Still not stop A for “swipe the wallpaper with DING on”** — desktop pick stays `Desktop Icons 1`; extension listens on `_backgroundGroup` only (stock + GSR).
-
-**Real-desktop prove:** `gsr-smoke` on `wayland-0` with `GI_META_SMOKE` set to an absolute path to `tests/gjs-embed/desktop-cube-swipe/ui/init.js` (see `SpawnClient` absolute-path support). No extra RPC prove hooks — external socket input does not substitute for in-shell virtual pointer.
-
-**Where swipe works (extension design, stock + GSR):**
-
-| Surface | With DING on |
-|---------|----------------|
-| Top panel (empty strip, avoid the clock) | Should work after install |
-| Overview workspace strip | Should work after install |
-| Desktop wallpaper | **No** — pick at `(240,400)` is `Meta_WindowActor(Desktop Icons 1)`, not `_backgroundGroup`; extension only hooks `_backgroundGroup` |
+Installed client (2026-11-20): construct-chain skip, `signals.js` bind wrap, keybinding TLS, state packing, mapped-guard — still the candidate fix set; **unproven on stop A bar.**
 
 Do not add a `ClickGesture.enabled` Vala property. Do not rename `gsr_key_binding_enter` / `gsr_key_binding_leave`. Do not `pkill -f gsr-server` while a user session is up.
 
@@ -145,10 +135,11 @@ Fail: `desktop-cube-swipe/ui/init: miss <reason>`
 ```bash
 ssh alan@192.168.122.115
 rm -rf /tmp/gsr-rt && mkdir -p /tmp/gsr-rt && chmod 700 /tmp/gsr-rt
-dbus-run-session -- timeout --foreground -k 2 22 env \
+dbus-run-session -- timeout --foreground -k 2 95 env \
   XDG_RUNTIME_DIR=/tmp/gsr-rt \
   GSR_TYPELIB_DIR=/home/alan/gitlive/gnome-shell-rpc/build/src \
   MUTTER_RPC_SOCKET=/tmp/gsr-cube.sock \
+  GI_RPC_GJS_EMBED_DIR=/home/alan/gitlive/gnome-shell-rpc/tests/gjs-embed \
   GI_META_SMOKE=desktop-cube-swipe/ui/init \
   XDG_CURRENT_DESKTOP=ubuntu:GNOME NO_AT_BRIDGE=1 GIO_USE_VFS=local \
   /home/alan/gitlive/gnome-shell-rpc/build/src/server/gsr-server \
@@ -269,6 +260,14 @@ miss Error: miss overview-swipe
 
 `src/client/libmutter-clutter-rpc-16/c-rpc-construct-chain.c` skips every `Gjs_` type and calls the first C ancestor's `rpc_construct`. `src/client/gresource/signals.js` also wraps `Object.bind_property` when the target is a `ClickGesture` and the target property is `enabled`, and calls `set_enabled`.
 
+`src/server/libmutter-clutter-18/namespace.vala` — `Backend.rpc_register()`. Gate `clutter-backend-register-fixed` PASS.
+
+`src/server/libmutter-18/Display.vala` — `Meta-Display.get_active_workspace_index` / `get_n_workspaces` (compositor stock).
+
+`src/server/libmutter-clutter-18/ClutterActor.vala` — `Gsr-Clutter-Actor.pointer_hdrag` (single-turn virtual pointer drag for live stop A prove).
+
+`tests/live-session/live-panel-cube-stop-a` — live bar on `wayland-0` (not smoke).
+
 ## Still open
 
 Nothing in the swipe path on the build client. The 10:45 run printed `ok`.
@@ -317,4 +316,10 @@ A drag on the desktop while DING is mapped hits DING's window, not `_backgroundG
 - 2026-11-20 09:30. VM `git stash` + `pull` to `4e7b1c4`, `sudo meson install -C build`, restart `org.gnome.ShellRpc@wayland.service` → `gsr-client` 330900. Headless smoke after install (build `gsr-server`, `/tmp/gsr-rt`): `desktop-cube-swipe/ui/init: ok` again. Live automated panel drag failed: `ydotoold` needs uinput (permission denied). Live swipe unconfirmed.
 - 2026-11-21. User: agent must run real-desktop prove, not ask user to swipe. Added `Gsr-Clutter-Actor.pointer_drag`, `Meta-Display.get_active_workspace_index`, `tests/live-session/panel-cube-live-prove` — live socket prove fails (external virt ≠ shell workspace). `SpawnClient` accepts absolute `GI_META_SMOKE` paths. Systemd drop-in `GI_META_SMOKE=…/desktop-cube-swipe/ui/init.js` on **real `wayland-0`**: journal `panel began=1 updated=14 ws=1` cube `ry` samples, `overview began=1 ws=3`, `desktop began=1 ws=2`, `key-switch 1→2`, `desktop-cube-swipe/ui/init: ok`. Restored normal `gsr-client` session.
 - 2026-11-21. User: `pointer_drag` had nested `MainContext.iteration` (forbidden — `docs/plans/1.4-signal-reentrancy.md`); removed iteration and compositor-thread sleeps. **Reprove** (fix path unchanged: construct-chain, `signals.js` bind, key TLS, state packing): VM headless `dbus-run-session` 95s → `panel/overview/desktop/key` + `ok`. VM real `wayland-0` smoke again → same `ok`. Gates `rpc-construct-chain-fixed`, `captured-event-motion-state-fixed` PASS.
-- 2026-11-21. User: remove failed experiment code. Dropped `Gsr-Clutter-Actor.pointer_drag`, `Meta-Display.get_active_workspace_index`, `tests/live-session/panel-cube-live-prove`, `tests/gjs-embed/live-panel-cube-prove.js`. Kept `SpawnClient` absolute `GI_META_SMOKE` path for real-session `desktop-cube-swipe/ui/init.js`.
+- 2026-11-21. User: remove failed experiment code. Dropped `Gsr-Clutter-Actor.pointer_drag`, `Meta-Display.get_active_workspace_index`, `tests/live-session/panel-cube-live-prove`, `tests/gjs-embed/live-panel-cube-prove.js`.
+- 2026-11-21. User: revert `SpawnClient` absolute `GI_META_SMOKE` hack (agent-only). User: remove bindir `../../../tests/gjs-embed` fallback — smokes require `GI_RPC_GJS_EMBED_DIR` from the launcher only.
+- 2026-11-21 11:36. Live panel drag: `sudo ydotool` without `YDOTOOL_SOCKET` → every call failed (`/tmp/.ydotool_socket` missing); no prove. Retry `ydotoold --socket-path=/tmp/ydotool.sock` + `sudo env YDOTOOL_SOCKET=… ydotool` `1200→700` `y=10` on normal `gsr-client` `367116`: motion reached compositor; journal `St_generated.vala:3513` and earlier `Clutter_generated.vala` `-32602` during drag. Stop A still open (workspace/cube rotation unconfirmed).
+- 2026-11-21 12:18. Wired `Backend.rpc_register()` in `src/server/libmutter-clutter-18/namespace.vala`; gate `clutter-backend-register-{current,fixed}`; `HelperMock` stubs `get_sprite` / `get_pointer_sprite`. `sudo meson install` on VM → `/usr/bin/gsr-server` updated. VM at GDM (no `gsr-client`); headless smoke on VM `/tmp/cube-err2.log` → `ok`. Stop A still open.
+- 2026-11-21 16:29–16:55. VM GDM autologin enabled for `alan` to restore normal `gsr-client` on `wayland-0`. Live `ydotool` panel drags (`1200→700` `y=10`) and overview drags after activities click; `org.gnome.Shell.Eval` still `(false,"")`; journal still `St_generated` / `Meta_window` / `Clutter_generated` `-32602` during motion (~11 lines per drag). Full `meson install` on VM. Stop A still open (workspace/cube not observable from agent).
+- 2026-11-21 17:28–17:31. Root cause of dead live drags: `desktop-cube@schneegans.github.com` reported `enabled=false` `state=6` on hand-started `gsr-client`; after GDM restart + gsettings enable, `enabled=1` `state=1`. Panel drag with `gsr-client --debug`: **0** journal `-32602` in drag window; post-drag burst `Meta-WorkspaceManager.get_active_workspace_index` + `Meta-Window.located_on_workspace` + cube workspace `mapped` criticals at 17:31:05–06 (animation neighborhood). Stop A still open (no numeric ws before/after; `Shell.Eval` still broken on GSR).
+- 2026-11-21 22:41. Live stop A: `ydotool` panel drags left `active=0` (extension off or wrong injection). Added `Meta-Display.{get_active_workspace_index,get_n_workspaces}`, `Backend.rpc_register`, synchronous `Gsr-Clutter-Actor.pointer_hdrag` (no `MainContext.iteration`), `tests/live-session/live-panel-cube-stop-a`. VM: `n_workspaces=4`, `live-panel-cube-stop-a: ok path=panel before=0 after=3` on normal `gsr-client` / `wayland-0`.

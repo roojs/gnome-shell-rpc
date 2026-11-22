@@ -56,7 +56,8 @@ namespace Gsr.Server.Rpc
 		 * Spawn the shell client via {@link global::Meta.WaylandClient}.
 		 *
 		 * Default (no {@code GI_META_SMOKE}, or {@code init}): {@code gsr-client}.
-		 * Otherwise {@code gsr-smoke} and a {@code tests/gjs-embed/} script.
+		 * Otherwise {@code gsr-smoke} and a script under {@code GI_RPC_GJS_EMBED_DIR}
+		 * (must be set by the prove launcher; {@code SpawnClient} does not guess paths).
 		 * Sets {@code MUTTER_RPC_SOCKET} and {@code WAYLAND_DISPLAY}.
 		 */
 		public void spawn_client(bool disable_extensions = false, bool force_debug = false)
@@ -91,24 +92,25 @@ namespace Gsr.Server.Rpc
 				argv += "--disable-extensions";
 			}
 			/* Nested boot: user extensions off via host memory settings. */
+			string? smoke_embed_dir = null;
 			if (!use_init) {
 				var smoke_name = smoke_env;
 				if (!smoke_name.has_suffix(".js")) {
 					smoke_name += ".js";
 				}
-				string script;
-				if (GLib.Path.is_absolute(smoke_name)) {
-					script = smoke_name;
-				} else {
-					/* /proc/self/exe is build/src/server/gsr-server, not the
-					 * build/src link. Three parents reach the source tests. */
-					script = GLib.Path.build_filename(
-						bindir, "..", "..", "..", "tests", "gjs-embed", smoke_name);
+				var embed_dir = GLib.Environment.get_variable("GI_RPC_GJS_EMBED_DIR");
+				if (embed_dir == null || embed_dir.length == 0) {
+					GLib.warning(
+						"GI_META_SMOKE=%s but GI_RPC_GJS_EMBED_DIR unset — skip client spawn",
+						smoke_env);
+					return;
 				}
+				var script = GLib.Path.build_filename(embed_dir, smoke_name);
 				if (!GLib.FileUtils.test(script, GLib.FileTest.IS_REGULAR)) {
 					GLib.warning("%s missing at %s — skip client spawn", smoke_name, script);
 					return;
 				}
+				smoke_embed_dir = embed_dir;
 				argv += script;
 			}
 
@@ -123,6 +125,9 @@ namespace Gsr.Server.Rpc
 			var wayland_display = GLib.Environment.get_variable("WAYLAND_DISPLAY");
 			if (wayland_display != null && wayland_display.length > 0) {
 				launcher.setenv("WAYLAND_DISPLAY", wayland_display, true);
+			}
+			if (smoke_embed_dir != null) {
+				launcher.setenv("GI_RPC_GJS_EMBED_DIR", smoke_embed_dir, true);
 			}
 			try {
 				this.smoke_client = new global::Meta.WaylandClient(

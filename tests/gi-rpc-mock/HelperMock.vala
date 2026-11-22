@@ -590,6 +590,10 @@ namespace Gsr.GiRpcMock
 						this.reply_retval_leased(request, boot.clutter_seat);
 						return true;
 					}
+					if (name == "get_sprite" || name == "get_pointer_sprite") {
+						this.reply_args_lease_null(request);
+						return true;
+					}
 					/* Do not add here unless GiMock is wrong (singleton, hang, or OUT shape). */
 					return false;
 

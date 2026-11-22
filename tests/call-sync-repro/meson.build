@@ -1605,5 +1605,29 @@ test(
   timeout: 5,
 )
 
+clutter_backend_register_gate = executable(
+  'clutter-backend-register-gate',
+  'clutter-backend-register-gate.vala',
+  dependencies: [ocrpc_dep],
+  vala_args: ocrpc_vala_args,
+  build_rpath: ocrpc_rpath,
+  install: false,
+)
+
+test(
+  'clutter-backend-register-current',
+  clutter_backend_register_gate,
+  args: ['current'],
+  should_fail: true,
+  timeout: 5,
+)
+
+test(
+  'clutter-backend-register-fixed',
+  clutter_backend_register_gate,
+  args: ['fixed'],
+  timeout: 5,
+)
+
 
 
