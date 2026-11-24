@@ -26,7 +26,9 @@ Suggestions, next tries, and the trial log stay out of the top. They go in `## L
 
 ## What you send
 
-One line, and only when you stop. The bug file is the rest. Do not paste the log, the diagnosis, or the next step into chat.
+One line, and only when you stop on a valid stop condition. The bug file is the rest. Do not paste the log, the diagnosis, or the next step into chat.
+
+**Not a valid stop:** updating the bug file or other docs (unless the user only asked for that edit), summarizing a background task, acknowledging rules, or stopping with an excuse right after the user said to **carry on** or asked about stopping — keep working; append the run under `## LLM efforts` and say nothing in chat.
 
 The line names the bug file and why the review was requested. The same reason is the first lines of that file. A review is not "this is done". If the smoke or the gate has not passed, the reason says what is unproven and why you stopped.
 

@@ -73,24 +73,48 @@ private static bool compositor_hdrag(double x0, double y0, double x1, double y1)
 private static int run_ydotool_hdrag(int x0, int x1, int y)
 {
 	var env = ydotool_env();
-	var sh = "%s sudo %s ydotool mousemove -a %d %d && ".printf(env, env, x0, y);
-	sh += "%s sudo %s ydotool click 0xC0:1 0 && sleep 0.1 && ".printf(env, env);
+	var sh = "%s ydotool mousemove -a %d %d && ".printf(env, x0, y);
+	sh += "%s ydotool click 0xC0:1 0 && sleep 0.1 && ".printf(env);
 	var step = x0 > x1 ? -40 : 40;
 	for (int x = x0 + step; step > 0 ? x <= x1 : x >= x1; x += step) {
-		sh += "%s sudo %s ydotool mousemove -a %d %d && sleep 0.06 && ".printf(
-			env, env, x, y);
+		sh += "%s ydotool mousemove -a %d %d && sleep 0.06 && ".printf(
+			env, x, y);
 	}
-	sh += "%s sudo %s ydotool click 0xC0:0 0".printf(env, env);
+	sh += "%s ydotool click 0xC0:0 0".printf(env);
 	return ydotool_cmd(sh);
 }
 
 private static int run_ydotool_click(int x, int y)
 {
 	var env = ydotool_env();
-	var sh = "%s sudo %s ydotool mousemove -a %d %d && ".printf(env, env, x, y);
-	sh += "%s sudo %s ydotool click 0x41:1 0 && sleep 0.05 && ".printf(env, env);
-	sh += "%s sudo %s ydotool click 0x41:0 0".printf(env, env);
+	var sh = "%s ydotool mousemove -a %d %d && ".printf(env, x, y);
+	sh += "%s ydotool click 0x41:1 0 && sleep 0.05 && ".printf(env);
+	sh += "%s ydotool click 0x41:0 0".printf(env);
 	return ydotool_cmd(sh);
+}
+
+private static bool ydotool_hdrag_changes_ws(
+	int before,
+	int x0,
+	int y0,
+	int x1,
+	int y1,
+	out int after
+)
+{
+	if (run_ydotool_hdrag(x0, x1, y0) != 0) {
+		after = -1;
+		return false;
+	}
+	for (int i = 0; i < 20; i++) {
+		GLib.Thread.usleep(150 * 1000);
+		after = workspace_index();
+		if (after >= 0 && after != before) {
+			return true;
+		}
+	}
+	after = workspace_index();
+	return after >= 0 && after != before;
 }
 
 private static bool drag_changes_ws(int before, double x0, double y0, double x1, double y1, out int after)
@@ -114,7 +138,7 @@ private static int run_super_page_up()
 {
 	var env = ydotool_env();
 	/* KEY_SUPER 125, KEY_PAGEUP 104 on the VM layout. */
-	var sh = "%s sudo %s ydotool key 125:1 104:1 104:0 125:0".printf(env, env);
+	var sh = "%s ydotool key 125:1 104:1 104:0 125:0".printf(env);
 	return ydotool_cmd(sh);
 }
 
@@ -192,19 +216,73 @@ public int main(string[] args)
 
 	int after = before;
 	string path = "";
+	bool panel_only = false;
+	bool overview_only = false;
+	bool ydotool_overview = false;
+	for (int i = 1; i < args.length; i++) {
+		if (args[i] == "--panel-only") {
+			panel_only = true;
+		} else if (args[i] == "--overview-only") {
+			overview_only = true;
+		} else if (args[i] == "--ydotool-overview") {
+			ydotool_overview = true;
+			overview_only = true;
+		}
+	}
 
-	/* Panel: smoke uses 1200 → 730 at y=10. */
-	if (drag_changes_ws(before, 1200, 10, 730, 10, out after)) {
-		path = "panel";
-	} else if (drag_changes_ws(before, 730, 10, 1200, 10, out after)) {
-		path = "panel-reverse";
-	} else {
-		run_ydotool_click(40, 10);
-		GLib.Thread.usleep(2000 * 1000);
-		if (drag_changes_ws(before, 800, 400, 240, 400, out after)) {
+	if (!panel_only) {
+		var sh = "busctl --user get-property org.gnome.Shell /org/gnome/Shell "
+			+ "org.gnome.Shell OverviewActive 2>/dev/null";
+		int ov_status = 0;
+		string ov_out = "";
+		string ov_err = "";
+		try {
+			Process.spawn_command_line_sync(
+				sh, out ov_out, out ov_err, out ov_status);
+		} catch (GLib.Error e) {
+			stderr.printf("%s: warn overview-active %s\n", TAG, e.message);
+		}
+		stderr.printf("%s: overview-active before-open %s\n", TAG, ov_out.strip());
+		if (ydotool_overview) {
+			if (ov_out.index_of("false") >= 0) {
+				ydotool_cmd(ydotool_env() + " ydotool key 125:1 125:0");
+				GLib.Thread.usleep(2000 * 1000);
+			}
+		} else {
+			Posix.system(
+				"busctl --user set-property org.gnome.Shell /org/gnome/Shell "
+				+ "org.gnome.Shell OverviewActive b true 2>/dev/null");
+			GLib.Thread.usleep(2500 * 1000);
+		}
+		ov_out = "";
+		try {
+			Process.spawn_command_line_sync(
+				sh, out ov_out, out ov_err, out ov_status);
+		} catch (GLib.Error e) {
+			/* already logged */
+		}
+		stderr.printf("%s: overview-active after-open %s\n", TAG, ov_out.strip());
+	}
+	if (!panel_only) {
+		if (ydotool_overview) {
+			if (ydotool_hdrag_changes_ws(before, 800, 400, 240, 400, out after)) {
+				path = "overview-ydotool";
+			} else if (ydotool_hdrag_changes_ws(before, 240, 400, 800, 400, out after)) {
+				path = "overview-ydotool-reverse";
+			}
+		} else if (drag_changes_ws(before, 800, 400, 240, 400, out after)) {
 			path = "overview";
 		} else if (drag_changes_ws(before, 240, 400, 800, 400, out after)) {
 			path = "overview-reverse";
+		}
+	}
+	if (path.length == 0 && !overview_only) {
+		if (drag_changes_ws(before, 1200, 10, 730, 10, out after)) {
+			path = "panel";
+		} else if (drag_changes_ws(before, 730, 10, 1200, 10, out after)) {
+			path = "panel-reverse";
+		} else if (drag_changes_ws(before, 1200, 10, 400, 10, out after)) {
+			path = "panel-short";
 		}
 	}
 

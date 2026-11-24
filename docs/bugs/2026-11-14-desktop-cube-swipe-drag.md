@@ -4,18 +4,37 @@
 
 **Open until one of these is true.**
 
+**Chat when pausing work:** [`docs/debugging.md`](../debugging.md) § *What you send* — one line only on a **valid** stop (A or B below). Everything else stays in this file. Stop A → `I've stopped because I've reached stop A.`; stop B → `Can you review the proposal in docs/bugs/2026-11-14-desktop-cube-swipe-drag.md — <why>`.
+
+**Invalid stops (keep working):** doc or bug-file edits, rule acknowledgements, task-result summaries, apologies, or any excuse after the user said **carry on** or asked about stopping. Do not pause chat to report that you updated text unless the user asked for that edit.
+
 | Stop | Meaning |
 |------|---------|
-| **A — fixed** | On the **real** logged-in desktop (`alan@192.168.122.115`), horizontal drag on a surface that desktop-cube actually listens to (top **panel** or **overview**) rotates workspaces / spins the cube. Trivial fixes are installed and that behaviour is verified — not merely a headless `desktop-cube-swipe/ui/init: ok`. |
+| **A — fixed** | All items in **Stop A checklist** below are true on `alan@192.168.122.115`. |
 | **B — proposal** | The remaining gap needs a large change (e.g. desktop drag while DING covers the wallpaper, or a live-session prove harness). The bug file holds the proposal; work pauses for review. |
 
-Headless Weston/VM smokes, gates, and journal reads are **not** stop points.
+These are **never** stop points (not A, not B): headless or nested `desktop-cube-swipe/ui/init: ok`, any other `GI_META_SMOKE` / `gsr-smoke` run, gates passing, `meson install`, journal/grep, `ydotool`/`pointer_hdrag` harness output, `Meta-Display.get_active_workspace_index` delta on the compositor RPC socket, or “workspace changed” with overview never visibly open.
 
-## Status (2026-11-21)
+### Stop A checklist (all required)
 
-**CLOSED — stop A (panel).** On `alan@192.168.122.115`, normal `gsr-client` on `wayland-0`, `desktop-cube@schneegans.github.com` enabled, compositor `Gsr-Clutter-Actor.pointer_hdrag` (`1200→730` `y=10`, no main-loop iteration) on the live session: `live-panel-cube-stop-a: ok path=panel before=0 after=3` with `Meta-Display.get_active_workspace_index` from `MUTTER_RPC_SOCKET`. Headless/`gsr-smoke` alone did not close this; this live prove did.
+Close this bug only when **every** line is satisfied on the **same** live session.
 
-**Overview drag on live session:** not re-run in the same prove pass; panel suffices for stop A bar in the table above.
+1. **Session type** — Graphical login on the VM (`gsr` / `GNOME Shell RPC` session from GDM), `gsr-client` + `gsr-server --wayland`, real `wayland-0` under `/run/user/1000/`. **Not** `dbus-run-session` headless, **not** `GI_META_SMOKE` / `gsr-smoke` substituting for the shell client, **not** a one-off hand-started `gsr-client --debug` unless that *is* the logged-in session under test.
+2. **Extension** — `desktop-cube@schneegans.github.com` enabled and running (`state` active, not error/disabled).
+3. **Surface** — User (or the same input path the user would use on that login) opens **overview** (Activities / Super, or equivalent), overview **stays open**, then performs a horizontal drag on the **overview workspace / cube** region the extension listens to (not wallpaper with DING on; not an isolated panel-only path).
+4. **Behaviour** — The cube visibly rotates and/or the active workspace changes on that overview swipe (what a human on the console would call “the cube spun”).
+5. **Fixes in product** — Trivial fixes from this bug are installed on that session’s `/usr` (or documented exact build) before the prove; the prove is **after** install, not build-tree-only smoke.
+6. **Record in this file** — One line under `## LLM efforts` with time, that it was stop A, and **how** overview was opened + drag geometry (e.g. “Super → overview visible → drag …”). No closing the bug on RPC/harness lines alone.
+
+**Panel-only swipe** does **not** satisfy stop A unless this checklist is also met for **overview** on that session (user bar: login → overview → cube swipe).
+
+### Harness work (does not close stop A)
+
+`tests/live-session/live-panel-cube-stop-a`, `Gsr-Clutter-Actor.pointer_hdrag`, `Meta-Display.get_active_workspace_index`, `ydotool`, and compositor RPC clients are allowed for engineering only. A harness `ok` or `before=N after=M` is **not** stop A and must not be written as “fixed” or “CLOSED — stop A” in this file.
+
+## Status (2026-11-22)
+
+**OPEN — not stop A, not stop B.** VM `/usr` matches tree (`meson install` 2026-11-24). After `systemctl --user restart org.gnome.ShellRpc@wayland`, harness `overview` `0→1` (busctl `OverviewActive` + `pointer_hdrag`) works on a fresh session; `ydotool` Super+drag can change workspace when `OverviewActive` is true — still harness-only. Long-lived session: Super/`ydotool`/gestures die until restart (`__lambda29_: event_actor != NULL` spam on compositor). **Stop A gap:** nobody has verified visible cube rotation on the VM console for login → overview → horizontal swipe.
 
 **Out of scope for stop A (stop B if demanded):** wallpaper drag with DING on — extension listens on `_backgroundGroup` only; DING covers it.
 
@@ -264,15 +283,15 @@ miss Error: miss overview-swipe
 
 `src/server/libmutter-18/Display.vala` — `Meta-Display.get_active_workspace_index` / `get_n_workspaces` (compositor stock).
 
-`src/server/libmutter-clutter-18/ClutterActor.vala` — `Gsr-Clutter-Actor.pointer_hdrag` (single-turn virtual pointer drag for live stop A prove).
+`src/server/libmutter-clutter-18/ClutterActor.vala` — `Gsr-Clutter-Actor.pointer_hdrag` (harness only; see **Harness work** above).
 
-`tests/live-session/live-panel-cube-stop-a` — live bar on `wayland-0` (not smoke).
+`tests/live-session/live-panel-cube-stop-a` — engineering harness on `wayland-0`; **does not** close stop A.
 
 ## Still open
 
 Nothing in the swipe path on the build client. The 10:45 run printed `ok`.
 
-Installed `/usr` build 2026-11-20 09:30 includes construct-chain skip, `signals.js` `bind_property` wrap, and keybinding name TLS. Confirm stop A on the live panel/overview drag.
+Installed `/usr` build 2026-11-20 09:30 includes construct-chain skip, `signals.js` `bind_property` wrap, and keybinding name TLS. **Stop A** only when the checklist above is met on a GDM login session (overview visible, overview cube swipe).
 
 A drag on the desktop while DING is mapped hits DING's window, not `_backgroundGroup`. Stop B if the user must swipe the wallpaper with DING on.
 
@@ -322,4 +341,10 @@ A drag on the desktop while DING is mapped hits DING's window, not `_backgroundG
 - 2026-11-21 12:18. Wired `Backend.rpc_register()` in `src/server/libmutter-clutter-18/namespace.vala`; gate `clutter-backend-register-{current,fixed}`; `HelperMock` stubs `get_sprite` / `get_pointer_sprite`. `sudo meson install` on VM → `/usr/bin/gsr-server` updated. VM at GDM (no `gsr-client`); headless smoke on VM `/tmp/cube-err2.log` → `ok`. Stop A still open.
 - 2026-11-21 16:29–16:55. VM GDM autologin enabled for `alan` to restore normal `gsr-client` on `wayland-0`. Live `ydotool` panel drags (`1200→700` `y=10`) and overview drags after activities click; `org.gnome.Shell.Eval` still `(false,"")`; journal still `St_generated` / `Meta_window` / `Clutter_generated` `-32602` during motion (~11 lines per drag). Full `meson install` on VM. Stop A still open (workspace/cube not observable from agent).
 - 2026-11-21 17:28–17:31. Root cause of dead live drags: `desktop-cube@schneegans.github.com` reported `enabled=false` `state=6` on hand-started `gsr-client`; after GDM restart + gsettings enable, `enabled=1` `state=1`. Panel drag with `gsr-client --debug`: **0** journal `-32602` in drag window; post-drag burst `Meta-WorkspaceManager.get_active_workspace_index` + `Meta-Window.located_on_workspace` + cube workspace `mapped` criticals at 17:31:05–06 (animation neighborhood). Stop A still open (no numeric ws before/after; `Shell.Eval` still broken on GSR).
-- 2026-11-21 22:41. Live stop A: `ydotool` panel drags left `active=0` (extension off or wrong injection). Added `Meta-Display.{get_active_workspace_index,get_n_workspaces}`, `Backend.rpc_register`, synchronous `Gsr-Clutter-Actor.pointer_hdrag` (no `MainContext.iteration`), `tests/live-session/live-panel-cube-stop-a`. VM: `n_workspaces=4`, `live-panel-cube-stop-a: ok path=panel before=0 after=3` on normal `gsr-client` / `wayland-0`.
+- 2026-11-21 22:41. Harness only: `pointer_hdrag` panel `0→3` on live `gsr-client` (`live-panel-cube-stop-a: ok path=panel`). **Not stop A** (user: login → overview → cube swipe).
+- 2026-11-22. Reopened bug. Live overview: `busctl set-property … OverviewActive b true` stays `false`; `ydotool` activities + compositor hdrag `800→240` `y=400` leaves `active=3` unchanged. Stop A still open.
+- 2026-11-22 ~11:10. VM: `dynamic-workspaces` off, `num-workspaces=4`; `ydotoold` on `/tmp/ydotool.sock`. Activities click `(40,10)` then overview horizontal drag `y=400` `800→250`; compositor `pointer_hdrag` overview path via `live-panel-cube-stop-a` → `miss workspace-unchanged before=3 after=3`. Harness only — overview/cube not verified visible; stop A still open.
+- 2026-11-23. Invalid-stop / chat rules aligned with `docs/debugging.md` § *What you send* (top of this file). VM live: `gsr-client` pid 71446; `OverviewActive` stays `false` after `busctl set-property … b true`, Super (`125`) via ydotool, Activities `(48,16)` click; `org.gnome.Shell.ShowApplications` / `FocusSearch` → `Access denied`; `Shell.Eval` → `(false,'')`. `live-panel-cube-stop-a` → `active=3` `miss workspace-unchanged`; `--key-test` Super+Page_Up → `before=3 after=3`. Stop A still open (live session: no overview, no workspace change from automation).
+- 2026-11-23 10:06. Root cause of dead automation on ~21h session: `systemctl --user restart org.gnome.ShellRpc@wayland` → fresh `gsr-client` `75094`. Harness `--panel-only` `before=0 after=1`; `ydotool` Super → `OverviewActive` true; `--overview-only` `before=1 after=2`. Added harness flags `--panel-only` / `--overview-only`. **Harness only — not stop A.**
+- 2026-11-24. VM `sudo meson install -C build`; harness opens overview via Super when `OverviewActive` is `false` (not `busctl` set). Fresh session: default harness `overview` `0→1`. Manual: Super → `OverviewActive` true, ydotool drag `800→250` `y=400` compositor `2→3`. Harness `--ydotool-overview` wired (no `pointer_hdrag` on overview path). Stale long-run sessions still need `ShellRpc` restart. **Not stop A** (no console-visible cube; checklist §3–4).
+- 2026-11-24 10:25. Harness overview open split: `busctl` for hdrag path; Super only for `--ydotool-overview`. After restart: default `ok overview 0→1`; `--ydotool-overview` / hdrag still miss at `active=0` until busctl path. Closing super-if-open removed (it closed overview and broke hdrag). **Not stop A.**
