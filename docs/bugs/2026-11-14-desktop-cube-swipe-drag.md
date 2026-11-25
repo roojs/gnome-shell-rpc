@@ -34,7 +34,7 @@ Close this bug only when **every** line is satisfied on the **same** live sessio
 
 ## Status (2026-11-22)
 
-**OPEN — not stop A, not stop B.** VM `/usr` matches tree (`meson install` 2026-11-24). After `systemctl --user restart org.gnome.ShellRpc@wayland`, harness `overview` `0→1` (busctl `OverviewActive` + `pointer_hdrag`) works on a fresh session; `ydotool` Super+drag can change workspace when `OverviewActive` is true — still harness-only. Long-lived session: Super/`ydotool`/gestures die until restart (`__lambda29_: event_actor != NULL` spam on compositor). **Stop A gap:** nobody has verified visible cube rotation on the VM console for login → overview → horizontal swipe.
+**OPEN — not stop A, not stop B.** VM `/usr` matches tree (`meson install` 2026-11-24). After `systemctl --user restart org.gnome.ShellRpc@wayland`, compositor `pointer_hdrag` moves workspace (overview `0→3`, panel `1→2` on 2026-11-25). **Wayland seat input (`ydotool`, same geometry) does not** — panel and overview horizontal drags leave workspace unchanged while hdrag works on the same session. That is the live stop-A gap (user path ≈ seat, not hdrag). Long session still needs `ShellRpc` restart. Console verify + seat path fix still open.
 
 **Out of scope for stop A (stop B if demanded):** wallpaper drag with DING on — extension listens on `_backgroundGroup` only; DING covers it.
 
@@ -70,6 +70,10 @@ Clutter 18 event types (from VM `clutter-enums.h`): `MOTION=3`, `ENTER=4`, `LEAV
 Packing only repairs path B. Path A already had state; pre-apply it could reach `State.ACTIVE` after `global.stage.grab(this._actor)`, then lost further events and logged `Clutter-Backend.get_sprite` `-32602`, and (before the X11 alias fix) aborted when Xwayland created `MetaWindowActorX11`.
 
 With DING enabled, path A is usually unreachable on the desktop. Real-session cube swipe is mostly **panel path B** or overview.
+
+### Live session: compositor virtual vs seat (2026-11-25)
+
+On `alan@192.168.122.115` after `ShellRpc` restart, `Gsr-Clutter-Actor.pointer_hdrag` on overview/panel moves workspace; **ydotool** drags at the same stage coordinates do not. Paced hdrag (80ms/step on server) still works — not a burst-vs-async artifact. Stop A needs the **seat** path (console/ydotool), not hdrag alone. Same class as [`2026-10-08-volume-slider-drawing.md`](done/2026-10-08-volume-slider-drawing.md) (server click coords vs window/surface events missing client actors). Next prove: whether live `gsr-client` receives `wl_pointer` drags on the shell surface with `DragGesture` `begin`/`update`.
 
 ### `DragGesture._handleEvent` contract (VM extension)
 
@@ -348,3 +352,8 @@ A drag on the desktop while DING is mapped hits DING's window, not `_backgroundG
 - 2026-11-23 10:06. Root cause of dead automation on ~21h session: `systemctl --user restart org.gnome.ShellRpc@wayland` → fresh `gsr-client` `75094`. Harness `--panel-only` `before=0 after=1`; `ydotool` Super → `OverviewActive` true; `--overview-only` `before=1 after=2`. Added harness flags `--panel-only` / `--overview-only`. **Harness only — not stop A.**
 - 2026-11-24. VM `sudo meson install -C build`; harness opens overview via Super when `OverviewActive` is `false` (not `busctl` set). Fresh session: default harness `overview` `0→1`. Manual: Super → `OverviewActive` true, ydotool drag `800→250` `y=400` compositor `2→3`. Harness `--ydotool-overview` wired (no `pointer_hdrag` on overview path). Stale long-run sessions still need `ShellRpc` restart. **Not stop A** (no console-visible cube; checklist §3–4).
 - 2026-11-24 10:25. Harness overview open split: `busctl` for hdrag path; Super only for `--ydotool-overview`. After restart: default `ok overview 0→1`; `--ydotool-overview` / hdrag still miss at `active=0` until busctl path. Closing super-if-open removed (it closed overview and broke hdrag). **Not stop A.**
+- 2026-11-25. Live gap: compositor `pointer_hdrag` changes ws in overview (`busctl` + overview `0→1`, `1→2` on fresh `ShellRpc` restart); **ydotool** drag `800→250` `y=400` with `OverviewActive` true usually **does not** (real Wayland pointer path). Stop A bar = same input as user (mouse/Super), not hdrag alone. Accidental hand `gsr-server`/`gsr-client` debug start broke D-Bus shell; restored `systemctl --user start org.gnome.ShellRpc@wayland`. **Not stop A.**
+- 2026-11-25 08:31. After `ShellRpc` restart: harness `ok overview before=0 after=3` (busctl + hdrag). Still chasing ydotool overview drag on same path.
+- 2026-11-25 08:53. Reproved: `GSR_POINTER_HDRAG_STEP_US=80000` on `gsr-server` (paced compositor hdrag) still `overview 0→3` — ydotool failure is **not** inter-step timing vs burst hdrag. **ydotool** overview/panel drag still misses on same session. Env pacing reverted in tree.
+- 2026-11-25 08:56. Working theory: compositor `pointer_hdrag` (server virtual device → `LayoutHooks` → client) rotates ws; **ydotool** (libinput → compositor seat) does not — may not reach `gsr-client` shell stage the same way. Nested smokes use **client** `create_virtual_device` in GJS; live bar is seat/ydotool, not hdrag. Next: prove whether console pointer hits client `DragGesture` or only compositor.
+- 2026-11-25 09:08. Boot often has `OverviewActive` true; cube drags miss until Super dismisses (`b true`→`false`). Harness updated: dismiss then `busctl` reopen. `overview-only` hdrag `1→2` after manual sequence; ydotool same geometry often still `0→0`. **Not stop A.**

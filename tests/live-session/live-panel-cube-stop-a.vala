@@ -243,17 +243,23 @@ public int main(string[] args)
 			stderr.printf("%s: warn overview-active %s\n", TAG, e.message);
 		}
 		stderr.printf("%s: overview-active before-open %s\n", TAG, ov_out.strip());
-		if (ydotool_overview) {
-			if (ov_out.index_of("false") >= 0) {
-				ydotool_cmd(ydotool_env() + " ydotool key 125:1 125:0");
-				GLib.Thread.usleep(2000 * 1000);
+		if (ov_out.index_of("true") >= 0) {
+			/* Startup or stale overview breaks cube drags until toggled. */
+			ydotool_cmd(ydotool_env() + " ydotool key 125:1 125:0");
+			GLib.Thread.usleep(1500 * 1000);
+			ov_out = "";
+			try {
+				Process.spawn_command_line_sync(
+					sh, out ov_out, out ov_err, out ov_status);
+			} catch (GLib.Error e) {
+				/* already logged */
 			}
-		} else {
-			Posix.system(
-				"busctl --user set-property org.gnome.Shell /org/gnome/Shell "
-				+ "org.gnome.Shell OverviewActive b true 2>/dev/null");
-			GLib.Thread.usleep(2500 * 1000);
+			stderr.printf("%s: overview-active after-desk %s\n", TAG, ov_out.strip());
 		}
+		Posix.system(
+			"busctl --user set-property org.gnome.Shell /org/gnome/Shell "
+			+ "org.gnome.Shell OverviewActive b true 2>/dev/null");
+		GLib.Thread.usleep(ydotool_overview ? 2000 * 1000 : 2500 * 1000);
 		ov_out = "";
 		try {
 			Process.spawn_command_line_sync(
