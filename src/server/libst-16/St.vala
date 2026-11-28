@@ -20,7 +20,10 @@ namespace Gsr.Server.St
 		public static void rpc_register()
 		{
 			var helper = new St(new OverviewPaintHold());
-			OLLMrpc.Request.add_class("St-Widget", typeof(St), "new", "");
+			OLLMrpc.Request.add_class("St-Widget", typeof(St),
+				"new", "",
+				"set_label_actor", "o",
+				null);
 			OLLMrpc.Request.register_live("St-Widget", helper);
 			OLLMrpc.Request.add_class("St-DrawingArea", typeof(St), "new", "");
 			OLLMrpc.Request.register_live("St-DrawingArea", helper);
@@ -41,6 +44,44 @@ namespace Gsr.Server.St
 		 *
 		 * @param request inbound construct (no lease)
 		 */
+		/**
+		 * ''St-Widget.set_label_actor'' — GObject {@code label-actor} on the
+		 * leased widget. Batched setters use {@code add_properties}; hover
+		 * paths call this directly when the batch is closed.
+		 */
+		public void set_label_actor(OLLMrpc.Request request, uint64 label_lease)
+		{
+			var widget = request.connection.leases.get(
+				(int) request.lease_id) as global::St.Widget;
+			if (widget == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			global::Clutter.Actor? label = null;
+			if (label_lease != 0) {
+				label = request.connection.leases.get(
+					(int) label_lease) as global::Clutter.Actor;
+				if (label == null) {
+					request.connection.reply_error(request,
+						(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+					return;
+				}
+			}
+			var pspec = widget.get_class().find_property("label-actor");
+			if (pspec == null) {
+				request.connection.reply_error(request,
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var obj_value = GLib.Value(pspec.value_type);
+			obj_value.set_object(label);
+			widget.set_property("label-actor", obj_value);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+			});
+		}
+
 		[CCode (cname = "gsr_server_st_st_new")]
 		public void mint(OLLMrpc.Request request)
 		{
